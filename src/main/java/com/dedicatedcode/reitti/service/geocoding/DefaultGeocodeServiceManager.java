@@ -12,6 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -110,8 +114,13 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
 
         try {
-            // i need to add a user-agent in the form of "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)"; to the request AI!
-            String response = restTemplate.getForObject(url, String.class);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String response = responseEntity.getBody();
+
             Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && geocodeResult.isPresent()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(
