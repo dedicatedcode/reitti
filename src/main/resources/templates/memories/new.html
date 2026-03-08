@@ -50,7 +50,8 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="endDateGroup">
+                    <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
                     <div class="datetime-picker" id="endDatePicker">
                         <input type="date" id="endDate" name="endDate" required class="date-input form-control"
                                th:value="${endDate}">
@@ -60,7 +61,7 @@
                     </div>
                 </div>
                 <div class="form-group slide-reveal-container">
-                    <input type="checkbox" id="openEnded"  onchange="toggleEndDate()">
+                    <input type="checkbox" id="openEnded" name="openEnded" onchange="toggleEndDate()">
                     <label for="openEnded" class="slide-reveal">
                         <span class="slide-box"></span>
                         <span class="label-text" th:text="#{memory.form.open_ended.label}">Open-ended?</span>
@@ -101,20 +102,16 @@
 
             function toggleEndDate() {
                 const isOpenEnded = document.getElementById('openEnded').checked;
+                const endDateGroup = document.getElementById('endDateGroup');
                 const endDateInput = document.getElementById('endDate');
                 const endTimeInput = document.getElementById('endTime');
-                const endDatePickerTrigger = document.querySelector('#endDatePicker .picker-trigger');
-
-                endDateInput.disabled = isOpenEnded;
-                endTimeInput.disabled = isOpenEnded;
-                endDatePickerTrigger.disabled = isOpenEnded;
 
                 if (isOpenEnded) {
+                    endDateGroup.style.display = 'none';
                     endDateInput.removeAttribute('required');
                     endTimeInput.removeAttribute('required');
-                    endDateInput.value = '';
-                    endTimeInput.value = '';
                 } else {
+                    endDateGroup.style.display = 'block';
                     endDateInput.setAttribute('required', 'required');
                     endTimeInput.setAttribute('required', 'required');
                 }
