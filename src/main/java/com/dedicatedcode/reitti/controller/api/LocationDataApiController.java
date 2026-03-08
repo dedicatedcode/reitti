@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.*;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -83,17 +84,23 @@ public class LocationDataApiController {
                 } catch (DateTimeParseException ignored) {
                 }
 
+                try {
+                    startOfRange = ZonedDateTime.parse(startDate).toInstant();
+                    endOfRange = ZonedDateTime.parse(endDate).toInstant().plus(1, ChronoUnit.MILLIS);
+                } catch (DateTimeParseException ignored) {
+                }
+
                 if (startOfRange == null && endOfRange == null) {
                     LocalDate selectedStartDate = LocalDate.parse(startDate);
                     LocalDate selectedEndDate = LocalDate.parse(endDate);
                     startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
-                    endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                    endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant();
                 }
             } else if (date != null) {
                 // Single date mode (backward compatibility)
                 LocalDate selectedDate = LocalDate.parse(date);
                 startOfRange = selectedDate.atStartOfDay(userTimezone).toInstant();
-                endOfRange = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                endOfRange = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant();
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "Either 'date' or both 'startDate' and 'endDate' must be provided"

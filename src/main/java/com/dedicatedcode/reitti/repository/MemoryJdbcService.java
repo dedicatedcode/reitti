@@ -134,7 +134,7 @@ public class MemoryJdbcService {
                     "WHERE user_id = ? " +
                     "ORDER BY EXTRACT(YEAR FROM start_date) DESC";
             return jdbcTemplate.queryForList(sql, Integer.class, user.getId());
-        }
+    }
 
     public Optional<Long> getOwnerId(Memory memory) {
         return Optional.ofNullable(this.jdbcTemplate.queryForObject("SELECT user_id FROM memory WHERE id = ?", Long.class, memory.getId()));
@@ -145,7 +145,7 @@ public class MemoryJdbcService {
             case "title" -> "LOWER(title)";
             case "startDate" -> "start_date";
             case "createdAt" -> "created_at";
-            default -> "start_date"; // Fallback to default
+            default -> "start_date";
         };
     }
 }
