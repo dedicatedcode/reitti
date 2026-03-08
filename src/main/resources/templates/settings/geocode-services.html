@@ -43,33 +43,19 @@
                         <li><code>{lng}</code> - <span th:text="#{geocoding.placeholder.lng}">Will be replaced with longitude</span>
                         </li>
                     </ul>
-                    <p><strong th:text="#{geocoding.example}">Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code>
-                    </p>
+                    <p><strong th:text="#{geocoding.example}">Example:</strong> <code>https://nominatim.openstreetmap.org/reverse?format=geocodejson&lat={lat}&lon={lng}&zoom=18&addressdetails=1</code></p>
                 </div>
                 <div class="settings-card">
                     <h3 th:text="#{geocoding.available.services}">Available Services</h3>
-                    <div class="divider">Photon</div>
-                    <div th:if="${photonConfigured}">
-                        <p th:text="#{geocoding.photon.address(${photonBaseUrl})}">Photon Reverse Geocoding service is configured to connect to http://photon</p>
-                        <button class="btn"
-                                th:hx-post="@{/settings/geocode-services/test-photon}"
-                                hx-target="#geocode-services"
-                                hx-swap="innerHTML"
-                                th:text="#{geocoding.test.connection}">Test Connection
-                        </button>
-                    </div>
-                    <div th:unless="${photonConfigured}">
-                        <p th:text="#{geocoding.photon.not.configured}">Photon Reverse Geocoding service is not configured.</p>
-                    </div>
-
                     <div th:if="${geocodeServices.isEmpty()}">
                         <p th:text="#{geocoding.no.services}">No geocoding services configured.</p>
                     </div>
-                    <div class="divider" th:text="#{geocoding.external.services}">External Services</div>
                     <table th:if="${!geocodeServices.isEmpty()}">
                         <thead>
                         <tr>
                             <th th:text="#{geocoding.table.name}">Name</th>
+                            <th th:text="#{geocoding.table.type}">Type</th>
+                            <th th:text="#{geocoding.table.priority}">Priority</th>
                             <th th:text="#{geocoding.table.url}">URL Template</th>
                             <th th:text="#{geocoding.table.status}">Status</th>
                             <th th:text="#{geocoding.table.errors}">Errors</th>
@@ -80,14 +66,19 @@
                         <tbody>
                         <tr th:each="service : ${geocodeServices}">
                             <td th:text="${service.name}"></td>
+                            <td th:text="#{'geocoding.service.type.' + ${service.type} + '.name'}"></td>
+                            <td th:text="#{'priority.' + ${service.priority} + '.label'}"></td>
                             <td style="max-width: 300px; word-break: break-all; font-family: monospace;"
                                 th:text="${service.urlTemplate}"></td>
                             <td>
-                    <span th:if="${service.enabled}"><i class="lni lni-check"></i> <span
-                            th:text="#{geocoding.status.enabled}">Enabled</span></span>
-                                <span th:if="${!service.enabled}" style="color: red;"><i
-                                        class="lni lni-xmark"></i> <span
-                                        th:text="#{geocoding.status.disabled}">Disabled</span></span>
+                                <span th:if="${service.enabled}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{geocoding.status.enabled}">Enabled</span>
+                                </span>
+                                <span th:if="${!service.enabled}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{geocoding.status.disabled}">Disabled</span>
+                                </span>
                             </td>
                             <td>
                                 <span th:text="${service.errorCount + '/' + maxErrors}"></span>
@@ -95,6 +86,14 @@
                             </td>
                             <td th:text="${service.lastUsed != null ? #temporals.format(service.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('geocoding.never.used')}"></td>
                             <td>
+                                <button class="btn"
+                                        th:attr="hx-get=@{/settings/geocode-services/edit/{id}(id=${service.id})}"
+                                        hx-target="#geocoding-form-container"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.edit}">
+                                    Edit
+                                </button>
+
                                 <button class="btn"
                                         th:attr="hx-post=@{/settings/geocode-services/{id}/toggle(id=${service.id})}"
                                         hx-target="#geocode-services"
@@ -122,21 +121,39 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="settings-card">
+                <div class="settings-card" id="geocoding-form-container">
                     <form th:hx-post="@{/settings/geocode-services}" hx-target="#geocode-services" hx-swap="innerHTML"
                           class="geocode-service-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>
                         <div class="form-group">
-                            <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
-                            <input type="text" id="serviceName" name="name" required
-                                   th:placeholder="#{geocoding.service.name.placeholder}" placeholder="Enter name for the service">
+                            <label for="type" th:text="#{geocoding.service.type}">Type</label>
+                            <select id="type" name="type" required
+                                    hx-get="/settings/geocode-services/type-fields"
+                                    hx-trigger="change, load"
+                                    hx-target="#geocoding-type-specific-fields">
+                                <option th:each="type : ${geocodeServiceTypes}"
+                                        th:value="${type}"
+                                        th:text="#{'geocoding.service.type.' + ${type} + '.name'}">
+                                </option>
+                            </select>                        </div>
+                        <div id="geocoding-type-specific-fields"></div>
+
+                        <div id="test-result">
+                            <!-- Test results will be rendered here -->
                         </div>
-                        <div class="form-group">
-                            <label for="serviceUrl" th:text="#{geocoding.service.url}">URL Template</label>
-                            <input type="text" id="serviceUrl" name="urlTemplate" required
-                                   placeholder="https://api.example.com/reverse?lat={lat}&lon={lng}&format=json">
+                        <div class="form-actions">
+                            <button type="submit" class="btn" th:text="#{form.create}">Add Service</button>
+                            <button type="button" class="btn btn-secondary"
+                                    hx-post="/settings/geocode-services/test-config"
+                                    hx-include=".geocode-service-form"
+                                    hx-target="#test-result"
+                                    hx-indicator="#test-spinner">
+                                <span th:text="#{geocoding.test.button}">Test Connection</span>
+                                <span id="test-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+                            </button>
                         </div>
-                        <button type="submit" class="btn" th:text="#{form.create}">Add Service</button>
+
+
                     </form>
 
                 </div>
