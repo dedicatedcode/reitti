@@ -7,53 +7,103 @@
         <p th:utext="#{'geocoding.service.type.' + ${type} + '.description'}"></p>
     </div>
 
+    <input type="hidden" name="id" th:if="${service}" th:value="${service.id}">
+
     <div class="form-group">
         <label for="serviceName" th:text="#{geocoding.service.name}">Service Name</label>
         <input type="text" id="serviceName" name="name" required
                th:placeholder="#{geocoding.service.name.placeholder}"
-               th:value="#{'geocoding.service.type.' + ${type} + '.name'}">
+               th:value="${service != null ? service.name : #messages.msg('geocoding.service.type.' + type + '.name')}">
     </div>
 
     <!-- Dynamic Fields -->
     <div class="form-group" th:if="${type.name() == 'PHOTON' || type.name() == 'NOMINATIM' || type.name() == 'PAIKKA'}">
         <label for="serviceUrl" th:text="#{geocoding.service.base_url}">URL / Base URL</label>
         <input type="text" id="serviceUrl" name="url" required
-               th:value="${type.name() == 'NOMINATIM' ? 'https://nominatim.openstreetmap.org' : (type.name() == 'PAIKKA' ? 'https://geo.dedicatedcode.com' : '')}"
+               th:value="${service != null ? service.url : (type.name() == 'NOMINATIM' ? 'https://nominatim.openstreetmap.org' : (type.name() == 'PAIKKA' ? 'https://geo.dedicatedcode.com' : ''))}"
                placeholder="https://api.example.com/">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'GEOCODE_JSON'}">
         <label for="serviceUrl" th:text="#{geocoding.service.url}">URL / Base URL</label>
         <input type="text" id="serviceUrl" name="url" required
+               th:value="${service != null ? service.url : ''}"
                placeholder="https://api.example.com/reverse?format=geocodejson&lat={lat}&lon={lng}&zoom=18&addressdetails=1">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'GEO_APIFY'}">
         <label for="apiKey" th:text="#{geocoding.service.api_key}">API Key</label>
-        <input type="text" id="apiKey" name="apiKey" required placeholder="Enter your Geoapify API Key">
+        <input type="text" id="apiKey" name="apiKey" required
+               th:value="${service != null ? service.additionalParameters['apiKey'] : ''}"
+               placeholder="Enter your Geoapify API Key">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA' || type.name() == 'GEO_APIFY' || type.name() == 'NOMINATIM'}">
         <label for="lang" th:text="#{geocoding.service.language}">Language (Optional)</label>
-        <input type="text" id="lang" name="lang" placeholder="e.g. en, de, fi">
+        <input type="text" id="lang" name="lang"
+               th:value="${service != null ? service.additionalParameters['language'] : ''}"
+               placeholder="e.g. en, de, fi">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA'}">
         <label for="limit" th:text="#{geocoding.service.limit}">Limit (Optional)</label>
-        <input type="number" id="limit" name="limit" placeholder="10">
+        <input type="number" id="limit" name="limit"
+               th:value="${service != null ? service.additionalParameters['limit'] : ''}"
+               placeholder="10">
     </div>
 
     <div class="form-group">
         <label for="priority" th:text="#{geocoding.service.priority}">Priority</label>
         <select id="priority" name="priority">
-            <option th:text="#{'priority.1.label'}" value="1">Highest</option>
-            <option th:text="#{'priority.2.label'}" value="2">High</option>
-            <option th:text="#{'priority.3.label'}" value="3">Medium</option>
-            <option th:text="#{'priority.4.label'}" value="4">Low</option>
-            <option th:text="#{'priority.5.label'}" value="5">Lower</option>
+            <option th:each="p : ${#numbers.sequence(1, 5)}"
+                    th:value="${p}"
+                    th:text="#{'priority.' + ${p} + '.label'}"
+                    th:selected="${service != null && service.priority == p}">
+            </option>
         </select>
     </div>
 </div>
+
+<div th:fragment="edit-form">
+    <form th:hx-post="@{/settings/geocode-services}" hx-target="#geocode-services" hx-swap="innerHTML"
+          class="geocode-service-form" style="margin-bottom: 20px;">
+        <h3 th:text="#{geocoding.edit.title}">Edit Geocoding Service</h3>
+        <div class="form-group">
+            <label for="type" th:text="#{geocoding.service.type}">Type</label>
+            <select id="type" name="type" required
+                    hx-get="/settings/geocode-services/type-fields"
+                    hx-target="#geocoding-type-specific-fields">
+                <option th:each="t : ${geocodeServiceTypes}"
+                        th:value="${t}"
+                        th:text="#{'geocoding.service.type.' + ${t} + '.name'}"
+                        th:selected="${t == type}">
+                </option>
+            </select>
+        </div>
+        <div id="geocoding-type-specific-fields">
+            <div th:replace="~{::type-fields(${type})}"></div>
+        </div>
+
+        <div id="test-result"></div>
+        <div class="form-actions">
+            <button type="submit" class="btn" th:text="#{form.update}">Update Service</button>
+            <button type="button" class="btn btn-secondary"
+                    hx-get="/settings/geocode-services/geocode-services-content"
+                    hx-target="#geocode-services"
+                    hx-swap="innerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
+            <button type="button" class="btn btn-secondary"
+                    hx-post="/settings/geocode-services/test-config"
+                    hx-include=".geocode-service-form"
+                    hx-target="#test-result"
+                    hx-indicator="#test-spinner">
+                <span th:text="#{geocoding.test.button}">Test Connection</span>
+                <span id="test-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+            </button>
+        </div>
+    </form>
+</div>
+
 <div th:fragment="test-result-display">
     <div th:if="${testResult}" class="alert alert-success">
         <strong>Success!</strong> Service returned a valid location:

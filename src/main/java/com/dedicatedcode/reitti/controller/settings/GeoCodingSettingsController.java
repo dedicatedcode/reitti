@@ -96,6 +96,15 @@ public class GeoCodingSettingsController {
         return "settings/fragments/geocoding :: type-fields";
     }
 
+    @GetMapping("/edit/{id}")
+    public String editService(@PathVariable Long id, Model model) {
+        GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
+        model.addAttribute("service", service);
+        model.addAttribute("type", service.getType());
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+        return "settings/fragments/geocoding :: edit-form";
+    }
+
     @PostMapping("/test-config")
     public String testConfiguration(@RequestParam GeocoderType type,
                                     @RequestParam(required = false) String url,
@@ -141,8 +150,10 @@ public class GeoCodingSettingsController {
         }
         return new GeocodeService("TMP", url, false, 0, null, null, type, 0, params);
     }
+
     @PostMapping
-    public String createGeocodeService(@RequestParam String name,
+    public String saveGeocodeService(@RequestParam(required = false) Long id,
+                                       @RequestParam String name,
                                        @RequestParam String url,
                                        @RequestParam GeocoderType type,
                                        @RequestParam(required = false) String apiKey,
@@ -164,9 +175,18 @@ public class GeoCodingSettingsController {
             if (url.endsWith("/")) {
                 url = url.substring(0, url.length() - 1);
             }
-            GeocodeService service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
+
+            GeocodeService service;
+            if (id != null) {
+                GeocodeService existing = geocodeServiceJdbcService.findById(id).orElseThrow();
+                service = new GeocodeService(id, name, url, existing.isEnabled(), existing.getErrorCount(), existing.getLastUsed(), existing.getLastError(), type, priority, params);
+                model.addAttribute("successMessage", i18n.translate("message.success.geocode.updated"));
+            } else {
+                service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
+                model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
+            }
+            
             geocodeServiceJdbcService.save(service);
-            model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("message.error.geocode.creation", e.getMessage()));
         }
@@ -175,6 +195,7 @@ public class GeoCodingSettingsController {
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
         return "settings/geocode-services :: geocode-services-content";
     }
 
