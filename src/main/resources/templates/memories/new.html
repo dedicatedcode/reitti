@@ -51,7 +51,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
+                        <div class="checkbox-group" style="margin-bottom: 5px;">
+                            <input type="checkbox" id="openEnded" name="openEnded" onchange="toggleEndDate()">
+                            <label for="openEnded" th:text="#{memory.form.open_ended.label}" style="display: inline; font-weight: normal; font-size: 0.9em;">Open-ended</label>
+                        </div>
+                    </div>
                     <div class="datetime-picker" id="endDatePicker">
                         <input type="date" id="endDate" name="endDate" required class="date-input form-control"
                                th:value="${endDate}">
@@ -93,27 +99,59 @@
                 onValidate: validateDates
             });
 
+            function toggleEndDate() {
+                const isOpenEnded = document.getElementById('openEnded').checked;
+                const endDateInput = document.getElementById('endDate');
+                const endTimeInput = document.getElementById('endTime');
+                const endDatePickerTrigger = document.querySelector('#endDatePicker .picker-trigger');
+
+                endDateInput.disabled = isOpenEnded;
+                endTimeInput.disabled = isOpenEnded;
+                endDatePickerTrigger.disabled = isOpenEnded;
+
+                if (isOpenEnded) {
+                    endDateInput.removeAttribute('required');
+                    endTimeInput.removeAttribute('required');
+                    endDateInput.value = '';
+                    endTimeInput.value = '';
+                } else {
+                    endDateInput.setAttribute('required', 'required');
+                    endTimeInput.setAttribute('required', 'required');
+                }
+                validateDates();
+            }
+
             function validateDates() {
                 const startDate = document.getElementById('startDate').value;
                 const startTime = document.getElementById('startTime').value;
-                const endDate = document.getElementById('endDate').value;
-                const endTime = document.getElementById('endTime').value;
+                const isOpenEnded = document.getElementById('openEnded').checked;
                 const errorDiv = document.getElementById('dateError');
                 const errorText = document.getElementById('dateErrorText');
 
-                if (!startDate || !startTime || !endDate || !endTime) {
+                if (!startDate || !startTime) {
                     errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
                     errorDiv.style.display = 'block';
                     return false;
                 }
 
-                const startDateTime = new Date(`${startDate}T${startTime}`);
-                const endDateTime = new Date(`${endDate}T${endTime}`);
+                if (!isOpenEnded) {
+                    const endDate = document.getElementById('endDate').value;
+                    const endTime = document.getElementById('endTime').value;
 
-                if (startDateTime > endDateTime) {
-                    errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
-                    errorDiv.style.display = 'block';
-                    return false;
+                    if (!endDate || !endTime) {
+                        errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
+                        errorDiv.style.display = 'block';
+                        return false;
+                    }
+
+                    const startDateTime = new Date(`${startDate}T${startTime}`);
+                    const endDateTime = new Date(`${endDate}T${endTime}`);
+
+                    if (startDateTime > endDateTime) {
+                        errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
+                        errorDiv.style.display = 'block';
+                        return false;
+                    }
                 }
 
                 errorDiv.style.display = 'none';
