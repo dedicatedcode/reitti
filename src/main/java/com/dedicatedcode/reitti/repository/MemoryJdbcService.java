@@ -30,7 +30,7 @@ public class MemoryJdbcService {
             rs.getString("title"),
             rs.getString("description"),
             rs.getTimestamp("start_date").toInstant(),
-            rs.getTimestamp("end_date").toInstant(),
+            rs.getTimestamp("end_date") != null ? rs.getTimestamp("end_date").toInstant() : null,
             HeaderType.valueOf(rs.getString("header_type")),
             rs.getString("header_image_url"),
             rs.getTimestamp("created_at").toInstant(),
@@ -51,7 +51,7 @@ public class MemoryJdbcService {
             ps.setString(2, memory.getTitle());
             ps.setString(3, memory.getDescription());
             ps.setObject(4, Timestamp.from(memory.getStartDate()));
-            ps.setObject(5, Timestamp.from(memory.getEndDate()));
+            ps.setObject(5, memory.getEndDate() != null ? Timestamp.from(memory.getEndDate()) : null);
             ps.setString(6, memory.getHeaderType().name());
             ps.setString(7, memory.getHeaderImageUrl());
             ps.setTimestamp(8, Timestamp.from(memory.getCreatedAt()));
@@ -72,7 +72,7 @@ public class MemoryJdbcService {
                 memory.getTitle(),
                 memory.getDescription(),
                 Timestamp.from(memory.getStartDate()),
-                Timestamp.from(memory.getEndDate()),
+                memory.getEndDate() != null ? Timestamp.from(memory.getEndDate()) : null,
                 memory.getHeaderType().name(),
                 memory.getHeaderImageUrl(),
                 Timestamp.from(memory.getUpdatedAt()),
