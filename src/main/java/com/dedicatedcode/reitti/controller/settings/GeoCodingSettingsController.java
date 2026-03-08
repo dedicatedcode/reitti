@@ -154,7 +154,7 @@ public class GeoCodingSettingsController {
     @PostMapping
     public String saveGeocodeService(@RequestParam(required = false) Long id,
                                        @RequestParam String name,
-                                       @RequestParam String url,
+                                       @RequestParam(required = false) String url,
                                        @RequestParam GeocoderType type,
                                        @RequestParam(required = false) String apiKey,
                                        @RequestParam(required = false) String language,
@@ -172,6 +172,9 @@ public class GeoCodingSettingsController {
             if (apiKey != null && !apiKey.isEmpty()) {
                 params.put("apiKey", apiKey);
             }
+            if (type == GEO_APIFY) {
+                url = "https://api.geoapify.com";
+            }
             if (url.endsWith("/")) {
                 url = url.substring(0, url.length() - 1);
             }
@@ -179,7 +182,7 @@ public class GeoCodingSettingsController {
             GeocodeService service;
             if (id != null) {
                 GeocodeService existing = geocodeServiceJdbcService.findById(id).orElseThrow();
-                service = new GeocodeService(id, name, url, existing.isEnabled(), existing.getErrorCount(), existing.getLastUsed(), existing.getLastError(), type, priority, params);
+                service = new GeocodeService(id, name, url, existing.isEnabled(), existing.getErrorCount(), existing.getLastUsed(), existing.getLastError(), type, params, priority, existing.getVersion());
                 model.addAttribute("successMessage", i18n.translate("message.success.geocode.updated"));
             } else {
                 service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
@@ -211,6 +214,8 @@ public class GeoCodingSettingsController {
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+
         return "settings/geocode-services :: geocode-services-content";
     }
 
@@ -222,6 +227,8 @@ public class GeoCodingSettingsController {
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+
         return "settings/geocode-services :: geocode-services-content";
     }
 
