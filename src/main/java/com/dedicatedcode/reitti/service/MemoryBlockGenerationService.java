@@ -221,7 +221,7 @@ public class MemoryBlockGenerationService {
             imagesByDay.remove(today);
         }
         
-        if (lastAccommodationDeparture != null) {
+        if (lastAccommodationDeparture != null && !openEnded) {
             List<Trip> tripsFromAccommodation = allTripsInRange.stream()
                     .filter(trip -> trip.getStartTime() != null && !trip.getStartTime().isBefore(lastAccommodationDeparture))
                     .filter(trip -> trip.getEndTime() != null && !trip.getEndTime().isAfter(endDate))
