@@ -147,7 +147,7 @@ public class MemoryController {
         model.addAttribute("endDate", endDate);
         model.addAttribute("endTime", endTime);
         model.addAttribute("year", year);
-        return "memories/new :: new-memory";
+        return "memories/new :: memory-form";
     }
 
     @PostMapping
@@ -175,7 +175,8 @@ public class MemoryController {
             model.addAttribute("startTime", startTime);
             model.addAttribute("endDate", endDate);
             model.addAttribute("endTime", endTime);
-            return "memories/new :: new-memory";
+            model.addAttribute("openEnded", openEnded);
+            return "memories/new :: memory-form";
         }
         
         try {
@@ -193,8 +194,9 @@ public class MemoryController {
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
+                model.addAttribute("openEnded", openEnded);
 
-                return "memories/new :: new-memory";
+                return "memories/new :: memory-form";
             }
             
             // Validate end date is not before start date
@@ -207,8 +209,9 @@ public class MemoryController {
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
+                model.addAttribute("openEnded", openEnded);
 
-                return "memories/new :: new-memory";
+                return "memories/new :: memory-form";
             }
             
             Memory memory = new Memory(
@@ -235,8 +238,9 @@ public class MemoryController {
             model.addAttribute("endDate", endDate);
             model.addAttribute("endTime", endTime);
             model.addAttribute("year", year);
+            model.addAttribute("openEnded", openEnded);
 
-            return "memories/new :: new-memory";
+            return "memories/new :: memory-form";
         }
     }
 
@@ -267,12 +271,13 @@ public class MemoryController {
             @RequestParam String title,
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate,
+            @RequestParam(required = false) LocalDate endDate,
             @RequestParam LocalTime startTime,
-            @RequestParam LocalTime endTime,
+            @RequestParam(required = false) LocalTime endTime,
             @RequestParam Long version,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
+            @RequestParam(required = false) boolean openEnded,
             @RequestParam(required = false) String headerImageUrl,
             Model model) {
         
@@ -289,6 +294,7 @@ public class MemoryController {
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", i18n.translate("memory.validation.title.required"));
             model.addAttribute("memory", new MemoryDTO(memory, timezone));
+            model.addAttribute("openEnded", openEnded);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
@@ -298,12 +304,13 @@ public class MemoryController {
         
         try {
             Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
-            Instant end = LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
+            Instant end = openEnded ? null : LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
             Instant today = Instant.now();
             
-            if (start.isAfter(today) || end.isAfter(today)) {
+            if (start.isAfter(today) || (end != null && end.isAfter(today))) {
                 model.addAttribute("error", i18n.translate("memory.validation.date.future"));
                 model.addAttribute("memory", new MemoryDTO(memory, timezone));
+                model.addAttribute("openEnded", openEnded);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -311,9 +318,10 @@ public class MemoryController {
                 return "memories/edit :: edit-memory";
             }
             
-            if (end.isBefore(start)) {
+            if (end != null && end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("memory", new MemoryDTO(memory, timezone));
+                model.addAttribute("openEnded", openEnded);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -338,6 +346,7 @@ public class MemoryController {
         } catch (Exception e) {
             model.addAttribute("error", i18n.translate("memory.validation.start.date.required"));
             model.addAttribute("memory", new MemoryDTO(memory, timezone));
+            model.addAttribute("openEnded", openEnded);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
