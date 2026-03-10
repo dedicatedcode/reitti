@@ -11,13 +11,15 @@ import java.util.List;
 public class TokenUser extends User {
     private final List<GrantedAuthority> authorities = new ArrayList<>();
     private final User user;
+    private final String token;
     private final MagicLinkResourceType type;
     private final Long resourceId;
 
-    public TokenUser(User user, MagicLinkResourceType type, Long resourceId, List<String> additionalAuthorities) {
+    public TokenUser(User user, String token, MagicLinkResourceType type, Long resourceId, List<String> additionalAuthorities) {
         this.user = user;
         this.type = type;
         this.resourceId = resourceId;
+        this.token = token;
         this.authorities.addAll(additionalAuthorities.stream().map(SimpleGrantedAuthority::new).toList());
     }
 
@@ -54,6 +56,10 @@ public class TokenUser extends User {
     @Override
     public String getProfileUrl() {
         return user.getProfileUrl();
+    }
+
+    public String getToken() {
+        return token;
     }
 
     public boolean grantsAccessTo(MagicLinkResourceType type, Long resourceId){

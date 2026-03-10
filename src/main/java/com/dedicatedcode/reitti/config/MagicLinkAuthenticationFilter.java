@@ -90,7 +90,7 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
 
             String specialRole = "ROLE_MAGIC_LINK_" + linkToken.getAccessLevel().name();
             MagicLinkAuthenticationToken authentication = new MagicLinkAuthenticationToken(
-                    new TokenUser(user.get(), linkToken.getResourceType(), resourceId, List.of(specialRole)),
+                    new TokenUser(user.get(), token, linkToken.getResourceType(), resourceId, List.of(specialRole)),
                     null,
                     Collections.singletonList(new SimpleGrantedAuthority(specialRole)),
                     linkToken.getId()
