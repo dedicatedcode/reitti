@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -13,8 +12,9 @@ import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.github.sonus21.rqueue.core.RqueueMessageManager;
+import com.github.sonus21.rqueue.metrics.RqueueQueueMetrics;
 import org.awaitility.Awaitility;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
+            "reitti.place.created.v2"
     );
 
     @Autowired
@@ -43,7 +43,9 @@ public class TestingService {
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
-    private RabbitAdmin rabbitAdmin;
+    private RqueueQueueMetrics rqueueQueueMetrics;
+    @Autowired
+    private RqueueMessageManager messageManager;
     @Autowired
     private TripJdbcService tripRepository;
     @Autowired
@@ -124,8 +126,8 @@ public class TestingService {
                     // Check all queues are empty
                     boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
                             .allMatch(name -> {
-                                var queueInfo = this.rabbitAdmin.getQueueInfo(name);
-                                return queueInfo.getMessageCount() == 0;
+                                long pendingMessageCount = this.rqueueQueueMetrics.getPendingMessageCount(name);
+                                return pendingMessageCount == 0;
                             });
 
                     if (!queuesAreEmpty) {
@@ -154,7 +156,7 @@ public class TestingService {
     }
 
     public void clearData() {
-        QUEUES_TO_CHECK.forEach(name -> this.rabbitAdmin.purgeQueue(name));
+        QUEUES_TO_CHECK.forEach(name -> this.messageManager.deleteAllMessages(name));
 
         try {
             Thread.sleep(2000);
