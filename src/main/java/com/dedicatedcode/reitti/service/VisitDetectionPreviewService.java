@@ -1,13 +1,11 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
+import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +17,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.dedicatedcode.reitti.service.MessageDispatcherService.TRIGGER_PROCESSING_QUEUE;
+
 @Service
 public class VisitDetectionPreviewService {
     private static final Logger log = LoggerFactory.getLogger(VisitDetectionPreviewService.class);
@@ -26,12 +26,12 @@ public class VisitDetectionPreviewService {
     private static final long READY_THRESHOLD_SECONDS = 5;
 
     private final JdbcTemplate jdbcTemplate;
-    private final RabbitTemplate rabbitTemplate;
+    private final RqueueMessageEnqueuer messageEnqueuer;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
 
-    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RabbitTemplate rabbitTemplate) {
+    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RqueueMessageEnqueuer messageEnqueuer) {
         this.jdbcTemplate = jdbcTemplate;
-        this.rabbitTemplate = rabbitTemplate;
+        this.messageEnqueuer = messageEnqueuer;
     }
 
     public String startPreview(User user, DetectionParameter config, Instant date) {
@@ -66,11 +66,7 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.TRIGGER_PROCESSING_PIPELINE_ROUTING_KEY,
-                triggerEvent
-        );
+        messageEnqueuer.enqueue(TRIGGER_PROCESSING_QUEUE, triggerEvent);
         
         // Initialize preview status tracking
         updatePreviewStatus(previewId);

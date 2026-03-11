@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -14,7 +13,7 @@ import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 import static com.dedicatedcode.reitti.model.geocoding.GeocoderType.GEO_APIFY;
+import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
 
 @Controller
 @RequestMapping("/settings/geocode-services")
@@ -37,7 +37,7 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceJdbcService placeJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
-    private final RabbitTemplate rabbitTemplate;
+    private final RqueueMessageEnqueuer messageEnqueuer;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -49,7 +49,7 @@ public class GeoCodingSettingsController {
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
-                                       RabbitTemplate rabbitTemplate,
+                                       RqueueMessageEnqueuer messageEnqueuer,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
@@ -59,7 +59,7 @@ public class GeoCodingSettingsController {
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
-        this.rabbitTemplate = rabbitTemplate;
+        this.messageEnqueuer = messageEnqueuer;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
@@ -264,7 +264,7 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+                    messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.run.success", nonGeocodedPlaces.size()));
@@ -307,7 +307,7 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+                    messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.clear.success", allPlaces.size()));

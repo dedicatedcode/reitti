@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
@@ -10,9 +9,9 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
+import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -26,12 +25,12 @@ import java.util.stream.Collectors;
 @Service
 public class UserNotificationService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
-    private final RabbitTemplate rabbitTemplate;
+    private final RqueueMessageEnqueuer messageEnqueuer;
     private final ReittiSubscriptionService reittiSubscriptionService;
 
-    public UserNotificationService(RabbitTemplate rabbitTemplate, 
+    public UserNotificationService(RqueueMessageEnqueuer messageEnqueuer,
                                  ReittiSubscriptionService reittiSubscriptionService) {
-        this.rabbitTemplate = rabbitTemplate;
+        this.messageEnqueuer = messageEnqueuer;
         this.reittiSubscriptionService = reittiSubscriptionService;
     }
 
@@ -70,12 +69,12 @@ public class UserNotificationService {
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
+            this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
         }
     }
 
     public void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
+        this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
     }
 
     private void notifyReittiSubscriptions(User user, SSEType eventType, Set<LocalDate> dates) {

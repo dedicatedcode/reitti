@@ -1,8 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import com.github.sonus21.rqueue.metrics.RqueueQueueMetrics;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -11,7 +10,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -19,7 +17,7 @@ public class QueueStatsService {
 
     public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
     public static final String LOCATION_DATA_QUEUE = "reitti.location.data.v2";
-    private final RabbitAdmin rabbitAdmin;
+    private final RqueueQueueMetrics rqueueQueueMetrics;
     private final MessageSource messageSource;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final DefaultImportProcessor defaultImportProcessor;
@@ -27,19 +25,19 @@ public class QueueStatsService {
     private static final long DEFAULT_PROCESSING_TIME = 2000;
 
     private final List<String> QUEUES = List.of(
-            RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE,
-            RabbitMQConfig.USER_EVENT_QUEUE
+            "reitti.place.created.v2",
+            "reitti.user.events.v2"
             );
 
     private final Map<String, List<ProcessingRecord>> processingHistory = new ConcurrentHashMap<>();
     
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
-    public QueueStatsService(RabbitAdmin rabbitAdmin,
+    public QueueStatsService(RqueueQueueMetrics rqueueQueueMetrics,
                              MessageSource messageSource,
                              ProcessingPipelineTrigger processingPipelineTrigger,
                              DefaultImportProcessor defaultImportProcessor) {
-        this.rabbitAdmin = rabbitAdmin;
+        this.rqueueQueueMetrics = rqueueQueueMetrics;
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.defaultImportProcessor = defaultImportProcessor;
@@ -91,7 +89,9 @@ public class QueueStatsService {
             long processingTimePerMessage = estimateProcessingTimePerMessage(queueName);
             List<ProcessingRecord> history = processingHistory.get(queueName);
             LocalDateTime now = LocalDateTime.now();
-            history.add(new ProcessingRecord(now, this.rabbitAdmin.getQueueInfo(queueName).getMessageCount(), processingTimePerMessage));
+            long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
+            long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
+            history.add(new ProcessingRecord(now, scheduledMessageCount + pendingMessageCount, processingTimePerMessage));
             cleanupOldRecords(history, now);
         }
         
@@ -163,11 +163,9 @@ public class QueueStatsService {
     }
 
     private int getMessageCount(String queueName) {
-        Properties properties = rabbitAdmin.getQueueProperties(queueName);
-        if (properties.containsKey(RabbitAdmin.QUEUE_MESSAGE_COUNT)) {
-            return (int) properties.get(RabbitAdmin.QUEUE_MESSAGE_COUNT);
-        }
-        return 0;
+        long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
+        long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
+        return (int) (scheduledMessageCount + pendingMessageCount);
     }
 
     private String formatProcessingTime(long milliseconds) {
@@ -222,8 +220,8 @@ public class QueueStatsService {
     
     private String getMessageKeyForQueue(String queueName, String suffix) {
         return switch (queueName) {
-            case RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE -> "queue.significant.place." + suffix;
-            case RabbitMQConfig.USER_EVENT_QUEUE -> "queue.user.event." + suffix;
+            case "reitti.place.created.v2" -> "queue.significant.place." + suffix;
+            case "reitti.user.events.v2" -> "queue.user.event." + suffix;
             case STAY_DETECTION_QUEUE -> "queue.stay.detection." + suffix;
             case LOCATION_DATA_QUEUE -> "queue.location.data." + suffix;
             default -> "queue.unknown." + suffix;

@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.ClusteredPoint;
@@ -12,12 +11,12 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
+import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -26,6 +25,8 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
 
 /**
  * Unified service that processes the entire GPS pipeline atomically per user.
@@ -53,7 +54,7 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
-    private final RabbitTemplate rabbitTemplate;
+    private final RqueueMessageEnqueuer messageEnqueuer;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -71,7 +72,8 @@ public class UnifiedLocationProcessingService {
             TransportModeService transportModeService,
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
-            GeometryFactory geometryFactory, RabbitTemplate rabbitTemplate) {
+            GeometryFactory geometryFactory,
+            RqueueMessageEnqueuer messageEnqueuer) {
 
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
@@ -89,7 +91,7 @@ public class UnifiedLocationProcessingService {
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
-        this.rabbitTemplate = rabbitTemplate;
+        this.messageEnqueuer = messageEnqueuer;
     }
 
     /**
@@ -860,7 +862,7 @@ public class UnifiedLocationProcessingService {
                 place.getLongitudeCentroid(),
                 traceId
         );
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+        messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
         logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 
