@@ -63,10 +63,6 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
         <dependency>
@@ -89,6 +85,11 @@
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>
             <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.sonus21</groupId>
+            <artifactId>rqueue-spring-boot-starter</artifactId>
+            <version>3.4.0-RELEASE</version>
         </dependency>
         <dependency>
             <groupId>net.iakovlev</groupId>
