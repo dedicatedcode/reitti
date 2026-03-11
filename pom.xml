@@ -87,14 +87,9 @@
             <artifactId>thymeleaf-extras-springsecurity6</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.sonus21</groupId>
-            <artifactId>rqueue-spring-boot-starter</artifactId>
-            <version>3.4.0-RELEASE</version>
-        </dependency>
-        <dependency>
             <groupId>net.iakovlev</groupId>
             <artifactId>timeshape</artifactId>
-            <version>2025b.26</version>
+            <version>2025b.28</version>
         </dependency>
         <dependency>
             <groupId>net.coobird</groupId>
