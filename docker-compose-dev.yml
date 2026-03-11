@@ -14,6 +14,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+      - "1883:1883" #MQTT port
+    post_start:
+      - command: rabbitmq-plugins enable rabbitmq_mqtt
+        user: root
+    environment:
+      RABBITMQ_DEFAULT_USER: reitti
+      RABBITMQ_DEFAULT_PASS: reitti
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   mqtt:
     image: eclipse-mosquitto:2.0.18
     ports:
@@ -38,6 +57,19 @@ services:
       - "2322:2322"
     volumes:
       - photon-data:/photon/data
+  ot-recorder:
+    image: owntracks/recorder:latest
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - OTR_HOST=rabbitmq
+      - OTR_USER=reitti
+      - OTR_PASS=reitti
+    ports:
+      - "8083:8083"
+    volumes:
+      - ot-recorder-data:/store
   tile-cache:
     build: ./docker/tiles-cache
     restart: unless-stopped
@@ -53,6 +85,7 @@ services:
 volumes:
   postgis-data:
   redis-data:
+  rabbitmq-data:
   photon-data:
   ot-recorder-data:
   tile-cache-data:
