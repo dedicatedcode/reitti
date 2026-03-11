@@ -38,19 +38,6 @@ services:
       - "2322:2322"
     volumes:
       - photon-data:/photon/data
-  ot-recorder:
-    image: owntracks/recorder:latest
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - OTR_HOST=rabbitmq
-      - OTR_USER=reitti
-      - OTR_PASS=reitti
-    ports:
-      - "8083:8083"
-    volumes:
-      - ot-recorder-data:/store
   tile-cache:
     build: ./docker/tiles-cache
     restart: unless-stopped

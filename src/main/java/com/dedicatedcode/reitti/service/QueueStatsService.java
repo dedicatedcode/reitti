@@ -1,8 +1,7 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.github.sonus21.rqueue.dao.RqueueQStatsDao;
-import com.github.sonus21.rqueue.models.db.QueueStatistics;
+import com.github.sonus21.rqueue.metrics.RqueueQueueMetrics;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,7 +17,7 @@ public class QueueStatsService {
 
     public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
     public static final String LOCATION_DATA_QUEUE = "reitti.location.data.v2";
-    private final RqueueQStatsDao rqueueQStatsDao;
+    private final RqueueQueueMetrics rqueueQueueMetrics;
     private final MessageSource messageSource;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final DefaultImportProcessor defaultImportProcessor;
@@ -34,11 +33,11 @@ public class QueueStatsService {
     
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
-    public QueueStatsService(RqueueQStatsDao rqueueQStatsDao,
+    public QueueStatsService(RqueueQueueMetrics rqueueQueueMetrics,
                              MessageSource messageSource,
                              ProcessingPipelineTrigger processingPipelineTrigger,
                              DefaultImportProcessor defaultImportProcessor) {
-        this.rqueueQStatsDao = rqueueQStatsDao;
+        this.rqueueQueueMetrics = rqueueQueueMetrics;
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.defaultImportProcessor = defaultImportProcessor;
@@ -90,8 +89,9 @@ public class QueueStatsService {
             long processingTimePerMessage = estimateProcessingTimePerMessage(queueName);
             List<ProcessingRecord> history = processingHistory.get(queueName);
             LocalDateTime now = LocalDateTime.now();
-            QueueStatistics byId = rqueueQStatsDao.findById(queueName);
-            history.add(new ProcessingRecord(now, 10L, processingTimePerMessage));
+            long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
+            long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
+            history.add(new ProcessingRecord(now, scheduledMessageCount + pendingMessageCount, processingTimePerMessage));
             cleanupOldRecords(history, now);
         }
         
@@ -163,8 +163,9 @@ public class QueueStatsService {
     }
 
     private int getMessageCount(String queueName) {
-        QueueStatistics byId = this.rqueueQStatsDao.findById(queueName);
-        return (int) byId.getJobRunTime().get(queueName).getJobCount();
+        long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
+        long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
+        return (int) (scheduledMessageCount + pendingMessageCount);
     }
 
     private String formatProcessingTime(long milliseconds) {
