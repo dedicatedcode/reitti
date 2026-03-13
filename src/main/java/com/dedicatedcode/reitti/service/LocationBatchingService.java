@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -39,7 +38,7 @@ public class LocationBatchingService {
         this.importProcessor = importProcessor;
     }
     
-    public void addLocationPoint(User user, LocationPoint2 locationPoint) {
+    public void addLocationPoint(User user, LocationPoint locationPoint) {
         String username = user.getUsername();
         
         userBatches.compute(username, (key, existingBatch) -> {
@@ -105,7 +104,7 @@ public class LocationBatchingService {
         }
         
         try {
-            List<LocationPoint2> points = batch.getLocationPoints();
+            List<LocationPoint> points = batch.getLocationPoints();
             logger.debug("Flushing batch of {} location points for user {}", points.size(), username);
             importProcessor.processBatch(batch.getUser(), points);
         } catch (Exception e) {
@@ -115,7 +114,7 @@ public class LocationBatchingService {
     
     private static class UserBatch {
         private final User user;
-        private final List<LocationPoint2> locationPoints;
+        private final List<LocationPoint> locationPoints;
         private final long createdAt;
         
         public UserBatch(User user) {
@@ -124,7 +123,7 @@ public class LocationBatchingService {
             this.createdAt = System.currentTimeMillis();
         }
         
-        public void addLocationPoint(LocationPoint2 point) {
+        public void addLocationPoint(LocationPoint point) {
             locationPoints.add(point);
         }
         
@@ -137,7 +136,7 @@ public class LocationBatchingService {
             return locationPoints.isEmpty();
         }
         
-        public List<LocationPoint2> getLocationPoints() {
+        public List<LocationPoint> getLocationPoints() {
             return new ArrayList<>(locationPoints);
         }
         

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeocodeServiceTest {
 
@@ -23,15 +22,13 @@ class GeocodeServiceTest {
         GeocodeService service = new GeocodeService("Paikka", "https://geo.example.com", true, 0, null, null, GeocoderType.PAIKKA, 1, params);
         String template = service.getUrlTemplate();
         
-        assertTrue(template.contains("https://geo.example.com?lat=(lat)&lon={lng}"));
-        assertTrue(template.contains("&lang=fi"));
-        assertTrue(template.contains("&limit=5"));
+        assertEquals("https://geo.example.com/api/v1/reverse?lat={lat}&lon={lng}&lang=fi&limit=5", template);
     }
 
     @Test
     void testGetUrlTemplateGeoApify() {
         Map<String, String> params = Map.of("apiKey", "test-key-123", "language", "en");
-        GeocodeService service = new GeocodeService("GeoApify", "", true, 0, null, null, GeocoderType.GEO_APIFY, 1, params);
+        GeocodeService service = new GeocodeService("GeoApify", "https://api.geoapify.com", true, 0, null, null, GeocoderType.GEO_APIFY, 1, params);
         String template = service.getUrlTemplate();
         
         assertEquals("https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lng}&apiKey=test-key-123&lang=en", template);
@@ -39,7 +36,7 @@ class GeocodeServiceTest {
 
     @Test
     void testGetUrlTemplateNominatim() {
-        GeocodeService service = new GeocodeService("Nominatim", "https://nominatim.openstreetmap.org/", true, 0, null, null, GeocoderType.NOMINATIM, 1, Map.of());
+        GeocodeService service = new GeocodeService("Nominatim", "https://nominatim.openstreetmap.org", true, 0, null, null, GeocoderType.NOMINATIM, 1, Map.of());
         String template = service.getUrlTemplate();
         assertEquals("https://nominatim.openstreetmap.org/reverse?format=geocodejson&lat={lat}&lon={lng}", template);
     }

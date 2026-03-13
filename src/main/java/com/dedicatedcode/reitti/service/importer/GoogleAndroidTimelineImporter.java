@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -48,7 +47,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
             
-            List<LocationPoint2> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
 
             GoogleTimelineData timelineData = objectMapper.readValue(parser, GoogleTimelineData.class);
             List<SemanticSegment> semanticSegments = timelineData.getSemanticSegments();

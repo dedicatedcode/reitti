@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -46,7 +46,7 @@ public class LocationDataIngestPipeline {
     public void shutdown() {
     }
 
-    public void processLocationData(String username, List<LocationPoint2> points) {
+    public void processLocationData(String username, List<LocationPoint> points) {
         try {
             long start = System.currentTimeMillis();
             logger.debug("starting processing");
@@ -60,10 +60,9 @@ public class LocationDataIngestPipeline {
 
             User user = userOpt.get();
 
-            List<LocationPoint2> validPoints = points.stream().filter(LocationPoint2::isValid).toList();
-            // Store all points first
+            List<LocationPoint> validPoints = points.stream().filter(LocationPoint::isValid).toList();
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, validPoints);
-            List<Instant> timestamp = validPoints.stream().map(LocationPoint2::getTimestamp).sorted().toList();
+            List<Instant> timestamp = validPoints.stream().map(LocationPoint::getTimestamp).sorted().toList();
             anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
 
             densityNormalizer.normalize(user, validPoints);

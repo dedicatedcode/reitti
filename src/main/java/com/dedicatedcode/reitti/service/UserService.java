@@ -142,7 +142,7 @@ public class UserService {
     private void saveDefaultVisitDetectionParameters(User createdUser) {
         visitDetectionParametersJdbcService.saveConfiguration(createdUser, new DetectionParameter(null,
                 new DetectionParameter.VisitDetection(300, 300),
-                new DetectionParameter.VisitMerging(48, 300, 200),
+                new DetectionParameter.VisitMerging(48, 300, 100),
                 new DetectionParameter.LocationDensity(50, 1440),
                 null,
                 RecalculationState.DONE)

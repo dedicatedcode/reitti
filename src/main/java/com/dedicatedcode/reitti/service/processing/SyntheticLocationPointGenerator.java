@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -19,7 +19,7 @@ public class SyntheticLocationPointGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(SyntheticLocationPointGenerator.class);
     
-    public List<LocationPoint2> generateSyntheticPoints(
+    public List<LocationPoint> generateSyntheticPoints(
             RawLocationPoint startPoint, 
             RawLocationPoint endPoint, 
             int targetPointsPerMinute,
@@ -30,7 +30,7 @@ public class SyntheticLocationPointGenerator {
             return List.of();
         }
         
-        List<LocationPoint2> syntheticPoints = new ArrayList<>();
+        List<LocationPoint> syntheticPoints = new ArrayList<>();
         
         // Calculate target interval in seconds
         int intervalSeconds = 60 / targetPointsPerMinute;
@@ -77,7 +77,7 @@ public class SyntheticLocationPointGenerator {
             );
             
             // Create synthetic LocationPoint
-            LocationPoint2 syntheticPoint = new LocationPoint2();
+            LocationPoint syntheticPoint = new LocationPoint();
             syntheticPoint.setLatitude(interpolatedCoords.latitude());
             syntheticPoint.setLongitude(interpolatedCoords.longitude());
             syntheticPoint.setTimestamp(currentTime);

@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.LocationDensityConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
@@ -43,7 +42,7 @@ public class LocationDataDensityNormalizer {
         this.visitDetectionParametersService = visitDetectionParametersService;
     }
 
-    public void normalize(User user, List<LocationPoint2> newPoints) {
+    public void normalize(User user, List<LocationPoint> newPoints) {
         if (newPoints == null || newPoints.isEmpty()) {
             logger.trace("No points to normalize for user {}", user.getUsername());
             return;
@@ -103,11 +102,11 @@ public class LocationDataDensityNormalizer {
     /**
      * Computes the minimal time range that encompasses all given points.
      */
-    private TimeRange computeTimeRange(List<LocationPoint2> points) {
+    private TimeRange computeTimeRange(List<LocationPoint> points) {
         Instant minTime = null;
         Instant maxTime = null;
 
-        for (LocationPoint2 point : points) {
+        for (LocationPoint point : points) {
             Instant timestamp = point.getTimestamp();
             if (minTime == null || timestamp.isBefore(minTime)) {
                 minTime = timestamp;
@@ -136,7 +135,7 @@ public class LocationDataDensityNormalizer {
         int gapThresholdSeconds = config.getGapThresholdSeconds();
         long maxInterpolationSeconds = densityConfig.getMaxInterpolationGapMinutes() * 60L;
 
-        List<LocationPoint2> allSyntheticPoints = new ArrayList<>();
+        List<LocationPoint> allSyntheticPoints = new ArrayList<>();
 
         for (int i = 0; i < points.size() - 1; i++) {
             RawLocationPoint current = points.get(i);
@@ -151,7 +150,7 @@ public class LocationDataDensityNormalizer {
 
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
 
-                List<LocationPoint2> syntheticPoints = syntheticGenerator.generateSyntheticPoints(
+                List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(
                         current,
                         next,
                         config.getTargetPointsPerMinute(),

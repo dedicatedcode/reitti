@@ -173,7 +173,7 @@ public class LocationDataApiController {
             point.setLatitude(latestPoint.getLatitude());
             point.setLongitude(latestPoint.getLongitude());
             point.setAccuracyMeters(latestPoint.getAccuracyMeters());
-            point.setTimestamp(latestPoint.getTimestamp().toString());
+            point.setTimestamp(latestPoint.getTimestamp());
             
             return ResponseEntity.ok(Map.of(
                 "hasLocation", true,
@@ -254,7 +254,7 @@ public class LocationDataApiController {
         p.setLongitude(point.getLongitude());
         p.setAccuracyMeters(point.getAccuracyMeters());
         p.setElevationMeters(point.getElevationMeters());
-        p.setTimestamp(point.getTimestamp().toString());
+        p.setTimestamp(point.getTimestamp());
         return p;
     }
 

@@ -79,7 +79,7 @@ public class OverlandLocationRequest {
             this.properties = properties;
         }
         
-        public LocationPoint2 toLocationPoint() {
+        public LocationPoint toLocationPoint() {
             if (geometry == null || geometry.getCoordinates() == null || 
                 geometry.getCoordinates().size() < 2 || properties == null) {
                 return null;
@@ -102,7 +102,7 @@ public class OverlandLocationRequest {
                 }
             }
 
-            LocationPoint2 locationPoint = new LocationPoint2();
+            LocationPoint locationPoint = new LocationPoint();
             locationPoint.setLatitude(latitude);
             locationPoint.setLongitude(longitude);
             locationPoint.setElevationMeters(properties.getAltitude());

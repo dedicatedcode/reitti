@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
@@ -43,14 +43,14 @@ class SyntheticLocationPointGeneratorTest {
         assertEquals(7, syntheticPoints.size());
         
         // Verify first synthetic point
-        LocationPoint2 firstPoint = syntheticPoints.get(0);
+        LocationPoint firstPoint = syntheticPoints.get(0);
         assertEquals(Instant.parse("2023-01-01T10:00:15Z"), firstPoint.getTimestamp());
         assertTrue(firstPoint.getLatitude() > 50.0 && firstPoint.getLatitude() < 50.001);
         assertTrue(firstPoint.getLongitude() > 8.0 && firstPoint.getLongitude() < 8.001);
         
         // Verify last synthetic point
-        LocationPoint2 lastPoint = syntheticPoints.get(6);
-        assertEquals("2023-01-01T10:01:45Z", lastPoint.getTimestamp());
+        LocationPoint lastPoint = syntheticPoints.get(6);
+        assertEquals(Instant.parse("2023-01-01T10:01:45Z"), lastPoint.getTimestamp());
     }
 
     @Test
@@ -67,7 +67,7 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
@@ -75,7 +75,7 @@ class SyntheticLocationPointGeneratorTest {
         assertEquals(3, syntheticPoints.size());
         
         // Verify middle point coordinates (should be halfway between start and end)
-        LocationPoint2 middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
+        LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
         assertEquals(50.0012, middlePoint.getLatitude(), 0.0001);
         assertEquals(8.001, middlePoint.getLongitude(), 0.001);
     }
@@ -94,12 +94,12 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
         // Then: Middle point should have interpolated values
-        LocationPoint2 middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
+        LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
         assertEquals(14.785, middlePoint.getAccuracyMeters(), 0.05); // 10 + (20-10) * 0.5
         assertEquals(109.57, middlePoint.getElevationMeters(), 0.02); // 100 + (120-100) * 0.5
     }
@@ -118,13 +118,13 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
         // Then: Should generate points with null accuracy and elevation
         assertEquals(3, syntheticPoints.size());
-        LocationPoint2 point = syntheticPoints.get(0);
+        LocationPoint point = syntheticPoints.get(0);
         assertNull(point.getAccuracyMeters());
         assertNull(point.getElevationMeters());
     }
@@ -143,7 +143,7 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points with 500m max distance
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
@@ -165,7 +165,7 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 
@@ -187,7 +187,7 @@ class SyntheticLocationPointGeneratorTest {
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)
-        List<LocationPoint2> syntheticPoints = generator.generateSyntheticPoints(
+        List<LocationPoint> syntheticPoints = generator.generateSyntheticPoints(
             startPoint, endPoint, 4, 500.0
         );
 

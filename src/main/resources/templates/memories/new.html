@@ -63,19 +63,19 @@
                     </div>
                 </div>
 
-                <div class="form-group" id="endDateGroup" th:style="${openEnded} ? 'display: none' : 'display: block'">
+                <div class="form-group" id="endDateGroup" th:style="${openEnded != null ?: openEnded} ? 'display: none' : 'display: block'">
                     <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
                     <div class="datetime-picker" id="endDatePicker">
-                        <input type="date" id="endDate" name="endDate" th:required="${!openEnded}" class="date-input form-control"
+                        <input type="date" id="endDate" name="endDate" th:required="${openEnded != null  ?: !openEnded}" class="date-input form-control"
                                th:value="${endDate}">
-                        <input type="time" id="endTime" name="endTime" step="1" th:required="${!openEnded}" class="time-input form-control"
+                        <input type="time" id="endTime" name="endTime" step="1" th:required="${openEnded != null  ?: !openEnded}" class="time-input form-control"
                                th:value="${endTime}">
                         <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
                     </div>
                 </div>
                 <div class="form-group slide-reveal-container">
-                    <input type="checkbox" id="openEnded" name="openEnded" onchange="toggleEndDate()" th:checked="${openEnded}">
-                    <label for="openEnded" class="slide-reveal">
+                    <input type="checkbox" id="openEnded" name="openEnded" onchange="toggleEndDate()" th:checked="${openEnded != null  ?: openEnded}">
+                    <label data-testid="openEndedCheckbox"  for="openEnded" class="slide-reveal">
                         <span class="slide-box"></span>
                         <span class="label-text" th:text="#{memory.form.open_ended.label}">Open-ended?</span>
                     </label>
@@ -94,8 +94,8 @@
                             hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
                     <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories/all}"
                             hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
-                    <button type="submit" class="btn btn-primary" hx-disabled-elt="this">
-                        <span th:text="#{memory.form.create}">Create Memory</span>
+                    <button data-testid="submit" type="submit" class="btn btn-primary" hx-disabled-elt="this">
+                        <span  th:text="#{memory.form.create}">Create Memory</span>
                     </button>
                 </th:block>
 
@@ -103,7 +103,7 @@
                 <th:block th:if="${memory?.id != null}">
                     <a class="btn btn-secondary"
                        th:href="@{/memories/{id}(id=${memory.id})}" th:text="#{memory.form.cancel}">Cancel</a>
-                    <button type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
+                    <button data-testid="submit" type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
                 </th:block>
             </div>
         </form>

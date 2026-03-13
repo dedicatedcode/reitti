@@ -39,7 +39,7 @@ public class VisitDetectionParametersJdbcService {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 rs.getLong("merging_search_duration_in_hours"),
                 rs.getLong("merging_max_merge_time_between_same_visits"),
-                rs.getLong("merging_min_distance_between_visits")
+                rs.getLong("place_radius_meters")
         );
 
         DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(
@@ -81,7 +81,7 @@ public class VisitDetectionParametersJdbcService {
             INSERT INTO visit_detection_parameters (
                 user_id, valid_since, detection_minimum_stay_time_seconds,
                 detection_max_merge_time_between_same_stay_points, merging_search_duration_in_hours,
-                merging_max_merge_time_between_same_visits, merging_min_distance_between_visits,
+                merging_max_merge_time_between_same_visits, place_radius_meters,
                 density_max_interpolation_distance_meters, density_max_interpolation_gap_minutes, recalculation_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
@@ -95,7 +95,7 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
-            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.getVisitMerging().getPlaceRadiusMeters(),
             detectionParameter.getLocationDensity().getMaxInterpolationDistanceMeters(),
             detectionParameter.getLocationDensity().getMaxInterpolationGapMinutes(),
             detectionParameter.getRecalculationState().name()
@@ -111,7 +111,7 @@ public class VisitDetectionParametersJdbcService {
                 detection_max_merge_time_between_same_stay_points = ?,
                 merging_search_duration_in_hours = ?,
                 merging_max_merge_time_between_same_visits = ?,
-                merging_min_distance_between_visits = ?,
+                place_radius_meters = ?,
                 density_max_interpolation_distance_meters = ?,
                 density_max_interpolation_gap_minutes = ?,
                 recalculation_state = ?
@@ -127,7 +127,7 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints(),
             detectionParameter.getVisitMerging().getSearchDurationInHours(),
             detectionParameter.getVisitMerging().getMaxMergeTimeBetweenSameVisits(),
-            detectionParameter.getVisitMerging().getMinDistanceBetweenVisits(),
+            detectionParameter.getVisitMerging().getPlaceRadiusMeters(),
             detectionParameter.getLocationDensity().getMaxInterpolationDistanceMeters(),
             detectionParameter.getLocationDensity().getMaxInterpolationGapMinutes(),
             detectionParameter.getRecalculationState().name(),

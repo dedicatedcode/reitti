@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -85,19 +84,19 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint2> points = captor.getValue();
+        List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
 
-        LocationPoint2 point1 = points.get(0);
+        LocationPoint point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
-        LocationPoint2 point2 = points.get(1);
+        LocationPoint point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
@@ -146,19 +145,19 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint2> points = captor.getValue();
+        List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
 
-        LocationPoint2 point1 = points.get(0);
+        LocationPoint point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
-        LocationPoint2 point2 = points.get(1);
+        LocationPoint point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
@@ -188,13 +187,13 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint2> points = captor.getValue();
+        List<LocationPoint> points = captor.getValue();
         assertEquals(1, points.size());
 
-        LocationPoint2 point = points.get(0);
+        LocationPoint point = points.get(0);
         assertEquals(52.5200, point.getLatitude());
         assertEquals(13.4050, point.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point.getTimestamp());
@@ -306,11 +305,11 @@ class GeoJsonImporterTest {
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
-        ArgumentCaptor<List<LocationPoint2>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
         verify(batchProcessor).processBatch(eq(user), captor.capture());
 
-        List<LocationPoint2> points = captor.getValue();
-        LocationPoint2 point = points.get(0);
+        List<LocationPoint> points = captor.getValue();
+        LocationPoint point = points.get(0);
         assertEquals(50.0, point.getAccuracyMeters());
     }
 }

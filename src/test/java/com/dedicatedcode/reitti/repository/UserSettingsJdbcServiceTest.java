@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -235,8 +233,8 @@ public class UserSettingsJdbcServiceTest {
         assertThat(this.userSettingsJdbcService.findByUserId(user.getId()).get().getLatestData()).isEqualTo(latest.plusNanos(500).truncatedTo(ChronoUnit.MICROS));
     }
 
-    private LocationPoint2 createLocationPoint(Instant timestamp) {
-        LocationPoint2 locationPoint = new LocationPoint2();
+    private LocationPoint createLocationPoint(Instant timestamp) {
+        LocationPoint locationPoint = new LocationPoint();
         locationPoint.setTimestamp(timestamp);
         locationPoint.setLatitude(1.0);
         locationPoint.setLongitude(2.0);

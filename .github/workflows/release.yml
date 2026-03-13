@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
-
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
 permissions:
   packages: write
   contents: write
@@ -65,10 +65,10 @@ jobs:
             dedicatedcode/reitti
             ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-beta') && github.ref_type == 'tag' }}
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-beta') }}
+            type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-beta') }}
       - name: Build and push reitti image
         uses: docker/build-push-action@v6
         with:
@@ -85,10 +85,10 @@ jobs:
             dedicatedcode/reitti-tile-cache
             ghcr.io/${{ github.repository }}-tile-cache
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-beta') && github.ref_type == 'tag' }}
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-beta') }}
+            type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-beta') }}
       - name: Build and push tile-cache image
         uses: docker/build-push-action@v6
         with:
@@ -101,7 +101,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          make_latest: true
+          prerelease: ${{ contains(github.ref, '-beta') }}
+          make_latest: ${{ !contains(github.ref, '-beta') }}
           fail_on_unmatched_files: true
           files: |
             staging/*.jar

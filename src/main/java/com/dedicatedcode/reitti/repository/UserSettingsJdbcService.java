@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
@@ -13,9 +12,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -102,8 +99,8 @@ public class UserSettingsJdbcService {
         return findByUserId(userId).orElseGet(() -> save(UserSettings.defaultSettings(userId)));
     }
     
-    public void updateNewestData(User user, List<LocationPoint2> filtered) {
-        filtered.stream().map(LocationPoint2::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
+    public void updateNewestData(User user, List<LocationPoint> filtered) {
+        filtered.stream().map(LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(timestamp), user.getId());
         });
     }
