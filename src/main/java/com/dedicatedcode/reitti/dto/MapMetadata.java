@@ -10,5 +10,5 @@ public record MapMetadata(
         double maxLat,
         double minLng,
         double maxLng,
-        Optional<LocationPoint2> latestLocation
+        Optional<LocationPoint> latestLocation
 ) {}

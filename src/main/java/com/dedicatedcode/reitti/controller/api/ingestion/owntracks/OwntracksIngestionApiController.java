@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.controller.api.ingestion.owntracks;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -29,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +71,7 @@ public class OwntracksIngestionApiController {
             }
 
             // Convert an Owntracks format to our LocationPoint format
-            LocationPoint2 locationPoint = request.toLocationPoint();
+            LocationPoint locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
@@ -145,7 +142,7 @@ public class OwntracksIngestionApiController {
 
                 friendsData.add(owntracksFriendResponse);
                 Optional<LocationPoint> latestLocation = reittiIntegrationService.findLatest(user, integration.getId());
-                latestLocation.ifPresent(location -> friendsData.add(new OwntracksFriendResponse(tid, info.userInfo().displayName(), location.getLatitude(), location.getLongitude(), Instant.parse(location.getTimestamp()).getEpochSecond())));
+                latestLocation.ifPresent(location -> friendsData.add(new OwntracksFriendResponse(tid, info.userInfo().displayName(), location.getLatitude(), location.getLongitude(), location.getTimestamp().getEpochSecond())));
                 } catch (RequestFailedException | RequestTemporaryFailedException e) {
                 logger.warn("Couldn't fetch info for integration {}", integration.getId(), e);
             }

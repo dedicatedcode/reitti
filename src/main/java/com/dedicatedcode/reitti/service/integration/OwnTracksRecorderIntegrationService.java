@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
@@ -78,11 +77,11 @@ public class OwnTracksRecorderIntegrationService {
                 
                 if (!locationData.isEmpty()) {
                     // Convert to LocationPoints and filter valid ones
-                    List<LocationPoint2> validPoints = new ArrayList<>();
+                    List<LocationPoint> validPoints = new ArrayList<>();
                     
                     for (OwntracksLocationRequest owntracksData : locationData) {
                         if (owntracksData.isLocationUpdate()) {
-                            LocationPoint2 locationPoint = owntracksData.toLocationPoint();
+                            LocationPoint locationPoint = owntracksData.toLocationPoint();
                             if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
                                 validPoints.add(locationPoint);
                             }
@@ -96,7 +95,7 @@ public class OwnTracksRecorderIntegrationService {
                         
                         // Find the latest timestamp from the received data
                         Instant latestTimestamp = validPoints.stream()
-                                .map(LocationPoint2::getTimestamp).filter(Objects::nonNull)
+                                .map(LocationPoint::getTimestamp).filter(Objects::nonNull)
                                 .max(Instant::compareTo).orElse(null);
 
                         if (latestTimestamp != null) {
@@ -219,11 +218,11 @@ public class OwnTracksRecorderIntegrationService {
                     
                     if (!monthlyLocationData.isEmpty()) {
                         // Convert to LocationPoints and filter valid ones
-                        List<LocationPoint2> validPoints = new ArrayList<>();
+                        List<LocationPoint> validPoints = new ArrayList<>();
                         
                         for (OwntracksLocationRequest owntracksData : monthlyLocationData) {
                             if (owntracksData.isLocationUpdate()) {
-                                LocationPoint2 locationPoint = owntracksData.toLocationPoint();
+                                LocationPoint locationPoint = owntracksData.toLocationPoint();
                                 if (locationPoint.getTimestamp() != null && locationPoint.getAccuracyMeters() != null) {
                                     validPoints.add(locationPoint);
                                 }

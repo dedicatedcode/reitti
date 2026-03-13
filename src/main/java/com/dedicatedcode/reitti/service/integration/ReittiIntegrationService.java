@@ -26,6 +26,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -588,7 +589,7 @@ public class ReittiIntegrationService {
         LocationPoint locationPoint = new LocationPoint();
         locationPoint.setLatitude(getDoubleValue(locationMap, "latitude"));
         locationPoint.setLongitude(getDoubleValue(locationMap, "longitude"));
-        locationPoint.setTimestamp((String) locationMap.get("timestamp"));
+        locationPoint.setTimestamp((Instant) locationMap.get("timestamp"));
         locationPoint.setAccuracyMeters(getDoubleValue(locationMap, "accuracyMeters"));
 
         if (locationMap.containsKey("elevationMeters")) {

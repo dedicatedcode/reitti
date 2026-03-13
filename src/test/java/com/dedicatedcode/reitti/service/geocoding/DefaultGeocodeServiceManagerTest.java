@@ -13,6 +13,9 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -79,7 +82,7 @@ class DefaultGeocodeServiceManagerTest {
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority())
                 .thenReturn(List.of(service));
         
-        when(restTemplate.getForObject(anyString(), eq(String.class)))
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenThrow(new RuntimeException("Service unavailable"));
 
         // When
@@ -100,14 +103,14 @@ class DefaultGeocodeServiceManagerTest {
         
         // Mock successful response for P1
         String successJson = "{\"results\": [{\"display_name\": \"Found\", \"type\": \"building\", \"address\": {\"street\": \"S\", \"city\": \"C\"}, \"hierarchy\": [{\"country_code\": \"FI\"}]}]}";
-        when(restTemplate.getForObject(startsWith("http://p1.com"), eq(String.class))).thenReturn(successJson);
+        when(restTemplate.exchange(startsWith("http://p1.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class))).thenReturn(ResponseEntity.ok(successJson));
 
         // When
         geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.0, 10.0), true);
 
         // Then
-        verify(restTemplate).getForObject(startsWith("http://p1.com"), eq(String.class));
-        verify(restTemplate, Mockito.never()).getForObject(startsWith("http://p2.com"), eq(String.class));
+        verify(restTemplate).exchange(startsWith("http://p1.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
+        verify(restTemplate, Mockito.never()).exchange(startsWith("http://p2.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
     }
 
     @Test
@@ -119,11 +122,11 @@ class DefaultGeocodeServiceManagerTest {
         when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority()).thenReturn(List.of(priority1, priority2));
 
         // P1 fails
-        when(restTemplate.getForObject(startsWith("http://p1.com"), eq(String.class))).thenThrow(new RuntimeException("P1 Down"));
+        when(restTemplate.exchange(startsWith("http://p1.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class))).thenThrow(new RuntimeException("P1 Down"));
         
         // P2 succeeds
         String successJson = "{\"results\": [{\"display_name\": \"Found\", \"type\": \"building\", \"address\": {\"street\": \"S\", \"city\": \"C\"}, \"hierarchy\": [{\"country_code\": \"FI\"}]}]}";
-        when(restTemplate.getForObject(startsWith("http://p2.com"), eq(String.class))).thenReturn(successJson);
+        when(restTemplate.exchange(startsWith("http://p2.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class))).thenReturn(ResponseEntity.ok(successJson));
 
         // When
         Optional<GeocodeResult> result = geocodeServiceManager.reverseGeocode(SignificantPlace.create(53.0, 10.0), true);
@@ -131,7 +134,7 @@ class DefaultGeocodeServiceManagerTest {
         // Then
         assertThat(result).isPresent();
         InOrder inOrder = Mockito.inOrder(restTemplate);
-        inOrder.verify(restTemplate).getForObject(startsWith("http://p1.com"), eq(String.class));
-        inOrder.verify(restTemplate).getForObject(startsWith("http://p2.com"), eq(String.class));
+        inOrder.verify(restTemplate).exchange(startsWith("http://p1.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
+        inOrder.verify(restTemplate).exchange(startsWith("http://p2.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
     }
 }

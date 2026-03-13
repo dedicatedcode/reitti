@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
@@ -53,14 +52,14 @@ public class GpxImporter {
             // Get all track points (trkpt) from the GPX file
             NodeList trackPoints = document.getElementsByTagName("trkpt");
             
-            List<LocationPoint2> batch = new ArrayList<>();
+            List<LocationPoint> batch = new ArrayList<>();
             
             // Process each track point
             for (int i = 0; i < trackPoints.getLength(); i++) {
                 Element trackPoint = (Element) trackPoints.item(i);
                 
                 try {
-                    LocationPoint2 point = convertGpxTrackPoint(trackPoint);
+                    LocationPoint point = convertGpxTrackPoint(trackPoint);
                     if (point != null) {
                         batch.add(point);
                         processedCount.incrementAndGet();
@@ -102,13 +101,13 @@ public class GpxImporter {
     /**
      * Converts a GPX track point to our LocationPoint format
      */
-    private LocationPoint2 convertGpxTrackPoint(Element trackPoint) {
+    private LocationPoint convertGpxTrackPoint(Element trackPoint) {
         // Check if we have the required attributes
         if (!trackPoint.hasAttribute("lat") || !trackPoint.hasAttribute("lon")) {
             return null;
         }
         
-        LocationPoint2 point = new LocationPoint2();
+        LocationPoint point = new LocationPoint();
         
         // Get latitude and longitude
         double latitude = Double.parseDouble(trackPoint.getAttribute("lat"));

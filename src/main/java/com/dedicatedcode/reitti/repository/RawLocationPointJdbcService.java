@@ -1,8 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
-import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
@@ -432,7 +431,7 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ?", Long.class, user.getId());
     }
 
-    public int bulkInsert(User user, List<LocationPoint2> points) {
+    public int bulkInsert(User user, List<LocationPoint> points) {
         if (points.isEmpty()) {
             return -1;
         }
@@ -441,7 +440,7 @@ public class RawLocationPointJdbcService {
                 "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, false, false, false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint2 point : points) {
+        for (LocationPoint point : points) {
             batchArgs.add(new Object[]{
                     user.getId(),
                     Timestamp.from(point.getTimestamp()),
@@ -544,7 +543,7 @@ public class RawLocationPointJdbcService {
         return count != null && count > 0;
     }
 
-    public int bulkInsertSynthetic(User user, List<LocationPoint2> syntheticPoints) {
+    public int bulkInsertSynthetic(User user, List<LocationPoint> syntheticPoints) {
         if (syntheticPoints.isEmpty()) {
             return 0;
         }
@@ -553,7 +552,7 @@ public class RawLocationPointJdbcService {
                 "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, false, false) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint2 point : syntheticPoints) {
+        for (LocationPoint point : syntheticPoints) {
             batchArgs.add(new Object[]{
                     user.getId(),
                     Timestamp.from(point.getTimestamp()),
@@ -596,7 +595,7 @@ public class RawLocationPointJdbcService {
                 rs.getDouble("min_lng"),
                 rs.getDouble("max_lng"),
                 this.findLatest(user).map(rawLocationPoint -> {
-                    LocationPoint2 locationPoint = new LocationPoint2();
+                    LocationPoint locationPoint = new LocationPoint();
                     locationPoint.setTimestamp(rawLocationPoint.getTimestamp());
                     locationPoint.setLatitude(rawLocationPoint.getLatitude());
                     locationPoint.setLongitude(rawLocationPoint.getLongitude());

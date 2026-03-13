@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
@@ -43,9 +43,9 @@ public class DefaultImportProcessor implements ImportProcessor {
     }
 
     @Override
-    public void processBatch(User user, List<LocationPoint2> batch) {
+    public void processBatch(User user, List<LocationPoint> batch) {
         logger.debug("Sending batch of [{}] locations for user [{}] into executor queue", batch.size(), user.getUsername());
-        List<LocationPoint2> points = new ArrayList<>(batch);
+        List<LocationPoint> points = new ArrayList<>(batch);
         this.importExecutors.submit(() -> {
             logger.trace("Sending batch of {} locations for storing", points.size());
             locationDataIngestPipeline.processLocationData(user.getUsername(), points);

@@ -127,8 +127,8 @@ public class OwntracksLocationRequest {
     /**
      * Converts to a LocationPoint for processing
      */
-    public LocationPoint2 toLocationPoint() {
-        LocationPoint2 point = new LocationPoint2();
+    public LocationPoint toLocationPoint() {
+        LocationPoint point = new LocationPoint();
         point.setLatitude(latitude);
         point.setLongitude(longitude);
 

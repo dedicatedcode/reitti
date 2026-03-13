@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
@@ -78,10 +78,10 @@ public class TestingService {
     public void processWhileImport(User user, String file) {
         GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
             @Override
-            public void processBatch(User user, List<LocationPoint2> batch) {
+            public void processBatch(User user, List<LocationPoint> batch) {
                 for (int i = 0; i < batch.size(); i += 5) {
                     int endIndex = Math.min(i + 5, batch.size());
-                    List<LocationPoint2> chunk = batch.subList(i, endIndex);
+                    List<LocationPoint> chunk = batch.subList(i, endIndex);
                     locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
                     trigger.handle(triggerEvent, true);
@@ -111,7 +111,6 @@ public class TestingService {
 
     public void awaitDataImport(int seconds) {
         AtomicLong lastRawCount = new AtomicLong(-1);
-        AtomicLong lastVisitCount = new AtomicLong(-1);
         AtomicLong lastTripCount = new AtomicLong(-1);
         AtomicInteger stableChecks = new AtomicInteger(0);
 

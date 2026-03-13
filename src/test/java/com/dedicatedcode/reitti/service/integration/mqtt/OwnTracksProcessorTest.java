@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service.integration.mqtt;
 
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
@@ -33,7 +33,7 @@ class OwnTracksProcessorTest {
     private OwnTracksProcessor ownTracksProcessor;
 
     @Captor
-    private ArgumentCaptor<LocationPoint2> locationPointCaptor;
+    private ArgumentCaptor<LocationPoint> locationPointCaptor;
 
     private User testUser;
 
@@ -54,7 +54,7 @@ class OwnTracksProcessorTest {
         request.setLongitude(10.700927);
         request.setAccuracy(10.0);
 
-        LocationPoint2 expectedLocationPoint = new LocationPoint2();
+        LocationPoint expectedLocationPoint = new LocationPoint();
         expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond));
         expectedLocationPoint.setLatitude(53.863149);
         expectedLocationPoint.setLongitude(10.700927);
@@ -67,7 +67,7 @@ class OwnTracksProcessorTest {
 
         // Then
         verify(locationBatchingService).addLocationPoint(eq(testUser), locationPointCaptor.capture());
-        LocationPoint2 capturedPoint = locationPointCaptor.getValue();
+        LocationPoint capturedPoint = locationPointCaptor.getValue();
         assertEquals(expectedLocationPoint.getTimestamp(), capturedPoint.getTimestamp());
         assertEquals(expectedLocationPoint.getLatitude(), capturedPoint.getLatitude());
         assertEquals(expectedLocationPoint.getLongitude(), capturedPoint.getLongitude());

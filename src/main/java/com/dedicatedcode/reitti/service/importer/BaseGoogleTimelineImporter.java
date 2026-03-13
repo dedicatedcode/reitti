@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,15 +24,15 @@ public abstract class BaseGoogleTimelineImporter {
         this.batchProcessor = batchProcessor;
     }
 
-    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint2> batch) {
+    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
         logger.info("Found visit at [{}] from start [{}] to end [{}].", latLng, startTime, endTime);
         createAndScheduleLocationPoint(latLng, startTime, user, batch);
         createAndScheduleLocationPoint(latLng, endTime, user, batch);
         return 2;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint2> batch) {
-        LocationPoint2 point = new LocationPoint2();
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint> batch) {
+        LocationPoint point = new LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
         point.setTimestamp(timestamp.withNano(0).toInstant());

@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.dto.LocationPoint2;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -31,7 +31,7 @@ class AnomalyProcessingServiceTest {
     void shouldFilterOutSinglePoint() {
         User user = testingService.randomUser();
 
-        List<LocationPoint2> points = new ArrayList<>();
+        List<LocationPoint> points = new ArrayList<>();
         points.add(createLocationPoint("2022-01-01T09:03:03Z", 53.55150, 9.96642, 0.0));
         points.add(createLocationPoint("2022-01-01T09:05:03Z", 53.55097, 9.97015, 10.0));
         points.add(createLocationPoint("2022-01-01T09:08:42Z", 53.55111, 9.97009, 10.0));
@@ -62,7 +62,7 @@ class AnomalyProcessingServiceTest {
     void shouldFilterOutSinglePointButRetainOne() {
         User user = testingService.randomUser();
 
-        List<LocationPoint2> points = new ArrayList<>();
+        List<LocationPoint> points = new ArrayList<>();
         points.add(createLocationPoint("2022-01-01T09:03:03Z", 53.55150, 9.96642, 0.0));
         points.add(createLocationPoint("2022-01-01T09:05:03Z", 53.55097, 9.97015, 10.0));
         points.add(createLocationPoint("2022-01-01T09:08:42Z", 53.55111, 9.97009, 10.0));
@@ -95,7 +95,7 @@ class AnomalyProcessingServiceTest {
         User user = testingService.randomUser();
 
         //store a point which is totally off
-        List<LocationPoint2> points = List.of(createLocationPoint("2022-01-01T09:02:24Z", 51.68968, 5.28917, 10.0));
+        List<LocationPoint> points = List.of(createLocationPoint("2022-01-01T09:02:24Z", 51.68968, 5.28917, 10.0));
         assertEquals(1, this.rawLocationPointJdbcService.bulkInsert(user, points));
         this.anomalyFilter.processAndMarkAnomalies(user, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:26:24Z")); //shall not mark our single point as invalid
 
@@ -128,8 +128,8 @@ class AnomalyProcessingServiceTest {
         assertEquals("2022-01-01T09:02:24Z", storedInvalidPoints.getFirst().getTimestamp().toString());
     }
 
-    private LocationPoint2 createLocationPoint(String timestamp, double latitude, double longitude, double accuracy) {
-        LocationPoint2 locationPoint = new LocationPoint2();
+    private LocationPoint createLocationPoint(String timestamp, double latitude, double longitude, double accuracy) {
+        LocationPoint locationPoint = new LocationPoint();
         locationPoint.setTimestamp(Instant.parse(timestamp));
         locationPoint.setLatitude(latitude);
         locationPoint.setLongitude(longitude);
