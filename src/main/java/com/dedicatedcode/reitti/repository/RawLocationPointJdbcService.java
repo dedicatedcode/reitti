@@ -197,37 +197,6 @@ public class RawLocationPointJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
-            User user, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.invalid, rlp.ignored, rlp.version , " +
-                "ST_ClusterDBSCAN(rlp.geom, ?, ?) OVER (" +
-                "           PARTITION BY ST_GeoHash(rlp.geom, 4)" +
-                "       ) AS cluster_id " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.invalid = FALSE AND rlp.timestamp >= ? AND rlp.timestamp < ?";
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-
-                    RawLocationPoint point = new RawLocationPoint(
-                            rs.getLong("id"),
-                            rs.getTimestamp("timestamp").toInstant(),
-                            this.pointReaderWriter.read(rs.getString("geom")),
-                            rs.getDouble("accuracy_meters"),
-                            rs.getObject("elevation_meters", Double.class),
-                            rs.getBoolean("processed"),
-                            rs.getBoolean("synthetic"),
-                            rs.getBoolean("ignored"),
-                            rs.getBoolean("invalid"),
-                            rs.getLong("version")
-                    );
-
-                    Integer clusterId = rs.getObject("cluster_id", Integer.class);
-
-                    return new ClusteredPoint(point, clusterId);
-                }, distanceInMeters, minimumPoints, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
     @SuppressWarnings("DataFlowIssue")
     public long count() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);

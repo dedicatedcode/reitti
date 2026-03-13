@@ -35,7 +35,7 @@ public class PreviewVisitDetectionParametersJdbcService {
         DetectionParameter.VisitMerging visitMerging = new DetectionParameter.VisitMerging(
                 rs.getLong("merging_search_duration_in_hours"),
                 rs.getLong("merging_max_merge_time_between_same_visits"),
-                rs.getLong("merging_min_distance_between_visits")
+                rs.getLong("place_radius_meters")
         );
 
         DetectionParameter.LocationDensity locationDensity = new DetectionParameter.LocationDensity(

@@ -1,0 +1,5 @@
+ALTER TABLE visit_detection_parameters RENAME COLUMN merging_min_distance_between_visits TO place_radius_meters;
+UPDATE visit_detection_parameters SET place_radius_meters = place_radius_meters / 2;
+
+ALTER TABLE preview_visit_detection_parameters RENAME COLUMN merging_min_distance_between_visits TO place_radius_meters;
+UPDATE preview_visit_detection_parameters SET place_radius_meters = place_radius_meters / 2;

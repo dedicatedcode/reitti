@@ -63,7 +63,7 @@ class VisitDetectionParametersJdbcServiceTest {
         assertThat(savedConfig.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(600L);
         assertThat(savedConfig.getVisitMerging().getSearchDurationInHours()).isEqualTo(24L);
         assertThat(savedConfig.getVisitMerging().getMaxMergeTimeBetweenSameVisits()).isEqualTo(1800L);
-        assertThat(savedConfig.getVisitMerging().getMinDistanceBetweenVisits()).isEqualTo(50L);
+        assertThat(savedConfig.getVisitMerging().getPlaceRadiusMeters()).isEqualTo(50L);
         assertThat(savedConfig.getValidSince()).isNotNull();
     }
 
@@ -144,7 +144,7 @@ class VisitDetectionParametersJdbcServiceTest {
         assertThat(result.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints()).isEqualTo(900L);
         assertThat(result.getVisitMerging().getSearchDurationInHours()).isEqualTo(48L);
         assertThat(result.getVisitMerging().getMaxMergeTimeBetweenSameVisits()).isEqualTo(3600L);
-        assertThat(result.getVisitMerging().getMinDistanceBetweenVisits()).isEqualTo(75L);
+        assertThat(result.getVisitMerging().getPlaceRadiusMeters()).isEqualTo(75L);
         assertThat(result.getValidSince()).isEqualTo(newValidSince);
         assertThat(result.getLocationDensity().getMaxInterpolationDistanceMeters()).isEqualTo(500);
         assertThat(result.getLocationDensity().getMaxInterpolationGapMinutes()).isEqualTo(7200);
