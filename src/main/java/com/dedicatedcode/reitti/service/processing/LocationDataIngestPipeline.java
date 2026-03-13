@@ -61,7 +61,6 @@ public class LocationDataIngestPipeline {
             User user = userOpt.get();
 
             List<LocationPoint2> validPoints = points.stream().filter(LocationPoint2::isValid).toList();
-            // Store all points first
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, validPoints);
             List<Instant> timestamp = validPoints.stream().map(LocationPoint2::getTimestamp).sorted().toList();
             anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
