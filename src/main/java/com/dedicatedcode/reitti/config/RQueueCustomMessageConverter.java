@@ -6,6 +6,7 @@ import com.github.sonus21.rqueue.converter.GenericMessageConverter;
 import com.github.sonus21.rqueue.converter.MessageConverterProvider;
 import org.springframework.messaging.converter.MessageConverter;
 
+@SuppressWarnings("unused") //is set from the application.properties
 public class RQueueCustomMessageConverter implements MessageConverterProvider {
     @Override
     public MessageConverter getConverter() {

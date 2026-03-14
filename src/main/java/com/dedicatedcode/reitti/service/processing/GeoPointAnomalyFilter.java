@@ -96,8 +96,7 @@ public class GeoPointAnomalyFilter {
             }
         }
 
-        logger.debug("Filtered {} points due to excessive speed (median: {} m/s, threshold: {} m/s)",
-                     anomalies.size(), medianSpeed, threshold);
+        logger.debug("Filtered {} points due to excessive speed (median: {} m/s, threshold: {} m/s)", anomalies.size(), medianSpeed, threshold);
         return anomalies;
     }
 
