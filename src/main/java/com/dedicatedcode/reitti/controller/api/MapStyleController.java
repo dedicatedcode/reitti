@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,22 +29,32 @@ public class MapStyleController {
 
     private final ObjectMapper objectMapper;
     private final ContextPathHolder contextPathHolder;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     private final boolean tileCacheEnabled;
     
     public MapStyleController(
             ObjectMapper objectMapper,
             ContextPathHolder contextPathHolder,
+            UserSettingsJdbcService userSettingsJdbcService,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
         this.contextPathHolder = contextPathHolder;
+        this.userSettingsJdbcService = userSettingsJdbcService;
         this.tileCacheEnabled = StringUtils.hasText(cacheUrl);
     }
 
     @GetMapping(value = "/reitti.json", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> getStyle(HttpServletRequest request) throws IOException {
+    public ResponseEntity<JsonNode> getStyle(@AuthenticationPrincipal User user, HttpServletRequest request) throws IOException {
         ClassPathResource resource = new ClassPathResource("static/map/reitti.json");
-        JsonNode style = this.objectMapper.readTree(resource.getInputStream());
-        
+        ClassPathResource coloredResource = new ClassPathResource("static/map/colored.json");
+
+        JsonNode style;
+        if (this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).isPreferColoredMap()) {
+            style = objectMapper.readTree(coloredResource.getInputStream());
+        } else {
+            style = objectMapper.readTree(resource.getInputStream());
+        }
+
         if (this.tileCacheEnabled) {
             style = rewriteUrlsForProxy(style, request);
         }
