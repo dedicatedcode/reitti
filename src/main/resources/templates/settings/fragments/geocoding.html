@@ -71,7 +71,7 @@
         <div class="form-group">
             <label for="type" th:text="#{geocoding.service.type}">Type</label>
             <select id="type" name="type" required
-                    hx-get="/settings/geocode-services/type-fields"
+                    th:hx-get="@{/settings/geocode-services/type-fields}"
                     hx-target="#geocoding-type-specific-fields">
                 <option th:each="t : ${geocodeServiceTypes}"
                         th:value="${t}"
@@ -88,12 +88,12 @@
         <div class="form-actions">
             <button type="submit" class="btn" th:text="#{form.update}">Update Service</button>
             <button type="button" class="btn btn-secondary"
-                    hx-get="/settings/geocode-services/geocode-services-content"
+                    th:hx-get="@{/settings/geocode-services/geocode-services-content}"
                     hx-target="#geocode-services"
                     hx-swap="innerHTML"
                     th:text="#{form.cancel}">Cancel</button>
             <button type="button" class="btn btn-secondary"
-                    hx-post="/settings/geocode-services/test-config"
+                    th:hx-post="@{/settings/geocode-services/test-config}"
                     hx-include=".geocode-service-form"
                     hx-target="#test-result"
                     hx-indicator="#test-spinner">

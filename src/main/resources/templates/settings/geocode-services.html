@@ -128,7 +128,7 @@
                         <div class="form-group">
                             <label for="type" th:text="#{geocoding.service.type}">Type</label>
                             <select id="type" name="type" required
-                                    hx-get="/settings/geocode-services/type-fields"
+                                    th:hx-get="@{/settings/geocode-services/type-fields}"
                                     hx-trigger="change, load"
                                     hx-target="#geocoding-type-specific-fields">
                                 <option th:each="type : ${geocodeServiceTypes}"
@@ -144,7 +144,7 @@
                         <div class="form-actions">
                             <button type="submit" class="btn" th:text="#{form.create}">Add Service</button>
                             <button type="button" class="btn btn-secondary"
-                                    hx-post="/settings/geocode-services/test-config"
+                                    th:hx-post="@{/settings/geocode-services/test-config}"
                                     hx-include=".geocode-service-form"
                                     hx-target="#test-result"
                                     hx-indicator="#test-spinner">
