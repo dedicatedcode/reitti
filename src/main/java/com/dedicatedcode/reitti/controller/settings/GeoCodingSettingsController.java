@@ -240,6 +240,8 @@ public class GeoCodingSettingsController {
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+
         return "settings/geocode-services :: geocode-services-content";
     }
 

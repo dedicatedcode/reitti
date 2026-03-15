@@ -47,18 +47,11 @@ public class AppConfig {
     public static BeanFactoryPostProcessor rqueuePropertyOverride() {
         return beanFactory -> {
             ConfigurableEnvironment env = (ConfigurableEnvironment) beanFactory.getBean(Environment.class);
-
-            // 1. Get the prefix (default to empty string if not set)
             String prefix = env.getProperty("spring.cache.redis.key-prefix", "");
-
-            // 2. If a prefix exists, calculate the new version key
             if (!prefix.isEmpty()) {
                 String newVersionKey = prefix + "__rq::version";
-
-                // 3. Inject this back into the environment properties
                 Map<String, Object> map = new HashMap<>();
                 map.put("rqueue.version.key", newVersionKey);
-
                 env.getPropertySources().addFirst(new MapPropertySource("rqueueOverride", map));
             }
         };

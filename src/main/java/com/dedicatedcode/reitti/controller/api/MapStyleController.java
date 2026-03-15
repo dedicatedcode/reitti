@@ -1,9 +1,11 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
@@ -23,27 +25,42 @@ import java.util.concurrent.TimeUnit;
 public class MapStyleController {
 
     private final ObjectMapper objectMapper;
+    private final ContextPathHolder contextPathHolder;
     private final boolean tileCacheEnabled;
     
     public MapStyleController(
             ObjectMapper objectMapper,
+            ContextPathHolder contextPathHolder,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
+        this.contextPathHolder = contextPathHolder;
         this.tileCacheEnabled = StringUtils.hasText(cacheUrl);
     }
 
     @GetMapping(value = "/reitti.json", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> getStyle(HttpServletRequest request) throws IOException {
         ClassPathResource resource = new ClassPathResource("static/map/reitti.json");
-        JsonNode style = objectMapper.readTree(resource.getInputStream());
+        JsonNode style = this.objectMapper.readTree(resource.getInputStream());
         
-        if (tileCacheEnabled) {
+        if (this.tileCacheEnabled) {
             style = rewriteUrlsForProxy(style, request);
         }
-        
+
+        if (!this.contextPathHolder.getContextPath().equals("/")) {
+            style = rewriteResourceUrls(style, request);
+        }
+
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))
                 .body(style);
+    }
+
+    private JsonNode rewriteResourceUrls(JsonNode style, HttpServletRequest request) {
+        ObjectNode mutableStyle = style.deepCopy();
+        // Rewrite sources
+        TextNode glyphs = (TextNode) mutableStyle.get("glyphs");
+        mutableStyle.set("glyphs", new TextNode(this.contextPathHolder.getContextPath() + glyphs.asText()));
+        return mutableStyle;
     }
 
     private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request) {
