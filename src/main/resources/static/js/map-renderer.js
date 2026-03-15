@@ -37,7 +37,7 @@ class MapRenderer {
         const mapOptions = {
             interleaved: true,
             container: element,
-            style: window.contextPath + '/map/reitti.json',
+            style: window.contextPath + '/map/reitti.json?ts=' + new Date().getTime(),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
