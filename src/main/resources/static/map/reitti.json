@@ -77,8 +77,8 @@
       6, 0.0
     ]
   },
-  "sprite": "",
   "glyphs": "/fonts/{fontstack}/{range}.pbf",
+  "sprite": "",
   "layers": [
     {
       "id": "background",

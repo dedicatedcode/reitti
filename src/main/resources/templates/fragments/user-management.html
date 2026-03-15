@@ -314,13 +314,14 @@
             </div>
         </div>
         <div class="separator"></div>
-        <div class="form-group">
-            <label class="checkbox-container">
-                <input type="checkbox" name="preferColoredMap" th:checked="${preferColoredMap}" class="checkbox-input">
-                <span class="checkbox-checkmark"></span>
-                <span th:text="#{map.colored.preference}" class="checkbox-label">Show map in color</span>
+        <div class="form-group slide-reveal-container">
+            <input type="checkbox" name="preferColoredMap" id="preferColoredMap" th:checked="${preferColoredMap}">
+            <label data-testid="openEndedCheckbox" for="preferColoredMap" class="slide-reveal">
+                <span class="slide-box"></span>
+                <span class="label-text" th:text="#{map.colored.preference}">Show map in color</span>
             </label>
-            <p th:text="#{map.colored.preference.description}" class="form-description">When enabled, the map will be displayed in full color. When disabled, the map will be shown in grayscale.</p>
+            <p th:text="#{map.colored.preference.description}" class="form-description">When enabled, the map will be
+                displayed in full color. When disabled, the map will be shown in grayscale.</p>
         </div>
         <div class="separator"></div>
         <div class="form-group">
