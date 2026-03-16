@@ -350,7 +350,7 @@ class GpsDataManager {
         }
     }
 
-    getOffsetSeconds(tsUtc) {
+    _getOffsetSeconds(tsUtc) {
         const date = new Date(tsUtc * 1000);
 
         // Create a formatter that outputs the timezone offset name (e.g., "GMT+2" or "UTC")
