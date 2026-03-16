@@ -350,71 +350,35 @@ class GpsDataManager {
         }
     }
 
-    _getOffsetSeconds(tsUtc) {
-        // Get the offset for this specific second in the target timezone
+    getOffsetSeconds(tsUtc) {
         const date = new Date(tsUtc * 1000);
-        
-        // Format the date in the target timezone
-        const dateInTimezone = new Date(date.toLocaleString('en-US', { timeZone: this.timeZone }));
-        
-        // Calculate the difference in milliseconds
-        // The offset is the difference between the local time in the target timezone and UTC
-        // Note: getTime() returns UTC time, so we need to adjust
-        // Convert both to local time strings and parse them
-        const utcTime = date.getTime();
-        
-        // Create a string representation of the date in the target timezone
-        // We'll use toLocaleString to get a string we can parse
-        const timeString = date.toLocaleString('en-US', { 
+
+        // Create a formatter that outputs the timezone offset name (e.g., "GMT+2" or "UTC")
+        // 'shortOffset' gives us a format we can parse: GMT+X or GMT-X
+        const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: this.timeZone,
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-            second: 'numeric',
-            hour12: false,
-            timeZoneName: 'short'
+            timeZoneName: 'shortOffset',
         });
-        
-        // Parse the time string
-        // Split by non-numeric characters
-        const parts = timeString.match(/(\d+)/g);
-        if (parts && parts.length >= 6) {
-            const month = parseInt(parts[0]) - 1; // JavaScript months are 0-indexed
-            const day = parseInt(parts[1]);
-            const year = parseInt(parts[2]);
-            const hour = parseInt(parts[3]);
-            const minute = parseInt(parts[4]);
-            const second = parseInt(parts[5]);
-            
-            // Create a new Date object in local timezone (but with the parsed values)
-            // This will be interpreted as local time
-            const localDate = new Date(year, month, day, hour, minute, second);
-            
-            // Calculate offset in seconds
-            const offsetMs = localDate.getTime() - utcTime;
-            return offsetMs / 1000;
-        } else {
-            // Fallback: use a simpler approach
-            // This may not be precise around DST transitions
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: this.timeZone,
-                timeZoneName: 'short'
-            });
-            const parts2 = formatter.formatToParts(date);
-            for (const part of parts2) {
-                if (part.type === 'timeZoneName') {
-                    const tzName = part.value;
-                    // Extract offset from string like "GMT+2" or "GMT-5"
-                    const match = tzName.match(/GMT([+-]\d+)/);
-                    if (match) {
-                        return parseInt(match[1]) * 3600;
-                    }
-                }
-            }
-            return 0;
-        }
+
+        const parts = formatter.formatToParts(date);
+        const offsetString = parts.find(part => part.type === 'timeZoneName').value;
+
+        // The offsetString will be "GMT", "GMT+1", "GMT-05:30", etc.
+        return this._parseOffsetToSeconds(offsetString);
+    }
+
+    _parseOffsetToSeconds(offsetString) {
+        if (offsetString === 'GMT' || offsetString === 'UTC') return 0;
+
+        // Remove "GMT" and split by ":"
+        // Matches patterns like +02, -05, +05:30
+        const match = offsetString.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+        if (!match) return 0;
+
+        const [_, sign, hours, minutes] = match;
+        const totalSeconds = (parseInt(hours) * 3600) + (parseInt(minutes || 0) * 60);
+
+        return sign === '+' ? totalSeconds : -totalSeconds;
     }
 
     async _generateBundledPath(onProgress, precisionValue = 0.0005, weight = 0.5) {
