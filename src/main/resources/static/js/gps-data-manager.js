@@ -350,6 +350,7 @@ class GpsDataManager {
         }
     }
 
+    // switch from Temporal to a normal Date object if possible AI! 
     _getOffsetSeconds(tsUtc) {
         // Get the offset for this specific second in the target timezone
         const instant = Temporal.Instant.fromEpochMilliseconds(tsUtc * 1000);
