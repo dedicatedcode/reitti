@@ -351,10 +351,34 @@ class GpsDataManager {
     }
 
     _getOffsetSeconds(tsUtc) {
-        // Get the offset for this specific second in the target timezone
-        const instant = Temporal.Instant.fromEpochMilliseconds(tsUtc * 1000);
-        const zonedDateTime = instant.toZonedDateTimeISO(this.timeZone);
-        return zonedDateTime.offsetNanoseconds / 1e9;
+        const date = new Date(tsUtc * 1000);
+
+        // Create a formatter that outputs the timezone offset name (e.g., "GMT+2" or "UTC")
+        // 'shortOffset' gives us a format we can parse: GMT+X or GMT-X
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: this.timeZone,
+            timeZoneName: 'shortOffset',
+        });
+
+        const parts = formatter.formatToParts(date);
+        const offsetString = parts.find(part => part.type === 'timeZoneName').value;
+
+        // The offsetString will be "GMT", "GMT+1", "GMT-05:30", etc.
+        return this._parseOffsetToSeconds(offsetString);
+    }
+
+    _parseOffsetToSeconds(offsetString) {
+        if (offsetString === 'GMT' || offsetString === 'UTC') return 0;
+
+        // Remove "GMT" and split by ":"
+        // Matches patterns like +02, -05, +05:30
+        const match = offsetString.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+        if (!match) return 0;
+
+        const [_, sign, hours, minutes] = match;
+        const totalSeconds = (parseInt(hours) * 3600) + (parseInt(minutes || 0) * 60);
+
+        return sign === '+' ? totalSeconds : -totalSeconds;
     }
 
     async _generateBundledPath(onProgress, precisionValue = 0.0005, weight = 0.5) {
