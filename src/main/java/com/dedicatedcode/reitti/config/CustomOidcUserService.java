@@ -96,7 +96,7 @@ public class CustomOidcUserService extends OidcUserService {
                 log.info("Updating username for user with id [{}] from [{}] to [{}]", user.getId(), user.getUsername(), preferredUsername);
                 user = user.withUsername(preferredUsername);
             }
-            if (localLoginDisabled && !user.getPassword().isEmpty()) {
+            if (localLoginDisabled && user.getPassword() != null && !user.getPassword().isEmpty()) {
                 log.info("Reset password for user with id [{}]. Disabling local login.", user.getId());
                 user = user.withPassword("");
             }
