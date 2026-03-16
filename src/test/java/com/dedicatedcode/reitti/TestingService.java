@@ -12,8 +12,7 @@ import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.github.sonus21.rqueue.core.RqueueMessageManager;
-import com.github.sonus21.rqueue.metrics.RqueueQueueMetrics;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.awaitility.Awaitility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -43,9 +42,7 @@ public class TestingService {
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
-    private RqueueQueueMetrics rqueueQueueMetrics;
-    @Autowired
-    private RqueueMessageManager messageManager;
+    private RedisQueueService redisQueueService;
     @Autowired
     private TripJdbcService tripRepository;
     @Autowired
@@ -125,7 +122,7 @@ public class TestingService {
                     // Check all queues are empty
                     boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
                             .allMatch(name -> {
-                                long pendingMessageCount = this.rqueueQueueMetrics.getPendingMessageCount(name);
+                                long pendingMessageCount = this.redisQueueService.getQueueSummary().totalPending();
                                 return pendingMessageCount == 0;
                             });
 
@@ -155,7 +152,7 @@ public class TestingService {
     }
 
     public void clearData() {
-        QUEUES_TO_CHECK.forEach(name -> this.messageManager.deleteAllMessages(name));
+        QUEUES_TO_CHECK.forEach(name -> this.redisQueueService.purgeAllQueues());
 
         try {
             Thread.sleep(2000);

@@ -19,9 +19,9 @@ import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -54,7 +54,7 @@ public class PlacesSettingsController {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
-    private final RqueueMessageEnqueuer messageEnqueuer;
+    private final RedisQueueService messageEnqueuer;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
@@ -67,7 +67,7 @@ public class PlacesSettingsController {
                                     ProcessedVisitJdbcService processedVisitJdbcService,
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
-                                    RqueueMessageEnqueuer messageEnqueuer,
+                                    RedisQueueService messageEnqueuer,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService,

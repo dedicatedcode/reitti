@@ -64,12 +64,12 @@ public class DefaultImportProcessor implements ImportProcessor {
 
             ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
                 try {
-                    DefaultImportProcessor.logger.debug("Triggered processing for user: {}", username);
+                    logger.debug("Triggered processing for user: {}", username);
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
                     processingPipelineTrigger.handle(triggerEvent, false);
                     pendingTriggers.remove(username);
                 } catch (Exception e) {
-                    DefaultImportProcessor.logger.error("Failed to trigger processing for user: {}", username, e);
+                    logger.error("Failed to trigger processing for user: {}", username, e);
                 }
             }, processingIdleStartTime, TimeUnit.SECONDS);
 

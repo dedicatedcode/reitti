@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
-import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,10 +26,10 @@ public class VisitDetectionPreviewService {
     private static final long READY_THRESHOLD_SECONDS = 5;
 
     private final JdbcTemplate jdbcTemplate;
-    private final RqueueMessageEnqueuer messageEnqueuer;
+    private final RedisQueueService messageEnqueuer;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
 
-    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RqueueMessageEnqueuer messageEnqueuer) {
+    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RedisQueueService messageEnqueuer) {
         this.jdbcTemplate = jdbcTemplate;
         this.messageEnqueuer = messageEnqueuer;
     }

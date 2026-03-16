@@ -1,7 +1,8 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.github.sonus21.rqueue.metrics.RqueueQueueMetrics;
+import com.dedicatedcode.reitti.service.queue.QueueStatistics;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ public class QueueStatsService {
 
     public static final String STAY_DETECTION_QUEUE = "reitti.visit.detection.v2";
     public static final String LOCATION_DATA_QUEUE = "reitti.location.data.v2";
-    private final RqueueQueueMetrics rqueueQueueMetrics;
+    private final RedisQueueService redisQueueService;
     private final MessageSource messageSource;
     private final ProcessingPipelineTrigger processingPipelineTrigger;
     private final DefaultImportProcessor defaultImportProcessor;
@@ -33,11 +34,11 @@ public class QueueStatsService {
     
     private final Map<String, Integer> previousMessageCounts = new ConcurrentHashMap<>();
 
-    public QueueStatsService(RqueueQueueMetrics rqueueQueueMetrics,
+    public QueueStatsService(RedisQueueService redisQueueService,
                              MessageSource messageSource,
                              ProcessingPipelineTrigger processingPipelineTrigger,
                              DefaultImportProcessor defaultImportProcessor) {
-        this.rqueueQueueMetrics = rqueueQueueMetrics;
+        this.redisQueueService = redisQueueService;
         this.messageSource = messageSource;
         this.processingPipelineTrigger = processingPipelineTrigger;
         this.defaultImportProcessor = defaultImportProcessor;
@@ -89,9 +90,8 @@ public class QueueStatsService {
             long processingTimePerMessage = estimateProcessingTimePerMessage(queueName);
             List<ProcessingRecord> history = processingHistory.get(queueName);
             LocalDateTime now = LocalDateTime.now();
-            long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
-            long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
-            history.add(new ProcessingRecord(now, scheduledMessageCount + pendingMessageCount, processingTimePerMessage));
+            QueueStatistics scheduledMessageCount = redisQueueService.getQueueStats(queueName);
+            history.add(new ProcessingRecord(now, scheduledMessageCount.currentProcessingLength() + scheduledMessageCount.currentQueueLength(), processingTimePerMessage));
             cleanupOldRecords(history, now);
         }
         
@@ -163,8 +163,8 @@ public class QueueStatsService {
     }
 
     private int getMessageCount(String queueName) {
-        long scheduledMessageCount = rqueueQueueMetrics.getScheduledMessageCount(queueName);
-        long pendingMessageCount = rqueueQueueMetrics.getPendingMessageCount(queueName);
+        long scheduledMessageCount = redisQueueService.getQueueStats(queueName).currentQueueLength();
+        long pendingMessageCount = redisQueueService.getQueueStats(queueName).pendingCount();
         return (int) (scheduledMessageCount + pendingMessageCount);
     }
 
