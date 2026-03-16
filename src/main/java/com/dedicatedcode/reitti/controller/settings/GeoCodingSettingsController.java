@@ -13,7 +13,7 @@ import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,7 +37,7 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceJdbcService placeJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
-    private final RqueueMessageEnqueuer messageEnqueuer;
+    private final RedisQueueService messageEnqueuer;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -49,7 +49,7 @@ public class GeoCodingSettingsController {
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
-                                       RqueueMessageEnqueuer messageEnqueuer,
+                                       RedisQueueService messageEnqueuer,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,

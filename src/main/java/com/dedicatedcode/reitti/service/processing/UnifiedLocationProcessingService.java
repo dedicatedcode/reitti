@@ -10,7 +10,7 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
-import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -53,7 +53,7 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
-    private final RqueueMessageEnqueuer messageEnqueuer;
+    private final RedisQueueService messageEnqueuer;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -72,7 +72,7 @@ public class UnifiedLocationProcessingService {
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory,
-            RqueueMessageEnqueuer messageEnqueuer) {
+            RedisQueueService messageEnqueuer) {
 
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;

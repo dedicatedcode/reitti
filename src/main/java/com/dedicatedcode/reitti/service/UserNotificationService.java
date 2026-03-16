@@ -9,7 +9,7 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
-import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 @Service
 public class UserNotificationService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
-    private final RqueueMessageEnqueuer messageEnqueuer;
+    private final RedisQueueService messageEnqueuer;
     private final ReittiSubscriptionService reittiSubscriptionService;
 
-    public UserNotificationService(RqueueMessageEnqueuer messageEnqueuer,
+    public UserNotificationService(RedisQueueService messageEnqueuer,
                                  ReittiSubscriptionService reittiSubscriptionService) {
         this.messageEnqueuer = messageEnqueuer;
         this.reittiSubscriptionService = reittiSubscriptionService;

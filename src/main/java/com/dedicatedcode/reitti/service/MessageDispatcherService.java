@@ -6,7 +6,7 @@ import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.github.sonus21.rqueue.annotation.RqueueListener;
+import com.dedicatedcode.reitti.service.queue.RedisQueueListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,20 +39,20 @@ public class MessageDispatcherService {
         this.visitDetectionPreviewService = visitDetectionPreviewService;
     }
 
-    @RqueueListener(value = PLACE_CREATED_QUEUE, deadLetterQueue = "reitti.dlq.v2", numRetries = "3", concurrency = "${reitti.events.concurrency}")
+    @RedisQueueListener(value = PLACE_CREATED_QUEUE, deadLetterQueue = "reitti.dlq.v2")
     public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
         logger.info("Dispatching SignificantPlaceCreatedEvent: {}", event);
         reverseGeocodingListener.handleSignificantPlaceCreated(event);
         visitDetectionPreviewService.updatePreviewStatus(event.previewId());
     }
 
-    @RqueueListener(value = USER_EVENT_QUEUE)
+    @RedisQueueListener(value = USER_EVENT_QUEUE)
     public void handleUserNotificationEvent(SSEEvent event) {
         logger.trace("Dispatching SSEEvent: {}", event);
         this.userJdbcService.findById(event.getUserId()).ifPresentOrElse(user -> this.userSseEmitterService.sendEventToUser(user, event), () -> logger.warn("User not found for user: {}", event.getUserId()));
     }
 
-    @RqueueListener(value = TRIGGER_PROCESSING_QUEUE, concurrency = "${reitti.events.concurrency}")
+    @RedisQueueListener(value = TRIGGER_PROCESSING_QUEUE)
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
         logger.info("Dispatching TriggerProcessingEvent {}", event);
         processingPipelineTrigger.handle(event, false);
