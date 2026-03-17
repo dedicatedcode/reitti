@@ -148,7 +148,7 @@
                 const errorText = document.getElementById('dateErrorText');
 
                 if (!startDate || !startTime) {
-                    errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
+                    errorText.textContent = /*t('js.memory.form.date.error.empty')*/ 'Dates cannot be empty';
                     errorDiv.style.display = 'block';
                     return false;
                 }
@@ -158,7 +158,7 @@
                     const endTime = document.getElementById('endTime').value;
 
                     if (!endDate || !endTime) {
-                        errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
+                        errorText.textContent = /*t('js.memory.form.date.error.empty')*/ 'Dates cannot be empty';
                         errorDiv.style.display = 'block';
                         return false;
                     }
@@ -167,7 +167,7 @@
                     const endDateTime = new Date(`${endDate}T${endTime}`);
 
                     if (startDateTime > endDateTime) {
-                        errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
+                        errorText.textContent = /*t('js.memory.form.date.error.end.before.start')*/ 'End date must be on or after start date';
                         errorDiv.style.display = 'block';
                         return false;
                     }

@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="#{page.title}">Reitti - Your Location Timeline</title>
     <link rel="manifest" th:href="@{/manifest.json}">
-    <link rel="apple-touch-icon" th:href="@{/icons/icon-192x192.png}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
@@ -19,6 +20,7 @@
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
@@ -48,10 +50,10 @@
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
     <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')"
-            class="overlay-button exit-button" th:title="#{map.auto-update.disable.title}">
+            class="overlay-button exit-button" th:title="#{js.map.auto-update.disable.title}">
         <i class="lni lni-pause"></i>
     </button>
-    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen">
+    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{js.map.fullscreen.toggle.title}" title="Toggle Fullscreen">
         <i class="lni lni-arrow-all-direction"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
@@ -114,62 +116,45 @@
 
     // Locale object for JavaScript
     window.locale = {
-        today: /*[[#{datepicker.today}]]*/ 'Today',
+        today: /*t('js.datepicker.today')*/ 'Today',
         days: [
-            /*[[#{datepicker.days.sun}]]*/ 'Sun',
-            /*[[#{datepicker.days.mon}]]*/ 'Mon',
-            /*[[#{datepicker.days.tue}]]*/ 'Tue',
-            /*[[#{datepicker.days.wed}]]*/ 'Wed',
-            /*[[#{datepicker.days.thu}]]*/ 'Thu',
-            /*[[#{datepicker.days.fri}]]*/ 'Fri',
-            /*[[#{datepicker.days.sat}]]*/ 'Sat'
+            /*t('js.datepicker.days.sun')*/ 'Sun',
+            /*t('js.datepicker.days.mon')*/ 'Mon',
+            /*t('js.datepicker.days.tue')*/ 'Tue',
+            /*t('js.datepicker.days.wed')*/ 'Wed',
+            /*t('js.datepicker.days.thu')*/ 'Thu',
+            /*t('js.datepicker.days.fri')*/ 'Fri',
+            /*t('js.datepicker.days.sat')*/ 'Sat'
         ],
         months: [
-            /*[[#{datepicker.months.jan}]]*/ 'Jan',
-            /*[[#{datepicker.months.feb}]]*/ 'Feb',
-            /*[[#{datepicker.months.mar}]]*/ 'Mar',
-            /*[[#{datepicker.months.apr}]]*/ 'Apr',
-            /*[[#{datepicker.months.may}]]*/ 'May',
-            /*[[#{datepicker.months.jun}]]*/ 'Jun',
-            /*[[#{datepicker.months.jul}]]*/ 'Jul',
-            /*[[#{datepicker.months.aug}]]*/ 'Aug',
-            /*[[#{datepicker.months.sep}]]*/ 'Sep',
-            /*[[#{datepicker.months.oct}]]*/ 'Oct',
-            /*[[#{datepicker.months.nov}]]*/ 'Nov',
-            /*[[#{datepicker.months.dec}]]*/ 'Dec'
+            /*t('js.datepicker.months.jan')*/ 'Jan',
+            /*t('js.datepicker.months.feb')*/ 'Feb',
+            /*t('js.datepicker.months.mar')*/ 'Mar',
+            /*t('js.datepicker.months.apr')*/ 'Apr',
+            /*t('js.datepicker.months.may')*/ 'May',
+            /*t('js.datepicker.months.jun')*/ 'Jun',
+            /*t('js.datepicker.months.jul')*/ 'Jul',
+            /*t('js.datepicker.months.aug')*/ 'Aug',
+            /*t('js.datepicker.months.sep')*/ 'Sep',
+            /*t('js.datepicker.months.oct')*/ 'Oct',
+            /*t('js.datepicker.months.nov')*/ 'Nov',
+            /*t('js.datepicker.months.dec')*/ 'Dec'
         ],
-        sse: {
-            error: /*[[#{sse.error.connection-lost}]]*/ 'Connection to server lost! Will reconnect ...',
-        },
-        autoupdate: {
-          latestLocation:  /*[[#{map.auto-update.latest-location}]]*/ 'Latest location',
-          state: {
-              enable: /*[[#{map.auto-update.enable.title}]]*/ 'Enter Auto-Update Mode',
-              disable: /*[[#{map.auto-update.disable.title}]]*/ 'Leave Auto-Update Mode',
-          }
-        },
         datepicker: {
             state : {
-                hide: /*[[#{datepicker.state.hide.title}]]*/ 'Hide Date Picker',
-                show:  /*[[#{datepicker.state.show.title}]]*/ 'Show Date Picker'
+                hide: /*t('js.datepicker.state.hide.title')*/ 'Hide Date Picker',
+                show:  /*t('js.datepicker.state.show.title')*/ 'Show Date Picker'
             }
         },
         timeline: {
             state : {
-                hide: /*[[#{timeline.state.hide.title}]]*/ 'Hide Timeline',
-                show:  /*[[#{timeline.state.show.title}]]*/ 'Show Timeline'
+                hide: /*t('js.timeline.state.hide.title')*/ 'Hide Timeline',
+                show:  /*t('js.timeline.state.show.title')*/ 'Show Timeline'
 
             }
         },
         map: {
-            popup: {
-                labels: {
-                    totalDuration:  /*[[#{map.popup.labels.total_duration}]]*/ 'Total duration:',
-                    from:  /*[[#{map.popup.labels.from}]]*/ 'From',
-                    to:  /*[[#{map.popup.labels.to}]]*/ 'To',
-                }
-            },
-            displayControl: {
+           displayControl: {
                 mode: {
                     "2D": {
                         text:  /*[[#{map.display-control.mode.2d.text}]]*/ '2D',
@@ -224,35 +209,11 @@
                         title: /*[[#{map.display-control.globe_projection.disable.title}]]*/ 'Disable Terrain',
                     }
                 }
-            },
-            settings: {
-                title: /*[[#{settings.title}]]*/ 'Settings',
-                dialog: {
-                    appearance: {
-                        title: /*[[#{map.settings.dialog.appearance.title}]]*/ 'Map Appearance',
-                        viewMode: {
-                            title: /*[[#{map.settings.dialog.appearance.view-mode.title}]]*/ 'View Mode',
-                            standard: /*[[#{map.settings.dialog.appearance.view-mode.standard}]]*/ 'Standard Paths',
-                            raw: /*[[#{map.settings.dialog.appearance.view-mode.raw}]]*/ 'Raw Paths',
-                            edgedBundling: /*[[#{map.settings.dialog.appearance.view-mode.edged_bundling}]]*/ 'Edge Bundling',
-                            aggregate24h: /*[[#{map.settings.dialog.appearance.view-mode.24h_aggregate}]]*/ '24h aggregate?'
-                        }
-                    },
-                    interface: {
-                        title: /*[[#{map.settings.dialog.interface.title}]]*/ 'Interface',
-                        timelineVisible: /*[[#{map.settings.dialog.interface.timeline-visible}]]*/ 'Timeline Visible',
-                        datepickerVisible: /*[[#{map.settings.dialog.interface.datepicker-visible}]]*/ 'Date Selection Visible'
-                    }
-                }
             }
-        },
-        common: {
-            user: /*[[#{common.user}]]*/ 'User',
-            time: /*[[#{common.time}]]*/ 'Time',
-            position: /*[[#{common.position}]]*/ 'Position',
-            unknown: /*[[#{common.unknown}]]*/ 'Unknown'
         }
     };
+
+
     window.userSettings = /*[[${userSettings}]]*/ {}
 
     let gpsDataManagers = [];
@@ -268,8 +229,8 @@
         mapRenderer.updateViewState(createViewState([]))
     })
 
-    const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay', window.locale);
-    const settingsMenu = new SettingsMenu('settings-menu-container', window.locale);
+    const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
+    const settingsMenu = new SettingsMenu('settings-menu-container');
 
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
         const timeline = document.querySelector('.timeline');
@@ -803,8 +764,8 @@
                 clickToLockMonth: /*[[#{datepicker.click-to-lock-month}]]*/ 'Click to lock month',
                 clickToUnlockYear: /*[[#{datepicker.click-to-unlock-year}]]*/ 'Click to unlock year',
                 clickToLockYear: /*[[#{datepicker.click-to-lock-year}]]*/ 'Click to lock year',
-                select: /*[[#{datepicker.select}]]*/ 'Select',
-                to: /*[[#{datepicker.to}]]*/ 'to'
+                select: /*t('js.datepicker.select')*/ 'Select',
+                to: /*t('js.datepicker.to')*/ 'to'
             }
         });
 

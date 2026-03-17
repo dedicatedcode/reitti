@@ -160,7 +160,7 @@
     <script>
         function editReittiIntegration(id, url, token, color, enabled, version) {
             // Update form title
-            document.getElementById('form-title').textContent = window.locale?.['integrations.reitti.edit.title'] || 'Edit Reitti Integration';
+            document.getElementById('form-title').textContent = t('integrations.reitti.edit.title');
 
             // Set form action to update
             const form = document.getElementById('reitti-integration-form');
@@ -178,7 +178,7 @@
             document.getElementById('reittiEnabled').checked = enabled;
 
             // Update button text and show cancel button
-            document.getElementById('submit-btn').textContent = window.locale?.['integrations.reitti.update'] || 'Update Configuration';
+            document.getElementById('submit-btn').textContent = t('integrations.reitti.update');
             document.getElementById('cancel-edit-btn').style.display = 'inline-block';
 
             // Clear any previous test results
@@ -190,7 +190,7 @@
 
         function cancelEdit() {
             // Reset form title
-            document.getElementById('form-title').textContent = window.locale?.['integrations.reitti.add.title'] || 'Add New Reitti Integration';
+            document.getElementById('form-title').textContent = t('integrations.reitti.add.title');
 
             // Reset form action to create
             const form = document.getElementById('reitti-integration-form');
@@ -208,7 +208,7 @@
             document.getElementById('reittiEnabled').checked = true;
 
             // Reset button text and hide cancel button
-            document.getElementById('submit-btn').textContent = window.locale?.['integrations.reitti.save'] || 'Save Configuration';
+            document.getElementById('submit-btn').textContent =t('integrations.reitti.save');
             document.getElementById('cancel-edit-btn').style.display = 'none';
 
             // Clear any previous test results
@@ -221,13 +221,13 @@
             const resultDiv = document.getElementById('reitti-connection-test-result');
 
             if (!url || !token) {
-                const message = window.locale?.['integrations.reitti.test.missing.fields'] || 'Please fill in both Instance URL and API Token';
+                const message = t('integrations.reitti.test.missing.fields');
                 resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
                 return;
             }
 
             // Show loading state
-            const loadingMessage = window.locale?.['integrations.reitti.test.loading'] || 'Testing connection...';
+            const loadingMessage = t('integrations.reitti.test.loading');
             resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
             // Make AJAX request to test connection
@@ -250,7 +250,7 @@
                     }
                 })
                 .catch(error => {
-                    const errorMessage = window.locale?.['integrations.reitti.test.failed'] || 'Connection test failed';
+                    const errorMessage = t('integrations.reitti.test.failed');
                     resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                 });
         });

@@ -1,6 +1,5 @@
 class LiveModeController {
-    constructor(element, overlay, locale) {
-        this.locale = locale;
+    constructor(element, overlay) {
         this.element = document.getElementById(element);
         this.overlay = document.getElementById(overlay);
         this.autoUpdateMode = false;
@@ -27,7 +26,7 @@ class LiveModeController {
         this.autoUpdateMode = true;
         const icon = this.element.querySelector('i');
         icon.className = 'lni lni-pause';
-        this.element.title = this.locale.autoupdate.state.disable;
+        this.element.title = t('autoupdate.state.disable');
         document.body.classList.add('auto-update-mode');
         this._updateAutoUpdateTime();
         this.overlay.classList.add('visible');
@@ -39,7 +38,7 @@ class LiveModeController {
         this.autoUpdateMode = false;
         const icon = this.element.querySelector('i');
         icon.className = 'lni lni-play';
-        this.element.title = this.locale.autoupdate.state.enable;
+        this.element.title = t('autoupdate.state.enable');
         document.body.classList.remove('auto-update-mode');
         this.overlay.classList.remove('visible');
         if (this.autoUpdateTimeInterval) {
@@ -147,7 +146,7 @@ class LiveModeController {
 
         this.eventSource.onerror = (error) => {
             console.error('EventSource failed:', error);
-            this.messagesDiv.innerHTML = `<p><strong>${this.locale.sse.error}</strong></p>`;
+            this.messagesDiv.innerHTML = `<p><strong>${t('sse.error.connection-lost')}</strong></p>`;
             this.messagesDiv.classList.add('active');
 
             // Close the current connection
@@ -210,7 +209,7 @@ class LiveModeController {
             this.maxWaitTimeoutId = setTimeout(() => {
                 if (this.autoUpdateMode && this.pendingEvents.length > 0) {
                     console.log(`Auto-update: Reloading timeline data after max wait time (30s) with ${this.pendingEvents.length} accumulated events`);
-                    executeTimelineReload();
+                    this._executeTimelineReload();
                 }
             }, 30000);
         }
