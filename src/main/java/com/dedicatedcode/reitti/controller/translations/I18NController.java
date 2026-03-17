@@ -31,7 +31,7 @@ public class I18NController {
             Map<String, String> messages = new HashMap<>();
 
             for (String key : bundle.keySet()) {
-                if (key.startsWith("js:")) {
+                if (key.startsWith("js.")) {
                     messages.put(key, messageSource.getMessage(key, null, loc));
                 }
             }
@@ -49,7 +49,7 @@ public class I18NController {
 
             if (!window.t) {
                 window.t = function(key, params = []) {
-                    const internalKey = "js:" + key; // Automatically adds the prefix
+                    const internalKey = "js." + key; // Automatically adds the prefix
                     if (!window.I18N || !(internalKey in window.I18N)) {
                         console.error('I18N Error: Key [' + internalKey + '] not found.');
                         return '??' + internalKey + '??';
@@ -87,9 +87,16 @@ public class I18NController {
         })();
         """.formatted(json);
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
-                .body(script);
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
+        if ("development".equalsIgnoreCase(version)) {
+            responseBuilder
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .header(HttpHeaders.EXPIRES, "0");
+        } else {
+            responseBuilder.header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable");
+        }
+        return responseBuilder.body(script);
 
     }
 }
