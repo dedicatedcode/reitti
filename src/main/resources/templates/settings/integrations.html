@@ -158,16 +158,7 @@
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {};
-    window.locale = {
-        'integrations.owntracks.recorder.test.missing.fields': /*t('js.integrations.owntracks.recorder.test.missing.fields')*/ 'Please fill in Base URL, Username, and Device ID',
-        'integrations.owntracks.recorder.test.loading': /*t('js.integrations.owntracks.recorder.test.loading')*/ 'Testing connection...',
-        'integrations.owntracks.recorder.test.failed': /*t('js.integrations.owntracks.recorder.test.failed')*/ 'Connection test failed',
-        'integrations.owntracks.recorder.loading.historical': /*t('js.integrations.owntracks.recorder.loading.historical')*/ 'Loading Historical Data...',
-        'integrations.mqtt.test.missing.fields': /*t('js.integrations.mqtt.test.missing.fields')*/ 'Please fill in Host, Port, Client Identifier, and Topic',
-        'integrations.mqtt.test.loading': /*t('js.integrations.mqtt.test.loading')*/ 'Testing connection...',
-        'integrations.mqtt.test.failed': /*t('js.integrations.mqtt.test.failed')*/ 'Connection test failed',
-        'integrations.mqtt.topic.no.wildcards': /*t('js.integrations.mqtt.topic.no.wildcards')*/ 'Topic cannot contain wildcard characters (+ or #) when saving the configuration.'
-    };
+
     function getCurrentOpenSection() {
         const detailsElements = document.querySelectorAll('details');
         for (const details of detailsElements) {

@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="#{page.title}">Reitti - Your Location Timeline</title>
     <link rel="manifest" th:href="@{/manifest.json}">
-    <link rel="apple-touch-icon" th:href="@{/icons/icon-192x192.png}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
@@ -49,10 +50,10 @@
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
     <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')"
-            class="overlay-button exit-button" th:title="#{map.auto-update.disable.title}">
+            class="overlay-button exit-button" th:title="#{js.map.auto-update.disable.title}">
         <i class="lni lni-pause"></i>
     </button>
-    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen">
+    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{js.map.fullscreen.toggle.title}" title="Toggle Fullscreen">
         <i class="lni lni-arrow-all-direction"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
@@ -139,16 +140,6 @@
             /*t('js.datepicker.months.nov')*/ 'Nov',
             /*t('js.datepicker.months.dec')*/ 'Dec'
         ],
-        sse: {
-            error: /*[[#{sse.error.connection-lost}]]*/ 'Connection to server lost! Will reconnect ...',
-        },
-        autoupdate: {
-          latestLocation:  /*[[#{map.auto-update.latest-location}]]*/ 'Latest location',
-          state: {
-              enable: /*[[#{map.auto-update.enable.title}]]*/ 'Enter Auto-Update Mode',
-              disable: /*[[#{map.auto-update.disable.title}]]*/ 'Leave Auto-Update Mode',
-          }
-        },
         datepicker: {
             state : {
                 hide: /*t('js.datepicker.state.hide.title')*/ 'Hide Date Picker',
@@ -163,14 +154,7 @@
             }
         },
         map: {
-            popup: {
-                labels: {
-                    totalDuration:  /*t('js.map.popup.labels.total_duration')*/ 'Total duration:',
-                    from:  /*t('js.map.popup.labels.from')*/ 'From',
-                    to:  /*t('js.map.popup.labels.to')*/ 'To',
-                }
-            },
-            displayControl: {
+           displayControl: {
                 mode: {
                     "2D": {
                         text:  /*[[#{map.display-control.mode.2d.text}]]*/ '2D',
@@ -225,35 +209,11 @@
                         title: /*[[#{map.display-control.globe_projection.disable.title}]]*/ 'Disable Terrain',
                     }
                 }
-            },
-            settings: {
-                title: /*t('js.settings.title')*/ 'Settings',
-                dialog: {
-                    appearance: {
-                        title: /*t('js.map.settings.dialog.appearance.title')*/ 'Map Appearance',
-                        viewMode: {
-                            title: /*[[#{map.settings.dialog.appearance.view-mode.title}]]*/ 'View Mode',
-                            standard: /*[[#{map.settings.dialog.appearance.view-mode.standard}]]*/ 'Standard Paths',
-                            raw: /*[[#{map.settings.dialog.appearance.view-mode.raw}]]*/ 'Raw Paths',
-                            edgedBundling: /*[[#{map.settings.dialog.appearance.view-mode.edged_bundling}]]*/ 'Edge Bundling',
-                            aggregate24h: /*[[#{map.settings.dialog.appearance.view-mode.24h_aggregate}]]*/ '24h aggregate?'
-                        }
-                    },
-                    interface: {
-                        title: /*t('js.map.settings.dialog.interface.title')*/ 'Interface',
-                        timelineVisible: /*[[#{map.settings.dialog.interface.timeline-visible}]]*/ 'Timeline Visible',
-                        datepickerVisible: /*[[#{map.settings.dialog.interface.datepicker-visible}]]*/ 'Date Selection Visible'
-                    }
-                }
             }
-        },
-        common: {
-            user: /*t('js.common.user')*/ 'User',
-            time: /*t('js.common.time')*/ 'Time',
-            position: /*t('js.common.position')*/ 'Position',
-            unknown: /*t('js.common.unknown')*/ 'Unknown'
         }
     };
+
+
     window.userSettings = /*[[${userSettings}]]*/ {}
 
     let gpsDataManagers = [];
@@ -269,8 +229,8 @@
         mapRenderer.updateViewState(createViewState([]))
     })
 
-    const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay', window.locale);
-    const settingsMenu = new SettingsMenu('settings-menu-container', window.locale);
+    const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
+    const settingsMenu = new SettingsMenu('settings-menu-container');
 
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
         const timeline = document.querySelector('.timeline');

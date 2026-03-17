@@ -729,14 +729,14 @@ class MapRenderer {
         if (object) {
             const visitListHtml = object.originalVisits.map(v => `
             <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
-                <b>${locale.map.popup.labels.from}</b> ${formatDateTime(v.startTime)}<br>
-                <b>${locale.map.popup.labels.to}</b> ${formatDateTime(v.endTime)}
+                <b>${t('js.map.popup.labels.from')}</b> ${formatDateTime(v.startTime)}<br>
+                <b>${t('js.map.popup.labels.to')}</b> ${formatDateTime(v.endTime)}
             </div>
         `).join('');
 
             tooltip.innerHTML = `
             <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name}</div>
-            <div><b>${window.locale.map.popup.labels.totalDuration}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
+            <div><b>${t('map.popup.labels.total_duration')}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
             <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
                 ${visitListHtml}
             </div>
@@ -905,7 +905,7 @@ class MapRenderer {
 
         // Create detailed popup content
         const formatTimestamp = (timestamp) => {
-            if (!timestamp) return window.locale?.common?.unknown || 'Unknown';
+            if (!timestamp) return t('js.common.unknown') || 'Unknown';
             const date = new Date(timestamp);
             return date.toLocaleString();
         };
@@ -917,16 +917,16 @@ class MapRenderer {
         const popupContent = `
             <div style="font-family: var(--sans-font); min-width: 200px;">
                 <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                    ${window.locale?.autoupdate?.latestLocation || 'Latest Known Location'}
+                    ${t('map.auto-update.latest-location')}
                 </div>
                 <div style="margin-bottom: 6px;">
-                    <strong>${window.locale?.common?.user || 'User'}:</strong> ${userData.displayName}
+                    <strong>${t('common.user')}:</strong> ${userData.displayName}
                 </div>
                 <div style="margin-bottom: 6px;">
-                    <strong>${window.locale?.common?.time || 'Time'}:</strong> ${formatTimestamp(userData.timestamp)}
+                    <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
                 </div>
                 <div style="margin-bottom: 4px;">
-                    <strong>${window.locale?.common?.position || 'Position'}:</strong> ${formatCoordinates(lat, lng)}
+                    <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
                 </div>
             </div>
         `;
@@ -1010,7 +1010,7 @@ class MapRenderer {
      */
     updateMarkerPopup(marker, lat, lng, userData) {
         const formatTimestamp = (timestamp) => {
-            if (!timestamp) return window.locale?.common?.unknown || 'Unknown';
+            if (!timestamp) return t('common.unknown') || 'Unknown';
             const date = new Date(timestamp);
             return date.toLocaleString();
         };
@@ -1022,16 +1022,16 @@ class MapRenderer {
         const popupContent = `
             <div style="font-family: var(--sans-font); min-width: 200px;">
                 <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                    ${window.locale?.autoupdate?.latestLocation || 'Latest Known Location'}
+                    ${t('map.auto-update.latest-location')}
                 </div>
                 <div style="margin-bottom: 6px;">
-                    <strong>${window.locale?.common?.user || 'User'}:</strong> ${userData.displayName}
+                    <strong>${t('common.user')}:</strong> ${userData.displayName}
                 </div>
                 <div style="margin-bottom: 6px;">
-                    <strong>${window.locale?.common?.time || 'Time'}:</strong> ${formatTimestamp(userData.timestamp)}
+                    <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
                 </div>
                 <div style="margin-bottom: 4px;">
-                    <strong>${window.locale?.common?.position || 'Position'}:</strong> ${formatCoordinates(lat, lng)}
+                    <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
                 </div>
             </div>
         `;

@@ -1,7 +1,6 @@
 class SettingsMenu {
-    constructor(containerId, locale) {
+    constructor(containerId) {
         this.container = document.getElementById(containerId);
-        this.locale = locale;
         this.isVisible = false;
         
         this.createHTML();
@@ -11,55 +10,54 @@ class SettingsMenu {
     }
     
     createHTML() {
-        const html = `
+        this.container.innerHTML = `
             <div class="settings-overlay" style="display: none;"></div>
             <div class="settings-menu">
                 <div class="settings-menu-header">
-                    <h3>${this.locale.map.settings.title}</h3>
+                    <h3>${t('map.map-settings.title')}</h3>
                     <button class="close-settings-btn">
                         <i class="lni lni-xmark-circle"></i>
                     </button>
                 </div>
                 <div class="settings-menu-content">
-                    <div class="divider left">${this.locale.map.settings.dialog.appearance.title}</div>
+                    <div class="divider left">${t('map.settings.dialog.appearance.title')}</div>
                     <div class="settings-section">
                         <div class="form-group">
-                            <label for="view-mode">${this.locale.map.settings.dialog.appearance.viewMode.title}</label>
+                            <label for="view-mode">${t('map.settings.dialog.appearance.view-mode.title')}</label>
                             <select id="view-mode">
-                                <option value="LINEAR">${this.locale.map.settings.dialog.appearance.viewMode.standard}</option>
-                                <option value="RAW">${this.locale.map.settings.dialog.appearance.viewMode.raw}</option>
-                                <option value="BUNDLED">${this.locale.map.settings.dialog.appearance.viewMode.edgedBundling}</option>
+                                <option value="LINEAR">${t('map.settings.dialog.appearance.view-mode.standard')}</option>
+                                <option value="RAW">${t('map.settings.dialog.appearance.view-mode.raw')}</option>
+                                <option value="BUNDLED">${t('map.settings.dialog.appearance.view-mode.edged_bundling')}</option>
                             </select>
                         </div>
                         <div class="form-group slide-reveal-container">
                             <input type="checkbox" id="aggregate-toggle">
                             <label for="aggregate-toggle" class="slide-reveal">
                                 <span class="slide-box"></span>
-                                <span class="label-text">${this.locale.map.settings.dialog.appearance.viewMode.aggregate24h}</span>
+                                <span class="label-text">${t('map.settings.dialog.appearance.view-mode.24h_aggregate')}</span>
                             </label>
                         </div>
                     </div>
-                    <div class="divider left">${this.locale.map.settings.dialog.interface.title}</div>
+                    <div class="divider left">${t('map.settings.dialog.interface.title')}</div>
                     <div class="settings-section">
                         <div class="form-group slide-reveal-container">
                             <input type="checkbox" id="timeline-visible-checkbox">
                             <label for="timeline-visible-checkbox" class="slide-reveal">
                                 <span class="slide-box"></span>
-                                <span class="label-text">${this.locale.map.settings.dialog.interface.timelineVisible}</span>
+                                <span class="label-text">${t('map.settings.dialog.interface.timeline-visible')}</span>
                             </label>
                         </div>
                         <div class="form-group slide-reveal-container">
                             <input type="checkbox" id="datepicker-visible-checkbox">
                             <label for="datepicker-visible-checkbox" class="slide-reveal">
                                 <span class="slide-box"></span>
-                                <span class="label-text">${this.locale.map.settings.dialog.interface.datepickerVisible}</span>
+                                <span class="label-text">${t('map.settings.dialog.interface.datepicker-visible')}</span>
                             </label>
                         </div>
                     </div>
                 </div>
             </div>
         `;
-        this.container.innerHTML = html;
     }
     
     init() {
@@ -190,10 +188,10 @@ class SettingsMenu {
         
         if (isHidden) {
             icon.className = 'lni lni-enter';
-            btn.title = this.locale?.timeline?.state?.show || 'Show Timeline';
+            btn.title = t('timeline.state.show.title');
         } else {
             icon.className = 'lni lni-exit';
-            btn.title = this.locale?.timeline?.state?.hide || 'Hide Timeline';
+            btn.title = t('timeline.state.hide.title');
         }
     }
     
@@ -206,10 +204,10 @@ class SettingsMenu {
         
         if (isHidden) {
             icon.className = 'lni lni-exit-up';
-            btn.title = this.locale?.datepicker?.state?.show || 'Show Date Picker';
+            btn.title = t('datepicker.state.show.title');
         } else {
             icon.className = 'lni lni-enter-down';
-            btn.title = this.locale?.datepicker?.state?.hide || 'Hide Date Picker';
+            btn.title =  t('datepicker.state.hide.title');
         }
     }
     
@@ -320,40 +318,13 @@ class SettingsMenu {
 
         if (isHidden) {
             timelineControls.classList.add('hidden');
-            toggleBtn.title = this.locale?.timeline?.state?.show || 'Show Timeline Controls';
+            toggleBtn.title = t('timeline.state.show.title')
             toggleBtn.classList.remove('active');
         } else {
             timelineControls.classList.remove('hidden');
-            toggleBtn.title = this.locale?.timeline?.state?.hide || 'Hide Timeline Controls';
+            toggleBtn.title = t('timeline.state.hide.title');
             toggleBtn.classList.add('active');
         }
-    }
-    
-    // toggleTimelineControls() {
-    //     const timelineControls = document.getElementById('timeline-controls');
-    //     const toggleBtn = document.getElementById('toggle-time-control-btn');
-    //
-    //     if (!timelineControls || !toggleBtn) return;
-    //
-    //     const isCurrentlyHidden = timelineControls.classList.contains('hidden');
-    //     const newState = !isCurrentlyHidden;
-    //
-    //     this.applyTimelineControlsState(newState);
-    //     localStorage.setItem('timelineControlsHidden', newState.toString());
-    // }
-    
-    getCurrentSettings() {
-        const aggregateToggle = this.menu.querySelector('#aggregate-toggle');
-        const viewModeSelect = this.menu.querySelector('#view-mode');
-        const timelineControls = document.getElementById('timeline-controls');
-        
-        return {
-            aggregate: aggregateToggle ? aggregateToggle.checked : false,
-            viewMode: viewModeSelect ? viewModeSelect.value : 'LINEAR',
-            timelineHidden: document.body.classList.contains('timeline-hidden'),
-            datepickerHidden: document.body.classList.contains('datepicker-hidden'),
-            timelineControlsHidden: timelineControls ? timelineControls.classList.contains('hidden') : false
-        };
     }
     
     restoreState() {
