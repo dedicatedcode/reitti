@@ -115,29 +115,29 @@
 
     // Locale object for JavaScript
     window.locale = {
-        today: /*[[#{datepicker.today}]]*/ 'Today',
+        today: /*t('js.datepicker.today')*/ 'Today',
         days: [
-            /*[[#{datepicker.days.sun}]]*/ 'Sun',
-            /*[[#{datepicker.days.mon}]]*/ 'Mon',
-            /*[[#{datepicker.days.tue}]]*/ 'Tue',
-            /*[[#{datepicker.days.wed}]]*/ 'Wed',
-            /*[[#{datepicker.days.thu}]]*/ 'Thu',
-            /*[[#{datepicker.days.fri}]]*/ 'Fri',
-            /*[[#{datepicker.days.sat}]]*/ 'Sat'
+            /*t('js.datepicker.days.sun')*/ 'Sun',
+            /*t('js.datepicker.days.mon')*/ 'Mon',
+            /*t('js.datepicker.days.tue')*/ 'Tue',
+            /*t('js.datepicker.days.wed')*/ 'Wed',
+            /*t('js.datepicker.days.thu')*/ 'Thu',
+            /*t('js.datepicker.days.fri')*/ 'Fri',
+            /*t('js.datepicker.days.sat')*/ 'Sat'
         ],
         months: [
-            /*[[#{datepicker.months.jan}]]*/ 'Jan',
-            /*[[#{datepicker.months.feb}]]*/ 'Feb',
-            /*[[#{datepicker.months.mar}]]*/ 'Mar',
-            /*[[#{datepicker.months.apr}]]*/ 'Apr',
-            /*[[#{datepicker.months.may}]]*/ 'May',
-            /*[[#{datepicker.months.jun}]]*/ 'Jun',
-            /*[[#{datepicker.months.jul}]]*/ 'Jul',
-            /*[[#{datepicker.months.aug}]]*/ 'Aug',
-            /*[[#{datepicker.months.sep}]]*/ 'Sep',
-            /*[[#{datepicker.months.oct}]]*/ 'Oct',
-            /*[[#{datepicker.months.nov}]]*/ 'Nov',
-            /*[[#{datepicker.months.dec}]]*/ 'Dec'
+            /*t('js.datepicker.months.jan')*/ 'Jan',
+            /*t('js.datepicker.months.feb')*/ 'Feb',
+            /*t('js.datepicker.months.mar')*/ 'Mar',
+            /*t('js.datepicker.months.apr')*/ 'Apr',
+            /*t('js.datepicker.months.may')*/ 'May',
+            /*t('js.datepicker.months.jun')*/ 'Jun',
+            /*t('js.datepicker.months.jul')*/ 'Jul',
+            /*t('js.datepicker.months.aug')*/ 'Aug',
+            /*t('js.datepicker.months.sep')*/ 'Sep',
+            /*t('js.datepicker.months.oct')*/ 'Oct',
+            /*t('js.datepicker.months.nov')*/ 'Nov',
+            /*t('js.datepicker.months.dec')*/ 'Dec'
         ],
         sse: {
             error: /*[[#{sse.error.connection-lost}]]*/ 'Connection to server lost! Will reconnect ...',
@@ -151,23 +151,23 @@
         },
         datepicker: {
             state : {
-                hide: /*[[#{datepicker.state.hide.title}]]*/ 'Hide Date Picker',
-                show:  /*[[#{datepicker.state.show.title}]]*/ 'Show Date Picker'
+                hide: /*t('js.datepicker.state.hide.title')*/ 'Hide Date Picker',
+                show:  /*t('js.datepicker.state.show.title')*/ 'Show Date Picker'
             }
         },
         timeline: {
             state : {
-                hide: /*[[#{timeline.state.hide.title}]]*/ 'Hide Timeline',
-                show:  /*[[#{timeline.state.show.title}]]*/ 'Show Timeline'
+                hide: /*t('js.timeline.state.hide.title')*/ 'Hide Timeline',
+                show:  /*t('js.timeline.state.show.title')*/ 'Show Timeline'
 
             }
         },
         map: {
             popup: {
                 labels: {
-                    totalDuration:  /*[[#{map.popup.labels.total_duration}]]*/ 'Total duration:',
-                    from:  /*[[#{map.popup.labels.from}]]*/ 'From',
-                    to:  /*[[#{map.popup.labels.to}]]*/ 'To',
+                    totalDuration:  /*t('js.map.popup.labels.total_duration')*/ 'Total duration:',
+                    from:  /*t('js.map.popup.labels.from')*/ 'From',
+                    to:  /*t('js.map.popup.labels.to')*/ 'To',
                 }
             },
             displayControl: {
@@ -227,10 +227,10 @@
                 }
             },
             settings: {
-                title: /*[[#{settings.title}]]*/ 'Settings',
+                title: /*t('js.settings.title')*/ 'Settings',
                 dialog: {
                     appearance: {
-                        title: /*[[#{map.settings.dialog.appearance.title}]]*/ 'Map Appearance',
+                        title: /*t('js.map.settings.dialog.appearance.title')*/ 'Map Appearance',
                         viewMode: {
                             title: /*[[#{map.settings.dialog.appearance.view-mode.title}]]*/ 'View Mode',
                             standard: /*[[#{map.settings.dialog.appearance.view-mode.standard}]]*/ 'Standard Paths',
@@ -240,7 +240,7 @@
                         }
                     },
                     interface: {
-                        title: /*[[#{map.settings.dialog.interface.title}]]*/ 'Interface',
+                        title: /*t('js.map.settings.dialog.interface.title')*/ 'Interface',
                         timelineVisible: /*[[#{map.settings.dialog.interface.timeline-visible}]]*/ 'Timeline Visible',
                         datepickerVisible: /*[[#{map.settings.dialog.interface.datepicker-visible}]]*/ 'Date Selection Visible'
                     }
@@ -248,10 +248,10 @@
             }
         },
         common: {
-            user: /*[[#{common.user}]]*/ 'User',
-            time: /*[[#{common.time}]]*/ 'Time',
-            position: /*[[#{common.position}]]*/ 'Position',
-            unknown: /*[[#{common.unknown}]]*/ 'Unknown'
+            user: /*t('js.common.user')*/ 'User',
+            time: /*t('js.common.time')*/ 'Time',
+            position: /*t('js.common.position')*/ 'Position',
+            unknown: /*t('js.common.unknown')*/ 'Unknown'
         }
     };
     window.userSettings = /*[[${userSettings}]]*/ {}
@@ -804,8 +804,8 @@
                 clickToLockMonth: /*[[#{datepicker.click-to-lock-month}]]*/ 'Click to lock month',
                 clickToUnlockYear: /*[[#{datepicker.click-to-unlock-year}]]*/ 'Click to unlock year',
                 clickToLockYear: /*[[#{datepicker.click-to-lock-year}]]*/ 'Click to lock year',
-                select: /*[[#{datepicker.select}]]*/ 'Select',
-                to: /*[[#{datepicker.to}]]*/ 'to'
+                select: /*t('js.datepicker.select')*/ 'Select',
+                to: /*t('js.datepicker.to')*/ 'to'
             }
         });
 

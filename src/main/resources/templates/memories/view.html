@@ -12,6 +12,7 @@
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../../static/css/datetime-picker.css">
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
 
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/vendor/leaflet.js}"></script>
     <script th:src="@{/js/vendor/leaflet.geodesic.2.7.2.js}"></script>
@@ -681,11 +682,11 @@
 
     function startMemoryProcessingAnimation() {
         const steps = [
-            {step: 'clustering', text: /*[[#{memory.processing.step.clustering}]]*/ 'Clustering trips and visits...'},
-            {step: 'visits', text: /*[[#{memory.processing.step.visits}]]*/ 'Creating visit records...'},
-            {step: 'accommodation', text: /*[[#{memory.processing.step.accommodation}]]*/ 'Determining accommodation...'},
-            {step: 'texts', text: /*[[#{memory.processing.step.texts}]]*/ 'Generating texts...'},
-            {step: 'images', text: /*[[#{memory.processing.step.images}]]*/ 'Copying images...'}
+            {step: 'clustering', text: /*t('js.memory.processing.step.clustering')*/ 'Clustering trips and visits...'},
+            {step: 'visits', text: /*t('js.memory.processing.step.visits')*/ 'Creating visit records...'},
+            {step: 'accommodation', text: /*t('js.memory.processing.step.accommodation')*/ 'Determining accommodation...'},
+            {step: 'texts', text: /*t('js.memory.processing.step.texts')*/ 'Generating texts...'},
+            {step: 'images', text: /*t('js.memory.processing.step.images')*/ 'Copying images...'}
         ];
 
         let currentStepIndex = 0;

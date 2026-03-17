@@ -160,7 +160,7 @@
     <script>
         function editReittiIntegration(id, url, token, color, enabled, version) {
             // Update form title
-            document.getElementById('form-title').textContent = window.locale?.['integrations.reitti.edit.title'] || 'Edit Reitti Integration';
+            document.getElementById('form-title').textContent = t(window.locale?.['integrations.reitti.edit.title'] || 'Edit Reitti Integration';
 
             // Set form action to update
             const form = document.getElementById('reitti-integration-form');
