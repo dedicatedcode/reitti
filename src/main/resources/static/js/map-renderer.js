@@ -128,83 +128,58 @@ class MapRenderer {
         this._setup();
     }
 
-    updateViewState(viewState) {
-        let switchTo3D = false;
-        let switchTo2D = false;
-        let switchTerrainOn = false;
-        let switchTerrainOff = false;
-        let switchBuildingsOn = false;
-        let switchBuildingsOff = false;
-        let switchSatelliteOn = false;
-        let switchSatelliteOff = false;
-        let toggleGlobeMode = false;
-
-        if (this.viewState.is3d && !viewState.is3d) {
-            switchTo2D = true;
-        } else if (!this.viewState.is3d && viewState.is3d) {
-            switchTo3D = true;
-        }
-
-        if (this.viewState.renderTerrain && !viewState.renderTerrain) {
-            switchTerrainOff = true;
-        } else if (!this.viewState.renderTerrain && viewState.renderTerrain) {
-            switchTerrainOn = true;
-        }
-
-        if (this.viewState.renderBuildings && (!viewState.renderBuildings || !viewState.is3d)) {
-            switchBuildingsOff = true;
-        } else if (!this.viewState.renderBuildings && viewState.renderBuildings && viewState.is3d) {
-            switchBuildingsOn = true;
-        }
-
-        if (this.viewState.renderSatelliteView && !viewState.renderSatelliteView) {
-            switchSatelliteOff = true;
-        } else if (!this.viewState.renderSatelliteView && viewState.renderSatelliteView) {
-            switchSatelliteOn = true;
-        }
-
-        if ((this.viewState.renderGlobe && !viewState.renderGlobe) || (!this.viewState.renderGlobe && viewState.renderGlobe)) {
-            toggleGlobeMode = true;
-        }
-
+    async updateViewState(viewState) {
+        const oldViewState = { ...this.viewState };
         this.viewState = viewState;
-        if (switchBuildingsOn || switchBuildingsOff) {
-            this._awaitStyleLoaded(() => {
-                this._switchMapBuildingLayer(switchBuildingsOn && this.viewState.is3d);
-            });
-        }
-        if (switchTo3D || switchTo2D) {
-            this._awaitStyleLoaded(() => {
-                this._switchMapBuildingLayer(switchTo3D && this.viewState.renderBuildings);
-            });
-        }
-        if (switchTerrainOn || switchTerrainOff) {
-            this._awaitStyleLoaded(() => {
-                this._switchTerrainLayer(switchTerrainOn)
-            });
-        }
 
-        if (switchSatelliteOn || switchSatelliteOff) {
-            this._awaitStyleLoaded(() => {
-                this._switchSatelliteLayer(switchSatelliteOn && !switchTerrainOn);
-            })
-        }
+        const toggleGlobeMode = oldViewState.renderGlobe !== viewState.renderGlobe;
 
         if (toggleGlobeMode) {
-            this._switchProjection(this.viewState.renderGlobe);
+            const terrainWasOn = oldViewState.renderTerrain;
+
+            if (terrainWasOn) {
+                this._switchTerrainLayer(false);
+                await new Promise(resolve => this.map.once('idle', resolve));
+            }
+
+            await this._switchProjection(this.viewState.renderGlobe);
+
+            if (terrainWasOn) {
+                this._switchTerrainLayer(true);
+            }
+        }
+
+
+        const toggleTerrain = oldViewState.renderTerrain !== this.viewState.renderTerrain;
+        if (toggleTerrain && !toggleGlobeMode) {
+            this._switchTerrainLayer(this.viewState.renderTerrain);
+        }
+
+        const toggleBuildings = (oldViewState.renderBuildings !== this.viewState.renderBuildings) || (oldViewState.is3d !== this.viewState.is3d);
+        if (toggleBuildings) {
+            this._awaitStyleLoaded(() => {
+                this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+            });
+        }
+
+        const toggleSatellite = oldViewState.renderSatelliteView !== this.viewState.renderSatelliteView;
+        if (toggleSatellite) {
+            this._awaitStyleLoaded(() => {
+                this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            });
         }
 
         this._syncPitchBearingState();
 
         this.gpsDataManagers.forEach(manager => {
-            this._updateLayers(manager)
-        })
+            this._updateLayers(manager);
+        });
         if (this.showAvatars) {
             this.updateAvatarPositions();
         }
         this.viewConfig.mapDataProviders.forEach(provider => {
             provider.render(this.map);
-        })
+        });
     }
 
     setGpsDataManagers(managers) {
@@ -315,6 +290,7 @@ class MapRenderer {
         if (shouldAllow) {
             this.map.dragRotate.enable();
             this.map.touchZoomRotate.enableRotation();
+            this.map.easeTo({ pitch: 45, bearing: 0, duration: 500, essential: true });
         } else {
             this.map.dragRotate.disable();
             this.map.touchZoomRotate.disableRotation();
@@ -773,11 +749,25 @@ class MapRenderer {
     }
 
     _switchProjection(renderGlobe) {
-        this.map.setProjection({
-            type: renderGlobe ? 'globe' : 'mercator'
+        return new Promise(resolve => {
+            const onData = (e) => {
+                if (e.dataType === 'style') {
+                    this.map.off('data', onData);
+                    resolve();
+                }
+            };
+            this.map.on('data', onData);
+
+            this.map.setProjection({
+                type: renderGlobe ? 'globe' : 'mercator'
+            });
+
+            setTimeout(() => {
+                this.map.off('data', onData);
+                resolve();
+            }, 1500);
         });
     }
-
     _switchSatelliteLayer(enable) {
         if (this.map.getLayer('satellite-layer')) {
             this.map.setPaintProperty(
@@ -854,6 +844,7 @@ class MapRenderer {
             })
 
         } else {
+            this.terrainLayer = null;
             this.map.setLayoutProperty('hillshading', 'visibility', 'none');
             this.map.setTerrain(null);
         }
