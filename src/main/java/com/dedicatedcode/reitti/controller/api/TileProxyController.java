@@ -73,8 +73,7 @@ public class TileProxyController {
         }
 
         try {
-            // ArcGIS uses z/y/x order, others use z/x/y
-            String coordPath = config.swapXY() 
+            String coordPath = config.swapXY()
                 ? String.format("%d/%d/%d", z, y, x)
                 : String.format("%d/%d/%d.%s", z, x, y, ext);
 
@@ -101,7 +100,7 @@ public class TileProxyController {
                         .headers(headers)
                         .body(response.body());
             } else {
-                log.warn("Failed to fetch tile {}/{}/{} from {}: HTTP {}", x, y, z, source, response.statusCode());
+                log.debug("Failed to fetch tile {}/{}/{} from {}: HTTP {}", x, y, z, source, response.statusCode());
                 return ResponseEntity.notFound().build();
             }
 
