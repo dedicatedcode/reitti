@@ -198,6 +198,7 @@
     const mapControls = new MapControls('map-controls-section');
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
+    mapRenderer.updateViewState(createViewState( [] ) );
     mapControls.on('selectionChanged', (state) => {
         mapRenderer.updateViewState(createViewState([]));
     });

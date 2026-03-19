@@ -3,6 +3,7 @@
 @import "statistics.css";
 @import "map-controls.css";
 @import "checkbox.css";
+@import "map.css";
 
 /* fraunces-100 - latin_latin-ext_vietnamese */
 @font-face {
@@ -198,22 +199,6 @@ header {
 }
 
 /* Map */
-
-#new-map,
-#map {
-    background-image: url('../img/stardust.png'),
-    radial-gradient(circle at center, #0a2647 0%, #010409 100%);
-    background-color: #010409;
-    background-size: cover;
-    background-attachment: fixed; /* Keeps stars still while panning the globe */
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
 
 .loading-overlay {
     opacity: 0;
