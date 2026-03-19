@@ -195,7 +195,7 @@ public class RedisQueueService {
         // Update metadata
         updateQueueMetadata(queueName, 1);
 
-        log.debug("Enqueued message {} to queue {}", message.getId(), queueName);
+        log.trace("Enqueued message {} to queue {}", message.getId(), queueName);
     }
 
     public <T> void registerHandler(String queueName,
@@ -266,7 +266,7 @@ public class RedisQueueService {
 
             updateProcessingSuccess(message.getQueueName());
 
-            log.debug("Successfully processed message {}", message.getId());
+            log.trace("Successfully processed message {}", message.getId());
 
         } catch (Exception e) {
             updateFailureStats(message.getQueueName());

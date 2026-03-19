@@ -71,7 +71,7 @@ public class QueueStatsService {
             updatingLocationDataQueue(currentMessageCount);
         } else {
             currentMessageCount = getMessageCount(name);
-            updateProcessingHistoryFromRabbitMQ(name, currentMessageCount);
+            updateProcessingHistory(name, currentMessageCount);
         }
 
         long avgProcessingTime = calculateAverageProcessingTime(name);
@@ -83,7 +83,7 @@ public class QueueStatsService {
         return new QueueStats(name, displayName, description, currentMessageCount, formatProcessingTime(estimatedTime), calculateProgress(name, currentMessageCount));
     }
 
-    private void updateProcessingHistoryFromRabbitMQ(String queueName, int currentMessageCount) {
+    private void updateProcessingHistory(String queueName, int currentMessageCount) {
         Integer previousCount = previousMessageCounts.get(queueName);
         
         if (previousCount != null && currentMessageCount < previousCount) {
