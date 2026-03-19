@@ -117,13 +117,13 @@ class MapRenderer {
         };
         this.bounds = [];
 
-        this.map.once('style.load', () => {
+        this.map.once('style.load', async () => {
             this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             this._switchTerrainLayer(this.viewState.renderTerrain);
             this._switchSatelliteLayer(this.viewState.renderSatelliteView);
-            this._switchProjection(this.viewState.renderGlobe);
+            await this._switchProjection(this.viewState.renderGlobe);
             this._syncPitchBearingState(false);
-        });
+        })
 
         this._setup();
     }
@@ -167,6 +167,10 @@ class MapRenderer {
             this._awaitStyleLoaded(() => {
                 this._switchSatelliteLayer(this.viewState.renderSatelliteView);
             });
+            if (this.viewState.renderTerrain) {
+                this._syncPitchBearingState();
+                return;
+            }
         }
 
         this._syncPitchBearingState();
@@ -769,47 +773,97 @@ class MapRenderer {
         });
     }
     _switchSatelliteLayer(enable) {
-        if (this.map.getLayer('satellite-layer')) {
-            this.map.setPaintProperty(
-                'satellite-layer',
-                'raster-opacity',
-                enable ? 1 : 0
-            );
+        // On initial load (terrain not yet active), just use paint properties
+        // setStyle is only needed when terrain is active and has cached tiles
+        if (!this.map.getTerrain()) {
+            this._applySatellitePaintProperties(enable);
+            return;
         }
-        //hide all layers which are not desired
+
+        // Terrain is active — must swap style to invalidate terrain tile cache
+        const style = this.map.getStyle();
+        this._mutateSatelliteStyle(style, enable);
+
+        this.map.setStyle(style);
+
+        this.map.once('style.load', () => {
+            if (this.viewState.renderTerrain) {
+                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+                this.map.setTerrain({
+                    source: 'terrain-source',
+                    exaggeration: 1
+                });
+            }
+            this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+
+            this.gpsDataManagers.forEach(manager => {
+                this._updateLayers(manager);
+            });
+            if (this.showAvatars) {
+                this.updateAvatarPositions();
+            }
+            this.viewConfig.mapDataProviders.forEach(provider => {
+                provider.render(this.map);
+            });
+        });
+    }
+
+    _applySatellitePaintProperties(enable) {
+        if (this.map.getLayer('satellite-layer')) {
+            this.map.setPaintProperty('satellite-layer', 'raster-opacity', enable ? 1 : 0);
+        }
+
         const style = this.map.getStyle();
         if (!style || !style.layers) return;
 
-        // Types of layers that usually look like "ground" or "cartoons"
         const targetTypes = ['fill', 'background', 'fill-extrusion', 'line'];
-
-        // Layers we NEVER want to hide (like the satellite itself or transparent overlays)
         const protectedLayers = ['satellite-layer', 'sky', 'building-3d'];
 
         style.layers.forEach(layer => {
             if (targetTypes.includes(layer.type) && !protectedLayers.includes(layer.id)) {
-
-                // Determine the correct property name based on layer type
                 let opacityProp = '';
                 if (layer.type === 'line') opacityProp = 'line-opacity';
                 if (layer.type === 'fill') opacityProp = 'fill-opacity';
                 if (layer.type === 'fill-extrusion') opacityProp = 'fill-extrusion-opacity';
                 if (layer.type === 'background') opacityProp = 'background-opacity';
 
-                // Apply the Toggle
-                // If showing satellite -> Opacity 0
-                // If hiding satellite -> Opacity null (Resets to style.json default)
-                this.map.setPaintProperty(
-                    layer.id,
-                    opacityProp,
-                    enable ? 0 : null
-                );
+                this.map.setPaintProperty(layer.id, opacityProp, enable ? 0 : null);
             }
         });
-        this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null)
+        this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null);
     }
 
-    _extractTerrainUrl() {
+    _mutateSatelliteStyle(style, enable) {
+        style.layers.forEach(layer => {
+            if (layer.id === 'satellite-layer') {
+                layer.paint = layer.paint || {};
+                layer.paint['raster-opacity'] = enable ? 1 : 0;
+                return;
+            }
+            if (layer.id === 'building-3d') {
+                layer.paint = layer.paint || {};
+                layer.paint['fill-extrusion-opacity'] = enable ? 0.6 : 1;
+                return;
+            }
+            if (['satellite-layer', 'sky', 'building-3d'].includes(layer.id)) return;
+
+            const type = layer.type;
+            if (['fill', 'background', 'fill-extrusion', 'line'].includes(type)) {
+                layer.paint = layer.paint || {};
+                const prop = {
+                    'fill': 'fill-opacity',
+                    'background': 'background-opacity',
+                    'fill-extrusion': 'fill-extrusion-opacity',
+                    'line': 'line-opacity'
+                }[type];
+                if (enable) {
+                    layer.paint[prop] = 0;
+                } else {
+                    delete layer.paint[prop];
+                }
+            }
+        });
+    }    _extractTerrainUrl() {
         return this.map.getSource('terrain-source').tiles[0];
     }
 
@@ -961,7 +1015,7 @@ class MapRenderer {
                 if (existingMarker) {
                     // Move existing marker to new position
                     existingMarker.setLngLat([latestLocation.longitude, latestLocation.latitude]);
-                    
+
                     // Update popup content with new timestamp
                     this.updateMarkerPopup(existingMarker, latestLocation.latitude, latestLocation.longitude, {
                         avatarUrl: userConfig.avatarUrl,
