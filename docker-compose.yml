@@ -18,7 +18,6 @@ services:
       POSTGIS_PASSWORD: reitti
       POSTGIS_DB: reittidb
       POSTGIS_HOST: postgis
-      BASE_PATH: /reitti
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
