@@ -25,7 +25,6 @@ public class PaikkaResultHandler implements ResultHandler{
         List<JsonNode> resultList = new ArrayList<>();
         resultsNode.forEach(resultList::add);
 
-        //here i want to prioritize results with a display_name or an element under names.default, then we order them by priority and distance AI!
         JsonNode best = resultList.stream()
                 .min(Comparator.comparing((JsonNode n) -> 
                         !(n.path("display_name").asText().isEmpty() && 
