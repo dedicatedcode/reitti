@@ -1,6 +1,7 @@
 class MapRenderer {
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         this.userSettings = userSettings;
+        this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
         const defaultViewConfig = {
             fitConfig: {
@@ -31,7 +32,14 @@ class MapRenderer {
         };
         this.gpsDataManagers = []
 
-        this.viewState = initialViewState
+        this.viewState = {
+            is3d: false,
+            renderGlobe: false,
+            renderSatelliteView: false,
+            renderTerrain: true,
+            renderBuildings: true,
+            showPhotos: true,
+        }
         this._pitchBearingAllowed = true;
 
         const mapOptions = {
@@ -43,10 +51,10 @@ class MapRenderer {
             maxPitch: 85,
             minZoom: 2
         };
-        if (this.viewState.fixed) {
+        if (initialViewState.fixed) {
             mapOptions.interactive = false;
         }
-        if (this.viewState.fixed || this.viewState.hideAttribution) {
+        if (initialViewState.fixed || initialViewState.hideAttribution) {
             mapOptions.attributionControl = false;
         }
         this.map = new maplibregl.Map(mapOptions);
@@ -117,75 +125,74 @@ class MapRenderer {
         };
         this.bounds = [];
 
-        this.map.once('style.load', async () => {
-            this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
-            this._switchTerrainLayer(this.viewState.renderTerrain);
-            this._switchSatelliteLayer(this.viewState.renderSatelliteView);
-            await this._switchProjection(this.viewState.renderGlobe);
-            this._syncPitchBearingState(false);
-        })
-
+        this.map.once('load',  async () => {
+            console.log('Initial style loaded!'); // For debugging
+            await this.updateViewState(initialViewState);
+        });
         this._setup();
     }
 
-    async updateViewState(viewState) {
-        const oldViewState = { ...this.viewState };
-        this.viewState = viewState;
 
-        const toggleGlobeMode = oldViewState.renderGlobe !== viewState.renderGlobe;
-
-        if (toggleGlobeMode) {
-            const terrainWasOn = oldViewState.renderTerrain;
-
-            if (terrainWasOn) {
-                this._switchTerrainLayer(false);
-                await new Promise(resolve => this.map.once('idle', resolve));
-            }
-
-            await this._switchProjection(this.viewState.renderGlobe);
-
-            if (terrainWasOn) {
-                this._switchTerrainLayer(true);
-            }
-        }
-
-
-        const toggleTerrain = oldViewState.renderTerrain !== this.viewState.renderTerrain;
-        if (toggleTerrain && !toggleGlobeMode) {
-            this._switchTerrainLayer(this.viewState.renderTerrain);
-        }
-
-        const toggleBuildings = (oldViewState.renderBuildings !== this.viewState.renderBuildings) || (oldViewState.is3d !== this.viewState.is3d);
-        if (toggleBuildings) {
-            this._awaitStyleLoaded(() => {
-                this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
-            });
-        }
-
-        const toggleSatellite = oldViewState.renderSatelliteView !== this.viewState.renderSatelliteView;
-        if (toggleSatellite) {
-            this._awaitStyleLoaded(() => {
-                this._switchSatelliteLayer(this.viewState.renderSatelliteView);
-            });
-            if (this.viewState.renderTerrain) {
-                this._syncPitchBearingState();
-                return;
-            }
-        }
-
-        this._syncPitchBearingState();
-
-        this.gpsDataManagers.forEach(manager => {
-            this._updateLayers(manager);
-        });
-        if (this.showAvatars) {
-            this.updateAvatarPositions();
-        }
-        this.viewConfig.mapDataProviders.forEach(provider => {
-            provider.render(this.map);
-        });
+    async updateViewState(next) {
+        this.transitionQueue = this.transitionQueue.then(() => this._updateViewStateInternal(next));
+        return this.transitionQueue;
     }
 
+    async _updateViewStateInternal(next) {
+        const prev = { ...this.viewState };
+        this.viewState = next;
+
+        const projectionChanged = prev.renderGlobe !== next.renderGlobe;
+        const satelliteChanged  = prev.renderSatelliteView !== next.renderSatelliteView;
+        const terrainChanged    = prev.renderTerrain !== next.renderTerrain;
+        const buildingsChanged  = (prev.renderBuildings !== next.renderBuildings) || (prev.is3d !== next.is3d);
+
+        // 1) If projection or satellite changes, temporarily turn off terrain to avoid render bugs.
+        if (projectionChanged || satelliteChanged) {
+            const terrainWasOn = !!this.map.getTerrain();
+
+            if (terrainWasOn) {
+                await this._switchTerrainLayer(false);
+            }
+
+            if (projectionChanged) {
+                await this._switchProjection(next.renderGlobe);
+            }
+
+            if (satelliteChanged) {
+                await this._switchSatelliteLayer(next.renderSatelliteView); // paint-only
+            }
+
+            // Re-enable terrain if final desired state is on
+            if (next.renderTerrain) {
+                await this._switchTerrainLayer(true);
+            }
+
+            // Buildings can be applied after style/projection/satellite are stable
+            if (buildingsChanged) {
+                this._switchMapBuildingLayer(next.renderBuildings && next.is3d);
+            }
+
+            // Sync pitch/bearing after geometry changes
+            this._syncPitchBearingState();
+            this._rerenderOverlays();
+            return;
+        }
+
+        // 2) Else, toggle terrain alone if changed
+        if (terrainChanged) {
+            await this._switchTerrainLayer(next.renderTerrain);
+        }
+
+        // 3) Buildings if changed
+        if (buildingsChanged) {
+            this._switchMapBuildingLayer(next.renderBuildings && next.is3d);
+        }
+
+        // 4) Sync input constraints and refresh overlays
+        this._syncPitchBearingState();
+        this._rerenderOverlays();
+    }
     setGpsDataManagers(managers) {
         this.gpsDataManagers = managers;
         this.bounds = [];
@@ -648,6 +655,34 @@ class MapRenderer {
         ];
     }
 
+    _waitForOnce(eventName, predicate) {
+        return new Promise(resolve => {
+            const handler = (e) => {
+                if (!predicate || predicate(e)) {
+                    this.map.off(eventName, handler);
+                    resolve();
+                }
+            };
+            this.map.on(eventName, handler);
+        });
+    }
+
+    _waitForStyleLoad() {
+        if (this.map.isStyleLoaded()) return Promise.resolve();
+        return this._waitForOnce('style.load');
+    }
+
+    _waitForIdle() {
+        return this._waitForOnce('idle');
+    }
+
+    _rerenderOverlays() {
+        this.gpsDataManagers.forEach(manager => this._updateLayers(manager));
+        if (this.showAvatars) this.updateAvatarPositions();
+        this.viewConfig.mapDataProviders.forEach(provider => provider.render(this.map));
+    }
+
+
     _setup = () => {
         this.map.on('move', () => {
             if (this.gpsDataManagers) {
@@ -661,7 +696,6 @@ class MapRenderer {
             this._syncPitchBearingState();
         });
 
-        // ── ADDED: hard-enforce while constrained (safety net) ──
         this.map.on('zoom', () => {
             if (!this._pitchBearingAllowed) {
                 if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
@@ -752,8 +786,8 @@ class MapRenderer {
         });
     }
 
-    _switchProjection(renderGlobe) {
-        return new Promise(resolve => {
+    async _switchProjection(renderGlobe) {
+        await new Promise(resolve => {
             const onData = (e) => {
                 if (e.dataType === 'style') {
                     this.map.off('data', onData);
@@ -761,60 +795,29 @@ class MapRenderer {
                 }
             };
             this.map.on('data', onData);
-
-            this.map.setProjection({
-                type: renderGlobe ? 'globe' : 'mercator'
-            });
-
+            this.map.setProjection({ type: renderGlobe ? 'globe' : 'mercator' });
             setTimeout(() => {
                 this.map.off('data', onData);
                 resolve();
             }, 1500);
         });
+        await this._waitForIdle();
     }
-    _switchSatelliteLayer(enable) {
-        // On initial load (terrain not yet active), just use paint properties
-        // setStyle is only needed when terrain is active and has cached tiles
-        if (!this.map.getTerrain()) {
-            this._applySatellitePaintProperties(enable);
-            return;
-        }
 
-        // Terrain is active — must swap style to invalidate terrain tile cache
-        const style = this.map.getStyle();
-        this._mutateSatelliteStyle(style, enable);
-
-        this.map.setStyle(style);
-
-        this.map.once('style.load', () => {
-            if (this.viewState.renderTerrain) {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
-                this.map.setTerrain({
-                    source: 'terrain-source',
-                    exaggeration: 1
-                });
-            }
-            this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
-
-            this.gpsDataManagers.forEach(manager => {
-                this._updateLayers(manager);
-            });
-            if (this.showAvatars) {
-                this.updateAvatarPositions();
-            }
-            this.viewConfig.mapDataProviders.forEach(provider => {
-                provider.render(this.map);
-            });
-        });
+    async _switchSatelliteLayer(enable) {
+        this._applySatellitePaintProperties(enable);
+        await this._waitForIdle();
     }
 
     _applySatellitePaintProperties(enable) {
-        if (this.map.getLayer('satellite-layer')) {
+        if (!this.map || !this.map.getStyle) return;
+
+        if (this.map.getLayer && this.map.getLayer('satellite-layer')) {
             this.map.setPaintProperty('satellite-layer', 'raster-opacity', enable ? 1 : 0);
         }
 
         const style = this.map.getStyle();
-        if (!style || !style.layers) return;
+        if (!style || !Array.isArray(style.layers)) return;
 
         const targetTypes = ['fill', 'background', 'fill-extrusion', 'line'];
         const protectedLayers = ['satellite-layer', 'sky', 'building-3d'];
@@ -827,83 +830,75 @@ class MapRenderer {
                 if (layer.type === 'fill-extrusion') opacityProp = 'fill-extrusion-opacity';
                 if (layer.type === 'background') opacityProp = 'background-opacity';
 
-                this.map.setPaintProperty(layer.id, opacityProp, enable ? 0 : null);
-            }
-        });
-        this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null);
-    }
-
-    _mutateSatelliteStyle(style, enable) {
-        style.layers.forEach(layer => {
-            if (layer.id === 'satellite-layer') {
-                layer.paint = layer.paint || {};
-                layer.paint['raster-opacity'] = enable ? 1 : 0;
-                return;
-            }
-            if (layer.id === 'building-3d') {
-                layer.paint = layer.paint || {};
-                layer.paint['fill-extrusion-opacity'] = enable ? 0.6 : 1;
-                return;
-            }
-            if (['satellite-layer', 'sky', 'building-3d'].includes(layer.id)) return;
-
-            const type = layer.type;
-            if (['fill', 'background', 'fill-extrusion', 'line'].includes(type)) {
-                layer.paint = layer.paint || {};
-                const prop = {
-                    'fill': 'fill-opacity',
-                    'background': 'background-opacity',
-                    'fill-extrusion': 'fill-extrusion-opacity',
-                    'line': 'line-opacity'
-                }[type];
-                if (enable) {
-                    layer.paint[prop] = 0;
-                } else {
-                    delete layer.paint[prop];
+                try {
+                    this.map.setPaintProperty(layer.id, opacityProp, enable ? 0 : null);
+                } catch (_) {
+                    // Layer might not be present yet; ignore
                 }
             }
         });
-    }    _extractTerrainUrl() {
+
+        // Buildings: keep a faint extrusion over satellite if desired
+        if (this.map.getLayer && this.map.getLayer('building-3d')) {
+            try {
+                this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null);
+            } catch (_) {}
+        }
+    }
+    _extractTerrainUrl() {
         return this.map.getSource('terrain-source').tiles[0];
     }
 
-    _switchTerrainLayer(enable) {
-        if (enable) {
-            this._awaitStyleLoaded(() => {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
-                this.terrainLayer = new deck.TerrainLayer({
-                    id: 'terrain-loader',
-                    elevationData: this._extractTerrainUrl(),
-                    elevationDecoder: {
-                        rScaler: 256,
-                        gScaler: 1,
-                        bScaler: 1 / 256,
-                        offset: -32768
-                    },
-                    minZoom: 0,
-                    maxZoom: 14,
-                    elevationScale: 1.5,
-                    bounds: [-180, -90, 180, 90], // Global bounds help with alignment
-                    operation: 'terrain',
-                    loadOptions: {
-                        fetch: {
-                            priority: 'high'
-                        }
-                    }
-                });
-                this.map.setTerrain({
-                    source: 'terrain-source',
-                    exaggeration: 1
-                });
-            })
+    async _switchTerrainLayer(enable) {
+        await this._waitForStyleLoad();
 
+        const hasHillshading = !!this.map.getLayer && this.map.getLayer('hillshading');
+
+        if (enable) {
+            // Turn on hillshading if present
+            if (hasHillshading) {
+                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+            }
+
+            // Prepare deck TerrainLayer (used by deck.gl layers)
+            this.terrainLayer = new deck.TerrainLayer({
+                id: 'terrain-loader',
+                elevationData: this._extractTerrainUrl(),
+                elevationDecoder: {
+                    rScaler: 256,
+                    gScaler: 1,
+                    bScaler: 1 / 256,
+                    offset: -32768
+                },
+                minZoom: 0,
+                maxZoom: 14,
+                elevationScale: 1.5,
+                bounds: [-180, -90, 180, 90],
+                operation: 'terrain',
+                loadOptions: { fetch: { priority: 'high' } }
+            });
+
+            // Enable MapLibre terrain
+            this.map.setTerrain({
+                source: 'terrain-source',
+                exaggeration: 1
+            });
+
+            await this._waitForIdle();
         } else {
+            // Disable deck/gl terrain layer handle
             this.terrainLayer = null;
-            this.map.setLayoutProperty('hillshading', 'visibility', 'none');
+
+            // Hide hillshading if present
+            if (hasHillshading) {
+                this.map.setLayoutProperty('hillshading', 'visibility', 'none');
+            }
+
+            // Disable MapLibre terrain
             this.map.setTerrain(null);
+            await this._waitForIdle();
         }
     }
-
     _switchMapBuildingLayer(is3d) {
         if (is3d) {
             this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
