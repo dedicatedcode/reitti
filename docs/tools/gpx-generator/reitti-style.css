@@ -187,10 +187,18 @@ select {
     font-size: 14px;
 }
 
+.drawer-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-highlight);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-highlight-transparent);
+}
+
 /* Ensure form controls have consistent styling */
 input[type="datetime-local"],
-input[type="number"],
-input[type="range"] {
+input[type="number"] {
     width: 100%;
     padding: 8px;
     border: 1px solid var(--color-background-dark-light);
@@ -199,11 +207,6 @@ input[type="range"] {
     background-color: var(--color-background-dark-light);
     color: var(--color-text-white);
     font-family: var(--sans-serif-font);
-}
-
-input[type="range"] {
-    padding: 0;
-    height: 6px;
 }
 
 /* Status and alerts */
