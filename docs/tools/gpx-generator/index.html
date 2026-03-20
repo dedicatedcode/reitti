@@ -25,7 +25,7 @@
         
         .main-content {
             display: flex;
-            height: calc(100vh - 120px);
+            height: calc(100vh - 160px);
             min-height: 500px;
         }
         
@@ -511,7 +511,7 @@
 </head>
 <body class="bg-dark">
     <div class="container">
-        <div class="card" style="margin: 0; border: none; border-radius: 0; min-height: 100vh;">
+        <div>
             <div class="header">
                 <div class="header-content">
                     <h1>GPX Test Data Generator</h1>
@@ -624,9 +624,7 @@
                     </div>
                 </div>
             </div>
-            
             <input type="file" id="gpxFileInput" accept=".gpx,.json" multiple style="display: none;" onchange="handleGPXFiles(event)">
-        
         <div class="main-content">
             <div class="map-container">
                 <div id="map"></div>

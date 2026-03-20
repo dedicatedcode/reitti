@@ -7,7 +7,7 @@
     font-family: 'Fraunces';
     font-style: normal;
     font-weight: 100;
-    src: url('https://reitti-project.github.io/static/fonts/fraunces-v37-latin_latin-ext_vietnamese-100.woff2') format('woff2');
+    src: url('./fonts/fraunces-v37-latin_latin-ext_vietnamese-100.woff2') format('woff2');
 }
 
 @font-face {
@@ -15,7 +15,7 @@
     font-family: 'Fraunces';
     font-style: normal;
     font-weight: 400;
-    src: url('https://reitti-project.github.io/static/fonts/fraunces-v37-latin_latin-ext_vietnamese-regular.woff2') format('woff2');
+    src: url('./fonts/fraunces-v37-latin_latin-ext_vietnamese-regular.woff2') format('woff2');
 }
 
 @font-face {
@@ -23,7 +23,7 @@
     font-family: 'Fraunces';
     font-style: normal;
     font-weight: 900;
-    src: url('https://reitti-project.github.io/static/fonts/fraunces-v37-latin_latin-ext_vietnamese-900.woff2') format('woff2');
+    src: url('./fonts/fraunces-v37-latin_latin-ext_vietnamese-900.woff2') format('woff2');
 }
 
 /* CSS Variables */
@@ -129,6 +129,8 @@ select {
 
 /* Header and navigation */
 .header {
+    display: grid;
+    grid-template: 1fr / 1fr 1fr;
     background-color: var(--color-background-dark);
     color: var(--color-text-white);
     padding: 15px 20px;
