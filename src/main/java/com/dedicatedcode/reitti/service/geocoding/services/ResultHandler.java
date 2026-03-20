@@ -24,7 +24,7 @@ public interface ResultHandler {
                     city,
                     postcode,
                     district,
-                    countryCode,
+                    countryCode != null ? countryCode.toLowerCase() : null,
                     determinPlaceType(placeTypeValue, subtypeValue))
             );
         }

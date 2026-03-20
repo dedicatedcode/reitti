@@ -1,14 +1,15 @@
 package com.dedicatedcode.reitti.service.geocoding.services;
 
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PaikkaResultHandlerTest {
 
@@ -50,6 +51,18 @@ class PaikkaResultHandlerTest {
         assertEquals("Test Location", result.get().label());
         assertEquals("Main Street", result.get().street());
         assertEquals("Helsinki", result.get().city());
-        assertEquals("FI", result.get().countryCode());
+        assertEquals("fi", result.get().countryCode());
+    }
+    @Test
+    void testHandleShopFirst() throws Exception {
+        InputStream is = getClass().getResourceAsStream("/data/geocoding/paikka/shop_first.json");
+        assertNotNull(is, "Test resource not found");
+
+        Optional<GeocodeResult> result = handler.handle(mapper.readTree(is));
+
+        assertTrue(result.isPresent(), "Expected a result");
+        String label = result.get().label();
+        assertEquals("Sofia Spa", label, "Expected a shop, but got: " + label);
+        assertEquals(SignificantPlace.PlaceType.OTHER, result.get().placeType());
     }
 }

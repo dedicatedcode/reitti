@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,18 +27,18 @@ public class PaikkaResultHandler implements ResultHandler{
         resultsNode.forEach(resultList::add);
 
         JsonNode best = resultList.stream()
-                .min(Comparator.comparing((JsonNode n) -> 
-                        !(n.path("display_name").asText().isEmpty() && 
-                          n.path("names").path("default").asText().isEmpty()), 
-                        Comparator.reverseOrder())
+                .min(Comparator.comparing(this::hasValidName, Comparator.reverseOrder())
+                             .thenComparing(this::hasAddress, Comparator.reverseOrder())  // New: prioritize items with addresses
                              .thenComparingInt((JsonNode n) -> getPaikkaTypePriority(n.path("type").asText()))
                              .thenComparingDouble(n -> n.path("distance_km").asDouble()))
                 .orElse(null);
 
-        if (best == null) return Optional.empty();
+        if (best == null) {
+            return Optional.empty();
+        }
 
-        String label = best.path("display_name").asText();
-        if (label.isBlank()) label = best.path("names").path("default").asText();
+        String label = best.path("display_name").asText("");
+        if (!StringUtils.hasText(label) || label.equals("null")) label = best.path("names").path("default").asText("");
 
         JsonNode addr = best.path("address");
         String street = addr.path("street").asText("");
@@ -63,6 +64,22 @@ public class PaikkaResultHandler implements ResultHandler{
                 best.path("type").asText(),
                 best.path("subtype").asText()
         );
+    }
+
+    private boolean hasValidName(JsonNode node) {
+        String displayName = node.path("display_name").asText("");
+        if (StringUtils.hasText(displayName) && !displayName.equals("null")) {
+            return true;
+        }
+        String defaultName = node.path("names").path("default").asText("");
+        return StringUtils.hasText(defaultName) && !defaultName.equals("null");
+    }
+
+    private boolean hasAddress(JsonNode node) {
+        JsonNode addr = node.path("address");
+        return !addr.isMissingNode() && !addr.isNull() &&
+                (StringUtils.hasText(addr.path("street").asText()) ||
+                        StringUtils.hasText(addr.path("city").asText()));
     }
 
     private int getPaikkaTypePriority(String type) {
