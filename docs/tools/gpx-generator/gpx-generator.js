@@ -1794,3 +1794,67 @@ function shiftTrackTime(amount, unit) {
     const direction = amount > 0 ? 'forward' : 'backward';
     const absAmount = Math.abs(amount);
 }
+
+// Randomization function
+function randomizeCurrentData() {
+    if (tracks.length === 0) {
+        alert('No data to randomize.');
+        return;
+    }
+
+    // Compute min and max longitude across all points
+    let minLng = 180;
+    let maxLng = -180;
+    tracks.forEach(track => {
+        track.points.forEach(point => {
+            if (point.lng < minLng) minLng = point.lng;
+            if (point.lng > maxLng) maxLng = point.lng;
+        });
+    });
+
+    // Compute allowable offset range
+    const offsetMin = -180 - minLng;
+    const offsetMax = 180 - maxLng;
+    let lngOffset = 0;
+    if (offsetMin <= offsetMax) {
+        lngOffset = offsetMin + Math.random() * (offsetMax - offsetMin);
+    } else {
+        // If points already span more than 360 degrees? Not possible, but fallback
+        lngOffset = 0;
+    }
+
+    // Time offset +/- 30 days in milliseconds
+    const timeOffsetMs = (Math.random() * 2 - 1) * 30 * 24 * 60 * 60 * 1000;
+
+    // Apply offsets to all points
+    tracks.forEach(track => {
+        // Shift track start time
+        if (track.startTime) {
+            track.startTime = new Date(track.startTime.getTime() + timeOffsetMs);
+        }
+        track.points.forEach(point => {
+            point.lng += lngOffset;
+            point.originalLng += lngOffset;
+            point.timestamp = new Date(point.timestamp.getTime() + timeOffsetMs);
+        });
+    });
+
+    // Update markers array
+    markers.forEach(marker => {
+        marker.lng += lngOffset;
+    });
+
+    // Update polylines
+    tracks.forEach((track, index) => {
+        updatePolyline(index);
+    });
+
+    // Redraw markers
+    redrawMarkers();
+
+    // Update UI
+    updatePointsList();
+    updateStatus();
+
+    alert('Data randomized! Applied longitude offset: ' + lngOffset.toFixed(4) + '°, time offset: ' + (timeOffsetMs/(1000*60*60*24)).toFixed(1) + ' days.');
+}
