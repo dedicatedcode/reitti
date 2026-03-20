@@ -123,6 +123,34 @@ For development or custom deployments:
 
 Default username and password is `admin`
 
+#### Running the GPX Generator Tool
+
+The project includes a web-based GPX generator tool for creating test data. To run it locally:
+
+1. Navigate to the tool directory:
+   ```bash
+   cd docs/tools/gpx-generator
+   ```
+
+2. Start a simple HTTP server (choose one):
+   ```bash
+   # Python 3
+   python3 -m http.server 8080
+   
+   # Python 2
+   python -m SimpleHTTPServer 8080
+   
+   # Node.js (if you have http-server installed)
+   http-server -p 8080
+   
+   # PHP
+   php -S localhost:8080
+   ```
+
+3. Open http://localhost:8080 in your browser.
+
+For more details, see the [GPX Generator documentation](docs/tools/gpx-generator/README.md).
+
 ### Building Docker Image
 
 ```bash
