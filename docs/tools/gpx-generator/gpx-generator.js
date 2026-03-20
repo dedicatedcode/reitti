@@ -35,7 +35,6 @@ let editModeEnabled = false;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    initializeTheme();
     initializeMap();
     initializeDateTime();
     initializeControls();
@@ -68,39 +67,17 @@ window.disableEditMode = function() {
     updateStatus(); // Update status when edit mode changes
 };
 
-function initializeTheme() {
-    // Check for saved theme preference or default to light mode
-    const savedTheme = localStorage.getItem('gpx-generator-theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeButton();
-}
-
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('gpx-generator-theme', newTheme);
-    updateThemeButton();
-}
-
-function updateThemeButton() {
-    const button = document.getElementById('themeToggle');
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    button.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
-}
-
 function toggleMapLayer() {
     if (currentMapLayer === 'street') {
         map.removeLayer(streetLayer);
         map.addLayer(satelliteLayer);
         currentMapLayer = 'satellite';
-        document.getElementById('layerToggle').textContent = 'Street';
+        document.getElementById('layerToggle').innerHTML = '<i class="lni lni-map-marker-1"></i>';
     } else {
         map.removeLayer(satelliteLayer);
         map.addLayer(streetLayer);
         currentMapLayer = 'street';
-        document.getElementById('layerToggle').textContent = 'Satellite';
+        document.getElementById('layerToggle').innerHTML = '<i class="lni lni-globe-stand"></i>';
     }
 }
 

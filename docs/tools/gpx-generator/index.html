@@ -14,8 +14,8 @@
     <meta name="twitter:title" content="GPX Test Data Generator">
     <meta name="twitter:description" content="Interactive tool to create and edit GPX tracks for testing location-based applications">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/css/reitti-style.css" />
     <link rel="stylesheet" href="/css/lineicons.css" />
+    <link rel="stylesheet" href="/css/reitti-style.css" />
     <style>
         /* Additional styles specific to GPX generator */
         .container {
@@ -521,25 +521,24 @@
                 <div class="header-controls">
                     <div class="header-section">
                         <button id="modeToggle" class="btn mode-toggle" onclick="toggleEditMode()">
-                            <span>📍</span> View Mode
+                            <i class="lni lni-eye"></i> View Mode
                         </button>
                     </div>
                     
                     <div class="header-divider"></div>
                     
                     <div class="header-section">
-                        <button onclick="document.getElementById('gpxFileInput').click()" class="btn">📁 Import</button>
-                        <button onclick="exportAllGPX()" class="btn btn-success">💾 Export</button>
-                        <button onclick="clearAll()" class="btn btn-danger">🗑️ Clear</button>
-                        <button onclick="randomizeAllData()" class="btn">🎲 Randomize</button>
+                        <button onclick="document.getElementById('gpxFileInput').click()" class="btn"><i class="lni lni-globe-1"></i> Import</button>
+                        <button onclick="exportAllGPX()" class="btn btn-success"><i class="lni lni-floppy-disk-1"></i> Export</button>
+                        <button onclick="clearAll()" class="btn btn-danger"><i class="lni lni-trash-3"></i> Clear</button>
+                        <button onclick="randomizeAllData()" class="btn"><i class="lni lni-calculator-2"></i> Randomize</button>
                     </div>
                     
                     <div class="header-divider"></div>
                     
                     <div class="header-section">
-                        <button onclick="openAboutDialog()" class="btn">ℹ️ About</button>
-                        <button id="layerToggle" class="btn" onclick="toggleMapLayer()">🛰️ Satellite</button>
-                        <button id="themeToggle" class="btn" onclick="toggleTheme()">🌙</button>
+                        <button onclick="openAboutDialog()" class="btn"><i class="lni lni-map-pin-5"></i> About</button>
+                        <button id="layerToggle" class="btn" onclick="toggleMapLayer()"><i class="lni lni-globe-stand"></i></button>
                     </div>
                 </div>
             </div>
@@ -602,11 +601,11 @@
                     <div class="drawer-section">
                         <div class="drawer-section-title">Drawing Tools</div>
                         <div class="control-group">
-                            <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()">🎨 Paint Mode: OFF</button>
+                            <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()"><i class="lni lni-gallery"></i> Paint Mode: OFF</button>
                             <div class="paint-mode-info">Click map to start/stop painting</div>
                         </div>
                         <div class="control-group">
-                            <button onclick="newTrack()" class="control-button">➕ New Track</button>
+                            <button onclick="newTrack()" class="control-button"><i class="lni lni-plus"></i> New Track</button>
                         </div>
                     </div>
                     
@@ -716,7 +715,7 @@
             const headerDescription = document.getElementById('headerDescription');
             
             if (isEditMode) {
-                modeToggle.innerHTML = '<span>✏️</span> Edit Mode';
+                modeToggle.innerHTML = '<i class="lni lni-pencil-1"></i> Edit Mode';
                 modeToggle.classList.add('edit-mode');
                 headerDescription.textContent = 'Click on the map to add points. Right-click points to remove them.';
                 // Open the edit drawer automatically
@@ -728,7 +727,7 @@
                     window.enableEditMode();
                 }
             } else {
-                modeToggle.innerHTML = '<span>📍</span> View Mode';
+                modeToggle.innerHTML = '<i class="lni lni-eye"></i> View Mode';
                 modeToggle.classList.remove('edit-mode');
                 headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
                 // Close edit drawer if open
@@ -790,7 +789,7 @@
             const modeToggle = document.getElementById('modeToggle');
             const headerDescription = document.getElementById('headerDescription');
             
-            modeToggle.innerHTML = '<span>📍</span> View Mode';
+            modeToggle.innerHTML = '<i class="lni lni-eye"></i> View Mode';
             modeToggle.classList.remove('edit-mode');
             headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
             
