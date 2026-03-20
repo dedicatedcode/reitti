@@ -1850,5 +1850,22 @@ function randomizeAllData() {
     updatePointsList();
     updateStatus();
 
+    // Pan the map to show the moved points
+    // Calculate bounds of all points
+    const bounds = L.latLngBounds();
+    let hasPoints = false;
+    
+    tracks.forEach(track => {
+        track.points.forEach(point => {
+            bounds.extend([point.lat, point.lng]);
+            hasPoints = true;
+        });
+    });
+    
+    // If there are points, fit the map to their bounds
+    if (hasPoints) {
+        map.fitBounds(bounds.pad(0.1)); // Add 10% padding
+    }
+
     alert('All data randomized! Applied longitude offset: ' + lngOffset.toFixed(4) + '°, time offset: ' + (timeOffsetMs/(1000*60*60*24)).toFixed(1) + ' days.');
 }
