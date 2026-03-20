@@ -730,7 +730,7 @@
                 headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
                 // Close edit drawer if open
                 if (isEditDrawerOpen) {
-                    toggleEditDrawer();
+                    closeEditDrawer();
                 }
                 // Disable point addition (this will be handled in gpx-generator.js)
                 if (window.disableEditMode) {
@@ -746,6 +746,18 @@
             if (isEditDrawerOpen) {
                 drawer.classList.add('open');
             } else {
+                drawer.classList.remove('open');
+                // If we're closing the drawer and edit mode is active, exit edit mode
+                if (isEditMode) {
+                    toggleEditMode();
+                }
+            }
+        }
+        
+        function closeEditDrawer() {
+            if (isEditDrawerOpen) {
+                isEditDrawerOpen = false;
+                const drawer = document.getElementById('editDrawer');
                 drawer.classList.remove('open');
             }
         }
