@@ -530,6 +530,7 @@
                         <button onclick="document.getElementById('gpxFileInput').click()" class="btn">📁 Import</button>
                         <button onclick="exportAllGPX()" class="btn btn-success">💾 Export</button>
                         <button onclick="clearAll()" class="btn btn-danger">🗑️ Clear</button>
+                        <button onclick="randomizeAllData()" class="btn">🎲 Randomize</button>
                     </div>
                     
                     <div class="header-divider"></div>
@@ -623,14 +624,6 @@
                         </div>
                     </div>
                     
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Randomization</div>
-                        <div class="control-group">
-                            <label class="control-label">Randomize current data (timestamp ±1 month, longitude shift)</label>
-                            <button onclick="randomizeCurrentData()" class="control-button">🎲 Randomize</button>
-                            <div class="paint-mode-info">Adds random offset to timestamps and longitude while preserving shape.</div>
-                        </div>
-                    </div>
                 </div>
             </div>
             <input type="file" id="gpxFileInput" accept=".gpx,.json" multiple style="display: none;" onchange="handleGPXFiles(event)">

@@ -1795,53 +1795,47 @@ function shiftTrackTime(amount, unit) {
     const absAmount = Math.abs(amount);
 }
 
-// Randomization function
-function randomizeCurrentData() {
+// Randomization function for all tracks
+function randomizeAllData() {
     if (tracks.length === 0) {
         alert('No data to randomize.');
         return;
     }
 
-    // Compute min and max longitude across all points
-    let minLng = 180;
-    let maxLng = -180;
-    tracks.forEach(track => {
-        track.points.forEach(point => {
-            if (point.lng < minLng) minLng = point.lng;
-            if (point.lng > maxLng) maxLng = point.lng;
-        });
-    });
-
-    // Compute allowable offset range
-    const offsetMin = -180 - minLng;
-    const offsetMax = 180 - maxLng;
-    let lngOffset = 0;
-    if (offsetMin <= offsetMax) {
-        lngOffset = offsetMin + Math.random() * (offsetMax - offsetMin);
-    } else {
-        // If points already span more than 360 degrees? Not possible, but fallback
-        lngOffset = 0;
-    }
-
-    // Time offset +/- 30 days in milliseconds
+    // 1. Time offset: ±1 month (30 days) in milliseconds
     const timeOffsetMs = (Math.random() * 2 - 1) * 30 * 24 * 60 * 60 * 1000;
 
-    // Apply offsets to all points
+    // 2. Longitude offset: arbitrary amount, wrap within [-180, 180]
+    // Choose a random offset between -180 and 180 degrees
+    const lngOffset = (Math.random() * 2 - 1) * 180; // -180 to 180
+
+    // Apply to all tracks and points
     tracks.forEach(track => {
         // Shift track start time
         if (track.startTime) {
             track.startTime = new Date(track.startTime.getTime() + timeOffsetMs);
         }
         track.points.forEach(point => {
-            point.lng += lngOffset;
-            point.originalLng += lngOffset;
+            // Apply time offset
             point.timestamp = new Date(point.timestamp.getTime() + timeOffsetMs);
+            
+            // Apply longitude offset and wrap to valid range
+            let newLng = point.lng + lngOffset;
+            // Wrap to [-180, 180)
+            while (newLng < -180) newLng += 360;
+            while (newLng >= 180) newLng -= 360;
+            point.lng = newLng;
+            // Also update originalLng for consistency
+            point.originalLng = newLng;
         });
     });
 
     // Update markers array
     markers.forEach(marker => {
-        marker.lng += lngOffset;
+        let newLng = marker.lng + lngOffset;
+        while (newLng < -180) newLng += 360;
+        while (newLng >= 180) newLng -= 360;
+        marker.lng = newLng;
     });
 
     // Update polylines
@@ -1856,5 +1850,5 @@ function randomizeCurrentData() {
     updatePointsList();
     updateStatus();
 
-    alert('Data randomized! Applied longitude offset: ' + lngOffset.toFixed(4) + '°, time offset: ' + (timeOffsetMs/(1000*60*60*24)).toFixed(1) + ' days.');
+    alert('All data randomized! Applied longitude offset: ' + lngOffset.toFixed(4) + '°, time offset: ' + (timeOffsetMs/(1000*60*60*24)).toFixed(1) + ' days.');
 }
