@@ -45,11 +45,11 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 8080
 
 # Add healthcheck
-HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=20 \
-  CMD sh -c 'wget --no-verbose --tries=1 --spider "http://localhost:8080${BASE_PATH}/actuator/health" || exit 1'
+HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=5 \
+  CMD sh -c 'curl -f --max-time 2 "http://localhost:8080${BASE_PATH}/actuator/health" || (echo "Health check failed" && exit 1)'
 
 # Install su-exec for proper user switching and wget for healthcheck
-RUN apk add --no-cache su-exec wget attr
+RUN apk add --no-cache su-exec curl attr
 RUN setfattr -n user.pax.flags -v "mr" /opt/java/openjdk/bin/java
 
 # Run as root initially to allow UID/GID changes
