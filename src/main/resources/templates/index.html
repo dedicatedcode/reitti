@@ -153,64 +153,6 @@
 
             }
         },
-        map: {
-           displayControl: {
-                mode: {
-                    "2D": {
-                        text:  /*[[#{map.display-control.mode.2d.text}]]*/ '2D',
-                        title:  /*[[#{map.display-control.mode.2d.title}]]*/ 'Switch to 2D view',
-                    },
-                    "3D": {
-                        text:  /*[[#{map.display-control.mode.3d.text}]]*/ '3D',
-                        title:  /*[[#{map.display-control.mode.3d.title}]]*/ 'Switch to 3D view',
-                    }
-                },
-                northUp: {
-                    text:  /*[[#{map.display-control.north-up.text}]]*/ '3D',
-                    title:  /*[[#{map.display-control.north-up.title}]]*/ 'Switch to 3D view',
-                },
-                terrain: {
-                    enable: {
-                        text: /*[[#{map.display-control.terrain.enable.text}]]*/ 'Enable Terrain',
-                        title: /*[[#{map.display-control.terrain.enable.title}]]*/ 'Enable Terrain',
-                    },
-                    disable: {
-                        text: /*[[#{map.display-control.terrain.disable.text}]]*/ 'Disable Terrain',
-                        title: /*[[#{map.display-control.terrain.disable.title}]]*/ 'Disable Terrain',
-                    }
-                },
-                buildings: {
-                    enable: {
-                        text: /*[[#{map.display-control.buildings.enable.text}]]*/ 'Enable Terrain',
-                        title: /*[[#{map.display-control.buildings.enable.title}]]*/ 'Enable Terrain',
-                    },
-                    disable: {
-                        text: /*[[#{map.display-control.buildings.disable.text}]]*/ 'Disable Terrain',
-                        title: /*[[#{map.display-control.buildings.disable.title}]]*/ 'Disable Terrain',
-                    }
-                },
-                satellite: {
-                    enable: {
-                        text: /*[[#{map.display-control.satellite.enable.text}]]*/ 'Enable Terrain',
-                        title: /*[[#{map.display-control.satellite.enable.title}]]*/ 'Enable Terrain',
-                    },
-                    disable: {
-                        text: /*[[#{map.display-control.satellite.disable.text}]]*/ 'Disable Terrain',
-                        title: /*[[#{map.display-control.satellite.disable.title}]]*/ 'Disable Terrain',
-                    }
-                },
-                globeProjection: {
-                    enable: {
-                        text: /*[[#{map.display-control.globe_projection.enable.text}]]*/ 'Enable Terrain',
-                        title: /*[[#{map.display-control.globe_projection.enable.title}]]*/ 'Enable Terrain',
-                    },
-                    disable: {
-                        text: /*[[#{map.display-control.globe_projection.disable.text}]]*/ 'Disable Terrain',
-                        title: /*[[#{map.display-control.globe_projection.disable.title}]]*/ 'Disable Terrain',
-                    }
-                }
-            }
-        }
     };
 
 
@@ -253,9 +195,10 @@
         }
         handleAutoTodaySelectionTimer(autoUpdateMode)
     })
-    const mapControls = new MapControls('map-controls-section', window.locale);
+    const mapControls = new MapControls('map-controls-section');
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
+    mapRenderer.updateViewState(createViewState( [] ) );
     mapControls.on('selectionChanged', (state) => {
         mapRenderer.updateViewState(createViewState([]));
     });

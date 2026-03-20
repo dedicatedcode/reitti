@@ -1,6 +1,6 @@
 services:
   reitti:
-    image: dedicatedcode/reitti:latest
+    image: dedicatedcode/reitti:next
     ports:
       - 8080:8080
     depends_on:
@@ -18,7 +18,6 @@ services:
       POSTGIS_PASSWORD: reitti
       POSTGIS_DB: reittidb
       POSTGIS_HOST: postgis
-      BASE_PATH: /reitti
   postgis:
     image: postgis/postgis:17-3.5-alpine
     environment:
@@ -42,7 +41,7 @@ services:
       timeout: 5s
       retries: 5
   tile-cache:
-    image: dedicatedcode/reitti-tile-cache:latest
+    image: dedicatedcode/reitti-tile-cache:next
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/osm/0/0/0.png"]

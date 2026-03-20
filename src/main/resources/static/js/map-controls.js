@@ -1,69 +1,43 @@
 class MapControls {
-    constructor(element, locale) {
+    constructor(element) {
         this.eventListeners = [];
-        const defaultLocale = {
-            map: {
-                displayControl: {
-                    mode: {
-                        "2D": {
-                            text: '2D',
-                            title: 'Switch to 2D view',
-                        },
-                        "3D": {
-                            text: '3D',
-                            title: 'Switch to 3D view',
-                        }
-                    },
-                    terrain: {
-                        enable: {
-                            text: 'Enable Terrain',
-                            title: 'Enable Terrain',
-                        },
-                        disable: {
-                            text: 'Disable Terrain',
-                            title: 'Disable Terrain',
-                        }
-                    }
-                }
-            }
-        };
         if (window.localStorage.getItem('is3d') === null) {
             localStorage.setItem('is3d', 'true');
             localStorage.setItem('displayTerrain', 'true');
             localStorage.setItem('displayBuildings', 'true');
         }
-        this.locale = this._deepMerge(defaultLocale, locale || {});
         this.element = document.getElementById(element);
         this.element.innerHTML = `
          <div class="map-controls-section">
-            <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="${this.locale.map.displayControl.title}">
+            <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="${t('map.display-control.title')}">
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
-                <button type="button" class="btn map-control-btn active" id="toggle-3d-btn" title="${this.locale.map.displayControl.mode["3D"].title}">
+                <button type="button" class="btn map-control-btn active" id="toggle-3d-btn" title="${t('map.display-control.mode.3d.enabled.title')}">
                     <i class="lni lni-map-marker-1"></i>
-                    <span>${this.locale.map.displayControl.mode["3D"].text}</span>
+                    <span>${t('map.display-control.mode.3d.enabled.text')}</span>
                 </button>
-                <button type="button" class="btn map-control-btn active" id="toggle-globeprojection-btn" title="${this.locale.map.displayControl.globeProjection.disable.title}">
+                <button type="button" class="btn map-control-btn active" id="toggle-globeprojection-btn" title="${t('map.display-control.globe_projection.enabled.title')}">
                     <i class="lni lni-globe-1"></i>
-                    <span>${this.locale.map.displayControl.globeProjection.disable.text}</span>
+                    <span>${t('map.display-control.globe_projection.enabled.text')}</span>
                 </button>
-                <button type="button" class="btn map-control-btn" id="compass-btn" title="${this.locale.map.displayControl.northUp.title}">
-                    <i class="lni lni-location-arrow-right"></i>
-                    <span>${this.locale.map.displayControl.northUp.text}</span>
-                </button>
-                <button type="button" class="btn map-control-btn active" id="toggle-terrain-btn" title="${this.locale.map.displayControl.terrain.disable.title}">
+                <button type="button" class="btn map-control-btn active" id="toggle-terrain-btn" title="${t('map.display-control.terrain.enabled.title')}">
                     <i class="lni lni-mountains-2"></i>
-                    <span>${this.locale.map.displayControl.terrain.disable.text}</span>
+                    <span>${t('map.display-control.terrain.enabled.text')}</span>
                 </button>
-                <button type="button" class="btn map-control-btn active" id="toggle-buildings-btn" title="${this.locale.map.displayControl.buildings.disable.title}">
+                <button type="button" class="btn map-control-btn active" id="toggle-buildings-btn" title="${t('map.display-control.buildings.enabled.title')}">
                     <i class="lni lni-buildings-1"></i>
-                    <span>${this.locale.map.displayControl.buildings.disable.text}</span>
+                    <span>${t('map.display-control.buildings.enabled.text')}</span>
                 </button>
-                <button type="button" class="btn map-control-btn" id="toggle-satellite-btn" title="${this.locale.map.displayControl.satellite.disable.title}">
+                <button type="button" class="btn map-control-btn" id="toggle-satellite-btn" title="${t('map.display-control.satellite.disabled.title')}">
                     <i class="lni lni-globe-stand"></i>
-                    <span>${this.locale.map.displayControl.satellite.disable.text}</span>
+                    <span>${t('map.display-control.satellite.disabled.text')}</span>
                 </button>
+                <button type="button" class="btn map-control-btn" id="compass-btn" title="${t('map.display-control.north-up.title')}">
+                    <i class="lni lni-location-arrow-right"></i>
+                    <span>${t('map.display-control.north-up.text')}</span>
+                </button>
+                
             </div>
         </div>
 `
@@ -174,80 +148,80 @@ class MapControls {
         const span = this.toggle3dBtn.querySelector('span');
         localStorage.setItem('is3d', 'true')
         this.toggle3dBtn.classList.add('active');
-        span.textContent = this.locale.map.displayControl.mode["2D"].text;
-        this.toggle3dBtn.title = this.locale.map.displayControl.mode["3D"].title;
+        span.textContent = t('map.display-control.mode.3d.enabled.text');
+        this.toggle3dBtn.title = t('map.display-control.mode.3d.enabled.title');
     }
 
     _disable3d() {
         const span = this.toggle3dBtn.querySelector('span');
         localStorage.setItem('is3d', 'false')
         this.toggle3dBtn.classList.remove('active');
-        span.textContent = this.locale.map.displayControl.mode["3D"].text;
-        this.toggle3dBtn.title = this.locale.map.displayControl.mode["2D"].title;
+        span.textContent = t('map.display-control.mode.3d.disabled.text');
+        this.toggle3dBtn.title = t('map.display-control.mode.3d.disabled.title');
     }
 
     _disableTerrain() {
         const span = this.toggleTerrainModeBtn.querySelector('span');
         localStorage.setItem('displayTerrain', 'false')
         this.toggleTerrainModeBtn.classList.remove('active');
-        span.textContent = this.locale.map.displayControl.terrain.enable.text;
-        this.toggleTerrainModeBtn.title = this.locale.map.displayControl.terrain.enable.title;
+        span.textContent = t('map.display-control.terrain.disabled.text');
+        this.toggleTerrainModeBtn.title = t('map.display-control.terrain.disabled.title');
     }
 
     _enableTerrain() {
         const span = this.toggleTerrainModeBtn.querySelector('span');
         localStorage.setItem('displayTerrain', 'true')
         this.toggleTerrainModeBtn.classList.add('active');
-        span.textContent = this.locale.map.displayControl.terrain.disable.text;
-        this.toggleTerrainModeBtn.title = this.locale.map.displayControl.terrain.disable.title;
+        span.textContent = t('map.display-control.terrain.enabled.text');
+        this.toggleTerrainModeBtn.title = t('map.display-control.terrain.enabled.title');
     }
 
     _enableBuildings() {
         const span = this.toggleBuildingsModeBtn.querySelector('span');
         localStorage.setItem('displayBuildings', 'true')
         this.toggleBuildingsModeBtn.classList.add('active');
-        span.textContent = this.locale.map.displayControl.buildings.disable.text;
-        this.toggleBuildingsModeBtn.title = this.locale.map.displayControl.buildings.disable.title;
+        span.textContent = t('map.display-control.buildings.enabled.text');
+        this.toggleBuildingsModeBtn.title = t('map.display-control.buildings.enabled.title');
     }
 
     _disableBuildings() {
         const span = this.toggleBuildingsModeBtn.querySelector('span');
         localStorage.setItem('displayBuildings', 'false')
         this.toggleBuildingsModeBtn.classList.remove('active');
-        span.textContent = this.locale.map.displayControl.buildings.enable.text;
-        this.toggleBuildingsModeBtn.title = this.locale.map.displayControl.buildings.enable.title;
+        span.textContent = t('map.display-control.buildings.disabled.text');
+        this.toggleBuildingsModeBtn.title = t('map.display-control.buildings.disabled.title');
     }
 
     _enableSatellite() {
         const span = this.toggleSatelliteModeBtn.querySelector('span');
         localStorage.setItem('displaySatelliteView', 'true')
         this.toggleSatelliteModeBtn.classList.add('active');
-        span.textContent = this.locale.map.displayControl.satellite.disable.text;
-        this.toggleSatelliteModeBtn.title = this.locale.map.displayControl.satellite.disable.title;
+        span.textContent = t('map.display-control.satellite.enabled.text');
+        this.toggleSatelliteModeBtn.title = t('map.display-control.satellite.enabled.title');
     }
 
     _disableSatellite() {
         const span = this.toggleSatelliteModeBtn.querySelector('span');
         localStorage.setItem('displaySatelliteView', 'false')
         this.toggleSatelliteModeBtn.classList.remove('active');
-        span.textContent = this.locale.map.displayControl.satellite.enable.text;
-        this.toggleSatelliteModeBtn.title = this.locale.map.displayControl.satellite.enable.title;
+        span.textContent = t('map.display-control.satellite.disabled.text');
+        this.toggleSatelliteModeBtn.title = t('map.display-control.satellite.disabled.title');
     }
 
     _enableGlobeProjection() {
         const span = this.toggleGlobeProjectionModeBtn.querySelector('span');
         localStorage.setItem('displayGlobeProjection', 'true')
         this.toggleGlobeProjectionModeBtn.classList.add('active');
-        span.textContent = this.locale.map.displayControl.globeProjection.disable.text;
-        this.toggleGlobeProjectionModeBtn.title = this.locale.map.displayControl.globeProjection.disable.title;
+        span.textContent = t('map.display-control.globe_projection.enabled.text');
+        this.toggleGlobeProjectionModeBtn.title = t('map.display-control.globe_projection.enabled.title');
     }
 
     _disableGlobeProjection() {
         const span = this.toggleGlobeProjectionModeBtn.querySelector('span');
         localStorage.setItem('displayGlobeProjection', 'false')
         this.toggleGlobeProjectionModeBtn.classList.remove('active');
-        span.textContent = this.locale.map.displayControl.globeProjection.enable.text;
-        this.toggleGlobeProjectionModeBtn.title = this.locale.map.displayControl.globeProjection.enable.title;
+        span.textContent = t('map.display-control.globe_projection.disabled.text');
+        this.toggleGlobeProjectionModeBtn.title = t('map.display-control.globe_projection.disabled.title');
     }
 
     _deepMerge(target, source) {
