@@ -331,103 +331,105 @@ class MapRenderer {
         }
     }
 
-    _updateLayers(manager) {
-        const layers = [];
+    _updateLayers() {
 
-        const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
-        const totalTimeSpanSec = this.viewState.aggregated ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
-        const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+        const allLayers = [];
 
         if (this.viewState.renderTerrain) {
-            layers.push(this.terrainLayer)
+            allLayers.push(this.terrainLayer);
         }
-        if (manager.cursor > 0) {
-            // --- BASE VISUALIZATION ---
-            if (this.viewState.viewMode === 'BUNDLED') {
-                layers.push(...this._getBundleLayers(layerKey, manager));
-            } else {
-                const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
-                const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
-                const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
-                layers.push(new deck.PathLayer({
-                    id: `paths-static-fixed-${layerKey}`,
-                    data: manager.getLayerData(buffer, this.viewState.aggregated),
-                    positionFormat: 'XYZ',
-                    getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
-                    getWidth: this.deckParams.trips.staticPathWidth,
-                    widthMinPixels: this.deckParams.trips.staticPathWidth,
-                    visibility: !this.viewState.animating,
-                    capRounded: true,
-                    jointRounded: true,
-                    extensions: extensions,
-                    terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
-                    parameters: {
-                        depthTest: true,
-                        polygonOffsetFill: true
-                    },
-                    updateTriggers: {
-                        data: [manager.buffer?.length, buffer],
-                        getPath: [cursor, buffer, this.viewState.renderTerrain],
-                        extensions: [this.viewState.renderTerrain],
-                        getTimestamps: [this.viewState.aggregated],
-                        visibility: [this.viewState.animating],
-                        getColor: [manager.color],
-                    }
-                }));
 
-                // SHADOW TRIP (Animated)
-                layers.push(new deck.TripsLayer({
-                    id: `trips-shadow-${layerKey}`,
-                    data: manager.getLayerData(buffer, this.viewState.aggregated),
-                    positionFormat: 'XYZ',
-                    getColor: [255, 255, 255],
-                    opacity: this.deckParams.trips.shadowOpacity,
-                    widthMinPixels: this.deckParams.trips.shadowWidth,
-                    trailLength: calculatedTrail * 1.2,
-                    visibility: this.viewState.animating,
-                    currentTime: this.viewState.currentTime,
-                    capRounded: true,
-                    jointRounded: true,
-                    parameters: {depthTest: false},
-                    extensions: extensions,
-                    terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
-                    updateTriggers: {
-                        data: [manager.buffer?.length, buffer],
-                        getPath: [cursor, buffer, this.viewState.renderTerrain],
-                        extensions: [this.viewState.renderTerrain],
-                        getTimestamps: [this.viewState.aggregated],
-                        visibility: [this.viewState.animating],
-                    }
-                }));
+        this.gpsDataManagers.forEach(manager => {
+            const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
+            const totalTimeSpanSec = this.viewState.aggregated ? 24 * 60 * 60 : manager.maxTimestamp - manager.minTimestamp;
+            const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+            if (manager.cursor > 0) {
+                if (this.viewState.viewMode === 'BUNDLED') {
+                    allLayers.push(...this._getBundleLayers(layerKey, manager));
+                } else {
+                    const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
+                    const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
+                    const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
+                    allLayers.push(new deck.PathLayer({
+                        id: `paths-static-fixed-${layerKey}`,
+                        data: manager.getLayerData(buffer, this.viewState.aggregated),
+                        positionFormat: 'XYZ',
+                        getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
+                        getWidth: this.deckParams.trips.staticPathWidth,
+                        widthMinPixels: this.deckParams.trips.staticPathWidth,
+                        visibility: !this.viewState.animating,
+                        capRounded: true,
+                        jointRounded: true,
+                        extensions: extensions,
+                        terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                        parameters: {
+                            depthTest: true,
+                            polygonOffsetFill: true
+                        },
+                        updateTriggers: {
+                            data: [manager.buffer?.length, buffer],
+                            getPath: [cursor, buffer, this.viewState.renderTerrain],
+                            extensions: [this.viewState.renderTerrain],
+                            getTimestamps: [this.viewState.aggregated],
+                            visibility: [this.viewState.animating],
+                            getColor: [manager.color],
+                        }
+                    }));
 
-                // CORE TRIP (Animated)
-                layers.push(new deck.TripsLayer({
-                    id: `trips-core-${layerKey}`,
-                    data: manager.getLayerData(buffer, this.viewState.aggregated),
-                    positionFormat: 'XYZ',
-                    getColor: manager.color,
-                    opacity: this.deckParams.trips.cometOpacity * this.viewState.animating,
-                    widthMinPixels: this.deckParams.trips.cometWidth,
-                    trailLength: calculatedTrail,
-                    currentTime: this.viewState.currentTime,
-                    capRounded: true,
-                    jointRounded: true,
-                    extensions: extensions,
-                    terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
-                    updateTriggers: {
-                        data: [manager.buffer?.length, buffer],
-                        extensions: [this.viewState.renderTerrain],
-                        getPath: [cursor, buffer, this.viewState.renderTerrain],
-                        currentTime: [this.viewState.currentTime],
-                        getTimestamps: [this.viewState.aggregated],
-                    }
-                }));
+                    // SHADOW TRIP (Animated)
+                    allLayers.push(new deck.TripsLayer({
+                        id: `trips-shadow-${layerKey}`,
+                        data: manager.getLayerData(buffer, this.viewState.aggregated),
+                        positionFormat: 'XYZ',
+                        getColor: [255, 255, 255],
+                        opacity: this.deckParams.trips.shadowOpacity,
+                        widthMinPixels: this.deckParams.trips.shadowWidth,
+                        trailLength: calculatedTrail * 1.2,
+                        visibility: this.viewState.animating,
+                        currentTime: this.viewState.currentTime,
+                        capRounded: true,
+                        jointRounded: true,
+                        parameters: {depthTest: false},
+                        extensions: extensions,
+                        terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                        updateTriggers: {
+                            data: [manager.buffer?.length, buffer],
+                            getPath: [cursor, buffer, this.viewState.renderTerrain],
+                            extensions: [this.viewState.renderTerrain],
+                            getTimestamps: [this.viewState.aggregated],
+                            visibility: [this.viewState.animating],
+                        }
+                    }));
+
+                    // CORE TRIP (Animated)
+                    allLayers.push(new deck.TripsLayer({
+                        id: `trips-core-${layerKey}`,
+                        data: manager.getLayerData(buffer, this.viewState.aggregated),
+                        positionFormat: 'XYZ',
+                        getColor: manager.color,
+                        opacity: this.deckParams.trips.cometOpacity * this.viewState.animating,
+                        widthMinPixels: this.deckParams.trips.cometWidth,
+                        trailLength: calculatedTrail,
+                        currentTime: this.viewState.currentTime,
+                        capRounded: true,
+                        jointRounded: true,
+                        extensions: extensions,
+                        terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                        updateTriggers: {
+                            data: [manager.buffer?.length, buffer],
+                            extensions: [this.viewState.renderTerrain],
+                            getPath: [cursor, buffer, this.viewState.renderTerrain],
+                            currentTime: [this.viewState.currentTime],
+                            getTimestamps: [this.viewState.aggregated],
+                        }
+                    }));
+                }
             }
-        }
-        layers.push(...this._getVisitLayers(layerKey, manager));
+            allLayers.push(...this._getVisitLayers(layerKey, manager));
+        })
 
         this.deckOverlay.setProps({
-            layers: layers
+            layers: allLayers
         })
     }
 
@@ -661,18 +663,6 @@ class MapRenderer {
         ];
     }
 
-    _waitForOnce(eventName, predicate) {
-        return new Promise(resolve => {
-            const handler = (e) => {
-                if (!predicate || predicate(e)) {
-                    this.map.off(eventName, handler);
-                    resolve();
-                }
-            };
-            this.map.on(eventName, handler);
-        });
-    }
-
     async _waitForIdle() {
         if (this.map.loaded() && !this.map.isMoving()) {
             return; // Already idle, resolve immediately
@@ -681,18 +671,14 @@ class MapRenderer {
     }
 
     _rerenderOverlays() {
-        this.gpsDataManagers.forEach(manager => this._updateLayers(manager));
+        this._updateLayers();
         if (this.showAvatars) this.updateAvatarPositions();
         this.viewConfig.mapDataProviders.forEach(provider => provider.render(this.map));
     }
 
     _setup = () => {
         this.map.on('move', () => {
-            if (this.gpsDataManagers) {
-                this.gpsDataManagers.forEach(manager => {
-                    this._updateLayers(manager)
-                })
-            }
+            this._updateLayers()
         });
 
         this.map.on('zoomend', () => {
