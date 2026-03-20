@@ -239,7 +239,6 @@ input[type="number"] {
     background-color: var(--color-background-dark-light);
     border-radius: 4px;
     border: 1px solid var(--color-highlight-transparent);
-    max-height: 400px;
     overflow-y: auto;
 }
 
