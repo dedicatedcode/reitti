@@ -746,8 +746,8 @@ class MapRenderer {
         if (object) {
             const visitListHtml = object.originalVisits.map(v => `
             <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
-                <b>${t('js.map.popup.labels.from')}</b> ${formatDateTime(v.startTime)}<br>
-                <b>${t('js.map.popup.labels.to')}</b> ${formatDateTime(v.endTime)}
+                <b>${t('map.popup.labels.from')}</b> ${formatDateTime(v.startTime)}<br>
+                <b>${t('map.popup.labels.to')}</b> ${formatDateTime(v.endTime)}
             </div>
         `).join('');
 
@@ -953,7 +953,7 @@ class MapRenderer {
 
         // Create detailed popup content
         const formatTimestamp = (timestamp) => {
-            if (!timestamp) return t('js.common.unknown') || 'Unknown';
+            if (!timestamp) return t('common.unknown') || 'Unknown';
             const date = new Date(timestamp);
             return date.toLocaleString();
         };
