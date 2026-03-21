@@ -85,8 +85,8 @@ class MapRenderer {
                 minZoom: 12,
                 polygonMinZoom: 16,
                 radius: 1,
-                opacity: 140,
-                polygonOpacity: 140,
+                opacity: 100,
+                polygonOpacity: 100,
                 lineWidth: 1
             },
             bundled: {
@@ -592,7 +592,7 @@ class MapRenderer {
                     }
 
                     const minRadius = isOverview ? this.deckParams.visits.radius : (this.deckParams.visits.radius * 1.5);
-                    const maxRadius = isOverview ? 500 : 600;
+                    const maxRadius = isOverview ? 100 : 150;
 
                     // This treats the duration as the "Area" of the circle
                     // Adjusted so 1 day (86400s) hits a reasonable size
