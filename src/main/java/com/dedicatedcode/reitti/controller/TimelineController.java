@@ -101,7 +101,6 @@ public class TimelineController {
             currentUserEntries = Collections.emptyList();
         }
 
-        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
         String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
@@ -113,7 +112,7 @@ public class TimelineController {
                                               currentUserAvatarUrl,
                                               userSettings.getColor(),
                                               currentUserEntries,
-                                              currentUserRawLocationPointsUrl,
+                                              null,
                                               currentUserProcessedVisitsUrl,
                                               mapMetaDataUrl,
                                               mapStreamDataUrl));

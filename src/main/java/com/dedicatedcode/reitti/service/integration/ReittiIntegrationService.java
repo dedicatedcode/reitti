@@ -21,7 +21,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -69,16 +72,20 @@ public class ReittiIntegrationService {
                         RemoteUser remoteUser = handleRemoteUser(integration);
                         List<TimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
                         integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+
+                        String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
+                        String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
+
                         return new UserTimelineData("remote:" + integration.getId(),
                                                     remoteUser.getDisplayName(),
                                                     this.avatarService.generateInitials(remoteUser.getDisplayName()),
                                                     "/reitti-integration/avatar/" + integration.getId(),
                                                     integration.getColor(),
                                                     timelineEntries,
-                                                    String.format("/reitti-integration/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
-                                                    String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                                     null,
-                                                    null);
+                                                    String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
+                                                    mapMetaDataUrl,
+                                                    mapStreamDataUrl);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -234,39 +241,27 @@ public class ReittiIntegrationService {
                     return null;
                 });
     }
-    public List<LocationPoint> getRawLocationData(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
-        return this.jdbcService
-                .findByIdAndUser(integrationId,user)
-                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
-                .map(integration -> {
 
-                    log.debug("Fetching raw location data for [{}]", integration);
+    public MapMetadata getMetadata(User user, Long integrationId, String start, String end, String timezone) {
+        return this.jdbcService.findByIdAndUser(integrationId, user)
+                .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
                     try {
+                        RemoteUser remoteUser = handleRemoteUser(integration);
                         HttpHeaders headers = new HttpHeaders();
                         headers.set("X-API-TOKEN", integration.getToken());
                         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-                        String rawLocationDataUrl = integration.getUrl().endsWith("/") ?
-                                integration.getUrl() + "api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}" :
-                                integration.getUrl() + "/api/v1/raw-location-points?startDate={startDate}&endDate={endDate}&timezone={timezone}&zoom={zoom}";
-                        ResponseEntity<Map> remoteResponse = restTemplate.exchange(
-                                rawLocationDataUrl,
-                                HttpMethod.GET,
-                                entity,
-                                Map.class,
-                                startDate,
-                                endDate,
-                                timezone,
-                                zoom
-                        );
+                        String remoteUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v2/locations/metadata/" + remoteUser.getRemoteId() + "?start={start}&end={end}&timezone={timezone}" :
+                                integration.getUrl() + "/api/v2/locations/metadata/" + remoteUser.getRemoteId() + "?start={start}&end={end}&timezone={timezone}";
 
-                        if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("segments")) {
+                        ResponseEntity<MapMetadata> response = restTemplate.exchange(
+                                remoteUrl, HttpMethod.GET, entity, MapMetadata.class, start, end, timezone);
+
+                        if (response.getStatusCode().is2xxSuccessful()) {
                             update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-                            return (List<LocationPoint>) remoteResponse.getBody().get("segments");
-                        } else if (remoteResponse.getStatusCode().is4xxClientError()) {
-                            throw new RequestFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
-                        } else {
-                            throw new RequestTemporaryFailedException(rawLocationDataUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
+                            return response.getBody();
                         }
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
@@ -274,12 +269,83 @@ public class ReittiIntegrationService {
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    } catch (Exception e) {
+                        log.error("Failed to fetch metadata for integration [{}]", integrationId, e);
                     }
                     return null;
-                })
-                .filter(Objects::nonNull)
-                .findFirst().orElse(Collections.emptyList());
+                }).orElse(null);
+    }
 
+    public void streamLocations(User user, Long integrationId, String start, String end, String timezone, ResponseBodyEmitter emitter) {
+        this.jdbcService.findByIdAndUser(integrationId, user)
+                .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .ifPresentOrElse(integration -> {
+                    try {
+                        RemoteUser remoteUser = handleRemoteUser(integration);
+
+                        String baseUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v2/locations/stream/" + remoteUser.getRemoteId() :
+                                integration.getUrl() + "/api/v2/locations/stream/" + remoteUser.getRemoteId();
+
+                        URI uri = UriComponentsBuilder.fromUriString(baseUrl)
+                                .queryParam("start", start)
+                                .queryParam("end", end)
+                                .queryParam("timezone", timezone)
+                                .build()
+                                .toUri();
+
+                        HttpRequest request = HttpRequest.newBuilder()
+                                .uri(uri)
+                                .header("X-API-Token", integration.getToken())
+                                .headers("Accept", "application/octet-stream")
+                                .GET()
+                                .build();
+
+                        HttpClient client = HttpClient.newBuilder().build();
+
+                        client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+                                .thenAccept(response -> {
+                                    if (response.statusCode() >= 400) {
+                                        log.error("Remote server returned error code: {}", response.statusCode());
+                                        try { emitter.complete(); } catch (Exception ignored) {}
+                                        return;
+                                    }
+
+                                    try (InputStream is = response.body()) {
+                                        byte[] buffer = new byte[8192];
+                                        int bytesRead;
+                                        while ((bytesRead = is.read(buffer)) != -1) {
+                                            emitter.send(Arrays.copyOf(buffer, bytesRead), MediaType.APPLICATION_OCTET_STREAM);
+                                        }
+                                        emitter.complete();
+                                    } catch (Exception e) {
+                                        log.debug("Stream ended prematurely or client disconnected: {}", e.getMessage());
+                                    }
+                                })
+                                .exceptionally(e -> {
+                                    log.error("Failed to stream locations for integration [{}]", integrationId, e);
+                                    try { emitter.complete(); } catch (Exception ignored) {}
+                                    return null;
+                                });
+
+                        update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        try { emitter.complete(); } catch (Exception ignored) {}
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        try { emitter.complete(); } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        log.error("Failed to stream locations for integration [{}]", integrationId, e);
+                        try { emitter.complete(); } catch (Exception ignored) {}
+                    }
+                }, () -> {
+                    try {
+                        emitter.complete();
+                    } catch (Exception ignored) {}
+                });
     }
 
     private ReittiIntegration update(ReittiIntegration integration) {

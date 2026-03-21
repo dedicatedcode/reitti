@@ -1,0 +1,369 @@
+/* Reitti Style for GPX Generator */
+/* Based on main.css from Reitti application */
+
+/* Import fonts */
+@font-face {
+    font-display: swap;
+    font-family: 'Fraunces';
+    font-style: normal;
+    font-weight: 100;
+    src: url('../fonts/fraunces-v37-latin_latin-ext_vietnamese-100.woff2') format('woff2');
+}
+
+@font-face {
+    font-display: swap;
+    font-family: 'Fraunces';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/fraunces-v37-latin_latin-ext_vietnamese-regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-display: swap;
+    font-family: 'Fraunces';
+    font-style: normal;
+    font-weight: 900;
+    src: url('../fonts/fraunces-v37-latin_latin-ext_vietnamese-900.woff2') format('woff2');
+}
+
+/* CSS Variables */
+:root {
+    --color-highlight: #F5DEB3FF;
+    --color-highlight-transparent: rgba(245, 222, 179, 0.4);
+    --color-background-dark: #3b3b3b;
+    --color-background-dark-light: #5c5c5c;
+    --color-text-white: #e3e3e3;
+    --color-text-gray: #c0c0c0;
+    --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
+    --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+}
+
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.lni {
+    font-size: 18px;
+    vertical-align: bottom;
+}
+
+body {
+    font-family: var(--sans-serif-font);
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* Button styles */
+.btn {
+    background-color: var(--color-background-dark);
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-family: var(--sans-serif-font);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background-color: var(--color-background-dark-light);
+    transform: translateY(-1px);
+    box-shadow: var(--box-shadow);
+}
+
+.btn-success {
+    background-color: #2c4828;
+    border-color: #e5ffeb;
+}
+
+.btn-danger {
+    background-color: #995353;
+    border-color: #ff3434;
+}
+
+.btn:disabled {
+    background: #686868;
+    cursor: not-allowed;
+    color: #b4b4b4;
+    border: 1px solid #9d9d9d;
+}
+
+/* Form controls */
+input[type="text"],
+input[type="password"],
+input[type="url"],
+input[type="number"],
+input[type="datetime-local"],
+select,
+textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--color-background-dark-light);
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
+    font-family: var(--sans-serif-font);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--color-highlight);
+    box-shadow: 0 0 0 2px var(--color-highlight-transparent);
+}
+
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e3e3e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+}
+
+/* Header and navigation */
+.header {
+    display: grid;
+    grid-template: 1fr / 1fr 1fr;
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--color-highlight);
+}
+
+.header h1 {
+    font-family: var(--serif-font);
+    font-weight: 300;
+    color: var(--color-highlight);
+    margin-bottom: 5px;
+}
+
+.header p {
+    color: var(--color-text-gray);
+    font-size: 0.9rem;
+}
+
+/* Container */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Card-like containers */
+.card {
+    background-color: var(--color-background-dark);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-family: var(--serif-font);
+    font-weight: 300;
+    color: var(--color-highlight);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-highlight-transparent);
+}
+
+/* Control groups */
+.control-group {
+    margin-bottom: 15px;
+}
+
+.control-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--color-text-white);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.drawer-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-highlight);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-highlight-transparent);
+}
+
+/* Ensure form controls have consistent styling */
+input[type="datetime-local"],
+input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--color-background-dark-light);
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: var(--color-background-dark-light);
+    color: var(--color-text-white);
+    font-family: var(--sans-serif-font);
+}
+
+/* Status and alerts */
+.alert {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid;
+}
+
+.alert-info {
+    border-color: var(--color-highlight);
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+}
+
+/* Map container */
+.map-container {
+    border: 1px solid var(--color-highlight);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+/* Points list */
+.points-list {
+    background-color: var(--color-background-dark-light);
+    border-radius: 4px;
+    border: 1px solid var(--color-highlight-transparent);
+    overflow-y: auto;
+}
+
+.point-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--color-background-dark);
+    transition: background-color 0.2s ease;
+}
+
+.point-item:hover {
+    background-color: var(--color-background-dark);
+}
+
+.point-item.selected {
+    background-color: var(--color-highlight-transparent);
+    border-left: 3px solid var(--color-highlight);
+}
+
+/* Toggle buttons */
+.toggle-buttons {
+    display: inline-flex;
+}
+
+.toggle-buttons .btn {
+    border-radius: 0;
+}
+
+.toggle-buttons .btn:first-child {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.toggle-buttons .btn:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.toggle-buttons .btn.active {
+    background-color: var(--color-highlight);
+    color: var(--color-background-dark);
+    font-weight: bold;
+}
+
+/* Range input */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--color-background-dark-light);
+    border-radius: 3px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-highlight);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(245, 222, 179, 0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-highlight);
+    cursor: pointer;
+    border: none;
+}
+
+/* Checkbox */
+input[type="checkbox"] {
+    margin-right: 8px;
+    accent-color: var(--color-highlight);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-highlight);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-highlight-transparent);
+}
+
+/* Utility classes */
+.text-highlight {
+    color: var(--color-highlight);
+}
+
+.bg-dark {
+    background-color: var(--color-background-dark);
+}
+
+.bg-dark-light {
+    background-color: var(--color-background-dark-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .header {
+        padding: 10px 15px;
+    }
+    
+    .card {
+        padding: 15px;
+    }
+}

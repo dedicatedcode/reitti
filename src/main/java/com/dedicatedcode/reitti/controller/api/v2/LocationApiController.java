@@ -53,7 +53,7 @@ public class LocationApiController {
         return this.jdbcService.getMetadata(userToFetchDataFrom, startInstant, endInstant);
     }
 
-    @GetMapping(value = "/stream/{userId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/stream/{userId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<ResponseBodyEmitter> stream(
             @AuthenticationPrincipal User user,
             @PathVariable Long userId,
@@ -66,9 +66,12 @@ public class LocationApiController {
         CompletableFuture.runAsync(() -> {
             try {
                 streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom.getId(), parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
-                emitter.complete();
             } catch (Exception e) {
-                emitter.completeWithError(e);
+                if (e.getCause() instanceof java.io.IOException) {
+                    try { emitter.complete(); } catch (Exception ignored) {}
+                } else {
+                    try { emitter.completeWithError(e); } catch (Exception ignored) {}
+                }
             }
         });
 
@@ -77,7 +80,6 @@ public class LocationApiController {
                 .header(HttpHeaders.CONTENT_ENCODING, "identity")
                 .body(emitter);
     }
-
     private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
         if (user.getId().equals(userId)) {
             return user;
