@@ -9,7 +9,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -54,8 +53,6 @@ public class ReittiIntegrationController {
                                                                @RequestParam String end,
                                                                @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
-
-
         CompletableFuture.runAsync(() -> {
             try {
                 reittiIntegrationService.streamLocations(user, integrationId, start, end, timezone, emitter);
