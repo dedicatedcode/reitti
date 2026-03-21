@@ -198,8 +198,9 @@ class MapRenderer {
         this._syncPitchBearingState();
         this._rerenderOverlays();
     }
+
     setGpsDataManagers(managers) {
-        this.gpsDataManagers = managers;
+        this.gpsDataManagers = [...managers].reverse();
         this.bounds = [];
     }
 
