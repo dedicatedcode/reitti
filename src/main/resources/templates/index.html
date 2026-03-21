@@ -93,7 +93,6 @@
         <i class="lni lni-stopwatch"></i>
     </button>
     <span class="time-display" id="time-display"></span>
-    <!-- Today button (hidden by default) -->
     <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
             th:title="#{datepicker.today.title}" title="Go to Today">
         <i class="lni lni-calendar-days"></i>
@@ -116,43 +115,30 @@
 
     // Locale object for JavaScript
     window.locale = {
-        today: /*t('js.datepicker.today')*/ 'Today',
+        today: t('datepicker.today'),
         days: [
-            /*t('js.datepicker.days.sun')*/ 'Sun',
-            /*t('js.datepicker.days.mon')*/ 'Mon',
-            /*t('js.datepicker.days.tue')*/ 'Tue',
-            /*t('js.datepicker.days.wed')*/ 'Wed',
-            /*t('js.datepicker.days.thu')*/ 'Thu',
-            /*t('js.datepicker.days.fri')*/ 'Fri',
-            /*t('js.datepicker.days.sat')*/ 'Sat'
+            t('datepicker.days.sun'),
+            t('datepicker.days.mon'),
+            t('datepicker.days.tue'),
+            t('datepicker.days.wed'),
+            t('datepicker.days.thu'),
+            t('datepicker.days.fri'),
+            t('datepicker.days.sat')
         ],
         months: [
-            /*t('js.datepicker.months.jan')*/ 'Jan',
-            /*t('js.datepicker.months.feb')*/ 'Feb',
-            /*t('js.datepicker.months.mar')*/ 'Mar',
-            /*t('js.datepicker.months.apr')*/ 'Apr',
-            /*t('js.datepicker.months.may')*/ 'May',
-            /*t('js.datepicker.months.jun')*/ 'Jun',
-            /*t('js.datepicker.months.jul')*/ 'Jul',
-            /*t('js.datepicker.months.aug')*/ 'Aug',
-            /*t('js.datepicker.months.sep')*/ 'Sep',
-            /*t('js.datepicker.months.oct')*/ 'Oct',
-            /*t('js.datepicker.months.nov')*/ 'Nov',
-            /*t('js.datepicker.months.dec')*/ 'Dec'
-        ],
-        datepicker: {
-            state : {
-                hide: /*t('js.datepicker.state.hide.title')*/ 'Hide Date Picker',
-                show:  /*t('js.datepicker.state.show.title')*/ 'Show Date Picker'
-            }
-        },
-        timeline: {
-            state : {
-                hide: /*t('js.timeline.state.hide.title')*/ 'Hide Timeline',
-                show:  /*t('js.timeline.state.show.title')*/ 'Show Timeline'
-
-            }
-        },
+            t('datepicker.months.jan'),
+            t('datepicker.months.feb'),
+            t('datepicker.months.mar'),
+            t('datepicker.months.apr'),
+            t('datepicker.months.may'),
+            t('datepicker.months.jun'),
+            t('datepicker.months.jul'),
+            t('datepicker.months.aug'),
+            t('datepicker.months.sep'),
+            t('datepicker.months.oct'),
+            t('datepicker.months.nov'),
+            t('datepicker.months.dec')
+        ]
     };
 
 
@@ -564,7 +550,7 @@
     function createViewState(highlightTimes = []) {
         const aggregateToggle = document.getElementById('aggregate-toggle');
         const viewModeSelect = document.getElementById('view-mode');
-        
+
         return {
             ...mapControls.getState(),
             aggregated: aggregateToggle ? aggregateToggle.checked : false,
@@ -696,19 +682,19 @@
             dateFormat: 'YYYY-MM-DD',
             locale: navigator.language,
             strings: {
-                clickToUnlockDate: /*[[#{datepicker.click-to-unlock-date}]]*/ 'Click to unlock date',
-                clickToLockDate: /*[[#{datepicker.click-to-lock-date}]]*/ 'Click to lock date',
-                clickToClearSelection: /*[[#{datepicker.click-to-clear-selection}]]*/ 'Click to clear selection',
-                clickToCreateRange: /*[[#{datepicker.click-to-create-range}]]*/ 'Click to create range',
-                clickToExpandRangeBackward: /*[[#{datepicker.click-to-expand-range-backward}]]*/ 'Click to expand range backward',
-                clickToExpandRangeForward: /*[[#{datepicker.click-to-expand-range-forward}]]*/ 'Click to expand range forward',
-                clickToAdjustRangeStart: /*[[#{datepicker.click-to-adjust-range-start}]]*/ 'Click to adjust range start',
-                clickToUnlockMonth: /*[[#{datepicker.click-to-unlock-month}]]*/ 'Click to unlock month',
-                clickToLockMonth: /*[[#{datepicker.click-to-lock-month}]]*/ 'Click to lock month',
-                clickToUnlockYear: /*[[#{datepicker.click-to-unlock-year}]]*/ 'Click to unlock year',
-                clickToLockYear: /*[[#{datepicker.click-to-lock-year}]]*/ 'Click to lock year',
-                select: /*t('js.datepicker.select')*/ 'Select',
-                to: /*t('js.datepicker.to')*/ 'to'
+                clickToUnlockDate: t('datepicker.click-to-unlock-date'),
+                clickToLockDate: t('datepicker.click-to-lock-date'),
+                clickToClearSelection: t('datepicker.click-to-clear-selection'),
+                clickToCreateRange: t('datepicker.click-to-create-range'),
+                clickToExpandRangeBackward: t('datepicker.click-to-expand-range-backward'),
+                clickToExpandRangeForward: t('datepicker.click-to-expand-range-forward'),
+                clickToAdjustRangeStart: t('datepicker.click-to-adjust-range-start'),
+                clickToUnlockMonth: t('datepicker.click-to-unlock-month'),
+                clickToLockMonth: t('datepicker.click-to-lock-month'),
+                clickToUnlockYear: t('datepicker.click-to-unlock-year'),
+                clickToLockYear: t('datepicker.click-to-lock-year'),
+                select: t('datepicker.select'),
+                to: t('datepicker.to')
             }
         });
 
@@ -814,7 +800,7 @@
             timelineControl.hide();
 
             toggleBtn.classList.remove('active');
-            toggleBtn.title = window.locale.timeline.state.show;
+            toggleBtn.title = t('timeline.state.show.title');
 
             // Save state to localStorage
             localStorage.setItem('timelineControlsHidden', 'true');
@@ -822,7 +808,7 @@
             timelineControl.show();
             // Show the controls
             toggleBtn.classList.add('active');
-            toggleBtn.title = window.locale.timeline.state.hide;
+            toggleBtn.title = t('timeline.state.hide.title');
 
             // Save state to localStorage
             localStorage.setItem('timelineControlsHidden', 'false');
@@ -839,11 +825,11 @@
 
         if (isHidden) {
             timelineControls.classList.add('hidden');
-            toggleBtn.title = window.locale.timeline.state.show;
+            toggleBtn.title = t('js.timeline.state.show.title');
             toggleBtn.classList.remove('active');
         } else {
             timelineControls.classList.remove('hidden');
-            toggleBtn.title = window.locale.timeline.state.hide;
+            toggleBtn.title = t('timeline.state.hide.title');
             toggleBtn.classList.add('active');
         }
     }
