@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.translations;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,7 @@ public class I18NController {
                 }
             }
             try {
-                return new ObjectMapper().writeValueAsString(messages);
+                return new JsonMapper().writeValueAsString(messages);
             } catch (Exception e) { return "{}"; }
         });
 

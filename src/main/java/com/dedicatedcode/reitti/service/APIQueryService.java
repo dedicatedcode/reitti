@@ -5,14 +5,14 @@ import com.dedicatedcode.reitti.dto.TripResponseV2;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -129,7 +129,7 @@ public class APIQueryService {
         try {
             // We tell Jackson to parse the string into a List of TripDTO
             return objectMapper.readValue(json, new TypeReference<>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Log the error and return empty or throw a custom exception
             logger.error("Failed to parse trips JSON from database", e);
             throw new RuntimeException("Data mapping error", e);

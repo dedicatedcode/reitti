@@ -22,7 +22,7 @@ public class TransportModeOverrideJdbcService {
     }
 
     @Transactional
-    @CacheEvict(value = "transport-mode-overrides", allEntries = true)
+    @CacheEvict(value = "transport-mode-overrides", allEntries = true, beforeInvocation = true)
     public void addTransportModeOverride(User user, TransportMode transportMode, Instant start, Instant end) {
         Instant middleTime = Instant.ofEpochMilli((start.toEpochMilli() + end.toEpochMilli()) / 2);
         
@@ -60,7 +60,7 @@ public class TransportModeOverrideJdbcService {
     }
 
     @Transactional
-    @CacheEvict(value = "transport-mode-overrides", allEntries = true)
+    @CacheEvict(value = "transport-mode-overrides", allEntries = true, beforeInvocation = true)
     public void deleteAllTransportModeOverrides(User user) {
         String deleteSql = "DELETE FROM transport_mode_overrides WHERE user_id = ?";
         jdbcTemplate.update(deleteSql, user.getId());

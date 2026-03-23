@@ -4,13 +4,13 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -47,7 +47,7 @@ public class GeoJsonImporter {
                 return Map.of("success", false, "error", "Invalid GeoJSON: missing 'type' field");
             }
 
-            String type = rootNode.get("type").asText();
+            String type = rootNode.get("type").asString();
             List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
 
             switch (type) {
@@ -110,7 +110,7 @@ public class GeoJsonImporter {
                         "pointsReceived", processedCount.get()
                 );
             }
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             logger.error("Error processing GeoJSON file", e);
             return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
         } finally {
@@ -136,7 +136,7 @@ public class GeoJsonImporter {
      * Converts a GeoJSON geometry (Point) to our LocationPoint format
      */
     private LocationPoint convertGeoJsonGeometry(JsonNode geometry, JsonNode properties) {
-        if (!geometry.has("type") || !"Point".equals(geometry.get("type").asText())) {
+        if (!geometry.has("type") || !"Point".equals(geometry.get("type").asString())) {
             return null; // Only support Point geometries for location data
         }
 
@@ -165,7 +165,7 @@ public class GeoJsonImporter {
             String[] timestampFields = {"timestamp", "time", "datetime", "date", "when"};
             for (String field : timestampFields) {
                 if (properties.has(field)) {
-                    timestamp = properties.get(field).asText();
+                    timestamp = properties.get(field).asString();
                     break;
                 }
             }

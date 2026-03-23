@@ -9,7 +9,8 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -37,7 +38,7 @@ class GoogleIOSTimelineImporterTest {
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
 
         ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
-        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
+        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new JsonMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
         User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user);
 

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class UserJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -25,12 +24,11 @@ public class UserJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return findAll();
     }
 
-    @CacheEvict(value = "users", allEntries = true)
+    @CacheEvict(value = "users", allEntries = true, beforeInvocation = true)
     public void deleteUser(Long userId) {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
         this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", userId);
@@ -42,7 +40,7 @@ public class UserJdbcService {
         }
     }
 
-    @CacheEvict(value = "users", allEntries = true)
+    @CacheEvict(value = "users", allEntries = true, beforeInvocation = true)
     public User createUser(User user) {
         String sql = "INSERT INTO users (username, password, display_name, role, profile_url, external_id, version) VALUES (?, ?, ?, ?, ?, ?, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
@@ -55,7 +53,7 @@ public class UserJdbcService {
         return this.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 
-    @CacheEvict(value = "users", allEntries = true)
+    @CacheEvict(value = "users", allEntries = true, beforeInvocation = true)
     public User updateUser(User userToUpdate) {
         String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, role = ?, profile_url = ?, external_id = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
 
@@ -76,8 +74,6 @@ public class UserJdbcService {
         }
     }
 
-    // Repository-like methods using JdbcTemplate
-    @Transactional(readOnly = true)
     @Cacheable(cacheNames = "users")
     public Optional<User> findById(Long id) {
         String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE id = ?";
@@ -89,7 +85,6 @@ public class UserJdbcService {
         }
     }
     
-    @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByUsername(String username) {
         String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE username = ?";
@@ -100,7 +95,6 @@ public class UserJdbcService {
             return Optional.empty();
         }
     }
-    @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByExternalId(String externalId) {
         String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE external_id = ?";
@@ -112,7 +106,6 @@ public class UserJdbcService {
         }
     }
     
-    @Transactional(readOnly = true)
     public List<User> findAll() {
         String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users ORDER BY username";
         return jdbcTemplate.query(sql, this::mapRowToUser);

@@ -213,7 +213,7 @@ public class SignificantPlaceJdbcService {
         return findById(id).orElseThrow();
     }
 
-    @CacheEvict(cacheNames = "significant-places", key = "#place.id")
+    @CacheEvict(cacheNames = "significant-places", key = "#place.id", beforeInvocation = true)
     public SignificantPlace update(SignificantPlace place) {
         String sql = "UPDATE significant_places SET name = ?, address = ?, city = ?, country_code = ?, type = ?, " +
                 "latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), " +

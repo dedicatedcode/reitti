@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.geocoding.services;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,14 +31,14 @@ public class GeoapifyResultHandler implements ResultHandler{
 
         JsonNode props = best.path("properties");
         return createGeoCodeResult(
-                props.path("formatted").asText(),
-                props.path("street").asText(""),
-                props.path("housenumber").asText(""),
-                props.path("postcode").asText(""),
-                props.path("city").asText(),
-                props.path("district").asText(),
-                props.path("country_code").asText(),
-                props.path("category").asText(), null
+                props.path("formatted").asString(),
+                props.path("street").asString(""),
+                props.path("housenumber").asString(""),
+                props.path("postcode").asString(""),
+                props.path("city").asString(),
+                props.path("district").asString(),
+                props.path("country_code").asString(),
+                props.path("category").asString(), null
         );
 
     }

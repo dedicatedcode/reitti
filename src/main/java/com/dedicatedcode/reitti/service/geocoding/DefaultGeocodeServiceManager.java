@@ -6,9 +6,8 @@ import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.geocoding.services.ResultHandler;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.core.JacksonException;
 
 import java.time.Instant;
 import java.util.*;
@@ -160,7 +160,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
     }
 
-    private Optional<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {
+    private Optional<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JacksonException {
         JsonNode root = objectMapper.readTree(response);
         return this.resultHandlers.stream()
                 .filter(rh -> rh.canHandle(type))

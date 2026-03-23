@@ -75,7 +75,7 @@ public class VisitDetectionParametersJdbcService {
         return results.stream().findFirst();
     }
 
-    @CacheEvict(value = "configurations", key = "#user.id")
+    @CacheEvict(value = "configurations", key = "#user.id", beforeInvocation = true)
     public void saveConfiguration(User user, DetectionParameter detectionParameter) {
         String sql = """
             INSERT INTO visit_detection_parameters (
@@ -102,7 +102,7 @@ public class VisitDetectionParametersJdbcService {
         );
     }
 
-    @CacheEvict(value = "configurations", allEntries = true)
+    @CacheEvict(value = "configurations", allEntries = true, beforeInvocation = true)
     public void updateConfiguration(DetectionParameter detectionParameter) {
         String sql = """
             UPDATE visit_detection_parameters SET

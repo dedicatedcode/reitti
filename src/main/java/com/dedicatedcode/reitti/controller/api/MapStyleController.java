@@ -3,11 +3,10 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
@@ -18,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.node.StringNode;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
@@ -56,11 +56,11 @@ public class MapStyleController {
         }
 
         if (this.tileCacheEnabled) {
-            style = rewriteUrlsForProxy(style, request);
+            style = rewriteUrlsForProxy((ObjectNode) style, request);
         }
 
         if (!this.contextPathHolder.getContextPath().equals("/")) {
-            style = rewriteResourceUrls(style, request);
+            style = rewriteResourceUrls((ObjectNode) style, request);
         }
 
         return ResponseEntity.ok()
@@ -68,15 +68,15 @@ public class MapStyleController {
                 .body(style);
     }
 
-    private JsonNode rewriteResourceUrls(JsonNode style, HttpServletRequest request) {
+    private JsonNode rewriteResourceUrls(ObjectNode style, HttpServletRequest request) {
         ObjectNode mutableStyle = style.deepCopy();
         // Rewrite sources
-        TextNode glyphs = (TextNode) mutableStyle.get("glyphs");
-        mutableStyle.set("glyphs", new TextNode(this.contextPathHolder.getContextPath() + glyphs.asText()));
+        StringNode glyphs = (StringNode) mutableStyle.get("glyphs");
+        mutableStyle.set("glyphs", new StringNode(this.contextPathHolder.getContextPath() + glyphs.asString()));
         return mutableStyle;
     }
 
-    private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request) {
+    private JsonNode rewriteUrlsForProxy(ObjectNode style, HttpServletRequest request) {
         ObjectNode mutableStyle = style.deepCopy();
         String baseUrl = getBaseUrl(request);
         

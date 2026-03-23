@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.service.geocoding.services;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.springframework.util.StringUtils;
 
 import java.util.Optional;

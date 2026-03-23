@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.geocoding.services;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -20,18 +20,18 @@ public class GeocodeJsonResultHandler implements ResultHandler {
         if (feature.isMissingNode()) return Optional.empty();
 
         JsonNode geocoding = feature.path("properties").path("geocoding");
-        String label = geocoding.path("label").asText(geocoding.path("name").asText());
-        String street = geocoding.path("street").asText("");
+        String label = geocoding.path("label").asString(geocoding.path("name").asString());
+        String street = geocoding.path("street").asString("");
 
         return createGeoCodeResult(
                 label,
                 street.trim(),
-                geocoding.path("housenumber").asText("").trim(),
-                geocoding.path("postcode").asText(""),
-                geocoding.path("city").asText(),
-                geocoding.path("district").asText(),
-                geocoding.path("country_code").asText(),
-                geocoding.path("type").asText(),
+                geocoding.path("housenumber").asString("").trim(),
+                geocoding.path("postcode").asString(""),
+                geocoding.path("city").asString(),
+                geocoding.path("district").asString(),
+                geocoding.path("country_code").asString(),
+                geocoding.path("type").asString(),
                 null
         );
     }

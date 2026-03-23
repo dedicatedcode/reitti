@@ -1,11 +1,9 @@
 package com.dedicatedcode.reitti.service.queue;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.RedisSystemException;
@@ -13,6 +11,9 @@ import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -34,7 +35,7 @@ public class RedisQueueService {
     private final Map<String, RedisQueueService.QueueMetadata> registeredQueues = new ConcurrentHashMap<>();
 
     @Autowired
-    public RedisQueueService(RedisTemplate<String, Object> redisTemplate,
+    public RedisQueueService(@Qualifier("redisQueueTemplate") RedisTemplate<String, Object> redisTemplate,
                              ObjectMapper objectMapper,
                              @Value("${spring.cache.redis.key-prefix:}") String keyPrefix) {
         this.redisTemplate = redisTemplate;
@@ -69,7 +70,7 @@ public class RedisQueueService {
                     operations.opsForHash().putAll(metaKey, initialMetadata);
                 }
 
-                Instant now = Instant.now();
+                String now = Instant.now().toString();
 
                 if (isEnqueue) {
                     // For enqueue operations - use increment which works with Long/String
@@ -124,7 +125,6 @@ public class RedisQueueService {
         Map<Object, Object> rawHash = redisTemplate.opsForHash().entries(metaKey);
         Map<String, Object> stats = new HashMap<>();
 
-        // Convert raw hash to typed map
         rawHash.forEach((key, value) -> {
             if (key instanceof String stringKey) {
                 if (value instanceof String stringValue) {
@@ -145,15 +145,17 @@ public class RedisQueueService {
             }
         });
 
-        // Calculate derived metrics
-        long totalEnqueued = ((Integer) stats.get("totalEnqueued")).longValue();
-        long totalProcessed = ((Integer) stats.get("totalProcessed")).longValue();
+        long totalEnqueued = ((Number) stats.getOrDefault("totalEnqueued", 0L)).longValue();
+        long totalProcessed = ((Number) stats.getOrDefault("totalProcessed", 0L)).longValue();
+
+        stats.put("totalEnqueued", totalEnqueued);
+        stats.put("totalProcessed", totalProcessed);
         stats.put("pendingCount", totalEnqueued - totalProcessed);
+
         if (totalEnqueued > 0) {
             stats.put("processingRate", (double) totalProcessed / totalEnqueued * 100);
         }
 
-        // Get current queue lengths
         Long currentQueueLength = redisTemplate.opsForList().size(keys.queueKey(queueName));
         Long currentProcessingLength = redisTemplate.opsForList().size(keys.processingKey(queueName));
 
@@ -310,7 +312,7 @@ public class RedisQueueService {
     private String serialize(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize object", e);
         }
     }
@@ -320,7 +322,7 @@ public class RedisQueueService {
             JavaType type = objectMapper.getTypeFactory()
                     .constructParametricType(QueueMessage.class, payloadType);
             return objectMapper.readValue(json.toString(), type);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to deserialize message", e);
         }
     }

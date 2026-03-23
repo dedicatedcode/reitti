@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
@@ -122,6 +123,6 @@ class UserJdbcServiceIntegrationTest {
         Optional<User> byNewUsername = userJdbcService.findByUsername(newUsername);
         assertTrue(byNewUsername.isPresent());
         assertEquals(newUsername, byNewUsername.get().getUsername());
-        assertNotNull(cacheManager.getCache("users").get(newUsername, User.class));
+        Awaitility.await().until(() -> cacheManager.getCache("users").get(newUsername, User.class) != null);
     }
 }

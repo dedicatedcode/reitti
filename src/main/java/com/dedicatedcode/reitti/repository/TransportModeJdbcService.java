@@ -39,7 +39,7 @@ public class TransportModeJdbcService {
     }
 
     @Transactional
-    @CacheEvict(value = "transport-mode-configs", key = "#user.id")
+    @CacheEvict(value = "transport-mode-configs", key = "#user.id", beforeInvocation = true)
     public void setTransportModeConfigs(User user, List<TransportModeConfig> configs) {
         String deleteSql = "DELETE FROM transport_mode_detection_configs WHERE user_id = ?";
         jdbcTemplate.update(deleteSql, user.getId());

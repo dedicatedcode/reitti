@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.service.geocoding.services;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -20,19 +20,19 @@ public class PhotonResultHandler implements ResultHandler {
         if (!features.isArray() || features.isEmpty()) return Optional.empty();
 
         JsonNode props = features.get(0).path("properties");
-        String street = props.path("street").asText("");
-        String housenumber =  props.path("housenumber").asText("").trim();
-        String postcode =  props.path("postcode").asText("").trim();
+        String street = props.path("street").asString("");
+        String housenumber =  props.path("housenumber").asString("").trim();
+        String postcode =  props.path("postcode").asString("").trim();
 
         return createGeoCodeResult(
-                props.path("name").asText(""),
+                props.path("name").asString(""),
                 street,
                 housenumber,
                 postcode,
-                props.path("city").asText(),
-                props.path("district").asText(),
-                props.path("countrycode").asText(),
-                props.path("osm_value").asText(),
+                props.path("city").asString(),
+                props.path("district").asString(),
+                props.path("countrycode").asString(),
+                props.path("osm_value").asString(),
                 ""
         );
 

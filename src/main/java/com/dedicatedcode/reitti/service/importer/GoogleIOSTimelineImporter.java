@@ -6,13 +6,15 @@ import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,8 +44,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         try {
             logger.info("Importing Google Timeline IOS file for user {}", user.getUsername());
             stateHolder.importStarted();
-            JsonFactory factory = objectMapper.getFactory();
-            JsonParser parser = factory.createParser(inputStream);
+            JsonParser parser = JsonFactory.builderWithJackson2Defaults().build().createParser(ObjectReadContext.empty(), inputStream);
 
             List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
 
@@ -85,7 +86,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                     "pointsReceived", processedCount.get()
             );
 
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             logger.error("Error processing Google Timeline file", e);
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
         } finally {

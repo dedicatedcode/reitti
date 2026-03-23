@@ -3,7 +3,8 @@ package com.dedicatedcode.reitti.service.geocoding.services;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PaikkaResultHandlerTest {
 
     private final PaikkaResultHandler handler = new PaikkaResultHandler();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new JsonMapper();
 
     @Test
     void testCanHandle() {

@@ -10,11 +10,11 @@ import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -63,7 +63,7 @@ public class TimelineService {
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
             return buildTimelineEntries(user, previewId, processedVisits, trips, userTimeZone, selectedDate, userSettings);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
         }
@@ -78,7 +78,7 @@ public class TimelineService {
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
             return buildTimelineEntries(user, null, processedVisits, trips, userTimeZone, selectedDate, userSettings);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
         }
@@ -87,7 +87,7 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(User user, String previewId, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(User user, String previewId, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JacksonException {
         List<TimelineEntry> entries = new ArrayList<>();
 
         for (ProcessedVisit visit : processedVisits) {

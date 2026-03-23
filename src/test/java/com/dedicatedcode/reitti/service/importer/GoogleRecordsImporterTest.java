@@ -9,7 +9,8 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -38,7 +39,7 @@ class GoogleRecordsImporterTest {
                                                            null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
         ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
-        GoogleRecordsImporter importHandler = new GoogleRecordsImporter(new ObjectMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
+        GoogleRecordsImporter importHandler = new GoogleRecordsImporter(new JsonMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
         com.dedicatedcode.reitti.model.security.User user = new User("test", "Test User");
         Map<String, Object> result = importHandler.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user);
 

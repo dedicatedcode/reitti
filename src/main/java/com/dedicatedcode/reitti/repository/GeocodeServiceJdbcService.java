@@ -2,11 +2,11 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +35,7 @@ public class GeocodeServiceJdbcService {
                         additionalParams != null ? objectMapper.readerForMapOf(String.class).readValue(additionalParams) : null,
                         rs.getInt("priority"),
                         rs.getLong("version"));
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 throw new RuntimeException(e);
             }
         };
@@ -95,7 +95,7 @@ public class GeocodeServiceJdbcService {
             );
             return geocodeService;
             }
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException(e);
         }
     }

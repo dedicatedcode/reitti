@@ -42,6 +42,7 @@ public class MemoryController {
     private final MagicLinkTokenService magicLinkTokenService;
     private final I18nService i18n;
     private final ContextPathHolder contextPathHolder;
+
     public MemoryController(MemoryService memoryService,
                             TripJdbcService tripJdbcService,
                             ProcessedVisitJdbcService processedVisitJdbcService,

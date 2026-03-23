@@ -4,14 +4,20 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.json.ReaderBasedJsonParser;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.type.TypeFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,15 +49,17 @@ public class GoogleRecordsImporter {
             stateHolder.importStarted();
             logger.info("Importing Google Records file for user {}", user.getUsername());
 
-            JsonFactory factory = objectMapper.getFactory();
-            JsonParser parser = factory.createParser(inputStream);
-            
+            JsonParser parser = JsonFactory
+                    .builderWithJackson2Defaults()
+                    .build()
+                    .createParser(ObjectReadContext.empty(), inputStream);
+
             List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
             boolean foundData = false;
             
             // Look for "locations" array (old Records.json format)
             while (parser.nextToken() != null) {
-                if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
+                if (parser.currentToken() == JsonToken.PROPERTY_NAME) {
                     String fieldName = parser.currentName();
                     
                     if ("locations".equals(fieldName)) {
@@ -80,7 +88,7 @@ public class GoogleRecordsImporter {
                     "pointsReceived", processedCount.get()
             );
             
-        } catch (IOException e) {
+        } catch (JacksonException | IOException e) {
             logger.error("Error processing Google Records file", e);
             return Map.of("success", false, "error", "Error processing Google Records file: " + e.getMessage());
         } finally {
@@ -97,15 +105,17 @@ public class GoogleRecordsImporter {
         // Move to the array
         parser.nextToken(); // Should be START_ARRAY
         
-        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+        if (parser.currentToken() != JsonToken.START_ARRAY) {
             throw new IOException("Invalid format: 'locations' is not an array");
         }
-        
+        ObjectReader nodeReader = objectMapper.reader()
+                .without(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+
         // Process each location in the array
         while (parser.nextToken() != JsonToken.END_ARRAY) {
-            if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
+            if (parser.currentToken() == JsonToken.START_OBJECT) {
                 // Parse the location object
-                JsonNode locationNode = objectMapper.readTree(parser);
+                JsonNode locationNode = nodeReader.readTree(parser);
                 
                 try {
                     LocationPoint point = convertGoogleRecordsLocation(locationNode);
@@ -147,7 +157,7 @@ public class GoogleRecordsImporter {
 
         point.setLatitude(latitude);
         point.setLongitude(longitude);
-        String timestamp = locationNode.get("timestamp").asText();
+        String timestamp = locationNode.get("timestamp").asString();
         point.setTimestamp(ZonedDateTime.parse(timestamp).toInstant());
 
         // Set accuracy if available

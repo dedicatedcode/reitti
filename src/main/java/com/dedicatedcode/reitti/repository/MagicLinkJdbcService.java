@@ -34,7 +34,7 @@ public class MagicLinkJdbcService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @CacheEvict(value = "magic-links", allEntries = true)
+    @CacheEvict(value = "magic-links", allEntries = true, beforeInvocation = true)
     public MagicLinkToken create(User user, MagicLinkToken token) {
         String sql = """
             INSERT INTO magic_link_tokens (user_id, name, token_hash, access_level, expiry_date, created_at, resource_type, resource_id)
@@ -65,7 +65,7 @@ public class MagicLinkJdbcService {
         return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), token.getResourceType(), token.getResourceId(), now, null, false);
     }
 
-    @CacheEvict(value = "magic-links", allEntries = true)
+    @CacheEvict(value = "magic-links", allEntries = true, beforeInvocation = true)
     public Optional<MagicLinkToken> update(MagicLinkToken updatedToken) {
         String sql = """
             UPDATE magic_link_tokens
@@ -144,7 +144,7 @@ public class MagicLinkJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    @CacheEvict(value = "magic-links", allEntries = true)
+    @CacheEvict(value = "magic-links", allEntries = true, beforeInvocation = true)
     public void updateLastUsed(long tokenId) {
         String sql = "UPDATE magic_link_tokens SET last_used_at = ? WHERE id = ?";
         jdbcTemplate.update(sql, Timestamp.from(Instant.now()), tokenId);
@@ -163,7 +163,7 @@ public class MagicLinkJdbcService {
         return jdbcTemplate.query(sql, new MagicLinkTokenRowMapper(), user.getId());
     }
 
-    @CacheEvict(value = "magic-links", allEntries = true)
+    @CacheEvict(value = "magic-links", allEntries = true, beforeInvocation = true)
     public void delete(long id) {
         String sql = "DELETE FROM magic_link_tokens WHERE id = ?";
         jdbcTemplate.update(sql, id);
