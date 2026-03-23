@@ -136,7 +136,6 @@ class MapRenderer {
         this._setup();
     }
 
-
     async updateViewState(next) {
         this.transitionQueue = this.transitionQueue.then(() => this._updateViewStateInternal(next));
         return this.transitionQueue;
@@ -205,10 +204,12 @@ class MapRenderer {
     }
 
     fitMapToBounds(bounds) {
+        this.map.stop();
         this.map.fitBounds(bounds, this.viewConfig.fitConfig);
     }
 
     flyTo(config) {
+        this.map.stop();
         this.map.flyTo(config);
     }
 
@@ -218,6 +219,7 @@ class MapRenderer {
         const performFit = async () => {
             try {
                 await this._initialLoadPromise;
+                this.bounds = [];
                 console.log('Attempting to fit bounds...');
                 this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
                 console.log('Bounds calculated:', this.bounds);
@@ -233,14 +235,7 @@ class MapRenderer {
             }
         };
 
-        // Check if style is already loaded
-        if (this.map.isStyleLoaded()) {
-            console.log('Style already loaded, fitting immediately.');
-            performFit();
-        } else {
-            console.log('Style not loaded yet, waiting...');
-            this.map.once('load', performFit);
-        }
+        return performFit();
     }
 
     reset() {
@@ -686,12 +681,13 @@ class MapRenderer {
             this._syncPitchBearingState();
         });
 
-        this.map.on('zoom', () => {
-            if (!this._pitchBearingAllowed) {
+        this.map.on('zoom', (e) => {
+            if (e.originalEvent && !this._pitchBearingAllowed) {
                 if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
                     this.map.jumpTo({ pitch: 0, bearing: 0 });
                 }
             }
+
         });
 
     }
@@ -770,6 +766,7 @@ class MapRenderer {
     }
 
     _flyToHomeLocation() {
+        this.map.stop();
         this.map.flyTo({
             center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude],
             zoom: 15
