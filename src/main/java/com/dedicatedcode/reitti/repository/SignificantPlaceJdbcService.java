@@ -159,7 +159,7 @@ public class SignificantPlaceJdbcService {
         String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, timezone, geom, polygon) " +
                 "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
                 "CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END) RETURNING id";
-        ;
+
 
         String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
 
