@@ -46,6 +46,6 @@ class PhotonResultHandlerTest {
         assertEquals("Avenue Anatole France", result.get().street());
         assertEquals("5", result.get().houseNumber());
         assertEquals("Paris", result.get().city());
-        assertEquals("FR", result.get().countryCode());
+        assertEquals("fr", result.get().countryCode());
     }
 }
