@@ -255,7 +255,7 @@ public class UnifiedLocationProcessingService {
         List<RawLocationPoint> timeOrderedPoints;
         if (previewId == null) {
             timeOrderedPoints = rawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd);
+                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true, false, false);
         } else {
             timeOrderedPoints = previewRawLocationPointJdbcService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, windowStart, windowEnd);
@@ -851,11 +851,10 @@ public class UnifiedLocationProcessingService {
         // Create a point geometry
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         // Find places within the merge distance
-        double distanceInDegrees = GeoUtils.metersToDegreesAtPosition((double) mergeConfiguration.getPlaceRadiusMeters(), latitude);
         if (previewId == null) {
-            return significantPlaceJdbcService.findEnclosingPlaces(user.getId(), point, distanceInDegrees);
+            return significantPlaceJdbcService.findNearbyPlaces(user.getId(), point, mergeConfiguration.getPlaceRadiusMeters());
         } else {
-            return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, distanceInDegrees, previewId);
+            return previewSignificantPlaceJdbcService.findNearbyPlaces(user.getId(), point, mergeConfiguration.getPlaceRadiusMeters(), previewId);
         }
     }
 

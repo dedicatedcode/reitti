@@ -381,7 +381,7 @@ public class RedisQueueService {
      * @param resetMetadata          if true, resets queue statistics to zero
      */
     public void purgeQueue(String queueName, boolean includeDeadLetterQueue, boolean resetMetadata) {
-        log.info("Purging queue {} (includeDeadLetterQueue: {}, resetMetadata: {})",
+        log.debug("Purging queue {} (includeDeadLetterQueue: {}, resetMetadata: {})",
                  queueName, includeDeadLetterQueue, resetMetadata);
 
         // Delete main queue

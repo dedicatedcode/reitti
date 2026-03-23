@@ -325,7 +325,7 @@ public class PlacesSettingsController {
 
             Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLatitudeCentroid()));
 
-            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 0.019).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
+            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 50.0).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
             model.addAttribute("availableCountries", AvailableCountry.values());
             model.addAttribute("nearbyPlaces", nearbyPlaces);
 

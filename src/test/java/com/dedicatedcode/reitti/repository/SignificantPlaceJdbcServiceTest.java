@@ -94,8 +94,8 @@ class SignificantPlaceJdbcServiceTest {
         significantPlaceJdbcService.create(testUser, farPlace);
 
         // When
-        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
-                testUser.getId(), centerPoint, 0.003);
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
+                testUser.getId(), centerPoint, 100);
 
         // Then
         assertThat(nearbyPlaces).hasSize(1);
@@ -512,7 +512,7 @@ class SignificantPlaceJdbcServiceTest {
         significantPlaceJdbcService.create(testUser, farPlace);
 
         // When
-        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findEnclosingPlaces(
+        List<SignificantPlace> nearbyPlaces = significantPlaceJdbcService.findNearbyPlaces(
                 testUser.getId(), searchPoint, 0.001); // Small buffer for places without polygons
 
         // Then
