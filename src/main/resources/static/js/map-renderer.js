@@ -119,6 +119,7 @@ class MapRenderer {
         };
         this.bounds = [];
 
+        this.highlightLayer = null;
         this._initialLoadPromise = new Promise(resolve => {
             this.map.once('style.load', async () => {
                 console.log('Initial style loaded!'); // For debugging
@@ -239,6 +240,7 @@ class MapRenderer {
     }
 
     reset() {
+        this.highlightLayer = null;
         this.deckOverlay.setProps([]);
     }
 
@@ -284,6 +286,29 @@ class MapRenderer {
     destroy() {
         this.map.remove();
         this.gpsDataManagers.forEach(manager => manager.destroy());
+    }
+
+    /**
+     * Provides a way for external controllers to listen to map events
+     * without accessing the internal map object directly.
+     * @param {string} type - The event type (e.g., 'dragstart', 'zoomstart').
+     * @param {function} listener - The callback function.
+     */
+    on(type, listener) {
+        this.map.on(type, listener);
+    }
+
+    /**
+     * Returns the current camera state of the map.
+     * Useful for saving a view to return to later.
+     */
+    getCameraState() {
+        return {
+            center: this.map.getCenter(),
+            zoom: this.map.getZoom(),
+            pitch: this.map.getPitch(),
+            bearing: this.map.getBearing()
+        };
     }
 
     _shouldAllowPitchAndBearing() {
@@ -334,6 +359,7 @@ class MapRenderer {
         if (this.viewState.renderTerrain) {
             allLayers.push(this.terrainLayer);
         }
+
 
         this.gpsDataManagers.forEach(manager => {
             const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
@@ -424,6 +450,9 @@ class MapRenderer {
             allLayers.push(...this._getVisitLayers(layerKey, manager));
         })
 
+        if (this.highlightLayer) {
+            allLayers.push(this.highlightLayer);
+        }
         this.deckOverlay.setProps({
             layers: allLayers
         })
@@ -896,6 +925,92 @@ class MapRenderer {
             this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
         } else {
             this.map.setLayoutProperty('building-3d', 'visibility', 'none');
+        }
+    }
+
+    setHighlight({ managerId, startTime, endTime }) {
+        const manager = this.gpsDataManagers.find(m => m.id === managerId);
+        if (!manager) {
+            console.warn(`Manager with id ${managerId} not found.`);
+            return null;
+        }
+
+        // Determine which data buffer to use. 'cleaned' is usually best for trips.
+        const tripData = manager.getLayerData('cleaned', this.viewState.aggregated);
+        if (!tripData || !tripData.attributes || !tripData.attributes.getPath || !tripData.attributes.getTimestamps) {
+            console.warn("Trip data is missing the required binary attributes for highlighting.");
+            this.clearHighlight();
+            return null;
+        }
+
+        const pathAttribute = tripData.attributes.getPath;
+        const timeAttribute = tripData.attributes.getTimestamps;
+        const bufferValue = pathAttribute.value; // The giant Float32Array
+
+        // Convert byte-based stride and offsets to float-based indices
+        const strideInFloats = pathAttribute.stride / 4; // e.g., 24 bytes / 4 = 6 floats
+        const pathOffsetInFloats = pathAttribute.offset / 4; // e.g., 0 bytes / 4 = 0
+        const timeOffsetInFloats = timeAttribute.offset / 4; // e.g., 12 bytes / 4 = 3
+
+        const segmentPath = [];
+        const numVertices = bufferValue.length / strideInFloats;
+
+        for (let i = 0; i < numVertices; i++) {
+            // Calculate the starting index for this vertex in the flat buffer
+            const baseIndex = i * strideInFloats;
+
+            // Extract the timestamp
+            const timestamp = bufferValue[baseIndex + timeOffsetInFloats];
+
+            // Check if the point is within the desired time range
+            if (timestamp >= startTime && timestamp <= endTime) {
+                // If it is, extract the position [lng, lat, alt]
+                const point = [
+                    bufferValue[baseIndex + pathOffsetInFloats + 0], // Lng
+                    bufferValue[baseIndex + pathOffsetInFloats + 1], // Lat
+                    bufferValue[baseIndex + pathOffsetInFloats + 2]  // Alt (or Z)
+                ];
+                segmentPath.push(point);
+            }
+        }
+
+        if (segmentPath.length === 0) {
+            console.warn("No data points found for the given time range.");
+            this.clearHighlight(); // Clear any existing highlight
+            return null;
+        }
+
+        // Create the new highlight layer
+        this.highlightLayer = new deck.PathLayer({
+            id: 'highlight-segment',
+            data: [{ path: segmentPath }], // Data is an array with one object that has a 'path' property
+            widthMinPixels: 6, // Make it thick and obvious
+            getColor: [255, 255, 0, 255], // Bright yellow for high visibility
+            capRounded: true,
+            jointRounded: true,
+            // Add terrain extension if needed
+            extensions: this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [],
+            terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+        });
+
+        // We must trigger a re-render of the deck.gl overlay
+        this._rerenderOverlays(); // We'll modify _updateLayers to include the highlight
+
+        // Calculate and return the bounds
+        const bounds = new maplibregl.LngLatBounds();
+        segmentPath.forEach(point => {
+            bounds.extend([point[0], point[1]]); // Extend bounds for each point in the segment
+        });
+        return bounds;
+    }
+
+    /**
+     * Removes the highlight layer from the map.
+     */
+    clearHighlight() {
+        if (this.highlightLayer) {
+            this.highlightLayer = null;
+            this._rerenderOverlays(); // Trigger a re-render to remove the layer
         }
     }
 

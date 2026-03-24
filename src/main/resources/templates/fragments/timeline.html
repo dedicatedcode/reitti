@@ -52,7 +52,6 @@
             <th:block th:fragment="timeline-entry">
                 <!-- Entry Description -->
                 <div class="entry-description">
-                    <!-- Visit with editable place name -->
                     <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                         <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
                         <a class="lni lni-pencil-1 edit-icon"

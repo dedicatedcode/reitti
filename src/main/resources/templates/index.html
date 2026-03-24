@@ -184,6 +184,9 @@
     const mapControls = new MapControls('map-controls-section');
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
+    let previousCameraState = null;
+    let activeFocus = null;
+
     mapRenderer.updateViewState(createViewState( [] ) );
     mapControls.on('selectionChanged', (state) => {
         mapRenderer.updateViewState(createViewState([]));
@@ -594,7 +597,6 @@
             return configs;
         }
 
-        // Add HTMX event handlers for timeline updates
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
@@ -603,6 +605,8 @@
 
                 const params = getTimelineParams();
                 mapRenderer.reset();
+                activeFocus = null;
+                previousCameraState = null;
                 try {
                     fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}`)
                         .then(response => {
@@ -634,43 +638,113 @@
                 updateEditPlaceLinks();
             }
         });
+
+        function onVisitClick(visit) {
+            const deselect = activeFocus && activeFocus.type === 'visit' && activeFocus.id === visit.id;
+            if (deselect) {
+                if (previousCameraState) {
+                    mapRenderer.flyTo(previousCameraState);
+                }
+                activeFocus = null;
+                previousCameraState = null;
+            } else {
+                if (previousCameraState == null) {
+                    previousCameraState = mapRenderer.getCameraState();
+                }
+                activeFocus = {type: 'visit', id: visit.id, data: visit};
+                mapRenderer.flyTo({
+                    center: visit.coordinates,
+                    zoom: 16,
+                    pitch: 45,
+                    duration: 1500
+                });
+                mapRenderer.clearHighlight();
+            }
+        }
+
+        function onTripClick(trip) {
+            const deselect = activeFocus && activeFocus.type === 'trip' && activeFocus.id === trip.id;
+            if (deselect) {
+                mapRenderer.clearHighlight();
+                if (previousCameraState) {
+                    mapRenderer.flyTo(previousCameraState);
+                }
+                activeFocus = null;
+                previousCameraState = null;
+            } else {
+                if (previousCameraState == null) {
+                    previousCameraState = mapRenderer.getCameraState();
+                }
+
+                const startTimeMs = Date.parse(trip.startTime);
+                const endTimeMs = Date.parse(trip.endTime);
+
+                const offest = 5 * 60;
+                const startTimeSeconds = (startTimeMs / 1000) - offest;
+                const endTimeSeconds = (endTimeMs / 1000) + offest;
+
+                if (isNaN(startTimeSeconds) || isNaN(endTimeSeconds)) {
+                    console.error("Could not parse trip timestamps:", trip.startTime, trip.endTime);
+                    previousCameraState = null;
+                    return;
+                }
+
+                const tripBounds = mapRenderer.setHighlight({
+                    managerId: trip.managerId,
+                    startTime: startTimeSeconds,
+                    endTime: endTimeSeconds
+                });
+
+                if (tripBounds) {
+                    activeFocus = {type: 'trip', id: trip.id, data: trip};
+                    mapRenderer.fitMapToBounds(tripBounds);
+                } else {
+                    previousCameraState = null;
+                }
+            }
+        }
+
+        function invalidateSavedState(e) {
+            if (e.originalEvent && previousCameraState) {
+                console.log("User interaction detected, clearing saved camera state.");
+                previousCameraState = null;
+            }
+        }
+
+        mapRenderer.on('dragstart', invalidateSavedState);
+        mapRenderer.on('zoomstart', invalidateSavedState);
+        mapRenderer.on('rotatestart', invalidateSavedState);
+        mapRenderer.on('boxzoomstart', invalidateSavedState);
+
+
+
         // Handle clicks on timeline entries
         document.querySelector('.timeline-container').addEventListener('click', function (event) {
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
 
+            const wasActive = entry.classList.contains('active');
+
             const editingElement = event.target.closest('.editing');
             if (editingElement || event.target.classList.contains('edit-icon')) {
                 return;
             }
-            // Check if this entry is already active (deselection case)
-            const isCurrentlyActive = entry.classList.contains('active');
-
-            // Remove active class from all entries
-            document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(e => e.classList.remove('active'));
-
-            const isTrip = entry.classList.contains('trip');
-
-            if (isCurrentlyActive) {
-                mapRenderer.updateViewState(createViewState([]))
-            } else {
+            document.querySelectorAll('.timeline-container .timeline-entry').forEach(e => e.classList.remove('active'));
+            if (!wasActive) {
                 entry.classList.add('active');
-
-                const lat = parseFloat(entry.dataset.lat);
-                const lng = parseFloat(entry.dataset.lng);
-                const startTime = entry.dataset.start;
-                const endTime = entry.dataset.end;
-
-                if (isTrip) {
-                    mapRenderer.updateViewState(createViewState([Math.floor(new Date(startTime).getTime() / 1000), Math.floor(new Date(endTime).getTime() / 1000)]));
-                } else {
-                    mapRenderer.updateViewState(createViewState([]))
-                    mapRenderer.flyTo({
-                        center: [lng, lat],
-                        zoom: 15
-                    })
-                }
+            }
+            if (entry.classList.contains('visit')) {
+                onVisitClick({
+                    id: entry.dataset.id,
+                    coordinates: [parseFloat(entry.dataset.lng), parseFloat(entry.dataset.lat)]
+                });
+            } else {
+                onTripClick({
+                    id: entry.dataset.id,
+                    managerId: entry.dataset.userId,
+                    startTime: entry.dataset.start,
+                    endTime: entry.dataset.end
+                });
             }
         });
 
@@ -825,7 +899,7 @@
 
         if (isHidden) {
             timelineControls.classList.add('hidden');
-            toggleBtn.title = t('js.timeline.state.show.title');
+            toggleBtn.title = t('timeline.state.show.title');
             toggleBtn.classList.remove('active');
         } else {
             timelineControls.classList.remove('hidden');
