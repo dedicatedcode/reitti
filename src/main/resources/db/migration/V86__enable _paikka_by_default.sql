@@ -1,0 +1,1 @@
+UPDATE geocode_services SET enabled = true, priority = 1 WHERE type = 'PAIKKA';
