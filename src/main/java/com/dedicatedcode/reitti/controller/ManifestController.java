@@ -32,13 +32,13 @@ public class ManifestController {
         List<Map<String, String>> icons = new ArrayList<>();
 
         icons.add(Map.of(
-                "src", contextPathHolder.getContextPath() + "/icons/icon-192x192.png",
+                "src", contextPathHolder.getContextPath() + "/img/logo-192x192.png",
                 "sizes", "192x192",
                 "type", "image/png"
         ));
 
         icons.add(Map.of(
-                "src", contextPathHolder.getContextPath() + "/icons/icon-512x512.png",
+                "src", contextPathHolder.getContextPath() + "/img/logo-512x512.png",
                 "sizes", "512x512",
                 "type", "image/png"
         ));
