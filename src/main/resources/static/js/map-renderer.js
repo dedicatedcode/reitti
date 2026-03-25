@@ -764,7 +764,7 @@ class MapRenderer {
         `).join('');
 
             tooltip.innerHTML = `
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name}</div>
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name == null ? t('place.unknown.label') : object.name}</div>
             <div><b>${t('map.popup.labels.total_duration')}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
             <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
                 ${visitListHtml}
@@ -1126,8 +1126,6 @@ class MapRenderer {
                         timestamp: latestLocation.timestamp
                     });
                 } else {
-                    debugger
-                    // Create new marker for this user
                     this.addAvatarMarker(
                         manager.id,
                         latestLocation.latitude, 

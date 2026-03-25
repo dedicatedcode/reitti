@@ -457,7 +457,6 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         const payloadType = document.getElementById('mqttPayloadType').value;
                         const resultDiv = document.getElementById('mqtt-connection-test-result');
 
-                        debugger
                         if (!host || !port || !identifier || !topic) {
                             const message = t('integrations.mqtt.test.missing.fields');
                             resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
