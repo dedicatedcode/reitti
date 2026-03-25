@@ -194,11 +194,7 @@ public class GeoCodingSettingsController {
             model.addAttribute("errorMessage", i18n.translate("message.error.geocode.creation", e.getMessage()));
         }
 
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
-        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+        addDefaultModeAttributes(model);
         return "settings/geocode-services :: geocode-services-content";
     }
 
@@ -210,11 +206,7 @@ public class GeoCodingSettingsController {
             service = service.resetErrorCount();
         }
         geocodeServiceJdbcService.save(service);
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
-        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+        addDefaultModeAttributes(model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -223,11 +215,7 @@ public class GeoCodingSettingsController {
     public String deleteGeocodeService(@PathVariable Long id, Model model) {
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
-        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+        addDefaultModeAttributes(model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -236,11 +224,7 @@ public class GeoCodingSettingsController {
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
-        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
+        addDefaultModeAttributes(model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -275,10 +259,8 @@ public class GeoCodingSettingsController {
             model.addAttribute("errorMessage", i18n.translate("geocoding.run.error", e.getMessage()));
         }
 
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("maxErrors", maxErrors);
+        addDefaultModeAttributes(model);
+
         return "settings/geocode-services :: geocode-services-content";
     }
 
@@ -318,10 +300,16 @@ public class GeoCodingSettingsController {
             model.addAttribute("errorMessage", i18n.translate("geocoding.clear.error", e.getMessage()));
         }
 
+        addDefaultModeAttributes(model);
+
+        return "settings/geocode-services :: geocode-services-content";
+    }
+
+    private void addDefaultModeAttributes(Model model) {
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
         model.addAttribute("maxErrors", maxErrors);
-        return "settings/geocode-services :: geocode-services-content";
+        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
     }
 }
