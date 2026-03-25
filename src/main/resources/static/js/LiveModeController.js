@@ -24,21 +24,27 @@ class LiveModeController {
 
     enterLiveMode() {
         this.autoUpdateMode = true;
-        const icon = this.element.querySelector('i');
-        icon.className = 'lni lni-pause';
-        this.element.title = t('autoupdate.state.disable');
+        if (this.element != null) {
+            const icon = this.element.querySelector('i');
+            icon.className = 'lni lni-pause';
+                this.element.title = t('autoupdate.state.disable');
+        }
         document.body.classList.add('auto-update-mode');
         this._updateAutoUpdateTime();
         this.overlay.classList.add('visible');
         this.autoUpdateTimeInterval = setInterval(() => this._updateAutoUpdateTime(), 1000);
         this._connect();
+        this._emit('autoUpdateModeChanged', true)
+
     }
 
     exitLiveMode() {
         this.autoUpdateMode = false;
-        const icon = this.element.querySelector('i');
-        icon.className = 'lni lni-play';
-        this.element.title = t('autoupdate.state.enable');
+        if (this.element != null) {
+            const icon = this.element.querySelector('i');
+            icon.className = 'lni lni-play';
+            this.element.title = t('autoupdate.state.enable');
+        }
         document.body.classList.remove('auto-update-mode');
         this.overlay.classList.remove('visible');
         if (this.autoUpdateTimeInterval) {
@@ -67,7 +73,7 @@ class LiveModeController {
             this.eventSource.close();
             this.eventSource = null;
         }
-
+        this._emit('autoUpdateModeChanged', false)
     }
 
 
@@ -89,16 +95,16 @@ class LiveModeController {
     }
 
     _setup() {
-        this.element.onclick = () => {
-            if (!this.autoUpdateMode) {
-                this.enterLiveMode();
-            } else {
-                this.exitLiveMode();
+        if (this.element != null) {
+            this.element.onclick = () => {
+                if (!this.autoUpdateMode) {
+                    this.enterLiveMode();
+                } else {
+                    this.exitLiveMode();
+                }
             }
-            this._emit('autoUpdateModeChanged', this.autoUpdateMode)
+            this.overlay.getElementsByTagName('button')[0].onclick = () => this.exitLiveMode();
         }
-
-        this.overlay.getElementsByTagName('button')[0].onclick = () => this.exitLiveMode();
     }
 
     _updateAutoUpdateTime() {

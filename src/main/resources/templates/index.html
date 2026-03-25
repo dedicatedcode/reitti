@@ -608,19 +608,22 @@
                 mapRenderer.reset();
                 activeFocus = null;
                 previousCameraState = null;
-                try {
-                    fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}`)
-                        .then(response => {
-                                if (response.ok) {
-                                    return response.json()
-                                } else {
-                                    reject(response)
+                if (window.userSettings.photoMode === 'ENABLED') {
+                    try {
+                        fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}`)
+                            .then(response => {
+                                    if (response.ok) {
+                                        return response.json()
+                                    } else {
+                                        reject(response)
+                                    }
                                 }
-                            }
-                        ).then(value => mapRenderer.setPhotos(value), error => mapRenderer.setPhotos([]));
-                } catch (error) {
-                    mapRenderer.setPhotos([]);
+                            ).then(value => mapRenderer.setPhotos(value), error => mapRenderer.setPhotos([]));
+                    } catch (error) {
+                        mapRenderer.setPhotos([]);
+                    }
                 }
+
                 const aggregateToggle = document.getElementById('aggregate-toggle');
                 timelineControl.setup({
                     minTimestamp: params.startDateUtcSeconds,
