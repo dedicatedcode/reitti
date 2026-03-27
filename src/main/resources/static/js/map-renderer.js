@@ -268,7 +268,7 @@ class MapRenderer {
                     latestLocation.latitude, 
                     latestLocation.longitude, 
                     {
-                        avatarUrl: userConfig.avatarUrl,
+                        avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
                         timestamp: latestLocation.timestamp
@@ -1120,7 +1120,7 @@ class MapRenderer {
 
                     // Update popup content with new timestamp
                     this.updateMarkerPopup(existingMarker, latestLocation.latitude, latestLocation.longitude, {
-                        avatarUrl: userConfig.avatarUrl,
+                        avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
                         timestamp: latestLocation.timestamp
@@ -1131,7 +1131,7 @@ class MapRenderer {
                         latestLocation.latitude, 
                         latestLocation.longitude, 
                         {
-                            avatarUrl: userConfig.avatarUrl,
+                            avatarUrl: window.contextPath + userConfig.avatarUrl,
                             avatarFallback: userConfig.avatarFallback,
                             displayName: userConfig.displayName,
                             timestamp: latestLocation.timestamp
