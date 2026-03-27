@@ -5664,6 +5664,31 @@
       }
     },
     {
+      "id": "building-3d",
+      "type": "fill-extrusion",
+      "source": "dedicatedcode",
+      "source-layer": "building",
+      "minzoom": 1,
+      "maxzoom": 24,
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-extrusion-color": "rgba(214, 214, 214, 1)",
+        "fill-extrusion-height": {
+          "property": "render_height",
+          "type": "identity"
+        },
+        "fill-extrusion-base": {
+          "property": "render_min_height",
+          "type": "identity"
+        },
+        "fill-extrusion-opacity": 1,
+        "fill-extrusion-vertical-gradient": false,
+        "fill-extrusion-translate-anchor": "viewport"
+      }
+    },
+    {
       "id": "place-other",
       "type": "symbol",
       "metadata": {
@@ -6176,31 +6201,6 @@
         "text-halo-blur": 1,
         "text-halo-color": "rgba(255, 255, 255, 0.8)",
         "text-halo-width": 2
-      }
-    },
-    {
-      "id": "building-3d",
-      "type": "fill-extrusion",
-      "source": "dedicatedcode",
-      "source-layer": "building",
-      "minzoom": 1,
-      "maxzoom": 24,
-      "layout": {
-        "visibility": "visible"
-      },
-      "paint": {
-        "fill-extrusion-color": "rgba(214, 214, 214, 1)",
-        "fill-extrusion-height": {
-          "property": "render_height",
-          "type": "identity"
-        },
-        "fill-extrusion-base": {
-          "property": "render_min_height",
-          "type": "identity"
-        },
-        "fill-extrusion-opacity": 1,
-        "fill-extrusion-vertical-gradient": false,
-        "fill-extrusion-translate-anchor": "viewport"
       }
     }
   ],
