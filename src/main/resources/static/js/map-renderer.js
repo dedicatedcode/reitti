@@ -1019,25 +1019,32 @@ class MapRenderer {
      */
     addAvatarMarker(userId, lat, lng, userData) {
         const SIZE = 40;
-        
+
+        // Calculate initial opacity
+        const opacity = this._calculateAvatarOpacity(userData.timestamp);
+
         // Outer container - NO position:relative, MapLibre controls this
         const container = document.createElement('div');
-        container.style.cssText = 
+        container.style.cssText =
             'width:' + SIZE + 'px;height:' + SIZE + 'px;cursor:pointer;z-index:1000;';
 
         // Inner wrapper for proper positioning
         const inner = document.createElement('div');
-        inner.style.cssText = 
+        inner.style.cssText =
             'width:' + SIZE + 'px;height:' + SIZE + 'px;position:relative;';
 
         const circle = document.createElement('div');
         circle.className = 'avatar-marker';
-        
+
         const img = document.createElement('img');
         img.src = userData.avatarUrl;
         img.alt = userData.avatarFallback;
         img.className = 'avatar-marker-img';
-        
+
+        // Apply opacity to the image
+        img.style.opacity = opacity;
+        img.style.transition = 'opacity 0.5s ease-in-out';
+
         circle.appendChild(img);
         inner.appendChild(circle);
         container.appendChild(inner);
@@ -1047,8 +1054,15 @@ class MapRenderer {
             element: container,
             anchor: 'center'
         })
-        .setLngLat([lng, lat])
-        .addTo(this.map);
+            .setLngLat([lng, lat])
+            .addTo(this.map);
+
+        // Store additional data with the marker for updates
+        marker._avatarData = {
+            userId: userId,
+            userData: userData,
+            imgElement: img
+        };
 
         // Create detailed popup content
         const formatTimestamp = (timestamp) => {
@@ -1062,21 +1076,24 @@ class MapRenderer {
         };
 
         const popupContent = `
-            <div style="font-family: var(--sans-font); min-width: 200px;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                    ${t('map.auto-update.latest-location')}
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <strong>${t('common.user')}:</strong> ${userData.displayName}
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
-                </div>
-                <div style="margin-bottom: 4px;">
-                    <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
-                </div>
+        <div style="font-family: var(--sans-font); min-width: 200px;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+                ${t('map.auto-update.latest-location')}
             </div>
-        `;
+            <div style="margin-bottom: 6px;">
+                <strong>${t('common.user')}:</strong> ${userData.displayName}
+            </div>
+            <div style="margin-bottom: 6px;">
+                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
+            </div>
+            <div style="margin-bottom: 4px;">
+                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
+            </div>
+        </div>
+    `;
 
         // Add popup with detailed user info
         const popup = new maplibregl.Popup({
@@ -1104,19 +1121,33 @@ class MapRenderer {
      */
     updateAvatarPositions() {
         const activeUserIds = new Set();
-        
+
         // Update existing markers or create new ones
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
-            
+
             if (latestLocation && userConfig) {
                 activeUserIds.add(manager.id);
-                
+
                 const existingMarker = this.avatarMarkers.get(manager.id);
                 if (existingMarker) {
                     // Move existing marker to new position
                     existingMarker.setLngLat([latestLocation.longitude, latestLocation.latitude]);
+
+                    // Update user data with new timestamp
+                    existingMarker._avatarData.userData = {
+                        avatarUrl: window.contextPath + userConfig.avatarUrl,
+                        avatarFallback: userConfig.avatarFallback,
+                        displayName: userConfig.displayName,
+                        timestamp: latestLocation.timestamp
+                    };
+
+                    // Update opacity based on new timestamp
+                    const opacity = this._calculateAvatarOpacity(latestLocation.timestamp);
+                    if (existingMarker._avatarData.imgElement) {
+                        existingMarker._avatarData.imgElement.style.opacity = opacity;
+                    }
 
                     // Update popup content with new timestamp
                     this.updateMarkerPopup(existingMarker, latestLocation.latitude, latestLocation.longitude, {
@@ -1128,8 +1159,8 @@ class MapRenderer {
                 } else {
                     this.addAvatarMarker(
                         manager.id,
-                        latestLocation.latitude, 
-                        latestLocation.longitude, 
+                        latestLocation.latitude,
+                        latestLocation.longitude,
                         {
                             avatarUrl: window.contextPath + userConfig.avatarUrl,
                             avatarFallback: userConfig.avatarFallback,
@@ -1140,7 +1171,7 @@ class MapRenderer {
                 }
             }
         });
-        
+
         // Remove markers for users that no longer have location data
         for (const [userId, marker] of this.avatarMarkers) {
             if (!activeUserIds.has(userId)) {
@@ -1149,7 +1180,6 @@ class MapRenderer {
             }
         }
     }
-
     /**
      * Update marker popup content
      */
@@ -1165,25 +1195,27 @@ class MapRenderer {
         };
 
         const popupContent = `
-            <div style="font-family: var(--sans-font); min-width: 200px;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                    ${t('map.auto-update.latest-location')}
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <strong>${t('common.user')}:</strong> ${userData.displayName}
-                </div>
-                <div style="margin-bottom: 6px;">
-                    <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
-                </div>
-                <div style="margin-bottom: 4px;">
-                    <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
-                </div>
+        <div style="font-family: var(--sans-font); min-width: 200px;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+                ${t('map.auto-update.latest-location')}
             </div>
-        `;
+            <div style="margin-bottom: 6px;">
+                <strong>${t('common.user')}:</strong> ${userData.displayName}
+            </div>
+            <div style="margin-bottom: 6px;">
+                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
+            </div>
+            <div style="margin-bottom: 4px;">
+                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
+            </div>
+        </div>
+    `;
 
         marker.getPopup().setHTML(popupContent);
     }
-
     /**
      * Remove all avatar markers from the map
      */
@@ -1193,5 +1225,44 @@ class MapRenderer {
         });
         this.avatarMarkers.clear();
     }
+
+    _calculateAvatarOpacity(timestamp) {
+        if (!timestamp) return 1.0;
+
+        const now = Date.now();
+        const ageMs = now - new Date(timestamp);
+        const ageMinutes = ageMs / (1000 * 60);
+
+        if (ageMinutes <= 10) {
+            return 1.0;
+        }
+
+        if (ageMinutes <= 180) {
+            const progress = (ageMinutes - 10) / (180 - 10);
+            return 1.0 - (0.9 * progress);
+        }
+        return 0.1;
+    }
+
+    _formatTimeAgo(timestamp) {
+        if (!timestamp) return t('common.unknown') || 'Unknown';
+
+        const now = Date.now();
+        const diffMs = now - new Date(timestamp);
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+        if (diffMinutes < 1) {
+            return t('common.just-now') || 'Just now';
+        } else if (diffMinutes < 60) {
+            return `${diffMinutes} ${t('common.minutes-ago') || 'minutes ago'}`;
+        } else if (diffHours < 24) {
+            return `${diffHours} ${t('common.hours-ago') || 'hours ago'}`;
+        } else {
+            const diffDays = Math.floor(diffHours / 24);
+            return `${diffDays} ${t('common.days-ago') || 'days ago'}`;
+        }
+    }
+
 
 }
