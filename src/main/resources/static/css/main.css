@@ -1991,8 +1991,18 @@ button:disabled {
     100% { transform: rotate(360deg); }
 }
 
- #loading-indicator.htmx-request {
+#loading-indicator.htmx-request {
     display: block !important;
+}
+
+.timeline-container #loading-indicator,
+#timeline-content #loading-indicator {
+    padding: 0 40px;
+    font-size: 2rem;
+    color: white;
+    font-family: var(--serif-font);
+    font-weight: lighter;
+    text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
 }
 
 #data-content.htmx-request  {

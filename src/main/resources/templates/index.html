@@ -494,11 +494,11 @@
             link.setAttribute('href', url.toString());
         });
     }
-
     function loadTimelineData(requestedStart, requestedEnd) {
         console.log('loadTimelineData', requestedStart, requestedEnd);
         gpsDataManagers = [];
         const RENDER_CHUNK_SIZE = 50000;
+        const completedManagers = new Set();
 
         userConfigs.forEach(config => {
             const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
@@ -539,9 +539,11 @@
                         calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
                         mapRenderer.updateViewState(createViewState());
-                        if (index === gpsDataManagers.length - 1) {
+                        completedManagers.add(index);
+                        if (completedManagers.size === gpsDataManagers.length) {
                             mapRenderer.finishedLoading();
                         }
+
                 }
             });
         });
