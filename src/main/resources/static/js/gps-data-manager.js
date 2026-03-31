@@ -173,13 +173,10 @@ class GpsDataManager {
      * @param {Object} rangeIndices - Optional {start, count} from binary search
      */
     getLayerData(mode, isAggregate = false, rangeIndices = null) {
-        // 1. Generate a unique cache key based on all inputs
-        // We also include the current cursor to invalidate the cache when data is added
         const rangeKey = rangeIndices ? `${rangeIndices.start}-${rangeIndices.count}` : 'full';
         const cacheKey = `${mode}-${isAggregate}-${rangeKey}`;
         const currentPointCount = mode === 'raw' ? this.cursor : this.cleanedCursor;
 
-        // 2. Return cached object if nothing has changed
         if (this._dataCache[cacheKey] && this._dataCache[cacheKey].version === currentPointCount) {
             return this._dataCache[cacheKey].payload;
         }
@@ -188,18 +185,20 @@ class GpsDataManager {
 
         if (mode === 'bundled') {
             const stride = 20;
+            const usedLength = this.cleanedCursor * 5;
+            const trimmed = this.snappedBuffer.subarray(0, usedLength);
             payload = {
                 length: 1,
                 startIndices: new Uint32Array([0, this.cleanedCursor]),
                 attributes: {
                     getPath: {
-                        value: this.snappedBuffer,
+                        value: trimmed,
                         size: 2,
                         stride: stride,
                         offset: 0
                     },
                     getTimestamps: {
-                        value: this.snappedBuffer,
+                        value: trimmed,
                         size: 1,
                         stride: stride,
                         offset: isAggregate ? 16 : 8
@@ -207,18 +206,20 @@ class GpsDataManager {
                 }
             };
         } else if (mode === 'cleaned') {
+            const usedLength = this.cleanedCursor * 6;
+            const trimmed = this.cleanedBuffer.subarray(0, usedLength);
             payload = {
                 length: 1,
                 startIndices: new Uint32Array([0, this.cleanedCursor]),
                 attributes: {
                     getPath: {
-                        value: this.cleanedBuffer,
+                        value: trimmed,
                         size: 3,
                         stride: 24,
                         offset: 0
                     },
                     getTimestamps: {
-                        value: this.cleanedBuffer,
+                        value: trimmed,
                         size: 1,
                         stride: 24,
                         offset: isAggregate ? 20 : 12
@@ -226,18 +227,20 @@ class GpsDataManager {
                 }
             };
         } else if (mode === 'raw') {
+            const usedLength = this.cursor * 6;
+            const trimmed = this.buffer.subarray(0, usedLength);
             payload = {
                 length: 1,
                 startIndices: new Uint32Array([0, this.cursor]),
                 attributes: {
                     getPath: {
-                        value: this.buffer,
+                        value: trimmed,
                         size: 3,
                         stride: 24,
                         offset: 0
                     },
                     getTimestamps: {
-                        value: this.buffer,
+                        value: trimmed,
                         size: 1,
                         stride: 24,
                         offset: isAggregate ? 20 : 12
@@ -245,7 +248,7 @@ class GpsDataManager {
                 }
             };
         }
-        // 3. Store in cache
+
         this._dataCache[cacheKey] = {
             version: currentPointCount,
             payload: payload

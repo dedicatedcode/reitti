@@ -603,7 +603,6 @@ public class RawLocationPointJdbcService {
                 WHERE user_id = ?
                   AND day >= ?::date AND day < ?::date
                 """;
-        long startTime = System.nanoTime();
         MapMetadata result = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
                 rs.getLong("min_ts"),
                 rs.getLong("max_ts"),
