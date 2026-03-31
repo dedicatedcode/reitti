@@ -1,17 +1,14 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.dto.PointInfo;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,31 +25,22 @@ import java.util.List;
 @Service
 public class TimelineService {
     private static final Logger log = LoggerFactory.getLogger(TimelineService.class);
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
     private final PreviewTripJdbcService previewTripJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final ObjectMapper objectMapper;
 
-    public TimelineService(RawLocationPointJdbcService rawLocationPointJdbcService,
-                           PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
-                           ProcessedVisitJdbcService processedVisitJdbcService,
+    public TimelineService(ProcessedVisitJdbcService processedVisitJdbcService,
                            PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService,
                            TripJdbcService tripJdbcService,
                            PreviewTripJdbcService previewTripJdbcService,
-                           UserSettingsJdbcService userSettingsJdbcService,
-                           ObjectMapper objectMapper) {
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
+                           UserSettingsJdbcService userSettingsJdbcService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.previewTripJdbcService = previewTripJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.objectMapper = objectMapper;
     }
 
     public List<TimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay) {
@@ -62,7 +50,7 @@ public class TimelineService {
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
-            return buildTimelineEntries(user, previewId, processedVisits, trips, userTimeZone, selectedDate, userSettings);
+            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings);
         } catch (JsonProcessingException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
@@ -77,7 +65,7 @@ public class TimelineService {
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
-            return buildTimelineEntries(user, null, processedVisits, trips, userTimeZone, selectedDate, userSettings);
+            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings);
         } catch (JsonProcessingException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
@@ -87,7 +75,7 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(User user, String previewId, List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
 
         for (ProcessedVisit visit : processedVisits) {
@@ -123,18 +111,6 @@ public class TimelineService {
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
             entry.setFormattedLocalTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate));
 
-            List<RawLocationPoint> path;
-            if (previewId == null) {
-                path = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, trip.getStartTime(), trip.getEndTime());
-            } else {
-                path = this.previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, trip.getStartTime(), trip.getEndTime());
-            }
-            List<PointInfo> pathPoints = new ArrayList<>();
-            pathPoints.add(new PointInfo(trip.getStartVisit().getPlace().getLatitudeCentroid(), trip.getStartVisit().getPlace().getLongitudeCentroid(), trip.getStartTime(), 0.0));
-            pathPoints.addAll(path.stream().map(p -> new PointInfo(p.getLatitude(), p.getLongitude(), p.getTimestamp(), p.getAccuracyMeters())).toList());
-            pathPoints.add(new PointInfo(trip.getEndVisit().getPlace().getLatitudeCentroid(), trip.getEndVisit().getPlace().getLongitudeCentroid(), trip.getEndTime(), 0.0));
-
-            entry.setPath(objectMapper.writeValueAsString(pathPoints));
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
                 entry.setFormattedDistance(formatDistance(trip.getTravelledDistanceMeters(), userSettings.getUnitSystem()));

@@ -788,8 +788,6 @@ class MapRenderer {
                 return;
             }
 
-            // 2. Otherwise, compare current vs new to find the extremes
-            // this.bounds = [minLng, minLat, maxLng, maxLat]
             this.bounds[0] = Math.min(this.bounds[0], newBounds[0]); // Lowest Lng
             this.bounds[1] = Math.min(this.bounds[1], newBounds[1]); // Lowest Lat
             this.bounds[2] = Math.max(this.bounds[2], newBounds[2]); // Highest Lng
