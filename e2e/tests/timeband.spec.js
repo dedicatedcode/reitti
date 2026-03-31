@@ -40,8 +40,8 @@ test.describe('Date Picker Tests', () => {
     test('should select latest date when no date is given', async ({page}) => {
         await page.goto('/')
         await expect(page.locator('.date-day.range-start')).toBeVisible();
-        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('31');
-        await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Dec 2017');
+        await expect(page.locator('.date-day.range-start .day-number')).toHaveText('1');
+        await expect(page.locator('.date-day.range-start .month-year')).toHaveText('Jan 2018');
     });
 
     test('should select date range', async ({page}) => {
@@ -80,17 +80,17 @@ test.describe('Date Picker Tests', () => {
         await page.locator('#date-picker-container').hover();
         // Scroll one tick up to switch to month range
         await page.mouse.wheel(0, 100);
-        await expect(page.getByText('2017Sep')).toBeVisible();
+        await expect(page.getByText('2018Jan')).toBeVisible();
         await page.waitForTimeout(1000);
         await page.locator('#date-picker-container').hover();
 
         await page.mouse.wheel(0, 100);
-        await expect(page.getByText('2017Sep')).not.toBeVisible();
+        await expect(page.getByText('2018Jan')).not.toBeVisible();
 
         // Select September 2017
-        await page.locator('div').filter({ hasText: '2016' }).nth(2).click();
-        await expect(page.locator('div').filter({ hasText: '2016' }).nth(2)).toContainClass('selected');
-        await expect(page).toHaveURL(/startDate=2016-01-01&endDate=2016-12-31/);
+        await page.getByText('2017').click();
+        await expect(page.getByText('2017').nth(2)).toContainClass('selected');
+        await expect(page).toHaveURL(/startDate=2017-01-01&endDate=2017-12-31/);
     });
 
     test('should switch to auto-update mode', async ({page}) => {
