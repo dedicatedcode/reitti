@@ -453,13 +453,9 @@ class MapRenderer {
         if (this.highlightLayer) {
             allLayers.push(this.highlightLayer);
         }
-        try {
-            this.deckOverlay.setProps({
-                layers: allLayers
-            })
-        } catch (e) {
-            console.error('Error setting deck overlay layers:', e);
-        }
+        this.deckOverlay.setProps({
+            layers: allLayers
+        })
     }
 
     _getBundleLayers(layerKey, manager) {
