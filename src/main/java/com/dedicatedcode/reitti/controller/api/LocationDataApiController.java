@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.h3.H3JdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationPointsSimplificationService;
@@ -24,20 +25,89 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/v1")
 public class LocationDataApiController {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(LocationDataApiController.class);
-    
+
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final LocationPointsSimplificationService simplificationService;
     private final UserJdbcService userJdbcService;
-    
+    private final Optional<H3JdbcService> h3JdbcService;
+
     @Autowired
     public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
                                      LocationPointsSimplificationService simplificationService,
-                                     UserJdbcService userJdbcService) {
+                                     UserJdbcService userJdbcService, Optional<H3JdbcService> h3JdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.simplificationService = simplificationService;
         this.userJdbcService = userJdbcService;
+        this.h3JdbcService = h3JdbcService;
+    }
+
+    @GetMapping("/h3-polygons")
+    public ResponseEntity<?> getH3HexagonsForCurrentUser(@AuthenticationPrincipal User user,
+                                                         @RequestParam(required = false) Double minLat,
+                                                         @RequestParam(required = false) Double maxLat,
+                                                         @RequestParam(required = false) Double minLng,
+                                                         @RequestParam(required = false) Double maxLng) {
+        if (this.h3JdbcService.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        try
+        {
+            return ResponseEntity.ok(this.h3JdbcService.get().findH3PolygonsByUser(user, minLat, maxLat, minLng, maxLng));
+        } catch (Exception e) {
+            logger.error("Error fetching hexagons", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error fetching hexagons: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/h3-polygons/discovered-during")
+    public ResponseEntity<?> getH3HexagonsForCurrentUserDiscoveredDuringTime(@AuthenticationPrincipal User user,
+                                                                             @RequestParam(required = false)
+                                                                             String date,
+                                                                             @RequestParam(required = false)
+                                                                             String startDate,
+                                                                             @RequestParam(required = false)
+                                                                             String endDate,
+                                                                             @RequestParam(required = false,
+                                                                                           defaultValue = "UTC")
+                                                                             String timezone,
+                                                                             @RequestParam(required = false)
+                                                                             Double minLat,
+                                                                             @RequestParam(required = false)
+                                                                             Double maxLat,
+                                                                             @RequestParam(required = false)
+                                                                             Double minLng,
+                                                                             @RequestParam(required = false)
+                                                                             Double maxLng)
+    {
+        if (this.h3JdbcService.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        try
+        {
+            var timeRange = ParsedTimeRange.fromTimeRange(date, startDate, endDate, timezone);
+            if (timeRange == null)
+            {
+                return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "Either 'date' or both 'startDate' and 'endDate' must be provided"));
+            }
+
+            return ResponseEntity.ok(
+                this.h3JdbcService.get().findH3PolygonsByUserDiscoveredDuringTime(user, timeRange.startOfRange(),
+                    timeRange.endOfRange(), minLat, maxLat, minLng, maxLng));
+        } catch (DateTimeParseException _)
+        {
+            return ResponseEntity
+                .badRequest()
+                .body(Map.of("error", "Invalid date format. Expected format: YYYY-MM-DD"));
+        } catch (Exception e) {
+            logger.error("Error fetching hexagons", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error fetching hexagons: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/raw-location-points")
@@ -67,39 +137,12 @@ public class LocationDataApiController {
                                                   @RequestParam(required = false) Double minLng,
                                                   @RequestParam(required = false) Double maxLng) {
         try {
-            ZoneId userTimezone = ZoneId.of(timezone);
-            Instant startOfRange = null;
-            Instant endOfRange = null;
-
-            // Support both single date and date range
-            if (startDate != null && endDate != null) {
-                //first try to parse them as date time
-
-                try {
-                    LocalDateTime startTimestamp = LocalDateTime.parse(startDate);
-                    LocalDateTime endTimestamp = LocalDateTime.parse(endDate);
-                    startOfRange = startTimestamp.atZone(userTimezone).toInstant();
-                    endOfRange = endTimestamp.atZone(userTimezone).toInstant();
-                } catch (DateTimeParseException ignored) {
-                }
-
-                if (startOfRange == null && endOfRange == null) {
-                    LocalDate selectedStartDate = LocalDate.parse(startDate);
-                    LocalDate selectedEndDate = LocalDate.parse(endDate);
-                    startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
-                    endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-                }
-            } else if (date != null) {
-                // Single date mode (backward compatibility)
-                LocalDate selectedDate = LocalDate.parse(date);
-                startOfRange = selectedDate.atStartOfDay(userTimezone).toInstant();
-                endOfRange = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-            } else {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Either 'date' or both 'startDate' and 'endDate' must be provided"
-                ));
+            var timeRange = ParsedTimeRange.fromTimeRange(date, startDate, endDate, timezone);
+            if (timeRange == null) {
+                return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "Either 'date' or both 'startDate' and 'endDate' must be provided"));
             }
-
 
             boolean includeRawLocationPath = true;
             if (user instanceof TokenUser) {
@@ -119,7 +162,8 @@ public class LocationDataApiController {
             long start = System.nanoTime();
             List<RawLocationDataResponse.Segment> result;
             if (includeRawLocationPath) {
-                List<List<LocationPoint>> segments = loadSegmentsInBoundingBoxAndTime(userToFetchDataFrom, minLat, maxLat, minLng, maxLng, startOfRange, endOfRange);
+                List<List<LocationPoint>> segments = loadSegmentsInBoundingBoxAndTime(userToFetchDataFrom, minLat, maxLat, minLng, maxLng,
+                    timeRange.startOfRange(), timeRange.endOfRange());
                 logger.trace("Loaded segments in [{}]ms", (System.nanoTime() - start) / 1_000_000);
                 start = System.nanoTime();
                 result = segments.stream().map(s -> {
@@ -133,8 +177,8 @@ public class LocationDataApiController {
 
             Optional<RawLocationPoint> latest = this.rawLocationPointJdbcService.findLatest(userToFetchDataFrom);
             return ResponseEntity.ok(new RawLocationDataResponse(result, latest.map(this::toLocationPoint).orElse(null)));
-            
-        } catch (DateTimeParseException e) {
+
+        } catch (DateTimeParseException _) {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "Invalid date format. Expected format: YYYY-MM-DD"
             ));
@@ -159,20 +203,20 @@ public class LocationDataApiController {
             if (latest.isEmpty()) {
                 return ResponseEntity.ok(Map.of("hasLocation", false));
             }
-            
+
             RawLocationPoint latestPoint = latest.get();
-            
+
             LocationPoint point = new LocationPoint();
             point.setLatitude(latestPoint.getLatitude());
             point.setLongitude(latestPoint.getLongitude());
             point.setAccuracyMeters(latestPoint.getAccuracyMeters());
             point.setTimestamp(latestPoint.getTimestamp().toString());
-            
+
             return ResponseEntity.ok(Map.of(
                 "hasLocation", true,
                 "point", point
             ));
-            
+
         } catch (Exception e) {
             logger.error("Error fetching latest location", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -251,4 +295,49 @@ public class LocationDataApiController {
         return p;
     }
 
+    private record ParsedTimeRange(Instant startOfRange, Instant endOfRange)
+    {
+
+        public static ParsedTimeRange fromTimeRange(String date, String startDate, String endDate, String timezone)
+            throws DateTimeParseException
+        {
+            ZoneId userTimezone = ZoneId.of(timezone);
+            Instant startOfRange = null;
+            Instant endOfRange = null;
+
+            // Support both single date and date range
+            if (startDate != null && endDate != null)
+            {
+                //first try to parse them as date time
+
+                try
+                {
+                    LocalDateTime startTimestamp = LocalDateTime.parse(startDate);
+                    LocalDateTime endTimestamp = LocalDateTime.parse(endDate);
+                    startOfRange = startTimestamp.atZone(userTimezone).toInstant();
+                    endOfRange = endTimestamp.atZone(userTimezone).toInstant();
+                } catch (DateTimeParseException ignored)
+                {
+                }
+
+                if (startOfRange == null && endOfRange == null)
+                {
+                    LocalDate selectedStartDate = LocalDate.parse(startDate);
+                    LocalDate selectedEndDate = LocalDate.parse(endDate);
+                    startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
+                    endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                }
+            } else if (date != null)
+            {
+                // Single date mode (backward compatibility)
+                LocalDate selectedDate = LocalDate.parse(date);
+                startOfRange = selectedDate.atStartOfDay(userTimezone).toInstant();
+                endOfRange = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+            } else
+            {
+                return null;
+            }
+            return new ParsedTimeRange(startOfRange, endOfRange);
+        }
+    }
 }

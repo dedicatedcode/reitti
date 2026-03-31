@@ -30,25 +30,15 @@ public class RawLocationPointJdbcService {
     private final PointReaderWriter pointReaderWriter;
     private final GeometryFactory geometryFactory;
 
-    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory) {
+    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, RowMapper<RawLocationPoint> rawLocationPointRowMapper,
+                                       PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory)
+    {
         this.jdbcTemplate = jdbcTemplate;
-        this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
-                rs.getLong("id"),
-                rs.getTimestamp("timestamp").toInstant(),
-                pointReaderWriter.read(rs.getString("geom")),
-                rs.getDouble("accuracy_meters"),
-                rs.getObject("elevation_meters", Double.class),
-                rs.getBoolean("processed"),
-                rs.getBoolean("synthetic"),
-                rs.getBoolean("ignored"),
-                rs.getBoolean("invalid"),
-                rs.getLong("version")
-        );
+        this.rawLocationPointRowMapper = rawLocationPointRowMapper;
 
         this.pointReaderWriter = pointReaderWriter;
         this.geometryFactory = geometryFactory;
     }
-
 
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
             User user, Instant startTime, Instant endTime) {

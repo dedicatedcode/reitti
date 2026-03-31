@@ -21,21 +21,12 @@ public class PreviewRawLocationPointJdbcService {
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
     private final PointReaderWriter pointReaderWriter;
 
-    public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
+    public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate,
+                                              RowMapper<RawLocationPoint> rawLocationPointRowMapper,
+                                              PointReaderWriter pointReaderWriter)
+    {
         this.jdbcTemplate = jdbcTemplate;
-        this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
-                rs.getLong("id"),
-                rs.getTimestamp("timestamp").toInstant(),
-                pointReaderWriter.read(rs.getString("geom")),
-                rs.getDouble("accuracy_meters"),
-                rs.getObject("elevation_meters", Double.class),
-                rs.getBoolean("processed"),
-                rs.getBoolean("synthetic"),
-                rs.getBoolean("ignored"),
-                false,
-                rs.getLong("version")
-        );
-
+        this.rawLocationPointRowMapper = rawLocationPointRowMapper;
         this.pointReaderWriter = pointReaderWriter;
     }
 
@@ -91,13 +82,13 @@ public class PreviewRawLocationPointJdbcService {
         if (points.isEmpty()) {
             return;
         }
-        
+
         String sql = "UPDATE preview_raw_location_points SET processed = true WHERE id = ?";
-        
+
         List<Object[]> batchArgs = points.stream()
                 .map(point -> new Object[]{point.getId()})
                 .collect(Collectors.toList());
-        
+
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 

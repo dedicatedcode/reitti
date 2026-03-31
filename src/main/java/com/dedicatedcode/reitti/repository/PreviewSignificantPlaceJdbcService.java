@@ -20,22 +20,11 @@ public class PreviewSignificantPlaceJdbcService {
     private final PointReaderWriter  pointReaderWriter;
     private final RowMapper<SignificantPlace> significantPlaceRowMapper;
 
-    public PreviewSignificantPlaceJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
+    public PreviewSignificantPlaceJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter,
+                                              RowMapper<SignificantPlace> significantPlaceRowMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.pointReaderWriter = pointReaderWriter;
-        significantPlaceRowMapper = (rs, _) -> new SignificantPlace(
-                rs.getLong("id"),
-                rs.getString("name"),
-                rs.getString("address"),
-                rs.getString("city"),
-                rs.getString("country_code"),
-                rs.getDouble("latitude_centroid"),
-                rs.getDouble("longitude_centroid"),
-                this.pointReaderWriter.wktToPolygon(rs.getString("polygon")),
-                SignificantPlace.PlaceType.valueOf(rs.getString("type")),
-                rs.getString("timezone") != null ? ZoneId.of(rs.getString("timezone")) : null,
-                rs.getBoolean("geocoded"),
-                rs.getLong("version"));
+        this.significantPlaceRowMapper = significantPlaceRowMapper;
     }
 
 

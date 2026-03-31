@@ -20,6 +20,8 @@ public class RabbitMQConfig {
     public static final String USER_EVENT_QUEUE = "reitti.user.events.v2";
     public static final String USER_EVENT_ROUTING_KEY = "reitti.user.events.updated.v2";
 
+    public static final String AREA_INGESTION_QUEUE = "reitti.area.ingestion.v2";
+    public static final String AREA_BOUNDARY_INGESTION_QUEUE = "reitti.area.boundary.ingestion.v2";
 
     public static final String DLX_NAME = "reitti.dlx.exchange";
     public static final String DLQ_NAME = "reitti.dql.v2";
@@ -60,8 +62,33 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue areaIngestionQueue() {
+        return QueueBuilder.durable(AREA_INGESTION_QUEUE)
+            .withArgument("x-dead-letter-exchange", DLX_NAME)
+            .withArgument("x-dead-letter-routing-key", DLQ_NAME)
+            .build();
+    }
+
+    @Bean
+    public Queue areaBoundaryIngestionQueue() {
+        return QueueBuilder.durable(AREA_BOUNDARY_INGESTION_QUEUE)
+            .withArgument("x-dead-letter-exchange", DLX_NAME)
+            .withArgument("x-dead-letter-routing-key", DLQ_NAME)
+            .build();
+    }
+
+    @Bean
     public Binding significantPlaceBinding(Queue significantPlaceQueue, TopicExchange exchange) {
         return BindingBuilder.bind(significantPlaceQueue).to(exchange).with(SIGNIFICANT_PLACE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding areaIngestionBinding(Queue areaIngestionQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(areaIngestionQueue).to(exchange).with(AREA_INGESTION_QUEUE);
+    }
+    @Bean
+    public Binding areaBoundaryIngestionBinding(Queue areaBoundaryIngestionQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(areaBoundaryIngestionQueue).to(exchange).with(AREA_BOUNDARY_INGESTION_QUEUE);
     }
 
     @Bean
