@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -190,7 +192,7 @@ public class RawLocationPointJdbcService {
     public Optional<RawLocationPoint> findLatest(User user) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.invalid, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.invalid = false " +
+                "WHERE rlp.user_id = ? AND rlp.invalid = false AND ignored = false " +
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
@@ -571,7 +573,10 @@ public class RawLocationPointJdbcService {
     }
 
     public MapMetadata getMetadata(User user, Instant start, Instant end) {
-        String sql = """
+
+        boolean useRawTable = Duration.between(start, end).toDays() <= 31;
+
+        String sql = useRawTable ? """
                 SELECT
                   EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
                   EXTRACT(EPOCH FROM MAX(timestamp)) as max_ts,
@@ -582,11 +587,24 @@ public class RawLocationPointJdbcService {
                   ST_XMax(ST_Extent(geom)) as max_lng
                 FROM raw_location_points
                 WHERE user_id = ?
-                 AND invalid = false
-                 AND timestamp >= ? AND timestamp < ?;
+                  AND invalid = false
+                  AND ignored = false
+                  AND timestamp >= ? AND timestamp < ?
+                """ : """
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(min_ts)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(max_ts)) as max_ts,
+                  SUM(point_count) as total_count,
+                  MIN(ST_YMin(bbox::geometry)) as min_lat,
+                  MAX(ST_YMax(bbox::geometry)) as max_lat,
+                  MIN(ST_XMin(bbox::geometry)) as min_lng,
+                  MAX(ST_XMax(bbox::geometry)) as max_lng
+                FROM location_daily_summary
+                WHERE user_id = ?
+                  AND day >= ?::date AND day < ?::date
                 """;
-
-        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+        long startTime = System.nanoTime();
+        MapMetadata result = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
                 rs.getLong("min_ts"),
                 rs.getLong("max_ts"),
                 rs.getLong("total_count"),
@@ -603,7 +621,7 @@ public class RawLocationPointJdbcService {
                     locationPoint.setElevationMeters(rawLocationPoint.getElevationMeters());
                     return locationPoint;
                 })
-
         ), user.getId(), Timestamp.from(start), Timestamp.from(end));
+        return result;
     }
 }
