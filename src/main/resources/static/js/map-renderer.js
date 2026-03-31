@@ -76,17 +76,17 @@ class MapRenderer {
                 cometOpacity: 155,
                 shadowWidth: 3,
                 shadowOpacity: 155,
-                pathWidth: 2,
-                pathOpacity: 35,
-                staticPathWidth: 4,
+                pathWidth: 1.5,
+                pathOpacity: 25,
+                staticPathWidth: 2.5,
                 staticPathOpacity: 200,
             },
             visits: {
                 minZoom: 12,
                 polygonMinZoom: 16,
                 radius: 1,
-                opacity: 100,
-                polygonOpacity: 100,
+                opacity: 66,
+                polygonOpacity: 66,
                 lineWidth: 1
             },
             bundled: {
@@ -628,6 +628,9 @@ class MapRenderer {
                     return Math.min(calculated, maxRadius);
                 },
                 getFillColor: d => [...manager.color, isOverview ? this.deckParams.visits.opacity : (this._getActiveVisitEffect(d).opacity * this.deckParams.visits.opacity)],
+                getLineColor: d => [...manager.color, 255],
+                stroked: true,
+                getLineWidth: this.deckParams.visits.lineWidth,
                 pickable: true,
                 depthTest: true,
                 onHover: info => this._updateTooltip(info),

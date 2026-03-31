@@ -1,4 +1,4 @@
-# Reitti - Personal Location Tracking & Analysis
+# Reitti – Personal Location Tracking & Analysis
 
 Reitti is a comprehensive self-hosted application for tracking, analyzing, and visualizing your location data over time. It helps you understand your movement patterns and significant places while keeping your location data completely private and under your control.
 
@@ -22,7 +22,7 @@ Reitti is a comprehensive self-hosted application for tracking, analyzing, and v
 - **Geocoding Services**: Configurable address resolution with multiple provider support
 
 ### Privacy & Performance
-- **Complete Privacy**: Your data never leaves your server - no cloud dependencies
+- **Complete Privacy**: Your data never leaves your server – no cloud dependencies
 - **Asynchronous Processing**: Efficient handling of large location datasets with RabbitMQ
 - **Real-time Monitoring**: Queue status and job processing visibility
 - **Self-hosted**: Deploy on your own infrastructure with full control
@@ -52,10 +52,6 @@ docker run -p 8080:8080 \
   -e POSTGIS_DB=reittidb \
   -e POSTGIS_USER=reitti \
   -e POSTGIS_PASSWORD=reitti \
-  -e RABBITMQ_HOST=rabbitmq \
-  -e RABBITMQ_PORT=5672 \
-  -e RABBITMQ_USER=reitti \
-  -e RABBITMQ_PASSWORD=reitti \
   dedicatedcode/reitti:latest
 ```
 
@@ -70,10 +66,6 @@ docker run -p 8080:8080 \
 | `POSTGIS_DB` | PostgreSQL database name | reittidb |
 | `POSTGIS_USER` | Database username | reitti |
 | `POSTGIS_PASSWORD` | Database password | reitti |
-| `RABBITMQ_HOST` | RabbitMQ host | rabbitmq |
-| `RABBITMQ_PORT` | RabbitMQ port | 5672 |
-| `RABBITMQ_USER` | RabbitMQ username | reitti |
-| `RABBITMQ_PASSWORD` | RabbitMQ password | reitti |
 | `SERVER_PORT` | Application server port | 8080 |
 | `APP_UID` | User ID to run the application as | 1000 |
 | `APP_GID` | Group ID to run the application as | 1000 |
