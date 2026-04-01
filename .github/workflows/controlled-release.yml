@@ -146,7 +146,6 @@ jobs:
           images: |
             dedicatedcode/reitti
             ghcr.io/${{ github.repository }}
-          ref: refs/tags/${{ needs.prepare.outputs.tag }}
           tags: |
             type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
             type=semver,pattern={{version}}
@@ -169,7 +168,6 @@ jobs:
           images: |
             dedicatedcode/reitti-tile-cache
             ghcr.io/${{ github.repository }}-tile-cache
-          ref: refs/tags/${{ needs.prepare.outputs.tag }}
           tags: |
             type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
             type=semver,pattern={{version}}
@@ -220,6 +218,7 @@ jobs:
     if: failure() || cancelled()
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Delete tag if verification cancelled/failed
         run: |
           gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ needs.prepare.outputs.tag }} || true
