@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +80,7 @@ public class SyntheticLocationPointGenerator {
             LocationPoint syntheticPoint = new LocationPoint();
             syntheticPoint.setLatitude(interpolatedCoords.latitude());
             syntheticPoint.setLongitude(interpolatedCoords.longitude());
-            syntheticPoint.setTimestamp(currentTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            syntheticPoint.setTimestamp(currentTime);
             syntheticPoint.setAccuracyMeters(interpolatedAccuracy);
             syntheticPoint.setElevationMeters(interpolatedElevation);
             

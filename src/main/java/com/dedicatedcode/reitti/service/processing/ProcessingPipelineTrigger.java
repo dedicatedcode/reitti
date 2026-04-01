@@ -91,8 +91,6 @@ public class ProcessingPipelineTrigger {
                 Instant earliest = currentBatch.getFirst().getTimestamp();
                 Instant latest = currentBatch.getLast().getTimestamp();
                 log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
-
-                currentBatch.forEach(RawLocationPoint::markProcessed);
                 if (previewId == null) {
                     rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 } else {

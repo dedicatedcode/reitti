@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.dto;
 
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Instant;
+
 public class LocationPoint {
     @NotNull
     private Double latitude;
@@ -10,7 +12,7 @@ public class LocationPoint {
     private Double longitude;
 
     @NotNull
-    private String timestamp; // ISO8601 format
+    private Instant timestamp;
 
     @NotNull
     private Double accuracyMeters;
@@ -33,11 +35,11 @@ public class LocationPoint {
         this.longitude = longitude;
     }
 
-    public String getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(String timestamp) {
+    public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
     }
 

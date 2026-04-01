@@ -60,8 +60,12 @@ public class CustomOidcUserService extends OidcUserService {
         if (preferredUsername == null) {
             preferredUsername = oidcUser.getEmail();
         }
-        if (preferredUsername == null) {
+        if (preferredUsername == null && oidcUser.getFamilyName() != null && oidcUser.getGivenName() != null){
             preferredUsername = oidcUser.getGivenName().toLowerCase() + "." + oidcUser.getFamilyName().toLowerCase();
+        }
+        if (preferredUsername == null) {
+            log.warn("No preferred username found for user: {}. Will fallback to OIDC subject", oidcUser);
+            preferredUsername = userRequest.getIdToken().getSubject();
         }
         String oidcUserId = userRequest.getIdToken().getIssuer().toString() + ":" + userRequest.getIdToken().getSubject();
 
@@ -92,7 +96,7 @@ public class CustomOidcUserService extends OidcUserService {
                 log.info("Updating username for user with id [{}] from [{}] to [{}]", user.getId(), user.getUsername(), preferredUsername);
                 user = user.withUsername(preferredUsername);
             }
-            if (localLoginDisabled && !user.getPassword().isEmpty()) {
+            if (localLoginDisabled && user.getPassword() != null && !user.getPassword().isEmpty()) {
                 log.info("Reset password for user with id [{}]. Disabling local login.", user.getId());
                 user = user.withPassword("");
             }

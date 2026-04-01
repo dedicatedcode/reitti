@@ -1,11 +1,9 @@
 services:
   reitti:
-    image: dedicatedcode/reitti:latest
+    image: dedicatedcode/reitti:next
     ports:
       - 8080:8080
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgis:
         condition: service_healthy
         restart: true
@@ -16,7 +14,6 @@ services:
     volumes:
      - reitti-data:/data/
     environment:
-      PHOTON_BASE_URL: http://photon:2322
       POSTGIS_USER: reitti
       POSTGIS_PASSWORD: reitti
       POSTGIS_DB: reittidb
@@ -34,18 +31,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: reitti
-      RABBITMQ_DEFAULT_PASS: reitti
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
   redis:
     image: redis:7-alpine
     volumes:
@@ -55,51 +40,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  photon:
-    image: rtuszik/photon-docker:1.3.0
-    environment:
-      - UPDATE_STRATEGY=PARALLEL
-      - REGION=de #set your main country code here to save space or drop this line to fetch the whole index.
-    volumes:
-      - photon-data:/photon/data
-
   tile-cache:
-    image: nginx:alpine
-    environment:
-      NGINX_CACHE_SIZE: 1g
-    command: |
-      sh -c "
-      mkdir -p /var/cache/nginx/tiles
-      cat > /etc/nginx/nginx.conf << 'EOF'
-      events {
-        worker_connections 1024;
-      }
-      http {
-        proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:10m max_size=1g inactive=30d use_temp_path=off;
-      
-        server {
-          listen 80;
-          location / {
-            proxy_pass https://tile.openstreetmap.org/;
-            proxy_set_header Host tile.openstreetmap.org;
-            proxy_set_header User-Agent \"Reitti/1.0 \\(+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com\\)\";
-            proxy_cache tiles;
-            proxy_cache_valid 200 30d;
-            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
-          }
-        }
-      }
-      EOF
-      nginx -g 'daemon off;'"
+    image: dedicatedcode/reitti-tile-cache:next
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/0/0/0.png"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/osm/0/0/0.png"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - tile-cache-data:/var/cache/nginx
 volumes:
   postgis-data:
-  rabbitmq-data:
   redis-data:
   photon-data:
   reitti-data:
+  tile-cache-data:

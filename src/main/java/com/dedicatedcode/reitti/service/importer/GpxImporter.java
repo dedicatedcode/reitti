@@ -15,6 +15,7 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +121,7 @@ public class GpxImporter {
         if (timeElements.getLength() > 0) {
             String timeStr = timeElements.item(0).getTextContent();
             if (StringUtils.hasText(timeStr)) {
-                point.setTimestamp(timeStr);
+                point.setTimestamp(Instant.parse(timeStr));
             } else {
                 return null;
             }

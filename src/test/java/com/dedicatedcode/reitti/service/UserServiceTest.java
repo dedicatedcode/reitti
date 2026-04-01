@@ -1,24 +1,27 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
-import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
+import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +43,15 @@ class UserServiceTest {
 
     @Autowired
     private MqttIntegrationJdbcService mqttIntegrationJdbcService;
+
+    @Autowired
+    private SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
+
+    @Autowired
+    private TransportModeOverrideJdbcService transportModeOverrideJdbcService;
+
+    @Autowired
+    private TestingService testingService;
 
     @Test
     void shouldCreateUserWithExternalIdAndDefaultSettings() {
@@ -188,7 +200,10 @@ class UserServiceTest {
                 .withIdentifier("identifier")
                 .withTopic( "topic")
                 .withPayloadType(PayloadType.OWNTRACKS));
+        SignificantPlace significantPlace = this.testingService.newSignificantPlace(user);
+        this.significantPlaceOverrideJdbcService.insertOverride(user, significantPlace);
 
+        this.transportModeOverrideJdbcService.addTransportModeOverride(user, TransportMode.WALKING, Instant.now().minus(10, ChronoUnit.MINUTES), Instant.now());
         // When
         userService.deleteUser(user);
 

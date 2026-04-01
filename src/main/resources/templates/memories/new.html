@@ -11,32 +11,44 @@
     <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../static/css/photo-client.css">
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../../static/css/datetime-picker.css">
     <link rel="stylesheet" href="/css/leaflet.css">
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/leaflet.js"></script>
-    <script src="/js/leaflet.geodesic.2.7.2.js"></script>
-    <script src="/js/TileLayer.Grayscale.js"></script>
+    <script src="/js/vendor/htmx.min.js"></script>
+    <script src="/js/vendor/leaflet.js"></script>
+    <script src="/js/vendor/leaflet.geodesic.2.7.2.js"></script>
+    <script src="/js/vendor/TileLayer.Grayscale.js"></script>
     <script src="/js/raw-location-loader.js"></script>
     <script src="/js/HumanizeDuration.js"></script>
-    <script src="/js/photo-client.js"></script>
     <script src="/js/datetime-picker.js"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
-    <div th:fragment="new-memory" class="settings-content-area">
+    <div th:fragment="memory-form" class="settings-content-area">
         <div th:if="${error}" class="alert alert-error">
             <i class="lni lni-warning"></i>
             <span th:text="${error}">Error message</span>
         </div>
-        <form th:attr="hx-post=@{/memories}" class="memory-form" hx-indicator="#memory-processing-overlay" hx-swap="outerHTML" hx-target="closest .settings-content-area" hx-vals='js:{"timezone": getUserTimezone()}' onsubmit="return validateDates()">
+        <form th:attr="hx-post=${memory?.id != null ? '/memories/' + memory.id : '/memories'}"
+              class="memory-form"
+              hx-indicator="#memory-processing-overlay"
+              th:hx-swap="${memory?.id != null ? 'outerHTML' : 'outerHTML'}"
+              th:hx-target="${memory?.id != null ? '.memory-header' : 'closest .settings-content-area'}"
+              hx-vals='js:{"timezone": getUserTimezone()}'
+              onsubmit="return validateDates()">
+
+            <input th:if="${memory?.id != null}" type="hidden" name="version" th:value="${memory.version}">
+
             <div class="form-group">
                 <label for="title" th:text="#{memory.form.title.label}">Title *</label>
-                <input type="text" id="title" name="title" required class="form-control" th:placeholder="#{memory.form.title.placeholder}" th:value="${title}">
+                <input type="text" id="title" name="title" required class="form-control"
+                       th:placeholder="#{memory.form.title.placeholder}"
+                       th:value="${memory?.title ?: title}">
                 <input type="hidden" name="year" th:value="${year}">
             </div>
 
             <div class="form-group">
                 <label for="description" th:text="#{memory.form.description.label}">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="4" th:placeholder="#{memory.form.description.placeholder}" th:text="${description}"></textarea>
+                <textarea id="description" name="description" class="form-control" rows="4"
+                          th:placeholder="#{memory.form.description.placeholder}"
+                          th:text="${memory?.description ?: description}"></textarea>
             </div>
 
             <div class="form-row">
@@ -51,15 +63,22 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="endDateGroup" th:style="${openEnded != null ?: openEnded} ? 'display: none' : 'display: block'">
                     <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
                     <div class="datetime-picker" id="endDatePicker">
-                        <input type="date" id="endDate" name="endDate" required class="date-input form-control"
+                        <input type="date" id="endDate" name="endDate" th:required="${openEnded != null  ?: !openEnded}" class="date-input form-control"
                                th:value="${endDate}">
-                        <input type="time" id="endTime" name="endTime" step="1" required class="time-input form-control"
+                        <input type="time" id="endTime" name="endTime" step="1" th:required="${openEnded != null  ?: !openEnded}" class="time-input form-control"
                                th:value="${endTime}">
                         <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
                     </div>
+                </div>
+                <div class="form-group slide-reveal-container">
+                    <input type="checkbox" id="openEnded" name="openEnded" onchange="toggleEndDate()" th:checked="${openEnded != null  ?: openEnded}">
+                    <label data-testid="openEndedCheckbox"  for="openEnded" class="slide-reveal">
+                        <span class="slide-box"></span>
+                        <span class="label-text" th:text="#{memory.form.open_ended.label}">Open-ended?</span>
+                    </label>
                 </div>
             </div>
 
@@ -69,14 +88,23 @@
             </div>
 
             <div class="form-actions">
-                <button th:if="${year != 'all'}" th:attr="hx-get=@{/memories/year/{year}(year=${year})}"
-                        hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
-                <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories/all}"
-                        hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
-                <button type="submit" class="btn btn-primary"
-                        hx-disabled-elt="this">
-                    <span th:text="#{memory.form.create}">Create Memory</span>
-                </button>
+                <!-- Cancel for New -->
+                <th:block th:if="${memory?.id == null}">
+                    <button th:if="${year != 'all'}" th:attr="hx-get=@{/memories/year/{year}(year=${year})}"
+                            hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
+                    <button th:if="${year == 'all'}" th:attr="hx-get=@{/memories/all}"
+                            hx-target=".memories-overview" hx-swap="outerHTML" hx-vals="js:{timezone: getUserTimezone()}" class="btn btn-primary" th:text="#{memory.form.cancel}">Cancel</button>
+                    <button data-testid="submit" type="submit" class="btn btn-primary" hx-disabled-elt="this">
+                        <span  th:text="#{memory.form.create}">Create Memory</span>
+                    </button>
+                </th:block>
+
+                <!-- Cancel for Edit -->
+                <th:block th:if="${memory?.id != null}">
+                    <a class="btn btn-secondary"
+                       th:href="@{/memories/{id}(id=${memory.id})}" th:text="#{memory.form.cancel}">Cancel</a>
+                    <button data-testid="submit" type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
+                </th:block>
             </div>
         </form>
         <script th:inline="javascript">
@@ -94,27 +122,55 @@
                 onValidate: validateDates
             });
 
+            function toggleEndDate() {
+                const isOpenEnded = document.getElementById('openEnded').checked;
+                const endDateGroup = document.getElementById('endDateGroup');
+                const endDateInput = document.getElementById('endDate');
+                const endTimeInput = document.getElementById('endTime');
+
+                if (isOpenEnded) {
+                    endDateGroup.style.display = 'none';
+                    endDateInput.removeAttribute('required');
+                    endTimeInput.removeAttribute('required');
+                } else {
+                    endDateGroup.style.display = 'block';
+                    endDateInput.setAttribute('required', 'required');
+                    endTimeInput.setAttribute('required', 'required');
+                }
+                validateDates();
+            }
+
             function validateDates() {
                 const startDate = document.getElementById('startDate').value;
                 const startTime = document.getElementById('startTime').value;
-                const endDate = document.getElementById('endDate').value;
-                const endTime = document.getElementById('endTime').value;
+                const isOpenEnded = document.getElementById('openEnded').checked;
                 const errorDiv = document.getElementById('dateError');
                 const errorText = document.getElementById('dateErrorText');
 
-                if (!startDate || !startTime || !endDate || !endTime) {
-                    errorText.textContent = /*[[#{memory.form.date.error.empty}]]*/ 'Dates cannot be empty';
+                if (!startDate || !startTime) {
+                    errorText.textContent = /*t('js.memory.form.date.error.empty')*/ 'Dates cannot be empty';
                     errorDiv.style.display = 'block';
                     return false;
                 }
 
-                const startDateTime = new Date(`${startDate}T${startTime}`);
-                const endDateTime = new Date(`${endDate}T${endTime}`);
+                if (!isOpenEnded) {
+                    const endDate = document.getElementById('endDate').value;
+                    const endTime = document.getElementById('endTime').value;
 
-                if (startDateTime > endDateTime) {
-                    errorText.textContent = /*[[#{memory.form.date.error.end.before.start}]]*/ 'End date must be on or after start date';
-                    errorDiv.style.display = 'block';
-                    return false;
+                    if (!endDate || !endTime) {
+                        errorText.textContent = /*t('js.memory.form.date.error.empty')*/ 'Dates cannot be empty';
+                        errorDiv.style.display = 'block';
+                        return false;
+                    }
+
+                    const startDateTime = new Date(`${startDate}T${startTime}`);
+                    const endDateTime = new Date(`${endDate}T${endTime}`);
+
+                    if (startDateTime > endDateTime) {
+                        errorText.textContent = /*t('js.memory.form.date.error.end.before.start')*/ 'End date must be on or after start date';
+                        errorDiv.style.display = 'block';
+                        return false;
+                    }
                 }
 
                 errorDiv.style.display = 'none';

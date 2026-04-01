@@ -63,4 +63,8 @@ public class SignificantPlaceOverrideJdbcService {
         GeoPoint point = new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid());
         this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ? AND ST_Equals(geom, ST_GeomFromText(?, '4326'))", user.getId(), pointReaderWriter.write(point));
     }
+
+    public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ?", user.getId());
+    }
 }

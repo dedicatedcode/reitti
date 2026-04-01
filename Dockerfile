@@ -23,33 +23,33 @@ WORKDIR $APP_HOME
 COPY --chown=reitti:reitti target/*.jar $APP_HOME/app.jar
 
 # Create a script to start the application with configurable UID/GID
-RUN echo '#!/bin/sh' > /entrypoint.sh && \
-    echo 'if [ -n "$APP_UID" ] && [ -n "$APP_GID" ]; then' >> /entrypoint.sh && \
-    echo '  echo "Changing reitti user/group to UID:$APP_UID / GID:$APP_GID"' >> /entrypoint.sh && \
-    echo '  # Add shadow package for usermod and groupmod commands' >> /entrypoint.sh && \
-    echo '  apk add --no-cache shadow' >> /entrypoint.sh && \
-    echo '  # Change GID first' >> /entrypoint.sh && \
-    echo '  groupmod -g $APP_GID reitti' >> /entrypoint.sh && \
-    echo '  # Then change UID' >> /entrypoint.sh && \
-    echo '  usermod -u $APP_UID reitti' >> /entrypoint.sh && \
-    echo '  # Fix ownership of all files' >> /entrypoint.sh && \
-    echo '  chown -R reitti:reitti $APP_HOME' >> /entrypoint.sh && \
-    echo 'fi' >> /entrypoint.sh && \
-    echo '# Ensure data directory exists and has correct ownership' >> /entrypoint.sh && \
-    echo 'mkdir -p $DATA_DIR' >> /entrypoint.sh && \
-    echo 'chown -R reitti:reitti $DATA_DIR' >> /entrypoint.sh && \
-    echo 'exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar -Dspring.profiles.active=docker "$@"' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+RUN cat <<'EOF' > /entrypoint.sh
+#!/bin/sh
+if [ -n "$APP_UID" ] && [ -n "$APP_GID" ]; then
+  echo "Changing reitti user/group to UID:$APP_UID / GID:$APP_GID"
+  apk add --no-cache shadow
+  groupmod -g $APP_GID reitti
+  usermod -u $APP_UID reitti
+  chown -R reitti:reitti $APP_HOME
+fi
 
+mkdir -p $DATA_DIR
+chown -R reitti:reitti $DATA_DIR
+
+# Execute
+exec su-exec reitti java $JAVA_OPTS -jar $APP_HOME/app.jar -Dspring.profiles.active=docker "$@"
+EOF
+
+RUN chmod +x /entrypoint.sh
 # Expose the application port
 EXPOSE 8080
 
 # Add healthcheck
-HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=20 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=5 \
+  CMD sh -c 'curl -f --max-time 2 "http://localhost:8080${BASE_PATH}/actuator/health" || (echo "Health check failed" && exit 1)'
 
 # Install su-exec for proper user switching and wget for healthcheck
-RUN apk add --no-cache su-exec wget attr
+RUN apk add --no-cache su-exec curl attr
 RUN setfattr -n user.pax.flags -v "mr" /opt/java/openjdk/bin/java
 
 # Run as root initially to allow UID/GID changes

@@ -61,7 +61,7 @@ public class ConfigurationForm {
         form.setMaxMergeTimeBetweenSameStayPoints(config.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
         form.setSearchDurationInHours(config.getVisitMerging().getSearchDurationInHours());
         form.setMaxMergeTimeBetweenSameVisits(config.getVisitMerging().getMaxMergeTimeBetweenSameVisits());
-        form.setMinDistanceBetweenVisits(config.getVisitMerging().getMinDistanceBetweenVisits());
+        form.setMinDistanceBetweenVisits(config.getVisitMerging().getPlaceRadiusMeters());
         
         // Check if configuration matches any predefined sensitivity level
         Integer matchingSensitivityLevel = findMatchingSensitivityLevel(config);
@@ -104,7 +104,7 @@ public class ConfigurationForm {
                actualDetection.getMaxMergeTimeBetweenSameStayPoints() == expectedDetection.getMaxMergeTimeBetweenSameStayPoints() &&
                actualMerging.getSearchDurationInHours() == expectedMerging.getSearchDurationInHours() &&
                actualMerging.getMaxMergeTimeBetweenSameVisits() == expectedMerging.getMaxMergeTimeBetweenSameVisits() &&
-               actualMerging.getMinDistanceBetweenVisits() == expectedMerging.getMinDistanceBetweenVisits();
+               actualMerging.getPlaceRadiusMeters() == expectedMerging.getPlaceRadiusMeters();
     }
     
     private static DetectionParameter.VisitDetection mapSensitivityToVisitDetection(int level) {
@@ -142,7 +142,7 @@ public class ConfigurationForm {
         this.maxMergeTimeBetweenSameStayPoints = visitDetection.getMaxMergeTimeBetweenSameStayPoints();
         this.searchDurationInHours = visitMerging.getSearchDurationInHours();
         this.maxMergeTimeBetweenSameVisits = visitMerging.getMaxMergeTimeBetweenSameVisits();
-        this.minDistanceBetweenVisits = visitMerging.getMinDistanceBetweenVisits();
+        this.minDistanceBetweenVisits = visitMerging.getPlaceRadiusMeters();
         this.sensitivityLevel = level;
     }
     
@@ -169,7 +169,7 @@ public class ConfigurationForm {
         
         if (originalMerging.getSearchDurationInHours() != currentMerging.getSearchDurationInHours() ||
             originalMerging.getMaxMergeTimeBetweenSameVisits() != currentMerging.getMaxMergeTimeBetweenSameVisits() ||
-            originalMerging.getMinDistanceBetweenVisits() != currentMerging.getMinDistanceBetweenVisits()) {
+            originalMerging.getPlaceRadiusMeters() != currentMerging.getPlaceRadiusMeters()) {
             return true;
         }
         

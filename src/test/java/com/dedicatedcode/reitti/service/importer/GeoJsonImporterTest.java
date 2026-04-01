@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -92,13 +93,13 @@ class GeoJsonImporterTest {
         LocationPoint point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point1.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
         LocationPoint point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
-        assertEquals("2023-10-15T10:31:00Z", point2.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
         assertEquals(15.0, point2.getAccuracyMeters());
 
         verify(stateHolder).importStarted();
@@ -153,13 +154,13 @@ class GeoJsonImporterTest {
         LocationPoint point1 = points.get(0);
         assertEquals(52.5200, point1.getLatitude());
         assertEquals(13.4050, point1.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point1.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point1.getTimestamp());
         assertEquals(10.0, point1.getAccuracyMeters());
 
         LocationPoint point2 = points.get(1);
         assertEquals(52.5210, point2.getLatitude());
         assertEquals(13.4060, point2.getLongitude());
-        assertEquals("2023-10-15T10:31:00Z", point2.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
         assertEquals(15.0, point2.getAccuracyMeters());
     }
 
@@ -195,7 +196,7 @@ class GeoJsonImporterTest {
         LocationPoint point = points.get(0);
         assertEquals(52.5200, point.getLatitude());
         assertEquals(13.4050, point.getLongitude());
-        assertEquals("2023-10-15T10:30:00Z", point.getTimestamp());
+        assertEquals(Instant.parse("2023-10-15T10:30:00Z"), point.getTimestamp());
         assertEquals(10.0, point.getAccuracyMeters());
     }
 

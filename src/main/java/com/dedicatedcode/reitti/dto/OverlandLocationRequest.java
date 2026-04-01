@@ -88,14 +88,14 @@ public class OverlandLocationRequest {
             double longitude = geometry.getCoordinates().get(0);
             double latitude = geometry.getCoordinates().get(1);
 
-            String timestamp = null;
+            Instant timestamp = null;
             if (properties.getTimestamp() != null) {
                 try {
-                    timestamp = Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(properties.getTimestamp())).toString();
+                    timestamp = Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(properties.getTimestamp()));
                 } catch (Exception e) {
                     // Try parsing as ISO instant
                     try {
-                        timestamp = Instant.parse(properties.getTimestamp()).toString();
+                        timestamp = Instant.parse(properties.getTimestamp());
                     } catch (Exception ex) {
                         log.warn("Could not parse timestamp [{}]", properties.getTimestamp());
                     }

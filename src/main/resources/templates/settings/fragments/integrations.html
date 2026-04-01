@@ -254,13 +254,13 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         const resultDiv = document.getElementById('recorder-connection-test-result');
 
                         if (!baseUrl || !username || !deviceId) {
-                            const message = window.locale?.['integrations.owntracks.recorder.test.missing.fields'] || 'Please fill in Base URL, Username, and Device ID';
+                            const message = t('integrations.owntracks.recorder.test.missing.fields')
                             resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
                             return;
                         }
 
                         // Show loading state
-                        const loadingMessage = window.locale?.['integrations.owntracks.recorder.test.loading'] || 'Testing connection...';
+                        const loadingMessage = t('integrations.owntracks.recorder.test.loading');
                         resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
                         // Make AJAX request to test connection
@@ -286,7 +286,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                 }
                             })
                             .catch(error => {
-                                const errorMessage = window.locale?.['integrations.owntracks.recorder.test.failed'] || 'Connection test failed';
+                                const errorMessage = t('integrations.owntracks.recorder.test.failed');
                                 resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                             });
                     });
@@ -294,7 +294,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                     // Add loading indicator for Load Historical Data button
                     document.addEventListener('htmx:beforeRequest', function(evt) {
                         if (evt.detail.elt.id === 'load-historical-btn') {
-                            const loadingText = window.locale?.['integrations.owntracks.recorder.loading.historical'] || 'Loading Historical Data...';
+                            const loadingText = t('integrations.owntracks.recorder.loading.historical');
                             evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>' + loadingText + '</span>';
                             evt.detail.elt.disabled = true;
                         }
@@ -436,7 +436,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
 
                         // Check for wildcard characters in topic
                         if (topic.includes('+') || topic.includes('#')) {
-                            const errorMessage = window.locale?.['integrations.mqtt.topic.no.wildcards'] || 'Topic cannot contain wildcard characters (+ or #) when saving the configuration. Wildcards are only for subscribing to topics.';
+                            const errorMessage = t('integrations.mqtt.topic.no.wildcards');
                             resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + '</div>';
                             return false; // Prevent form submission
                         }
@@ -457,15 +457,14 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         const payloadType = document.getElementById('mqttPayloadType').value;
                         const resultDiv = document.getElementById('mqtt-connection-test-result');
 
-                        debugger
                         if (!host || !port || !identifier || !topic) {
-                            const message = window.locale?.['integrations.mqtt.test.missing.fields'] || 'Please fill in Host, Port, Client Identifier, and Topic';
+                            const message = t('integrations.mqtt.test.missing.fields');
                             resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
                             return;
                         }
 
                         // Show loading state
-                        const loadingMessage = window.locale?.['integrations.mqtt.test.loading'] || 'Testing connection...';
+                        const loadingMessage = t('integrations.mqtt.test.loading');
                         resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
 
                         // Make AJAX request to test connection
@@ -494,7 +493,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                 }
                             })
                             .catch(error => {
-                                const errorMessage = window.locale?.['integrations.mqtt.test.failed'] || 'Connection test failed';
+                                const errorMessage = t('integrations.mqtt.test.failed');
                                 resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                             });
                     });
@@ -546,6 +545,17 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                    th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
                         </div>
 
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox"
+                                       name="useBestGuessLocation"
+                                       value="true"
+                                       th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
+                                <span th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
+                            </label>
+                            <small th:text="#{integrations.immich.useBestGuessLocation.description}">When enabled, Reitti will match photos without location data to the closest location on the map.</small>
+
+                        </div>
                         <div class="form-group">
                             <label>
                                 <input type="checkbox"
@@ -619,7 +629,6 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
             </summary>
             <div id="shared-instances-section" th:hx-get="@{/settings/integrations/shared-instances-content}" hx-trigger="load" hx-swap="innerHTML">
-                <!-- <span th:text="#{integrations.shared.instances.loading}">Shared instances content will be loaded here</span> -->
             </div>
         </details>
     </div>

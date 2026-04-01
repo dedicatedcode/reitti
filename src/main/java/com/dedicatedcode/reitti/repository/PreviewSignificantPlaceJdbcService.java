@@ -41,18 +41,29 @@ public class PreviewSignificantPlaceJdbcService {
 
     public List<SignificantPlace> findNearbyPlaces(Long userId, Point point, double distanceInMeters, String previewId) {
         String sql = """
-        SELECT sp.id, sp.address, sp.country_code, sp.city, sp.type,
-               sp.latitude_centroid, sp.longitude_centroid, sp.name, sp.user_id,
-               ST_AsText(sp.geom) as geom, ST_AsText(sp.polygon) as polygon,
-               sp.timezone, sp.geocoded, sp.version
-        FROM preview_significant_places sp
-        WHERE sp.user_id = ?
-        AND ST_DWithin(
-            COALESCE(sp.polygon, ST_Buffer(sp.geom, ?)),
-            ST_GeomFromText(?, '4326'),
-            0
-        )
-        """;
+                SELECT sp.id,
+                       sp.address,
+                       sp.country_code,
+                       sp.city,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                FROM preview_significant_places sp
+                WHERE sp.user_id = ?
+                 AND sp.preview_id = ?
+                 AND ST_DWithin(
+                    COALESCE(sp.polygon, sp.geom)::geography,
+                    ST_SetSRID(ST_GeomFromText(?), 4326)::geography,
+                    ?
+                )
+                """;
 
         return jdbcTemplate.query(sql, significantPlaceRowMapper,
                                   userId, distanceInMeters, point.toString());

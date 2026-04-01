@@ -6,75 +6,14 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
 </head>
 <body class="memories-page">
 <div class="settings-container">
     <div class="settings-content-area">
         <div id="edit-fragment" class="memory-header" th:fragment="edit-memory">
-        <div th:if="${error}" class="alert alert-error">
-            <i class="lni lni-warning"></i>
-            <span th:text="${error}">Error message</span>
+            <div th:replace="~{memories/new :: memory-form}"></div>
         </div>
-
-        <form th:attr="hx-post=@{/memories/{id}(id=${memory.id})}" hx-vals="js:{timezone: getUserTimezone()}" method="post" class="memory-form" hx-swap="outerHTML" hx-target=".memory-header">
-            <input type="hidden" name="version" th:value="${memory.version}">
-            <div class="form-group">
-                <label for="title" th:text="#{memory.form.title.label}">Title *</label>
-                <input type="text" id="title" name="title" required class="form-control" 
-                       th:value="${memory.title}"
-                       th:placeholder="#{memory.form.title.placeholder}"
-                       placeholder="Give your memory a title">
-            </div>
-
-            <div class="form-group">
-                <label for="description" th:text="#{memory.form.description.label}">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="4" 
-                          placeholder="Add a description (optional)"
-                          th:placeholder="#{memory.form.description.placeholder}"
-                          th:text="${memory.description}"></textarea>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="startDate" th:text="#{memory.form.start.date.label}">Start Date *</label>
-                    <div class="datetime-picker" id="startDatePicker">
-                        <input type="date" id="startDate" name="startDate" required class="date-input form-control"
-                               th:value="${startDate}">
-                        <input type="time" id="startTime" step="1" name="startTime" required class="time-input form-control"
-                               th:value="${startTime}">
-                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="endDate" th:text="#{memory.form.end.date.label}">End Date *</label>
-                    <div class="datetime-picker" id="endDatePicker">
-                        <input type="date" id="endDate" name="endDate" required class="date-input form-control"
-                               th:value="${endDate}">
-                        <input type="time" id="endTime" step="1" name="endTime" required class="time-input form-control"
-                               th:value="${endTime}">
-                        <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
-                    </div>
-                </div>
-            </div>
-            <div class="form-actions">
-                <a class="btn btn-secondary"
-                        th:href="@{/memories/{id}(id=${memory.id})}" th:text="#{memory.form.cancel}">Cancel</a>
-                <button type="submit" class="btn btn-primary" th:text="#{memory.form.update}">Save Changes</button>
-            </div>
-            <script th:inline="javascript">
-                startDatePicker = new DateTimePicker(document.getElementById('startDatePicker'), {
-                    timeFormat: getBrowserTimeFormat()
-                });
-
-                endDatePicker = new DateTimePicker(document.getElementById('endDatePicker'), {
-                    timeFormat: getBrowserTimeFormat()
-                });
-
-            </script>
-        </form>
-    </div>
     </div>
 </div>
 </body>

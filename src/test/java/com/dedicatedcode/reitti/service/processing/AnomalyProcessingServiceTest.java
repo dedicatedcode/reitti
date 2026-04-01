@@ -130,7 +130,7 @@ class AnomalyProcessingServiceTest {
 
     private LocationPoint createLocationPoint(String timestamp, double latitude, double longitude, double accuracy) {
         LocationPoint locationPoint = new LocationPoint();
-        locationPoint.setTimestamp(timestamp);
+        locationPoint.setTimestamp(Instant.parse(timestamp));
         locationPoint.setLatitude(latitude);
         locationPoint.setLongitude(longitude);
         locationPoint.setAccuracyMeters(accuracy);

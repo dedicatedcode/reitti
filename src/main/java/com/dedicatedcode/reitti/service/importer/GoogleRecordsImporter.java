@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -146,7 +147,8 @@ public class GoogleRecordsImporter {
 
         point.setLatitude(latitude);
         point.setLongitude(longitude);
-        point.setTimestamp(locationNode.get("timestamp").asText());
+        String timestamp = locationNode.get("timestamp").asText();
+        point.setTimestamp(ZonedDateTime.parse(timestamp).toInstant());
 
         // Set accuracy if available
         if (locationNode.has("accuracy")) {

@@ -44,13 +44,13 @@ class SyntheticLocationPointGeneratorTest {
         
         // Verify first synthetic point
         LocationPoint firstPoint = syntheticPoints.get(0);
-        assertEquals("2023-01-01T10:00:15Z", firstPoint.getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:00:15Z"), firstPoint.getTimestamp());
         assertTrue(firstPoint.getLatitude() > 50.0 && firstPoint.getLatitude() < 50.001);
         assertTrue(firstPoint.getLongitude() > 8.0 && firstPoint.getLongitude() < 8.001);
         
         // Verify last synthetic point
         LocationPoint lastPoint = syntheticPoints.get(6);
-        assertEquals("2023-01-01T10:01:45Z", lastPoint.getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:01:45Z"), lastPoint.getTimestamp());
     }
 
     @Test
@@ -193,9 +193,9 @@ class SyntheticLocationPointGeneratorTest {
 
         // Then: Should generate 4 points at 15, 30, 45, 60 seconds
         assertEquals(4, syntheticPoints.size());
-        assertEquals("2023-01-01T10:00:15Z", syntheticPoints.get(0).getTimestamp());
-        assertEquals("2023-01-01T10:00:30Z", syntheticPoints.get(1).getTimestamp());
-        assertEquals("2023-01-01T10:00:45Z", syntheticPoints.get(2).getTimestamp());
-        assertEquals("2023-01-01T10:01:00Z", syntheticPoints.get(3).getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:00:15Z"), syntheticPoints.get(0).getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:00:30Z"), syntheticPoints.get(1).getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:00:45Z"), syntheticPoints.get(2).getTimestamp());
+        assertEquals(Instant.parse("2023-01-01T10:01:00Z"), syntheticPoints.get(3).getTimestamp());
     }
 }

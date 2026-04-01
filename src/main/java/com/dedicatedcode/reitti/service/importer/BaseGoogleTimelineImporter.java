@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,7 +35,7 @@ public abstract class BaseGoogleTimelineImporter {
         LocationPoint point = new LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
-        point.setTimestamp(timestamp.withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        point.setTimestamp(timestamp.withNano(0).toInstant());
         point.setAccuracyMeters(10.0);
         batch.add(point);
         logger.trace("Created location point at [{}]", point);

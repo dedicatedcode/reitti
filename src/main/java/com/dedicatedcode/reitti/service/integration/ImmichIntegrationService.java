@@ -52,7 +52,7 @@ public class ImmichIntegrationService {
     }
     
     @Transactional
-    public ImmichIntegration saveIntegration(User user, String serverUrl, String apiToken, boolean enabled) {
+    public ImmichIntegration saveIntegration(User user, String serverUrl, String apiToken, boolean useBestGuessLocation, boolean enabled) {
         Optional<ImmichIntegration> existingIntegration = immichIntegrationJdbcService.findByUser(user);
         
         ImmichIntegration integration;
@@ -60,10 +60,11 @@ public class ImmichIntegrationService {
             integration = existingIntegration.get()
                     .withServerUrl(serverUrl)
                     .withApiToken(apiToken)
-                    .withEnabled(enabled);
+                    .withEnabled(enabled)
+                    .withUseBestGuessLocation(useBestGuessLocation);
 
         } else {
-            integration = new ImmichIntegration(serverUrl, apiToken, enabled);
+            integration = new ImmichIntegration(serverUrl, apiToken, useBestGuessLocation, enabled);
         }
         
         return immichIntegrationJdbcService.save(user, integration);
@@ -137,7 +138,7 @@ public class ImmichIntegrationService {
             );
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return convertToPhotoResponses(user, response.getBody(), baseUrl);
+                return convertToPhotoResponses(user, integration, response.getBody());
             }
             
         } catch (Exception e) {
@@ -147,7 +148,7 @@ public class ImmichIntegrationService {
         return new ArrayList<>();
     }
 
-    private List<PhotoResponse> convertToPhotoResponses(User user, ImmichSearchResponse searchResponse, String baseUrl) {
+    private List<PhotoResponse> convertToPhotoResponses(User user, ImmichIntegration integration, ImmichSearchResponse searchResponse) {
         List<PhotoResponse> photos = new ArrayList<>();
         
         if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
@@ -165,10 +166,9 @@ public class ImmichIntegrationService {
                     if (asset.getExifInfo().getDateTimeOriginal() != null) {
                         dateTime = asset.getExifInfo().getDateTimeOriginal();
                     }
-
                 }
 
-                if (latitude == null && longitude == null) {
+                if (integration.isUseBestGuessLocation() && latitude == null && longitude == null) {
                     log.debug("Asset [{}] had no exif data, will try to match it to a point we know of.", asset.getId());
                     ZonedDateTime takenAt = ZonedDateTime.parse(dateTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     ZonedDateTime utc = takenAt.withZoneSameInstant(ZoneId.of("UTC"));
@@ -178,6 +178,9 @@ public class ImmichIntegrationService {
                         longitude = proximatePoint.get().getLongitude();
                         timeMatched = true;
                     }
+                }
+                if (latitude == null || longitude == null) {
+                    continue;
                 }
                 PhotoResponse photo = new PhotoResponse(
                     asset.getId(),
@@ -189,7 +192,6 @@ public class ImmichIntegrationService {
                     dateTime,
                     timeMatched
                 );
-                
                 photos.add(photo);
             }
         }

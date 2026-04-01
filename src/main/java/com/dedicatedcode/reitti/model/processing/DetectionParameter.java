@@ -55,7 +55,7 @@ public class DetectionParameter implements Serializable {
     public static class VisitDetection implements Serializable {
         private final long minimumStayTimeInSeconds;
         private final long maxMergeTimeBetweenSameStayPoints;
-
+        
         public VisitDetection(long minimumStayTimeInSeconds, long maxMergeTimeBetweenSameStayPoints) {
             this.minimumStayTimeInSeconds = minimumStayTimeInSeconds;
             this.maxMergeTimeBetweenSameStayPoints = maxMergeTimeBetweenSameStayPoints;
@@ -73,13 +73,13 @@ public class DetectionParameter implements Serializable {
     public static class VisitMerging implements Serializable {
         private final long searchDurationInHours;
         private final long maxMergeTimeBetweenSameVisits;
-        private final long minDistanceBetweenVisits;
+        private final long placeRadiusMeters;
 
         public VisitMerging(long searchDurationInHours, long maxMergeTimeBetweenSameVisits,
-                            long minDistanceBetweenVisits) {
+                            long placeRadiusMeters) {
             this.searchDurationInHours = searchDurationInHours;
             this.maxMergeTimeBetweenSameVisits = maxMergeTimeBetweenSameVisits;
-            this.minDistanceBetweenVisits = minDistanceBetweenVisits;
+            this.placeRadiusMeters = placeRadiusMeters;
         }
 
         public long getSearchDurationInHours() {
@@ -90,8 +90,8 @@ public class DetectionParameter implements Serializable {
             return maxMergeTimeBetweenSameVisits;
         }
 
-        public long getMinDistanceBetweenVisits() {
-            return minDistanceBetweenVisits;
+        public long getPlaceRadiusMeters() {
+            return placeRadiusMeters;
         }
     }
 

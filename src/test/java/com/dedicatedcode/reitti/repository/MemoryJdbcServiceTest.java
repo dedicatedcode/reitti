@@ -209,4 +209,26 @@ class MemoryJdbcServiceTest {
 
         assertEquals(2, memories.size());
     }
+
+    @Test
+    void shouldAllowStoringNullEndDate() {
+        Memory memory1 = new Memory(
+                "Memory 1",
+                "Description 1",
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                null,
+                HeaderType.MAP,
+                null
+        );
+
+        memoryJdbcService.create(testUser, memory1);
+
+        List<Memory> memories = memoryJdbcService.findAllByUser(testUser);
+
+        assertEquals(1, memories.size());
+
+        Memory stored = memories.getFirst();
+        assertEquals(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC), stored.getStartDate());
+        assertNull(stored.getEndDate());
+    }
 }

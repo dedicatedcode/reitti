@@ -8,8 +8,9 @@
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/leaflet.css}">
-    <script th:src="@{/js/leaflet.js}"></script>
-    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/leaflet.js}"></script>
+    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
     <style>
         :root {
             --color-highlight: #F5DEB3FF;
@@ -148,7 +149,7 @@
             Invalid username or password
         </div>
         
-        <form th:action="@{/login}" method="post" th:if="${localLoginEnabled}">
+        <form th:action="@{/login}" method="post" th:if="${localLoginEnabled != null && localLoginEnabled}">
             <div class="form-group">
                 <label for="username" th:text="#{login.username}">Username</label>
                 <input type="text" id="username" name="username" required autofocus>
@@ -166,8 +167,8 @@
             
             <button type="submit" th:text="#{login.button}">Login</button>
         </form>
-        <div th:if="${oidcEnabled}">
-            <hr th:if="${localLoginEnabled}" style="margin: 30px 0; border: none; border-top: 1px solid var(--color-highlight);">
+        <div th:if="${oidcEnabled != null && oidcEnabled}">
+            <hr th:if="${localLoginEnabled != null && localLoginEnabled}" style="margin: 30px 0; border: none; border-top: 1px solid var(--color-highlight);">
             <a th:href="@{/oauth2/authorization/oauth}" style="text-decoration: none;">
               <button type="button" th:text="#{login.oauth.button}">Log in with OAuth</button>
             </a>

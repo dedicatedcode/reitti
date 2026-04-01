@@ -9,7 +9,8 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}">
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
@@ -157,16 +158,7 @@
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {};
-    window.locale = {
-        'integrations.owntracks.recorder.test.missing.fields': /*[[#{integrations.owntracks.recorder.test.missing.fields}]]*/ 'Please fill in Base URL, Username, and Device ID',
-        'integrations.owntracks.recorder.test.loading': /*[[#{integrations.owntracks.recorder.test.loading}]]*/ 'Testing connection...',
-        'integrations.owntracks.recorder.test.failed': /*[[#{integrations.owntracks.recorder.test.failed}]]*/ 'Connection test failed',
-        'integrations.owntracks.recorder.loading.historical': /*[[#{integrations.owntracks.recorder.loading.historical}]]*/ 'Loading Historical Data...',
-        'integrations.mqtt.test.missing.fields': /*[[#{integrations.mqtt.test.missing.fields}]]*/ 'Please fill in Host, Port, Client Identifier, and Topic',
-        'integrations.mqtt.test.loading': /*[[#{integrations.mqtt.test.loading}]]*/ 'Testing connection...',
-        'integrations.mqtt.test.failed': /*[[#{integrations.mqtt.test.failed}]]*/ 'Connection test failed',
-        'integrations.mqtt.topic.no.wildcards': /*[[#{integrations.mqtt.topic.no.wildcards}]]*/ 'Topic cannot contain wildcard characters (+ or #) when saving the configuration.'
-    };
+
     function getCurrentOpenSection() {
         const detailsElements = document.querySelectorAll('details');
         for (const details of detailsElements) {
