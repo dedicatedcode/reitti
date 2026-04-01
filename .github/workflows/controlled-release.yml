@@ -9,7 +9,7 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: release-${{ github.event.inputs.version }}
   cancel-in-progress: false
 
 permissions:
@@ -18,39 +18,35 @@ permissions:
   issues: write
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate version format
-        run: |
-          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-            echo "::error::Invalid version. Use format: X.Y.Z or X.Y.Z-beta.N"
-            exit 1
-          fi
-
   prepare:
-    needs: validate
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ steps.vars.outputs.version }}
       tag: ${{ steps.vars.outputs.tag }}
       is_beta: ${{ steps.vars.outputs.is_beta }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set version variables
         id: vars
         run: |
-          ver="${{ inputs.version }}"
-          echo "tag=v${ver}" >> $GITHUB_OUTPUT
+          ver="${{ github.event.inputs.version }}"
+          echo "version=$ver" >> $GITHUB_OUTPUT
+          echo "tag=v$ver" >> $GITHUB_OUTPUT
           echo "is_beta=$([[ $ver == *-beta.* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.vars.outputs.tag }}"
+          git push origin "${{ steps.vars.outputs.tag }}"
 
       - name: Create verification issue
         run: |
           cat > /tmp/checklist.md << 'CHECKLIST_END'
           ## Manual Verification Checklist
-          Run the application locally or on a test instance against the `main` branch at commit ${{ github.sha }}.
+          Run the application locally or on a test instance against commit ${{ github.sha }}.
 
           - [ ] Upgrade: Follow the upgrade instructions in the release notes
           - [ ] Upgrade: Did the migration step run successfully?
@@ -66,22 +62,19 @@ jobs:
           - [ ] Geocoding: Failover handled gracefully (no UI freeze)
           - [ ] i18n/Units: Language & Metric/Imperial switches work
 
-                    ## Next Steps
-          1. Complete verification against the ${{ steps.vars.outputs.tag }} build
+          ## Next Steps
+          1. Verify against this exact tag: `${{ steps.vars.outputs.tag }}`
           2. Check all boxes above
           3. Return to this workflow run: [${{ github.run_url }}](${{ github.run_url }})
           4. Click **Review deployments** -> **Approve and deploy**
           5. This issue will auto-close once the release succeeds
           CHECKLIST_END
 
-          EXISTS=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number // empty')
-          if [ -z "$EXISTS" ]; then
-            gh issue create \
-              --title "Verify ${{ github.ref_name }}" \
-              --label "release-verification" \
-              --body-file /tmp/checklist.md \
-              --assignee "$GITHUB_ACTOR"
-          fi
+          gh issue create \
+            --title "Verify ${{ steps.vars.outputs.tag }}" \
+            --label "release-verification" \
+            --body-file /tmp/checklist.md \
+            --assignee "$GITHUB_ACTOR"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -91,6 +84,8 @@ jobs:
     environment: release-gate
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -138,15 +133,42 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
+      - name: Docker meta for reitti
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            dedicatedcode/reitti
+            ghcr.io/${{ github.repository }}
+          ref: refs/tags/${{ needs.prepare.outputs.tag }}
+          tags: |
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+
       - name: Build & push reitti image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Docker meta for tile-cache
+        id: meta-tile-cache
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            dedicatedcode/reitti-tile-cache
+            ghcr.io/${{ github.repository }}-tile-cache
+          ref: refs/tags/${{ needs.prepare.outputs.tag }}
           tags: |
-            dedicatedcode/reitti:${{ needs.prepare.outputs.tag }}
-            ghcr.io/${{ github.repository }}:${{ needs.prepare.outputs.tag }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
 
       - name: Build & push tile-cache image
         uses: docker/build-push-action@v6
@@ -154,15 +176,16 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./docker/tiles-cache
           push: true
-          tags: |
-            dedicatedcode/reitti-tile-cache:${{ needs.prepare.outputs.tag }}
-            ghcr.io/${{ github.repository }}-tile-cache:${{ needs.prepare.outputs.tag }}
+          tags: ${{ steps.meta-tile-cache.outputs.tags }}
+          labels: ${{ steps.meta-tile-cache.outputs.labels }}
 
   publish-release:
     needs: [prepare, build-and-gate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -191,8 +214,15 @@ jobs:
     if: failure() || cancelled()
     runs-on: ubuntu-latest
     steps:
-      - name: Delete prematurely created tag
+      - name: Delete tag if verification cancelled/failed
         run: |
           gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ needs.prepare.outputs.tag }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Close verification issue on cancel/fail
+        run: |
+          ISSUE=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number')
+          [ -n "$ISSUE" ] && gh issue close "$ISSUE" --comment "Release cancelled or failed. Workflow run #${{ github.run_id }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
