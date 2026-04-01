@@ -16,6 +16,7 @@ jobs:
     name: "Create Verification Checklist"
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Create release verification issue
         run: |
           cat > /tmp/checklist.md << 'CHECKLIST_END'
