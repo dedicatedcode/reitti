@@ -1,0 +1,198 @@
+name: "controlled-release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 3.5.0 or 3.5.0-beta.1)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid version. Use format: X.Y.Z or X.Y.Z-beta.N"
+            exit 1
+          fi
+
+  prepare:
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      is_beta: ${{ steps.vars.outputs.is_beta }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set version variables
+        id: vars
+        run: |
+          ver="${{ inputs.version }}"
+          echo "tag=v${ver}" >> $GITHUB_OUTPUT
+          echo "is_beta=$([[ $ver == *-beta.* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Create verification issue
+        run: |
+          cat > /tmp/checklist.md << 'CHECKLIST_END'
+          ## Manual Verification Checklist
+          Run the application locally or on a test instance against the `main` branch at commit ${{ github.sha }}.
+
+          - [ ] Upgrade: Follow the upgrade instructions in the release notes
+          - [ ] Upgrade: Did the migration step run successfully?
+          - [ ] Auth: Local login + session persistence
+          - [ ] Auth: OIDC login, profile sync, logout callback
+          - [ ] Map: Tiles load, fullscreen toggle, colored map
+          - [ ] Live mode: Incoming points refresh the map
+          - [ ] Timeline: Trips/visits display, duration/distance accurate
+          - [ ] Multi-user: Data isolation confirmed (no cross-leak)
+          - [ ] Multi-user: Tracks and trips visible to all connected users
+          - [ ] Multi-user: Live View visible to all connected users
+          - [ ] Import: GPX/GeoJSON triggers queue, status visible in UI
+          - [ ] Geocoding: Failover handled gracefully (no UI freeze)
+          - [ ] i18n/Units: Language & Metric/Imperial switches work
+
+                    ## Next Steps
+          1. Complete verification against the ${{ steps.vars.outputs.tag }} build
+          2. Check all boxes above
+          3. Return to this workflow run: [${{ github.run_url }}](${{ github.run_url }})
+          4. Click **Review deployments** -> **Approve and deploy**
+          5. This issue will auto-close once the release succeeds
+          CHECKLIST_END
+
+          EXISTS=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number // empty')
+          if [ -z "$EXISTS" ]; then
+            gh issue create \
+              --title "Verify ${{ github.ref_name }}" \
+              --label "release-verification" \
+              --body-file /tmp/checklist.md \
+              --assignee "$GITHUB_ACTOR"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-gate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment: release-gate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install dependencies for acknowledgments script
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Generate acknowledgments data
+        run: |
+          chmod +x scripts/generate-acknowledgments.sh
+          ./scripts/generate-acknowledgments.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        run: mvn verify -DskipTests
+
+      - name: Create bundle
+        run: mkdir staging && cp target/*.jar staging
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: Package
+          path: staging
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU & Buildx
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build & push reitti image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: true
+          tags: |
+            dedicatedcode/reitti:${{ needs.prepare.outputs.tag }}
+            ghcr.io/${{ github.repository }}:${{ needs.prepare.outputs.tag }}
+
+      - name: Build & push tile-cache image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: ./docker/tiles-cache
+          push: true
+          tags: |
+            dedicatedcode/reitti-tile-cache:${{ needs.prepare.outputs.tag }}
+            ghcr.io/${{ github.repository }}-tile-cache:${{ needs.prepare.outputs.tag }}
+
+  publish-release:
+    needs: [prepare, build-and-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Package
+
+      - name: Create & publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Release ${{ needs.prepare.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ needs.prepare.outputs.is_beta == 'true' }}
+          make_latest: ${{ needs.prepare.outputs.is_beta == 'false' }}
+          files: "*.jar"
+
+      - name: Close verification issue
+        run: |
+          ISSUE=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number')
+          [ -n "$ISSUE" ] && gh issue close "$ISSUE" --comment "Released via workflow run #${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup-on-failure:
+    needs: [prepare, build-and-gate]
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete prematurely created tag
+        run: |
+          gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ needs.prepare.outputs.tag }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
