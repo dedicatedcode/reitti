@@ -35,7 +35,6 @@ let editModeEnabled = false;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    initializeTheme();
     initializeMap();
     initializeDateTime();
     initializeControls();
@@ -68,39 +67,17 @@ window.disableEditMode = function() {
     updateStatus(); // Update status when edit mode changes
 };
 
-function initializeTheme() {
-    // Check for saved theme preference or default to light mode
-    const savedTheme = localStorage.getItem('gpx-generator-theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeButton();
-}
-
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('gpx-generator-theme', newTheme);
-    updateThemeButton();
-}
-
-function updateThemeButton() {
-    const button = document.getElementById('themeToggle');
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    button.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
-}
-
 function toggleMapLayer() {
     if (currentMapLayer === 'street') {
         map.removeLayer(streetLayer);
         map.addLayer(satelliteLayer);
         currentMapLayer = 'satellite';
-        document.getElementById('layerToggle').textContent = 'Street';
+        document.getElementById('layerToggle').innerHTML = '<i class="lni lni-map-marker-1"></i>';
     } else {
         map.removeLayer(satelliteLayer);
         map.addLayer(streetLayer);
         currentMapLayer = 'street';
-        document.getElementById('layerToggle').textContent = 'Satellite';
+        document.getElementById('layerToggle').innerHTML = '<i class="lni lni-globe-stand"></i>';
     }
 }
 
@@ -1793,4 +1770,77 @@ function shiftTrackTime(amount, unit) {
     const unitText = unit === 'hour' ? 'hour' : 'day';
     const direction = amount > 0 ? 'forward' : 'backward';
     const absAmount = Math.abs(amount);
+}
+
+// Randomization function for all tracks
+function randomizeAllData() {
+    if (tracks.length === 0) {
+        alert('No data to randomize.');
+        return;
+    }
+
+    // 1. Time offset: ±1 month (30 days) in milliseconds
+    const timeOffsetMs = (Math.random() * 2 - 1) * 30 * 24 * 60 * 60 * 1000;
+
+    // 2. Longitude offset: arbitrary amount, wrap within [-180, 180]
+    // Choose a random offset between -180 and 180 degrees
+    const lngOffset = (Math.random() * 2 - 1) * 180; // -180 to 180
+
+    // Apply to all tracks and points
+    tracks.forEach(track => {
+        // Shift track start time
+        if (track.startTime) {
+            track.startTime = new Date(track.startTime.getTime() + timeOffsetMs);
+        }
+        track.points.forEach(point => {
+            // Apply time offset
+            point.timestamp = new Date(point.timestamp.getTime() + timeOffsetMs);
+            
+            // Apply longitude offset and wrap to valid range
+            let newLng = point.lng + lngOffset;
+            // Wrap to [-180, 180)
+            while (newLng < -180) newLng += 360;
+            while (newLng >= 180) newLng -= 360;
+            point.lng = newLng;
+            // Also update originalLng for consistency
+            point.originalLng = newLng;
+        });
+    });
+
+    // Update markers array
+    markers.forEach(marker => {
+        let newLng = marker.lng + lngOffset;
+        while (newLng < -180) newLng += 360;
+        while (newLng >= 180) newLng -= 360;
+        marker.lng = newLng;
+    });
+
+    // Update polylines
+    tracks.forEach((track, index) => {
+        updatePolyline(index);
+    });
+
+    // Redraw markers
+    redrawMarkers();
+
+    // Update UI
+    updatePointsList();
+    updateStatus();
+
+    // Pan the map to show the moved points
+    // Calculate bounds of all points
+    const bounds = L.latLngBounds();
+    let hasPoints = false;
+    
+    tracks.forEach(track => {
+        track.points.forEach(point => {
+            bounds.extend([point.lat, point.lng]);
+            hasPoints = true;
+        });
+    });
+    
+    // If there are points, fit the map to their bounds
+    if (hasPoints) {
+        map.fitBounds(bounds.pad(0.1)); // Add 10% padding
+    }
 }

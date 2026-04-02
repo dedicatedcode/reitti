@@ -72,6 +72,32 @@ function lightenHexColor(col, amt) {
     return (usePound ? "#" : "") + newColor;
 }
 
+function hexToRgb(hex) {
+    // Remove the # if it exists
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return [r, g, b];
+}
+
+/**
+ * Lightens an RGB color array.
+ * @param {Array} rgb - [r, g, b] where each is 0-255
+ * @param {number} percent - How much to lighten (0 to 100)
+ * @returns {Array} - The lightened [r, g, b] array
+ */
+function lightenColor(rgb, percent) {
+    const factor = percent / 100;
+
+    return rgb.map(channel => {
+        // Calculate the distance to white (255)
+        const lightened = channel + (255 - channel) * factor;
+        // Ensure we stay within 0-255 and round to integer
+        return Math.min(255, Math.round(lightened));
+    });
+}
+
 function getBrowserTimeFormat() {
     // Create a test date with hours > 12 to distinguish between 12h and 24h formats
     const testDate = new Date(2023, 0, 1, 15, 0); // 3 PM

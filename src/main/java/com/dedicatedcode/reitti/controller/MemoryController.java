@@ -76,10 +76,9 @@ public class MemoryController {
                          @RequestParam(defaultValue = "desc") String sortOrder,
                          Model model) {
         model.addAttribute("memories", this.memoryService.getMemoriesForUser(user, sortBy, sortOrder).stream().map(m -> {
-            String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
-            String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
+            String endDateLocal = m.getEndDate() != null ? m.getEndDate().toString() : Instant.now().toString();
 
-            String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
+            String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + m.getStartDate() + "&endDate=" + endDateLocal;
             return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
         }).toList());
         model.addAttribute("year", "all");
@@ -97,8 +96,8 @@ public class MemoryController {
                           Model model) {
         model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year, sortBy, sortOrder)
                 .stream().map(m -> {
-                    String startDateLocal = m.getStartDate().atZone(timezone).toLocalDate().toString();
-                    String endDateLocal = m.getEndDate().atZone(timezone).toLocalDate().toString();
+                    String startDateLocal = m.getStartDate().toString();
+                    String endDateLocal = m.getEndDate() != null ? m.getEndDate().toString() : Instant.now().toString();
 
                     String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
                     return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
@@ -122,12 +121,13 @@ public class MemoryController {
 
         List<MemoryBlockPart> blocks = memoryService.getBlockPartsForMemory(user, id, timezone);
         model.addAttribute("blocks", blocks);
-        
-        String startDateLocal = memory.getStartDate().atZone(timezone).toLocalDate().toString();
-        String endDateLocal = memory.getEndDate().atZone(timezone).toLocalDate().toString();
-        
-        String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
-        model.addAttribute("rawLocationUrl", rawLocationUrl);
+
+        Instant startDate = memory.getStartDate();
+        Instant endDate = memory.getEndDate() != null ? memory.getEndDate() : Instant.now();
+        String streamUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, "UTC");
+        String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, "UTC");
+        model.addAttribute("streamUrl", streamUrl);
+        model.addAttribute("metaDataUrl", metaDataUrl);
         model.addAttribute("canEdit", canEdit(memory, user));
         model.addAttribute("isOwner", isOwner(memory, user));
         return "memories/view";
@@ -147,7 +147,7 @@ public class MemoryController {
         model.addAttribute("endDate", endDate);
         model.addAttribute("endTime", endTime);
         model.addAttribute("year", year);
-        return "memories/new :: new-memory";
+        return "memories/new :: memory-form";
     }
 
     @PostMapping
@@ -156,12 +156,13 @@ public class MemoryController {
             @RequestParam String title,
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate,
+            @RequestParam(required = false) LocalDate endDate,
             @RequestParam LocalTime startTime,
-            @RequestParam LocalTime endTime,
+            @RequestParam(required = false) LocalTime endTime,
             @RequestParam(required = false) String year,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
+            @RequestParam(required = false) boolean openEnded,
             @RequestParam(required = false) String headerImageUrl,
             Model model,
             HttpServletResponse response) {
@@ -174,16 +175,17 @@ public class MemoryController {
             model.addAttribute("startTime", startTime);
             model.addAttribute("endDate", endDate);
             model.addAttribute("endTime", endTime);
-            return "memories/new :: new-memory";
+            model.addAttribute("openEnded", openEnded);
+            return "memories/new :: memory-form";
         }
         
         try {
             Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
-            Instant end = LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
+            Instant end = openEnded ? null : LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
             Instant today = Instant.now();
             
             // Validate dates are not in the future
-            if (start.isAfter(today) || end.isAfter(today)) {
+            if (start.isAfter(today) || (end != null && end.isAfter(today))) {
                 model.addAttribute("error", i18n.translate("memory.validation.date.future"));
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
@@ -192,12 +194,13 @@ public class MemoryController {
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
+                model.addAttribute("openEnded", openEnded);
 
-                return "memories/new :: new-memory";
+                return "memories/new :: memory-form";
             }
             
             // Validate end date is not before start date
-            if (end.isBefore(start)) {
+            if (end != null && end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("title", title);
                 model.addAttribute("description", description);
@@ -206,8 +209,9 @@ public class MemoryController {
                 model.addAttribute("endDate", endDate);
                 model.addAttribute("endTime", endTime);
                 model.addAttribute("year", year);
+                model.addAttribute("openEnded", openEnded);
 
-                return "memories/new :: new-memory";
+                return "memories/new :: memory-form";
             }
             
             Memory memory = new Memory(
@@ -234,8 +238,9 @@ public class MemoryController {
             model.addAttribute("endDate", endDate);
             model.addAttribute("endTime", endTime);
             model.addAttribute("year", year);
+            model.addAttribute("openEnded", openEnded);
 
-            return "memories/new :: new-memory";
+            return "memories/new :: memory-form";
         }
     }
 
@@ -252,8 +257,10 @@ public class MemoryController {
         model.addAttribute("memory", new MemoryDTO(memory, timezone));
         model.addAttribute("startDate", memory.getStartDate().atZone(timezone).toLocalDate());
         model.addAttribute("startTime", memory.getStartDate().atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
-        model.addAttribute("endDate", memory.getEndDate().atZone(timezone).toLocalDate());
-        model.addAttribute("endTime", memory.getEndDate().atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
+        Instant endDate = memory.getEndDate() != null ? memory.getEndDate() : Instant.now();
+        model.addAttribute("openEnded", memory.getEndDate() == null);
+        model.addAttribute("endDate", endDate.atZone(timezone).toLocalDate());
+        model.addAttribute("endTime", endDate.atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
         return "memories/edit :: edit-memory";
     }
 
@@ -264,12 +271,13 @@ public class MemoryController {
             @RequestParam String title,
             @RequestParam(required = false) String description,
             @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate,
+            @RequestParam(required = false) LocalDate endDate,
             @RequestParam LocalTime startTime,
-            @RequestParam LocalTime endTime,
+            @RequestParam(required = false) LocalTime endTime,
             @RequestParam Long version,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             @RequestParam(required = false, defaultValue = "MAP") HeaderType headerType,
+            @RequestParam(required = false) boolean openEnded,
             @RequestParam(required = false) String headerImageUrl,
             Model model) {
         
@@ -286,6 +294,7 @@ public class MemoryController {
         if (title == null || title.trim().isEmpty()) {
             model.addAttribute("error", i18n.translate("memory.validation.title.required"));
             model.addAttribute("memory", new MemoryDTO(memory, timezone));
+            model.addAttribute("openEnded", openEnded);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");
@@ -295,12 +304,13 @@ public class MemoryController {
         
         try {
             Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
-            Instant end = LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
+            Instant end = openEnded ? null : LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
             Instant today = Instant.now();
             
-            if (start.isAfter(today) || end.isAfter(today)) {
+            if (start.isAfter(today) || (end != null && end.isAfter(today))) {
                 model.addAttribute("error", i18n.translate("memory.validation.date.future"));
                 model.addAttribute("memory", new MemoryDTO(memory, timezone));
+                model.addAttribute("openEnded", openEnded);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -308,9 +318,10 @@ public class MemoryController {
                 return "memories/edit :: edit-memory";
             }
             
-            if (end.isBefore(start)) {
+            if (end != null && end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("memory", new MemoryDTO(memory, timezone));
+                model.addAttribute("openEnded", openEnded);
                 
                 model.addAttribute("cancelEndpoint", "/memories/" + id);
                 model.addAttribute("cancelTarget", ".memory-header");
@@ -335,6 +346,7 @@ public class MemoryController {
         } catch (Exception e) {
             model.addAttribute("error", i18n.translate("memory.validation.start.date.required"));
             model.addAttribute("memory", new MemoryDTO(memory, timezone));
+            model.addAttribute("openEnded", openEnded);
             
             model.addAttribute("cancelEndpoint", "/memories/" + id);
             model.addAttribute("cancelTarget", ".memory-header");

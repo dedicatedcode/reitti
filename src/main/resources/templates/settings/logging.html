@@ -9,7 +9,8 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}">
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
     <style>
         .log-output {
@@ -139,7 +140,7 @@
 
                         <div class="form-group">
                             <button type="submit" class="btn btn-primary">
-                                <span th:text="#{logging.update}">Update</span>
+                                <span th:text="#{logging.add}">Update</span>
                                 <span class="htmx-indicator">...</span>
                             </button>
                         </div>
@@ -205,14 +206,6 @@
     window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}
     
-    // Localized messages
-    const messages = {
-        connected: /*[[#{logging.connected}]]*/ 'Connected to log stream',
-        connectionLost: /*[[#{logging.connection.lost}]]*/ 'Error: Connection to log stream lost',
-        reconnecting: /*[[#{logging.reconnecting}]]*/ 'Attempting to reconnect in',
-        reconnectFailed: /*[[#{logging.reconnect.failed}]]*/ 'Failed to reconnect after'
-    };
-    
     const logOutput = document.getElementById('logOutput');
     const autoscrollToggle = document.getElementById('autoscrollToggle');
     let eventSource;
@@ -245,7 +238,7 @@
         eventSource = new EventSource(window.contextPath + '/settings/logging/stream');
         
         eventSource.onopen = function() {
-            logOutput.innerHTML = `<div class="log-line">${messages.connected}</div>`;
+            logOutput.innerHTML = `<div class="log-line">${t('logging.connected')}</div>`;
             scrollToBottom();
             reconnectAttempts = 0;
         };
@@ -257,20 +250,19 @@
         });
         
         eventSource.onerror = function(event) {
-            logOutput.innerHTML += `<div class="log-line error">${messages.connectionLost}</div>`;
+            logOutput.innerHTML += `<div class="log-line error">${t('logging.connection.lost')}</div>`;
             scrollToBottom();
-            
             eventSource.close();
             
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
                 const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
-                logOutput.innerHTML += `<div class="log-line">${messages.reconnecting} ${delay / 1000} seconds... (attempt ${reconnectAttempts}/${maxReconnectAttempts})</div>`;
+                logOutput.innerHTML += `<div class="log-line">${t('logging.reconnecting')} ${delay / 1000} seconds... (attempt ${reconnectAttempts}/${maxReconnectAttempts})</div>`;
                 scrollToBottom();
                 
                 reconnectTimeout = setTimeout(connectEventSource, delay);
             } else {
-                logOutput.innerHTML += `<div class="log-line error">${messages.reconnectFailed} ${maxReconnectAttempts} attempts. Please refresh the page.</div>`;
+                logOutput.innerHTML += `<div class="log-line error">${t('logging.reconnect.failed')} ${maxReconnectAttempts} attempts. Please refresh the page.</div>`;
                 scrollToBottom();
             }
         };

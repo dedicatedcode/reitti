@@ -1,0 +1,233 @@
+name: "controlled-release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 3.5.0 or 3.5.0-beta.1)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+      tag: ${{ steps.vars.outputs.tag }}
+      is_beta: ${{ steps.vars.outputs.is_beta }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version variables
+        id: vars
+        run: |
+          ver="${{ github.event.inputs.version }}"
+          echo "version=$ver" >> $GITHUB_OUTPUT
+          echo "tag=v$ver" >> $GITHUB_OUTPUT
+          echo "is_beta=$([[ $ver == *-beta.* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.vars.outputs.tag }}"
+          git push origin "${{ steps.vars.outputs.tag }}"
+
+      - name: Create verification issue
+        run: |
+          cat > /tmp/checklist.md << 'CHECKLIST_END'
+          ## Manual Verification Checklist
+          Run the application locally or on a test instance against commit ${{ github.sha }}.
+
+          - [ ] Upgrade: Follow the upgrade instructions in the release notes
+          - [ ] Upgrade: Did the migration step run successfully?
+          - [ ] Auth: Local login + session persistence
+          - [ ] Auth: OIDC login, profile sync, logout callback
+          - [ ] Map: Tiles load, fullscreen toggle, colored map
+          - [ ] Live mode: Incoming points refresh the map
+          - [ ] Timeline: Trips/visits display, duration/distance accurate
+          - [ ] Timeline: Visit and Trip selection focuses the map on the selected item
+          - [ ] Timeline: Trip allows editing the detected transportation mode
+          - [ ] Timeline: Visit allows editing the place
+          - [ ] Place-edit: Shows nearby places as points on the map
+          - [ ] Place-edit: allows editing/removing/adding a polygon
+          - [ ] Multi-user: Data isolation confirmed (no cross-leak)
+          - [ ] Multi-user: Tracks and trips visible to all connected users
+          - [ ] Multi-user: Live View visible to all connected users
+          - [ ] Visit Sensitivity: Create a new setting, verify that the recalculation works
+          - [ ] Import: GPX/GeoJSON triggers queue, status visible in UI
+          - [ ] Geocoding: Failover handled gracefully (no UI freeze)
+          - [ ] i18n/Units: Language & Metric/Imperial switches work
+          
+          ## Next Steps
+          1. Verify against this exact tag: `${{ steps.vars.outputs.tag }}`
+          2. Check all boxes above
+          3. Return to this workflow run: [${{ github.run_url }}](${{ github.run_url }})
+          4. Click **Review deployments** -> **Approve and deploy**
+          5. This issue will auto-close once the release succeeds
+          CHECKLIST_END
+
+          gh issue create \
+            --title "Verify ${{ steps.vars.outputs.tag }}" \
+            --label "release-verification" \
+            --body-file /tmp/checklist.md \
+            --assignee "$GITHUB_ACTOR"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-gate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment: release-gate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install dependencies for acknowledgments script
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Generate acknowledgments data
+        run: |
+          chmod +x scripts/generate-acknowledgments.sh
+          ./scripts/generate-acknowledgments.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        run: mvn verify -DskipTests
+
+      - name: Create bundle
+        run: mkdir staging && cp target/*.jar staging
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: Package
+          path: staging
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU & Buildx
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta for reitti
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            dedicatedcode/reitti
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+
+      - name: Build & push reitti image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Docker meta for tile-cache
+        id: meta-tile-cache
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            dedicatedcode/reitti-tile-cache
+            ghcr.io/${{ github.repository }}-tile-cache
+          tags: |
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+
+      - name: Build & push tile-cache image
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: ./docker/tiles-cache
+          push: true
+          tags: ${{ steps.meta-tile-cache.outputs.tags }}
+          labels: ${{ steps.meta-tile-cache.outputs.labels }}
+
+  publish-release:
+    needs: [prepare, build-and-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Package
+
+      - name: Create & publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Release ${{ needs.prepare.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ needs.prepare.outputs.is_beta == 'true' }}
+          make_latest: ${{ needs.prepare.outputs.is_beta == 'false' }}
+          files: "*.jar"
+
+      - name: Close verification issue
+        run: |
+          ISSUE=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number')
+          [ -n "$ISSUE" ] && gh issue close "$ISSUE" --comment "Released via workflow run #${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup-on-failure:
+    needs: [prepare, build-and-gate]
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete tag if verification cancelled/failed
+        run: |
+          gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ needs.prepare.outputs.tag }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Close verification issue on cancel/fail
+        run: |
+          ISSUE=$(gh issue list --label "release-verification" --state open --limit 1 --json number -q '.[0].number')
+          [ -n "$ISSUE" ] && gh issue close "$ISSUE" --comment "Release cancelled or failed. Workflow run #${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

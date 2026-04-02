@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.AvailableCountry;
@@ -18,14 +17,16 @@ import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
+import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -35,14 +36,14 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
+
+import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
 
 @Controller
 @RequestMapping("/settings/places")
@@ -53,7 +54,7 @@ public class PlacesSettingsController {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
-    private final RabbitTemplate rabbitTemplate;
+    private final RedisQueueService messageEnqueuer;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
@@ -66,7 +67,7 @@ public class PlacesSettingsController {
                                     ProcessedVisitJdbcService processedVisitJdbcService,
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
-                                    RabbitTemplate rabbitTemplate,
+                                    RedisQueueService messageEnqueuer,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService,
@@ -78,7 +79,7 @@ public class PlacesSettingsController {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
-        this.rabbitTemplate = rabbitTemplate;
+        this.messageEnqueuer = messageEnqueuer;
         this.geometryFactory = geometryFactory;
         this.i18nService = i18nService;
         this.placeChangeDetectionService = placeChangeDetectionService;
@@ -198,8 +199,6 @@ public class PlacesSettingsController {
                     updatedPlace = updatedPlace.withPolygon(null);
                 }
 
-
-
                 if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
                     placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
@@ -250,7 +249,7 @@ public class PlacesSettingsController {
                         significantPlace.getLongitudeCentroid(),
                         UUID.randomUUID().toString()
                 );
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.SIGNIFICANT_PLACE_ROUTING_KEY, event);
+                messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
 
                 redirectAttributes.addFlashAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
             } catch (Exception e) {
@@ -324,7 +323,7 @@ public class PlacesSettingsController {
 
             Point point = geometryFactory.createPoint(new Coordinate(place.getLongitudeCentroid(), place.getLatitudeCentroid()));
 
-            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 0.019).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
+            List<PlaceInfo> nearbyPlaces = this.placeJdbcService.findNearbyPlaces(user.getId(), point, 5000.0).stream().map(PlacesSettingsController::convertToPlaceInfo).toList();
             model.addAttribute("availableCountries", AvailableCountry.values());
             model.addAttribute("nearbyPlaces", nearbyPlaces);
 

@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -111,7 +112,7 @@ public class MemoryBlockController {
             case CLUSTER_VISIT:
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
                         model.addAttribute("clusterVisitBlock", b));
-                List<ProcessedVisit> storedVisits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
+                List<ProcessedVisit> storedVisits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate() != null ? memory.getEndDate() : Instant.now());
                 List<MemoryVisit> currentMemoryVisits = memoryVisitJdbcService.findByMemoryBlockId(blockId);
                 List<VisitDTO> availableVisits = new ArrayList<>();
                 currentMemoryVisits.stream()
@@ -124,7 +125,7 @@ public class MemoryBlockController {
                 model.addAttribute("availableVisits", availableVisits.stream().sorted(Comparator.comparing(VisitDTO::startTime)).toList());
                 return "memories/blocks/edit :: edit-cluster-visit-block";
             case CLUSTER_TRIP:
-                List<Trip> storedTrips = this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate());
+                List<Trip> storedTrips = this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate() != null ? memory.getEndDate() : Instant.now());
                 List<MemoryTrip> currentMemoryTrips = memoryTripJdbcService.findByMemoryBlockId(blockId);
                 List<TripDTO> availableTrips = new ArrayList<>();
                 currentMemoryTrips.stream().map(v -> TripDTO.create(v, timezone))
@@ -235,6 +236,8 @@ public class MemoryBlockController {
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
+        model.addAttribute("update", "true");
+
         return "memories/view :: view-block";
     }
 
@@ -464,7 +467,7 @@ public class MemoryBlockController {
         
         ZoneId zoneId = ZoneId.of(timezone);
         LocalDate startDate = memory.getStartDate().atZone(zoneId).toLocalDate();
-        LocalDate endDate = memory.getEndDate().atZone(zoneId).toLocalDate();
+        LocalDate endDate = memory.getEndDate() != null ? memory.getEndDate().atZone(zoneId).toLocalDate() : Instant.now().atZone(zoneId).toLocalDate();
         
         List<PhotoResponse> allPhotos = immichIntegrationService.searchPhotosForRange(user, startDate, endDate, timezone);
         

@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -236,7 +235,7 @@ public class UserSettingsJdbcServiceTest {
 
     private LocationPoint createLocationPoint(Instant timestamp) {
         LocationPoint locationPoint = new LocationPoint();
-        locationPoint.setTimestamp(DateTimeFormatter.ISO_INSTANT.format(timestamp));
+        locationPoint.setTimestamp(timestamp);
         locationPoint.setLatitude(1.0);
         locationPoint.setLongitude(2.0);
         locationPoint.setAccuracyMeters(10.0);

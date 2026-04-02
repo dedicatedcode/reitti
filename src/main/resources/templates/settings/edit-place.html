@@ -155,10 +155,10 @@
             100% { transform: rotate(360deg); }
         }
     </style>
-    <script th:src="@{/js/leaflet.js}"></script>
+    <script th:src="@{/js/vendor/leaflet.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
-    <script th:src="@{/js/TileLayer.Grayscale.js}"></script>
-    <script th:src="@{/js/htmx.min.js}"></script>
+    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
 </head>
 <body>
     <div id="map"></div>
@@ -451,7 +451,7 @@
 
         function showConfirmationDialog(warnings) {
             const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
-            const confirmMessage = /*[[#{places.update.confirmation.message}]]*/ 'The following changes will be made:\n\n{0}\n\nDo you want to continue?';
+            const confirmMessage = /*t('js.places.update.confirmation.message')*/ 'The following changes will be made:\n\n{0}\n\nDo you want to continue?';
             const message = confirmMessage.replace('{0}', warningsList);
             if (confirm(message)) {
                 showSaveLoading();

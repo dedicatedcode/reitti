@@ -24,13 +24,6 @@ public class TestContainerConfiguration {
 
     @Bean
     @ServiceConnection
-    public RabbitMQContainer rabbitmq() {
-        return new RabbitMQContainer("rabbitmq:3-management")
-                .withExposedPorts(5672, 15672);
-    }
-
-    @Bean
-    @ServiceConnection
     public RedisContainer redisContainer() {
         return new RedisContainer("redis:7-alpine");
     }

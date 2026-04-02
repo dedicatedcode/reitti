@@ -40,14 +40,14 @@ public class TransportModeService {
 
     public TransportMode segmentAndClassifyTrip(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
         List<TripSegment> segments = new ArrayList<>();
-        List<Double> speeds = calculateSpeeds(points); // Speeds between points
+        List<Double> speeds = calculateSpeeds(points);
 
         List<RawLocationPoint> currentSegmentPoints = new ArrayList<>();
         currentSegmentPoints.add(points.getFirst());
 
         for (int i = 1; i < points.size(); i++) {
-            double prevSpeed = (i > 1) ? speeds.get(i - 2) : 0; // Speed to previous point
-            double currSpeed = speeds.get(i - 1); // Speed from current to next
+            double prevSpeed = (i > 1) ? speeds.get(i - 2) : 0;
+            double currSpeed = speeds.get(i - 1);
 
             if (prevSpeed > 0 && Math.abs(currSpeed - prevSpeed) / prevSpeed > 0.5) {
                 TransportMode mode = classifySegment(currentSegmentPoints, configs);

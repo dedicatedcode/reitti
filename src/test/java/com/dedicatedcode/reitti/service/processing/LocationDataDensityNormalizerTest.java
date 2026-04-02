@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,7 +54,7 @@ class LocationDataDensityNormalizerTest {
             LocationPoint locationPoint = new LocationPoint();
             locationPoint.setLatitude(rlp.getLatitude());
             locationPoint.setLongitude(rlp.getLongitude());
-            locationPoint.setTimestamp(rlp.getTimestamp().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            locationPoint.setTimestamp(rlp.getTimestamp());
             locationPoint.setAccuracyMeters(10.0);
             locationPoint.setElevationMeters(100.0);
             return locationPoint;
@@ -195,7 +194,7 @@ class LocationDataDensityNormalizerTest {
         LocationPoint point = new LocationPoint();
         point.setLatitude(lat);
         point.setLongitude(lon);
-        point.setTimestamp(timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        point.setTimestamp(timestamp.atOffset(ZoneOffset.UTC).toInstant());
         point.setAccuracyMeters(10.0);
         point.setElevationMeters(100.0);
         return point;

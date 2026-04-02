@@ -9,7 +9,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
-import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import org.junit.jupiter.api.BeforeEach;

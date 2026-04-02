@@ -53,7 +53,6 @@ public class UserSseEmitterService implements SmartLifecycle {
         return emitter;
     }
 
-
     public void sendEventToUser(User user, SSEEvent eventData) {
         Set<SseEmitter> emitters = userEmitters.get(user);
         if (emitters != null) {

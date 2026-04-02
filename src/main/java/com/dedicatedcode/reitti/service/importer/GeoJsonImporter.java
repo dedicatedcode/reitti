@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -178,7 +177,7 @@ public class GeoJsonImporter {
         }
 
         // Convert Unix epoch timestamp to ISO format if needed
-        String isoTimestamp = convertToIsoTimestamp(timestamp);
+        Instant isoTimestamp = convertToIsoTimestamp(timestamp);
         if (isoTimestamp == null) {
             logger.warn("Could not parse timestamp '{}' for point {}. Will discard it", timestamp, point);
             return null;
@@ -190,7 +189,7 @@ public class GeoJsonImporter {
         Double accuracy = null;
         String[] accuracyFields = {"accuracy", "acc", "precision", "hdop"};
         for (String field : accuracyFields) {
-            if (properties != null && properties.has(field)) {
+            if (properties.has(field)) {
                 accuracy = properties.get(field).asDouble();
                 break;
             }
@@ -233,13 +232,13 @@ public class GeoJsonImporter {
     /**
      * Converts timestamp to ISO format. Handles both Unix epoch seconds and ISO strings.
      */
-    private String convertToIsoTimestamp(String timestamp) {
+    private Instant convertToIsoTimestamp(String timestamp) {
         try {
             long epochSeconds = Long.parseLong(timestamp);
-            return Instant.ofEpochSecond(epochSeconds).toString();
+            return Instant.ofEpochSecond(epochSeconds);
         } catch (NumberFormatException e) {
             try {
-                return ZonedDateTime.parse(timestamp).withZoneSameInstant(java.time.ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_INSTANT);
+                return ZonedDateTime.parse(timestamp).withZoneSameInstant(java.time.ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toInstant();
             } catch (Exception ex) {
                 return null;
             }

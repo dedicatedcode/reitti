@@ -32,6 +32,8 @@
          th:data-base-color="${userData?.baseColor}"
          th:data-raw-location-points-url="${userData?.rawLocationPointsUrl}"
          th:data-processed-visits-url="${userData?.processedVisitsUrl}"
+         th:data-location-metadata-url="${userData?.mapMetaDataUrl}"
+         th:data-location-stream-url="${userData?.mapStreamDataUrl}"
          th:data-user-avatar-url="${userData?.userAvatarUrl}"
          th:data-avatar-fallback="${userData?.avatarFallback}"
          th:data-display-name="${userData?.displayName}">
@@ -50,7 +52,6 @@
             <th:block th:fragment="timeline-entry">
                 <!-- Entry Description -->
                 <div class="entry-description">
-                    <!-- Visit with editable place name -->
                     <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                         <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
                         <a class="lni lni-pencil-1 edit-icon"

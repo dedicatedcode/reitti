@@ -1,22 +1,15 @@
 package com.dedicatedcode.reitti.service.integration.mqtt;
 
-import com.dedicatedcode.reitti.controller.api.ingestion.owntracks.OwntracksFriendResponse;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class OwnTracksProcessor implements MqttPayloadProcessor {

@@ -2,20 +2,20 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 
-<div class="years-navigation" th:fragment="years-navigation">
-    <div class="timeline-entry trip active" id="overall-entry" data-year="overall"
+<div class="year-nav" th:fragment="years-navigation">
+    <div class="year-nav-item active" id="overall-entry" data-year="overall"
          th:hx-get="@{/statistics/overall}"
          hx-target="#statistics-panel"
          hx-trigger="load, click[shouldTrigger(this)]"
          hx-swap="outerHTML">
-        <div class="entry-description" th:text="#{statistics.overall}">Overall</div>
+        <div th:text="#{statistics.overall}">Overall</div>
     </div>
-    <div class="timeline-entry trip" th:each="year : ${years}"
+    <div class="year-nav-item" th:each="year : ${years}"
          th:attr="hx-get=@{'/statistics/'+ ${year}}, data-year=${year}"
          hx-target="#statistics-panel"
          hx-trigger="click[shouldTrigger(this)]"
          hx-swap="outerHTML">
-        <div class="entry-description" th:text="${year}">2024</div>
+        <div th:text="${year}">2024</div>
     </div>
     <script>
         // Initialize global chart data storage
@@ -27,18 +27,19 @@
             };
         }
 
-        document.querySelector('.years-navigation').addEventListener('click', function (event) {
-            const entry = event.target.closest('.timeline-entry');
-            if (!entry) return;
-            const isCurrentlyActive = entry.classList.contains('active');
-            if (isCurrentlyActive) {
-                return;
-            }
-            document.querySelectorAll('.timeline-container .timeline-entry')
-                .forEach(e => e.classList.remove('active'));
+        new function () {
+            document.querySelector('.year-nav').addEventListener('click', function (event) {
+                const entry = event.target.closest('.year-nav-item');
+                if (!entry) return;
+                const isCurrentlyActive = entry.classList.contains('active');
+                if (isCurrentlyActive) {
+                    return;
+                }
+                document.querySelectorAll('.year-nav .year-nav-item')
+                    .forEach(e => e.classList.remove('active'));
                 entry.classList.add('active');
-
-        });
+            });
+        }()
     </script>
 </div>
 
@@ -50,18 +51,18 @@
               data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
 
     <h2 th:text="${title}">Statistics</h2>
-    
+
     <!-- Check if there's any data available -->
-    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}" 
+    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}"
          class="no-data-message" th:text="#{statistics.no.data}">No data available</div>
-    
+
     <!-- Top Visits Section -->
     <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
         <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
         <div class="places-stats-grid">
             <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
                 <div class="place-map-container">
-                    <div class="place-map" 
+                    <div class="place-map"
                          th:id="'place-map-' + ${visitStat.index}"
                          th:data-lat="${visit.latitude}"
                          th:data-lng="${visit.longitude}"></div>
@@ -80,15 +81,19 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Transport Statistics Section -->
     <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
         <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
-        
-        <div th:if="${statisticsType == 'overall'}" class="pie-chart-container">
-            <canvas id="transportPieChart_overall"></canvas>
+        <div th:if="${statisticsType == 'overall'}" class="transport-charts-container">
+            <div class="transport-chart-section">
+                <div class="pie-chart-container">
+                    <canvas id="transportPieChart_overall"></canvas>
+
+                </div>
+            </div>
         </div>
-        
+
         <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
@@ -103,7 +108,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div th:if="${statisticsType == 'month'}" class="transport-charts-container">
             <div class="transport-chart-section">
                 <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
@@ -119,7 +124,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Monthly breakdown for year view -->
     <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
         <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>

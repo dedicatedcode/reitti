@@ -1,11 +1,13 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.ClusteredPoint;
+import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -15,7 +17,6 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -191,39 +192,10 @@ public class RawLocationPointJdbcService {
     public Optional<RawLocationPoint> findLatest(User user) {
         String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.invalid, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.invalid = false " +
+                "WHERE rlp.user_id = ? AND rlp.invalid = false AND ignored = false " +
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
-    }
-
-    public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
-            User user, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.invalid, rlp.ignored, rlp.version , " +
-                "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
-                "FROM raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ?";
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-
-                    RawLocationPoint point = new RawLocationPoint(
-                            rs.getLong("id"),
-                            rs.getTimestamp("timestamp").toInstant(),
-                            this.pointReaderWriter.read(rs.getString("geom")),
-                            rs.getDouble("accuracy_meters"),
-                            rs.getObject("elevation_meters", Double.class),
-                            rs.getBoolean("processed"),
-                            rs.getBoolean("synthetic"),
-                            rs.getBoolean("ignored"),
-                            rs.getBoolean("invalid"),
-                            rs.getLong("version")
-                    );
-
-                    Integer clusterId = rs.getObject("cluster_id", Integer.class);
-
-                    return new ClusteredPoint(point, clusterId);
-                }, distanceInMeters, minimumPoints, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -471,11 +443,9 @@ public class RawLocationPointJdbcService {
 
         List<Object[]> batchArgs = new ArrayList<>();
         for (LocationPoint point : points) {
-            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
-            Timestamp timestamp = Timestamp.from(parse.toInstant());
             batchArgs.add(new Object[]{
                     user.getId(),
-                    timestamp,
+                    Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
@@ -585,11 +555,9 @@ public class RawLocationPointJdbcService {
 
         List<Object[]> batchArgs = new ArrayList<>();
         for (LocationPoint point : syntheticPoints) {
-            ZonedDateTime parse = ZonedDateTime.parse(point.getTimestamp());
-            Timestamp timestamp = Timestamp.from(parse.toInstant());
             batchArgs.add(new Object[]{
                     user.getId(),
-                    timestamp,
+                    Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
                     geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
@@ -602,5 +570,57 @@ public class RawLocationPointJdbcService {
     public void deleteSyntheticPointsInRange(User user, Instant start, Instant end) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND synthetic = true";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public MapMetadata getMetadata(User user, Instant start, Instant end) {
+
+        boolean useRawTable = Duration.between(start, end).toDays() <= 31;
+
+        String sql = useRawTable ? """
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(timestamp)) as max_ts,
+                  COUNT(*) as total_count,
+                  ST_YMin(ST_Extent(geom)) as min_lat,
+                  ST_YMax(ST_Extent(geom)) as max_lat,
+                  ST_XMin(ST_Extent(geom)) as min_lng,
+                  ST_XMax(ST_Extent(geom)) as max_lng
+                FROM raw_location_points
+                WHERE user_id = ?
+                  AND invalid = false
+                  AND ignored = false
+                  AND timestamp >= ? AND timestamp < ?
+                """ : """
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(min_ts)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(max_ts)) as max_ts,
+                  SUM(point_count) as total_count,
+                  MIN(ST_YMin(bbox::geometry)) as min_lat,
+                  MAX(ST_YMax(bbox::geometry)) as max_lat,
+                  MIN(ST_XMin(bbox::geometry)) as min_lng,
+                  MAX(ST_XMax(bbox::geometry)) as max_lng
+                FROM location_daily_summary
+                WHERE user_id = ?
+                  AND day >= ?::date AND day < ?::date
+                """;
+        MapMetadata result = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+                rs.getLong("min_ts"),
+                rs.getLong("max_ts"),
+                rs.getLong("total_count"),
+                rs.getDouble("min_lat"),
+                rs.getDouble("max_lat"),
+                rs.getDouble("min_lng"),
+                rs.getDouble("max_lng"),
+                this.findLatest(user).map(rawLocationPoint -> {
+                    LocationPoint locationPoint = new LocationPoint();
+                    locationPoint.setTimestamp(rawLocationPoint.getTimestamp());
+                    locationPoint.setLatitude(rawLocationPoint.getLatitude());
+                    locationPoint.setLongitude(rawLocationPoint.getLongitude());
+                    locationPoint.setAccuracyMeters(rawLocationPoint.getAccuracyMeters());
+                    locationPoint.setElevationMeters(rawLocationPoint.getElevationMeters());
+                    return locationPoint;
+                })
+        ), user.getId(), Timestamp.from(start), Timestamp.from(end));
+        return result;
     }
 }

@@ -16,7 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,7 +55,7 @@ class OwnTracksProcessorTest {
         request.setAccuracy(10.0);
 
         LocationPoint expectedLocationPoint = new LocationPoint();
-        expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond).toString());
+        expectedLocationPoint.setTimestamp(Instant.ofEpochSecond(epochSecond));
         expectedLocationPoint.setLatitude(53.863149);
         expectedLocationPoint.setLongitude(10.700927);
         expectedLocationPoint.setAccuracyMeters(10.0);

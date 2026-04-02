@@ -1,0 +1,67 @@
+.year-nav-container {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-highlight);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
+}
+
+.year-nav-container .year-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.year-nav-container .year-nav-item {
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    padding: 18px 8px;
+}
+
+.year-nav-container .year-nav-item.active {
+    font-weight: bold;
+    color: var(--color-highlight);
+    font-size: 1.2rem;
+}
+
+@media (min-width: 801px) {
+    .year-nav-container {
+        font-family: var(--serif-font);
+        font-weight: lighter;
+        line-height: 1.5;
+        transition: opacity 0.3s ease;
+        -webkit-user-select: none;
+        user-select: none;
+        width: 250px;
+        background: linear-gradient(90deg, rgb(17, 17, 17) 0%, rgba(59, 59, 59, 0.49) 76%, rgba(255, 255, 255, 0) 100%);
+        flex-shrink: 0;
+        display: block;
+        margin-bottom: 0;
+        border-bottom: none;
+        font-size: 1.1rem;
+    }
+
+    .year-nav-container .year-nav {
+        flex-direction: column;
+        align-items: baseline;
+    }
+    .year-nav .year-nav-item {
+        color: #e1e1e1;
+        padding: 0 1rem;
+        pointer-events: all;
+        cursor: pointer;
+        font-size: 2.4rem;
+        transition: all 0.25s ease-in-out;
+    }
+
+    .year-nav .year-nav-item.active {
+        color: var(--color-highlight);
+        font-size: 4rem;
+        font-weight: lighter;
+
+    }
+}

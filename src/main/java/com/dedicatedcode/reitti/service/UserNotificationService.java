@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
@@ -9,31 +8,40 @@ import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSharing;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class UserNotificationService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
-    private final RabbitTemplate rabbitTemplate;
+    private final RedisQueueService messageEnqueuer;
     private final ReittiSubscriptionService reittiSubscriptionService;
+    private final UserJdbcService userJdbcService;
+    private final UserSharingJdbcService userSharingJdbcService;
 
-    public UserNotificationService(RabbitTemplate rabbitTemplate, 
-                                 ReittiSubscriptionService reittiSubscriptionService) {
-        this.rabbitTemplate = rabbitTemplate;
+    public UserNotificationService(RedisQueueService messageEnqueuer,
+                                   ReittiSubscriptionService reittiSubscriptionService,
+                                   UserJdbcService userJdbcService,
+                                   UserSharingJdbcService userSharingJdbcService) {
+        this.messageEnqueuer = messageEnqueuer;
         this.reittiSubscriptionService = reittiSubscriptionService;
+        this.userJdbcService = userJdbcService;
+        this.userSharingJdbcService = userSharingJdbcService;
     }
 
     public void newTrips(User user, List<Trip> trips) {
@@ -45,6 +53,8 @@ public class UserNotificationService {
         log.debug("New trips for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
         sendToQueue(user, dates, eventType, previewId);
+        notifyOtherUsers(user, eventType, dates);
+        notifyReittiSubscriptions(user, eventType, dates);
     }
 
     public void placeUpdate(User user, SignificantPlace place, String previewId) {
@@ -58,25 +68,36 @@ public class UserNotificationService {
         log.debug("New Visits for user [{}]", user.getId());
         Set<LocalDate> dates = calculateAffectedDates(processedVisits.stream().map(ProcessedVisit::getStartTime).toList(), processedVisits.stream().map(ProcessedVisit::getEndTime).toList());
         sendToQueue(user, dates, eventType, null);
+        notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
     public void newRawLocationData(User user, List<LocationPoint> filtered) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationPoint::getTimestamp).map(s -> ZonedDateTime.parse(s).toInstant()).toList());
+        Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationPoint::getTimestamp).toList());
         sendToQueue(user, dates, eventType, null);
+        notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
+            this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
+        }
+    }
+    public void sendToQueue(User user, User changedUser, Set<LocalDate> dates, SSEType eventType, String previewId) {
+        for (LocalDate date : dates) {
+            this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId));
         }
     }
 
-    public void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.USER_EVENT_ROUTING_KEY, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
+    private void sendToQueue(User user, SSEType eventType, String previewId) {
+        this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
+    }
+
+    private void notifyOtherUsers(User user, SSEType eventType, Set<LocalDate> dates) {
+        calculatedAffectedUsers(user).forEach(otherUser -> sendToQueue(otherUser, user, dates, eventType, null));
     }
 
     private void notifyReittiSubscriptions(User user, SSEType eventType, Set<LocalDate> dates) {
@@ -86,6 +107,15 @@ public class UserNotificationService {
         } catch (Exception e) {
             log.error("Failed to notify Reitti subscriptions for user: {}", user.getId(), e);
         }
+    }
+
+    private Set<User> calculatedAffectedUsers(User user) {
+        return this.userSharingJdbcService.findBySharingUser(user.getId()).stream()
+                .map(UserSharing::getSharedWithUserId)
+                .map(userJdbcService::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toSet());
     }
 
     @SafeVarargs

@@ -96,7 +96,6 @@ public class OwnTracksRecorderIntegrationService {
                         // Find the latest timestamp from the received data
                         Instant latestTimestamp = validPoints.stream()
                                 .map(LocationPoint::getTimestamp).filter(Objects::nonNull)
-                                .map(Instant::parse)
                                 .max(Instant::compareTo).orElse(null);
 
                         if (latestTimestamp != null) {

@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.config.RabbitMQConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportProcessor;
@@ -12,8 +12,8 @@ import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.awaitility.Awaitility;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TestingService {
 
     private static final List<String> QUEUES_TO_CHECK = List.of(
-            RabbitMQConfig.SIGNIFICANT_PLACE_QUEUE
+            "reitti.place.created.v2"
     );
 
     @Autowired
@@ -42,7 +42,7 @@ public class TestingService {
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
-    private RabbitAdmin rabbitAdmin;
+    private RedisQueueService redisQueueService;
     @Autowired
     private TripJdbcService tripRepository;
     @Autowired
@@ -53,6 +53,8 @@ public class TestingService {
     private UserService userService;
     @Autowired
     private ImportProcessor importBatchProcessor;
+    @Autowired
+    private SignificantPlaceJdbcService significantPlaceJdbcService;
 
     @Autowired
     private LocationDataIngestPipeline locationDataIngestPipeline;
@@ -106,7 +108,6 @@ public class TestingService {
 
     public void awaitDataImport(int seconds) {
         AtomicLong lastRawCount = new AtomicLong(-1);
-        AtomicLong lastVisitCount = new AtomicLong(-1);
         AtomicLong lastTripCount = new AtomicLong(-1);
         AtomicInteger stableChecks = new AtomicInteger(0);
 
@@ -121,8 +122,8 @@ public class TestingService {
                     // Check all queues are empty
                     boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
                             .allMatch(name -> {
-                                var queueInfo = this.rabbitAdmin.getQueueInfo(name);
-                                return queueInfo.getMessageCount() == 0;
+                                long pendingMessageCount = this.redisQueueService.getQueueSummary().totalPending();
+                                return pendingMessageCount == 0;
                             });
 
                     if (!queuesAreEmpty) {
@@ -151,7 +152,7 @@ public class TestingService {
     }
 
     public void clearData() {
-        QUEUES_TO_CHECK.forEach(name -> this.rabbitAdmin.purgeQueue(name));
+        QUEUES_TO_CHECK.forEach(name -> this.redisQueueService.purgeAllQueues());
 
         try {
             Thread.sleep(2000);
@@ -167,5 +168,9 @@ public class TestingService {
     public void importAndProcess(User user, String path) {
         importData(user, path);
         awaitDataImport(100);
+    }
+
+    public SignificantPlace newSignificantPlace(User user) {
+        return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
     }
 }

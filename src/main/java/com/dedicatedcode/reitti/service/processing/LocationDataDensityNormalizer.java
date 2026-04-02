@@ -88,10 +88,7 @@ public class LocationDataDensityNormalizer {
 
             // Step 8: Process gaps (generate synthetic points)
             processGaps(user, existingPoints, densityConfig);
-
-
             handleExcessDensity(user, existingPoints);
-
             logger.debug("Completed batch density normalization for user {}", user.getUsername());
 
         } catch (Exception e) {
@@ -110,7 +107,7 @@ public class LocationDataDensityNormalizer {
         Instant maxTime = null;
 
         for (LocationPoint point : points) {
-            Instant timestamp = Instant.parse(point.getTimestamp());
+            Instant timestamp = point.getTimestamp();
             if (minTime == null || timestamp.isBefore(minTime)) {
                 minTime = timestamp;
             }

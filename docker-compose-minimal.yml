@@ -1,0 +1,45 @@
+services:
+  reitti:
+    image: dedicatedcode/reitti:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      postgis:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+    volumes:
+     - reitti-data:/data/
+    environment:
+      TILES_CACHE: ''
+      POSTGIS_USER: reitti
+      POSTGIS_PASSWORD: reitti
+      POSTGIS_DB: reittidb
+      POSTGIS_HOST: postgis
+  postgis:
+    image: postgis/postgis:17-3.5-alpine
+    environment:
+      POSTGRES_USER: reitti
+      POSTGRES_PASSWORD: reitti
+      POSTGRES_DB: reittidb
+    volumes:
+      - postgis-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reitti -d reittidb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgis-data:
+  redis-data:
+  reitti-data:
