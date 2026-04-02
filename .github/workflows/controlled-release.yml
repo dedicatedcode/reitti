@@ -147,12 +147,12 @@ jobs:
             dedicatedcode/reitti
             ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-beta') && github.ref_type == 'tag' }}
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
-            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-beta') }}
+            type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-beta') }}
 
-      - name: Build & push reitti image
+      - name: Build and push reitti image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
@@ -169,12 +169,12 @@ jobs:
             dedicatedcode/reitti-tile-cache
             ghcr.io/${{ github.repository }}-tile-cache
           tags: |
-            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-beta') && github.ref_type == 'tag' }}
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
-            type=semver,pattern={{major}},enable=${{ needs.prepare.outputs.is_beta != 'true' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-beta') }}
+            type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-beta') }}
 
-      - name: Build & push tile-cache image
+      - name: Build and push tile-cache image
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
