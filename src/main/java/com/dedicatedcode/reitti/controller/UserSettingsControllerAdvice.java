@@ -50,7 +50,7 @@ public class UserSettingsControllerAdvice {
             // Return default settings for anonymous users
             return new UserSettingsDTO(false,
                                        Language.EN,
-                                       Locale.ENGLISH,
+                                       Locale.ENGLISH.toLanguageTag(),
                                        Instant.now(),
                                        UnitSystem.METRIC,
                                        DEFAULT_HOME_LATITUDE,
@@ -77,7 +77,7 @@ public class UserSettingsControllerAdvice {
             Language selectedLanguage = dbSettings.getSelectedLanguage();
             return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
                                        selectedLanguage,
-                                       selectedLanguage.getLocale(),
+                                       selectedLanguage.getLocale().toLanguageTag(),
                                        latestData,
                                        dbSettings.getUnitSystem(),
                                        dbSettings.getHomeLatitude(),
@@ -92,7 +92,7 @@ public class UserSettingsControllerAdvice {
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(false,
                                    Language.EN,
-                                   Locale.ENGLISH,
+                                   Locale.ENGLISH.toLanguageTag(),
                                    Instant.now(),
                                    UnitSystem.METRIC,
                                    DEFAULT_HOME_LATITUDE,
@@ -119,6 +119,7 @@ public class UserSettingsControllerAdvice {
             throw new IllegalStateException("Invalid user authentication mode detected [" + grantedRoles + "]");
         }
     }
+
     private UserSettingsDTO.PhotoMode mapUserToPhotoMode(Authentication authentication) {
         List<String> grantedRoles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         if (grantedRoles.contains("ROLE_ADMIN") ||
