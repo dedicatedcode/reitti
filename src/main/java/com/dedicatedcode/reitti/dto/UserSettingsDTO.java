@@ -11,7 +11,7 @@ import java.util.Locale;
 public record UserSettingsDTO(
         boolean preferColoredMap,
         Language selectedLanguage,
-        Locale selectedLocale,
+        String selectedLocale,
         Instant newestData,
         UnitSystem unitSystem,
         Double homeLatitude,
