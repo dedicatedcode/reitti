@@ -1105,16 +1105,19 @@ class MapRenderer {
             closeButton: false
         }).setHTML(popupContent);
 
-        marker.setPopup(popup);
+        container.addEventListener('pointerenter', (e) => {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            popup.setLngLat([lng, lat]).addTo(this.map);
+        }, { capture: true });
 
-        // Use MapLibre's built-in hover events for better reliability
-        marker.getElement().addEventListener('mouseenter', () => {
-            marker.getPopup().addTo(this.map);
-        });
+        container.addEventListener('pointerleave', (e) => {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            popup.remove();
+        }, { capture: true });
 
-        marker.getElement().addEventListener('mouseleave', () => {
-            marker.getPopup().remove();
-        });
+
 
         // Store the marker by user ID for updates
         this.avatarMarkers.set(userId, marker);
