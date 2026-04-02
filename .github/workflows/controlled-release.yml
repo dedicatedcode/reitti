@@ -143,6 +143,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          context: 'git'
           images: |
             dedicatedcode/reitti
             ghcr.io/${{ github.repository }}
@@ -165,6 +166,7 @@ jobs:
         id: meta-tile-cache
         uses: docker/metadata-action@v5
         with:
+          context: 'git'
           images: |
             dedicatedcode/reitti-tile-cache
             ghcr.io/${{ github.repository }}-tile-cache
