@@ -381,7 +381,7 @@ There are multiple ways of getting support:
 
 - create a [new issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
 - tag me on [Lemmy](https://discuss.tchncs.de/u/danielgraf)
-- or join **#reitti** on [irc.dedicatedcode.com](https://irc.dedicatedcode.com)
+- or join **#reitti** on [libera.chat](https://libera.chat)
 
 ## Translations
 
