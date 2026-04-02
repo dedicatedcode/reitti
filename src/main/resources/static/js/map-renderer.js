@@ -1259,12 +1259,12 @@ class MapRenderer {
         if (diffMinutes < 1) {
             return t('common.just-now') || 'Just now';
         } else if (diffMinutes < 60) {
-            return `${diffMinutes} ${t('common.minutes-ago') || 'minutes ago'}`;
+            return `${t('common.minutes-ago', [diffMinutes]) || 'minutes ago'}`;
         } else if (diffHours < 24) {
-            return `${diffHours} ${t('common.hours-ago') || 'hours ago'}`;
+            return `${t('common.hours-ago', [diffHours]) || 'hours ago'}`;
         } else {
             const diffDays = Math.floor(diffHours / 24);
-            return `${diffDays} ${t('common.days-ago') || 'days ago'}`;
+            return `${t('common.days-ago', [diffDays]) || 'days ago'}`;
         }
     }
 
