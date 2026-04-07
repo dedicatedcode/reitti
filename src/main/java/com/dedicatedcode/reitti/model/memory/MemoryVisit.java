@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model.memory;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +18,19 @@ public class MemoryVisit {
     private final ZoneId timezone;
 
     public static MemoryVisit create(ProcessedVisit visit) {
+        SignificantPlace place = visit.getPlace();
+
+        String name = place.getName();
+        if (name == null || name.isBlank()) {
+            // Fall back to city, or coordinates as a last resort
+            if (place.getCity() != null && !place.getCity().isBlank()) {
+                name = place.getCity();
+            } else {
+                name = String.format("%.4f, %.4f",
+                        place.getLatitudeCentroid(),
+                        place.getLongitudeCentroid());
+            }
+        }
         return new MemoryVisit(null, true, visit.getPlace().getName(), visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid(), visit.getPlace().getTimezone());
     }
 

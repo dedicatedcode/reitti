@@ -1,0 +1,1 @@
+ALTER TABLE memory_visits ALTER COLUMN name DROP NOT NULL;
