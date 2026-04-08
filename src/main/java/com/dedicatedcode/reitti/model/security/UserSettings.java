@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.model.security;
 
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
+import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.time.Instant;
@@ -18,12 +19,13 @@ public class UserSettings {
     private final Double homeLongitude;
     private final ZoneId timeZoneOverride;
     private final TimeDisplayMode timeDisplayMode;
+    private final TimeMode timeMode;
     private final String customCss;
     private final Instant latestData;
     private final String color;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, String customCss, Instant latestData, String color, Long version) {
+    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, TimeMode timeMode, String customCss, Instant latestData, String color, Long version) {
         this.userId = userId;
         this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
@@ -32,6 +34,7 @@ public class UserSettings {
         this.homeLongitude = homeLongitude;
         this.timeZoneOverride = timeZoneOverride;
         this.timeDisplayMode = timeDisplayMode;
+        this.timeMode = timeMode;
         this.customCss = customCss;
         this.latestData = latestData;
         this.color = color;
@@ -39,7 +42,7 @@ public class UserSettings {
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, null, null, "#f1ba63", null);
+        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, null, null, "#f1ba63", null);
     }
     public Long getUserId() {
         return userId;
@@ -77,6 +80,10 @@ public class UserSettings {
         return timeDisplayMode;
     }
 
+    public TimeMode getTimeMode() {
+        return timeMode;
+    }
+
     public ZoneId getTimeZoneOverride() {
         return timeZoneOverride;
     }
@@ -86,12 +93,13 @@ public class UserSettings {
     }
 
     public UserSettings withHomeCoordinates(Double homeLatitude, Double homeLongitude) {
-        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, color, version);
+        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, this.timeMode, customCss, latestData, color, version);
     }
 
     public String getColor() {
         return color;
     }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -105,6 +113,7 @@ public class UserSettings {
                 Objects.equals(homeLongitude, that.homeLongitude) &&
                 Objects.equals(timeZoneOverride, that.timeZoneOverride) &&
                 Objects.equals(timeDisplayMode, that.timeDisplayMode) &&
+                Objects.equals(timeMode, that.timeMode) &&
                 Objects.equals(customCss, that.customCss) &&
                 Objects.equals(latestData, that.latestData) &&
                 Objects.equals(version, that.version);
@@ -112,7 +121,7 @@ public class UserSettings {
     
     @Override
     public int hashCode() {
-        return Objects.hash(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, version);
+        return Objects.hash(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, version);
     }
     
     @Override
@@ -126,6 +135,7 @@ public class UserSettings {
                 ", homeLongitude=" + homeLongitude +
                 ", timeZoneOverride=" + timeZoneOverride +
                 ", timeDisplayMode=" + timeDisplayMode +
+                ", timeMode=" + timeMode +
                 ", customCss=" + (customCss != null ? "[" + customCss.length() + " chars]" : "null") +
                 ", latestData=" + latestData +
                 ", version=" + version +
@@ -133,6 +143,6 @@ public class UserSettings {
     }
 
     public UserSettings withVersion(long version) {
-        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, customCss, latestData, color, version);
+        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, color, version);
     }
 }

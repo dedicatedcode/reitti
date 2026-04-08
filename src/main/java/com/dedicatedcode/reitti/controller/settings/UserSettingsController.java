@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.model.Language;
-import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.TimeDisplayMode;
-import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -136,8 +133,10 @@ public class UserSettingsController {
             model.addAttribute("isAdmin", false);
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
+            model.addAttribute("timeMode", userSettings.getTimeMode().name());
             model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
             model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+            model.addAttribute("availableTimeModes", TimeMode.values());
             model.addAttribute("defaultColors", defaultColors);
             model.addAttribute("selectedColor", userSettings.getColor());
             return "fragments/user-management :: user-form-page";
@@ -199,6 +198,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
+                             @RequestParam(name = "time_mode", defaultValue = "TWENTY_FOUR_HOUR") TimeMode timeMode,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
@@ -228,6 +228,7 @@ public class UserSettingsController {
                         homeLongitude,
                         timezoneOverride,
                         timeDisplayMode,
+                        timeMode,
                         color);
                 // Handle avatar - prioritize custom upload over default
                 if (avatar != null && !avatar.isEmpty()) {
@@ -252,6 +253,7 @@ public class UserSettingsController {
                                 existingSettings.getHomeLongitude(),
                                 existingSettings.getTimeZoneOverride(),
                                 existingSettings.getTimeDisplayMode(),
+                                existingSettings.getTimeMode(),
                                 cssContent,
                                 existingSettings.getLatestData(),
                                 color,
@@ -293,6 +295,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
+                             @RequestParam(name = "time_mode", defaultValue = "TWENTY_FOUR_HOUR") TimeMode timeMode,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) String removeAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
@@ -357,6 +360,7 @@ public class UserSettingsController {
                                                             homeLongitude,
                                                             StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
                                                             timeDisplayMode,
+                                                            timeMode,
                                                             cssContent,
                                                             existingSettings.getLatestData(),
                                                             color,
@@ -442,6 +446,7 @@ public class UserSettingsController {
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
+            model.addAttribute("timeMode", userSettings.getTimeMode().name());
             model.addAttribute("selectedColor", userSettings.getColor());
         } else {
             // Default values for new users
@@ -453,6 +458,8 @@ public class UserSettingsController {
             model.addAttribute("homeLongitude", null);
             model.addAttribute("externallyManaged", false);
             model.addAttribute("externalProfile", null);
+            model.addAttribute("timeDisplayMode", TimeDisplayMode.DEFAULT.name());
+            model.addAttribute("timeMode", TimeMode.TWENTY_FOUR_HOUR.name());
             model.addAttribute("localLoginDisabled", localLoginDisabled);
         }
 
@@ -460,6 +467,7 @@ public class UserSettingsController {
         model.addAttribute("availableLanguages", Language.values());
         model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds().stream().sorted());
         model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
+        model.addAttribute("availableTimeModes", TimeMode.values());
         model.addAttribute("defaultColors", defaultColors);
 
         // Check if user has avatar and custom CSS
