@@ -210,6 +210,51 @@ public class UserSettingsJdbcServiceTest {
     }
 
     @Test
+    void saveAndRetrieve_ShouldCorrectlyStoreTimeMode() {
+        // Test saving TWELVE_HOUR
+        UserSettings twelveHourSettings = new UserSettings(testUserId1,
+                                                           false,
+                                                           Language.EN,
+                                                           UnitSystem.METRIC,
+                                                           null,
+                                                           null,
+                                                           null,
+                                                           TimeDisplayMode.DEFAULT,
+                                                           TimeMode.TWELVE_HOUR,
+                                                           null,
+                                                           Instant.now(),
+                                                           "#f1ba63",
+                                                           null);
+        userSettingsJdbcService.save(twelveHourSettings);
+        
+        Optional<UserSettings> retrieved = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getTimeMode()).isEqualTo(TimeMode.TWELVE_HOUR);
+        
+        // Update to TWENTY_FOUR_HOUR
+        UserSettings twentyFourHourSettings = new UserSettings(
+                testUserId1,
+                false,
+                Language.EN,
+                UnitSystem.METRIC,
+                null,
+                null,
+                null,
+                TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
+                null,
+                Instant.now(),
+                "#f1ba63",
+                retrieved.get().getVersion());
+        
+        userSettingsJdbcService.save(twentyFourHourSettings);
+        
+        Optional<UserSettings> updated = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(updated).isPresent();
+        assertThat(updated.get().getTimeMode()).isEqualTo(TimeMode.TWENTY_FOUR_HOUR);
+    }
+
+    @Test
     void shouldUpdateNewestValue() {
         User user = userJdbcService.findById(testUserId1).orElseThrow();
         this.userSettingsJdbcService.save(UserSettings.defaultSettings(testUserId1));
