@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.model.Language;
-import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.TimeDisplayMode;
-import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
@@ -93,6 +90,7 @@ public class UserService {
                               Double homeLongitude,
                               String timezoneOverride,
                               TimeDisplayMode timeDisplayMode,
+                              TimeMode timeMode,
                               String color) {
         User createdUser = userJdbcService.createUser(new User(username, displayName)
                 .withPassword(passwordEncoder.encode(password))
@@ -106,6 +104,7 @@ public class UserService {
                                                      homeLongitude,
                                                      StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
                                                      timeDisplayMode,
+                                                     timeMode,
                                                      null,
                                                      null,
                                                      color,

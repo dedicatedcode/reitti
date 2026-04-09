@@ -277,7 +277,13 @@
     }
 
     function formatDateTime(ts) {
-        return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        switch (window.userSettings.timeMode) {
+            case 'TWENTY_FOUR_HOUR':
+                return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+            case 'TWELVE_HOUR':
+                return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
     }
 
     function updateStatus(message, current, total) {

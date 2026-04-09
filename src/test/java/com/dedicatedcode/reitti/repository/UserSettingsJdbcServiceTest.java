@@ -2,10 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.Language;
-import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.TimeDisplayMode;
-import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +65,7 @@ public class UserSettingsJdbcServiceTest {
                                                     24.9384,
                                                     null,
                                                     TimeDisplayMode.DEFAULT,
-                                                    null,
+                                                    TimeMode.TWENTY_FOUR_HOUR, null,
                                                     Instant.now(),
                                                     "#f1ba63",
                                                     null);
@@ -94,6 +91,7 @@ public class UserSettingsJdbcServiceTest {
                                                         null,
                                                         null,
                                                         TimeDisplayMode.DEFAULT,
+                                                        TimeMode.TWENTY_FOUR_HOUR,
                                                         null,
                                                         Instant.now(),
                                                         "#f1ba63",
@@ -110,8 +108,12 @@ public class UserSettingsJdbcServiceTest {
                 13.4050,
                 null,
                 TimeDisplayMode.DEFAULT,
-                null, Instant.now(), "#f1ba63", savedSettings.getVersion());
-        
+                TimeMode.TWENTY_FOUR_HOUR,
+                null,
+                Instant.now(),
+                "#f1ba63",
+                savedSettings.getVersion());
+
         UserSettings result = userSettingsJdbcService.save(updatedSettings);
         
         assertThat(result.getUserId()).isEqualTo(testUserId1);
@@ -134,6 +136,7 @@ public class UserSettingsJdbcServiceTest {
                                                     2.3522,
                                                     null,
                                                     TimeDisplayMode.DEFAULT,
+                                                    TimeMode.TWENTY_FOUR_HOUR,
                                                     null,
                                                     Instant.now(),
                                                     "#f1ba63",
@@ -178,6 +181,7 @@ public class UserSettingsJdbcServiceTest {
                                                          24.9384,
                                                          null,
                                                          TimeDisplayMode.DEFAULT,
+                                                         TimeMode.TWENTY_FOUR_HOUR,
                                                          null,
                                                          Instant.now(),
                                                          "#f1ba63",
@@ -203,6 +207,51 @@ public class UserSettingsJdbcServiceTest {
         assertThat(defaultSettings.getHomeLatitude()).isNull();
         assertThat(defaultSettings.getHomeLongitude()).isNull();
         assertThat(defaultSettings.getVersion()).isNull();
+    }
+
+    @Test
+    void saveAndRetrieve_ShouldCorrectlyStoreTimeMode() {
+        // Test saving TWELVE_HOUR
+        UserSettings twelveHourSettings = new UserSettings(testUserId1,
+                                                           false,
+                                                           Language.EN,
+                                                           UnitSystem.METRIC,
+                                                           null,
+                                                           null,
+                                                           null,
+                                                           TimeDisplayMode.DEFAULT,
+                                                           TimeMode.TWELVE_HOUR,
+                                                           null,
+                                                           Instant.now(),
+                                                           "#f1ba63",
+                                                           null);
+        userSettingsJdbcService.save(twelveHourSettings);
+        
+        Optional<UserSettings> retrieved = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getTimeMode()).isEqualTo(TimeMode.TWELVE_HOUR);
+        
+        // Update to TWENTY_FOUR_HOUR
+        UserSettings twentyFourHourSettings = new UserSettings(
+                testUserId1,
+                false,
+                Language.EN,
+                UnitSystem.METRIC,
+                null,
+                null,
+                null,
+                TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
+                null,
+                Instant.now(),
+                "#f1ba63",
+                retrieved.get().getVersion());
+        
+        userSettingsJdbcService.save(twentyFourHourSettings);
+        
+        Optional<UserSettings> updated = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(updated).isPresent();
+        assertThat(updated.get().getTimeMode()).isEqualTo(TimeMode.TWENTY_FOUR_HOUR);
     }
 
     @Test
@@ -232,6 +281,8 @@ public class UserSettingsJdbcServiceTest {
 
         assertThat(this.userSettingsJdbcService.findByUserId(user.getId()).get().getLatestData()).isEqualTo(latest.plusNanos(500).truncatedTo(ChronoUnit.MICROS));
     }
+
+
 
     private LocationPoint createLocationPoint(Instant timestamp) {
         LocationPoint locationPoint = new LocationPoint();
