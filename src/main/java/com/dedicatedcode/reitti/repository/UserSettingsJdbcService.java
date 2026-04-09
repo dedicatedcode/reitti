@@ -3,9 +3,12 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
+import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -38,12 +41,14 @@ public class UserSettingsJdbcService {
                 rs.getDouble("home_lng"),
                 rs.getString("time_zone_override") != null ? ZoneId.of(rs.getString("time_zone_override")) : null,
                 TimeDisplayMode.valueOf(rs.getString("time_display_mode")),
+                TimeMode.valueOf(rs.getString("time_mode")),
                 rs.getString("custom_css"),
                 newestData != null ? newestData.toInstant() : null,
                 rs.getString("color"),
                 rs.getLong("version"));
     };
-    
+
+    @Cacheable("user-settings")
     public Optional<UserSettings> findByUserId(Long userId) {
         try {
             UserSettings settings = jdbcTemplate.queryForObject(
@@ -56,11 +61,12 @@ public class UserSettingsJdbcService {
             return Optional.empty();
         }
     }
-    
+
+    @CacheEvict(cacheNames = "user-settings", key = "#userSettings.userId")
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, time_mode, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                                      userSettings.getUserId(),
                                      userSettings.isPreferColoredMap(),
                                      userSettings.getSelectedLanguage().name(),
@@ -69,6 +75,7 @@ public class UserSettingsJdbcService {
                                      userSettings.getHomeLongitude(),
                                      userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                                      userSettings.getTimeDisplayMode().name(),
+                                     userSettings.getTimeMode().name(),
                                      userSettings.getCustomCss(),
                                      userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                                      userSettings.getColor());
@@ -77,7 +84,7 @@ public class UserSettingsJdbcService {
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, time_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.isPreferColoredMap(),
                     userSettings.getSelectedLanguage().name(),
                     userSettings.getUnitSystem().name(),
@@ -85,6 +92,7 @@ public class UserSettingsJdbcService {
                     userSettings.getHomeLongitude(),
                     userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                     userSettings.getTimeDisplayMode().name(),
+                    userSettings.getTimeMode().name(),
                     userSettings.getCustomCss(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                     userSettings.getColor(),
@@ -94,21 +102,25 @@ public class UserSettingsJdbcService {
             return findByUserId(userSettings.getUserId()).orElse(userSettings);
         }
     }
-    
+
+    @Cacheable("user-settings")
     public UserSettings getOrCreateDefaultSettings(Long userId) {
         return findByUserId(userId).orElseGet(() -> save(UserSettings.defaultSettings(userId)));
     }
-    
+
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void updateNewestData(User user, List<LocationPoint> filtered) {
         filtered.stream().map(LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(timestamp), user.getId());
         });
     }
 
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void deleteFor(User user) {
         this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", user.getId());
     }
 
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void deleteNewestData(User user) {
         this.jdbcTemplate.update("UPDATE user_settings SET latest_data = NULL WHERE user_id = ?", user.getId());
     }

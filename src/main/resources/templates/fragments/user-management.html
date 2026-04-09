@@ -240,6 +240,16 @@
                     <li th:text="#{time.display.mode.geo.local.description}">Geo Local: All times are displayed in the timezone where the location is</li>
                 </ul>
             </div>
+            <div class="form-group">
+                <label for="timeMode" th:text="#{time.format.mode.label}">Time Display Mode</label>
+                <div class="select">
+                    <select id="timeMode" name="time_mode">
+                        <option value="TWENTY_FOUR_HOUR" th:selected="${timeMode == 'TWENTY_FOUR_HOUR' || timeMode == null}" th:text="#{time.format.mode.TWENTY_FOUR_HOUR}">24 Hours</option>
+                        <option value="TWELVE_HOUR" th:selected="${timeMode == 'TWELVE_HOUR'}" th:text="#{time.format.mode.TWELVE_HOUR}">12 Hours</option>
+                    </select>
+                </div>
+                <p class="form-description" th:text="#{time.format.mode.description}">Choose how times are formatted throughout the application.</p>
+            </div>
             
             <div class="form-group">
                 <label for="timezoneOverride" th:text="#{time.timezone.override.label}">Timezone Override</label>

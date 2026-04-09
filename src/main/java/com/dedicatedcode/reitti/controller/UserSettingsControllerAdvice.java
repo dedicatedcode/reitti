@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.UserSettingsDTO;
 import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
+import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -59,6 +60,7 @@ public class UserSettingsControllerAdvice {
                                        UserSettingsDTO.UIMode.FULL,
                                        UserSettingsDTO.PhotoMode.DISABLED,
                                        TimeDisplayMode.DEFAULT,
+                                       TimeMode.TWENTY_FOUR_HOUR,
                                        null,
                                        null);
         }
@@ -86,6 +88,7 @@ public class UserSettingsControllerAdvice {
                                        uiMode,
                                        photoMode,
                                        dbSettings.getTimeDisplayMode(),
+                                       dbSettings.getTimeMode(),
                                        dbSettings.getTimeZoneOverride(),
                                        dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
         }
@@ -101,6 +104,7 @@ public class UserSettingsControllerAdvice {
                                    uiMode,
                                    photoMode,
                                    TimeDisplayMode.DEFAULT,
+                                   TimeMode.TWENTY_FOUR_HOUR,
                                    null,
                                    null);
     }

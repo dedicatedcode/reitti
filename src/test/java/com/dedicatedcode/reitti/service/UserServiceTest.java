@@ -2,10 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.Language;
-import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.TimeDisplayMode;
-import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
@@ -102,6 +99,7 @@ class UserServiceTest {
                 null,
                 "Europe/Berlin",
                 TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
                 "#f1ba63"
         );
 
@@ -127,6 +125,7 @@ class UserServiceTest {
                 13.4050,
                 "Europe/Berlin",
                 TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
                 "#f1ba63"
         );
 
@@ -171,6 +170,7 @@ class UserServiceTest {
             null,
             null,
             TimeDisplayMode.DEFAULT,
+            TimeMode.TWENTY_FOUR_HOUR,
             "#f1ba63"
         );
 
