@@ -5,14 +5,20 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public enum TimeMode {
-    TWELVE_HOUR,
-    TWENTY_FOUR_HOUR;
+    TWELVE_HOUR("h:mm a"),
+    TWENTY_FOUR_HOUR("HH:mm");
+
+    private final String pattern;
+
+    TimeMode(String pattern) {
+        this.pattern = pattern;
+    }
+    public String getPattern() {
+        return pattern;
+    }
 
     public String format(Instant instant, ZoneId zoneId) {
-        DateTimeFormatter formatter = switch (this) {
-            case TWELVE_HOUR -> DateTimeFormatter.ofPattern("h:mm a");
-            case TWENTY_FOUR_HOUR -> DateTimeFormatter.ofPattern("HH:mm");
-        };
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(this.pattern);
         return instant.atZone(zoneId).format(formatter);
     }
 }

@@ -30,17 +30,20 @@ public class TimelineService {
     private final TripJdbcService tripJdbcService;
     private final PreviewTripJdbcService previewTripJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final I18nService i18n;
 
     public TimelineService(ProcessedVisitJdbcService processedVisitJdbcService,
                            PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService,
                            TripJdbcService tripJdbcService,
                            PreviewTripJdbcService previewTripJdbcService,
-                           UserSettingsJdbcService userSettingsJdbcService) {
+                           UserSettingsJdbcService userSettingsJdbcService,
+                           I18nService i18n) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.previewTripJdbcService = previewTripJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.i18n = i18n;
     }
 
     public List<TimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay) {
@@ -90,8 +93,8 @@ public class TimelineService {
                 entry.setStartTimezone(visit.getPlace().getTimezone());
                 entry.setEndTime(visit.getEndTime());
                 entry.setEndTimezone(visit.getPlace().getTimezone());
-                entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate));
-                entry.setFormattedLocalTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), visit.getPlace().getTimezone(), selectedDate));
+                entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate, userSettings));
+                entry.setFormattedLocalTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), visit.getPlace().getTimezone(), selectedDate, userSettings));
                 entry.setFormattedDuration(formatDuration(visit.getStartTime(), visit.getEndTime()));
                 entries.add(entry);
             }
@@ -107,9 +110,9 @@ public class TimelineService {
             entry.setStartTimezone(trip.getStartVisit().getPlace().getTimezone());
             entry.setEndTime(trip.getEndTime());
             entry.setEndTimezone(trip.getEndVisit().getPlace().getTimezone());
-            entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate));
+            entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate, userSettings));
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
-            entry.setFormattedLocalTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate));
+            entry.setFormattedLocalTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate, userSettings));
 
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
@@ -131,9 +134,8 @@ public class TimelineService {
         return entries;
     }
 
-    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId startTimezone, ZoneId endTimezone, LocalDate selectedDate) {
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMM d HH:mm");
+    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId startTimezone, ZoneId endTimezone, LocalDate selectedDate, UserSettings userSettings) {
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMM d " + userSettings.getTimeMode().getPattern());
 
         LocalDate startDate = startTime.atZone(startTimezone).toLocalDate();
         LocalDate endDate = endTime.atZone(endTimezone).toLocalDate();
@@ -145,21 +147,21 @@ public class TimelineService {
         if (!startDate.equals(selectedDateInStartTimezone)) {
             start = startTime.atZone(startTimezone).format(dateTimeFormatter);
         } else {
-            start = startTime.atZone(startTimezone).format(timeFormatter);
+            start = userSettings.getTimeMode().format(startTime, startTimezone);
         }
 
         // If end time is not on the selected date, show date + time
         if (!endDate.equals(selectedDateInEndTimezone)) {
             end = endTime.atZone(endTimezone).format(dateTimeFormatter);
         } else {
-            end = endTime.atZone(endTimezone).format(timeFormatter);
+            end = userSettings.getTimeMode().format(endTime, endTimezone);
         }
 
         return start + " - " + end;
     }
 
-    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate) {
-        return formatTimeRange(startTime, endTime, timezone, timezone, selectedDate);
+    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) {
+        return formatTimeRange(startTime, endTime, timezone, timezone, selectedDate, userSettings);
     }
 
     /**
@@ -171,9 +173,9 @@ public class TimelineService {
         long minutes = durationMinutes % 60;
 
         if (hours > 0) {
-            return hours + "h " + minutes + "m";
+            return i18n.translate("common.duration.long", hours, minutes);
         } else {
-            return minutes + "min";
+            return i18n.translate("common.duration.short", minutes);
         }
     }
 
@@ -188,20 +190,20 @@ public class TimelineService {
         switch (unitSystem) {
             case METRIC:
                 if (distanceMeters >= 1000) {
-                    return String.format("%.1f km", distanceMeters / 1000.0);
+                    return i18n.translate("common.distance.km", distanceMeters / 1000.0);
                 } else {
-                    return String.format("%.0f m", distanceMeters);
+                    return i18n.translate("common.distance.m", distanceMeters);
                 }
             case IMPERIAL:
                 double distanceFeet = distanceMeters * 3.28084;
                 if (distanceFeet >= 5280) {
                     double distanceMiles = distanceFeet / 5280.0;
-                    return String.format("%.1f mi", distanceMiles);
+                    return i18n.translate("common.distance.mi", distanceMiles);
                 } else {
-                    return String.format("%.0f ft", distanceFeet);
+                    return i18n.translate("common.distance.ft", distanceFeet);
                 }
             default:
-                return String.format("%.1f km", distanceMeters / 1000.0);
+                throw new IllegalArgumentException("Unknown distance unit: " + unitSystem);
         }
     }
 
