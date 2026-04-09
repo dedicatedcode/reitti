@@ -7,6 +7,8 @@ import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -45,7 +47,8 @@ public class UserSettingsJdbcService {
                 rs.getString("color"),
                 rs.getLong("version"));
     };
-    
+
+    @Cacheable("user-settings")
     public Optional<UserSettings> findByUserId(Long userId) {
         try {
             UserSettings settings = jdbcTemplate.queryForObject(
@@ -58,7 +61,8 @@ public class UserSettingsJdbcService {
             return Optional.empty();
         }
     }
-    
+
+    @CacheEvict(cacheNames = "user-settings", key = "#userSettings.userId")
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
@@ -98,21 +102,25 @@ public class UserSettingsJdbcService {
             return findByUserId(userSettings.getUserId()).orElse(userSettings);
         }
     }
-    
+
+    @Cacheable("user-settings")
     public UserSettings getOrCreateDefaultSettings(Long userId) {
         return findByUserId(userId).orElseGet(() -> save(UserSettings.defaultSettings(userId)));
     }
-    
+
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void updateNewestData(User user, List<LocationPoint> filtered) {
         filtered.stream().map(LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(timestamp), user.getId());
         });
     }
 
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void deleteFor(User user) {
         this.jdbcTemplate.update("DELETE FROM user_settings WHERE user_id = ?", user.getId());
     }
 
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
     public void deleteNewestData(User user) {
         this.jdbcTemplate.update("UPDATE user_settings SET latest_data = NULL WHERE user_id = ?", user.getId());
     }

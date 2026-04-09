@@ -5,11 +5,12 @@ import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Objects;
 
-public class UserSettings {
+public class UserSettings implements Serializable {
     
     private final Long userId;
     private final boolean preferColoredMap;
