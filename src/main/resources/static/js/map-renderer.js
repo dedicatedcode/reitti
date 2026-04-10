@@ -206,7 +206,12 @@ class MapRenderer {
 
     fitMapToBounds(bounds) {
         this.map.stop();
-        this.map.fitBounds(bounds, this.viewConfig.fitConfig);
+        const containerWidth = this.map.getContainer().clientWidth;
+        const config = { ...this.viewConfig.fitConfig };
+        if (containerWidth < 600) {
+            config.padding = { top: 20, bottom: 20, right: 20, left: 20 };
+        }
+        this.map.fitBounds(bounds, config);
     }
 
     flyTo(config) {

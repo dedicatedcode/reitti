@@ -230,7 +230,6 @@ header {
     font-family: sans-serif;
     color: var(--color-background-dark-light);
     text-shadow: 0 0 2px var(--color-highlight);
-    padding-right: 180px;
 }
 
 #tooltip::-webkit-scrollbar {
@@ -360,6 +359,11 @@ header {
     .settings-menu-content {
         padding: 12px;
     }
+
+    .loading-overlay {
+        top: 46px;
+    }
+
 }
 /* Elements */
 .btn {
