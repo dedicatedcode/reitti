@@ -5,10 +5,10 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class GeocodeJsonResultHandlerTest {
 
@@ -40,11 +40,11 @@ class GeocodeJsonResultHandlerTest {
                 }
                 """;
 
-        Optional<GeocodeResult> result = handler.handle(mapper.readTree(json));
+        List<GeocodeResult> result = handler.handle(mapper.readTree(json));
 
-        assertTrue(result.isPresent());
-        assertEquals("Statue of Liberty", result.get().label());
-        assertEquals("Liberty Island Road", result.get().street());
-        assertEquals("New York", result.get().city());
+        assertFalse(result.isEmpty());
+        assertEquals("Statue of Liberty", result.getFirst().label());
+        assertEquals("Liberty Island Road", result.getFirst().street());
+        assertEquals("New York", result.getFirst().city());
     }
 }

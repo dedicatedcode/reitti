@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<!-- Fragment for HTMX drawer injection -->
+<div th:fragment="content">
+
+    <div class="drawer-header">
+        <h3 class="drawer-title" th:text="#{places.geocode.results.title(${place.name()})}">Select Geocoding Result</h3>
+        <button type="button" class="drawer-close">&times;</button>
+    </div>
+
+    <div class="drawer-content">
+        <div th:each="providerEntry : ${geocodingResults}" class="settings-card">
+            <h4 th:text="${providerEntry.key}">Provider Name</h4>
+
+            <div>
+                <details th:each="result : ${providerEntry.value}">
+                    <summary th:text="${result.label ?: #messages.msg('places.geocode.unknown.label')}">Result Label
+                    </summary>
+                    <div>
+                        <p th:if="${result.street}">
+                            <strong th:text="#{places.address.label}">Address:</strong>
+                            <span th:text="${result.street} + (${result.houseNumber != null} ? ' ' + ${result.houseNumber} : '')">Street</span>
+                        </p>
+                        <p th:if="${result.city}">
+                            <strong th:text="#{places.city.label}">City:</strong>
+                            <span th:text="${result.city}">City</span>
+                        </p>
+                        <p th:if="${result.postcode}">
+                            <strong th:text="#{places.postcode.label}">Postcode:</strong>
+                            <span th:text="${result.postcode}">Postcode</span>
+                        </p>
+                        <p th:if="${result.district}">
+                            <strong th:text="#{places.district.label}">District:</strong>
+                            <span th:text="${result.district}">District</span>
+                        </p>
+                        <p th:if="${result.countryCode}">
+                            <strong th:text="#{places.country.label}">Country:</strong>
+                            <span th:text="${result.countryCode}">Country</span>
+                        </p>
+                        <p th:if="${result.placeType != null}">
+                            <strong th:text="#{places.category.label}">Type:</strong>
+                            <span th:text="#{${result.placeType.messageKey}}">Type</span>
+                        </p>
+
+                        <button type="button" class="btn btn-default apply-geocode-btn"
+                                th:attr="data-name=${result.label},
+                                     data-address=${result.street} + (${result.houseNumber != null} ? ' ' + ${result.houseNumber} : ''),
+                                     data-city=${result.city},
+                                     data-country=${result.countryCode},
+                                     data-type=${result.placeType != null ? result.placeType.name() : ''}">
+                            <span th:text="#{common.actions.apply}">Apply</span>
+                        </button>
+                    </div>
+                </details>
+            </div>
+
+        </div>
+        <div th:if="${geocodingResults == null or geocodingResults.isEmpty()}">
+            <p th:text="#{places.geocode.no.results}">No results were found from enabled Geocoding-Services.</p>
+        </div>
+
+
+    </div>
+
+</div>
+</body>
+</html>
