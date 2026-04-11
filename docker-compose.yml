@@ -53,6 +53,5 @@ services:
 volumes:
   postgis-data:
   redis-data:
-  photon-data:
   reitti-data:
   tile-cache-data:
