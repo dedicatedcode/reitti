@@ -77,9 +77,30 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     @Override
+    public Map<GeocoderType, List<GeocodeResult>> reverseGeocodeAll(SignificantPlace significantPlace) {
+        double latitude = significantPlace.getLatitudeCentroid();
+        double longitude = significantPlace.getLongitudeCentroid();
+        List<GeocodeService> availableServices = geocodeServiceJdbcService.findByEnabledTrueOrderByPriority();
+        Map<GeocoderType, List<GeocodeResult>> results = new HashMap<>();
+        if (availableServices.isEmpty()) {
+            logger.warn("No enabled geocoding services available");
+            return Map.of();
+        }
+
+        for (GeocodeService service : availableServices) {
+            List<GeocodeResult> serviceResults = performGeocode(service, latitude, longitude, significantPlace, true);
+            if (!serviceResults.isEmpty()) {
+                results.computeIfAbsent(service.getType(), _ -> new ArrayList<>())
+                        .addAll(serviceResults);
+            }
+        }
+        return results;
+    }
+
+    @Override
     public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
-        Optional<GeocodeResult> geocodeResult = performGeocode(service, testLat, testLng, null, false);
-        return geocodeResult.orElseThrow(() -> new RuntimeException("Failed to call geocoding service: " + service.getName()));
+        List<GeocodeResult> geocodeResult = performGeocode(service, testLat, testLng, null, false);
+        return geocodeResult.stream().findFirst().orElseThrow(() -> new RuntimeException("Failed to call geocoding service: " + service.getName()));
     }
 
     private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
@@ -88,12 +109,12 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
         for (GeocodeService service : shuffledServices) {
             try {
-                Optional<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
-                if (result.isPresent()) {
+                List<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
+                if (!result.isEmpty()) {
                     if (recordResponse) {
                         recordSuccess(service);
                     }
-                    return result;
+                    return result.stream().findFirst();
                 }
             } catch (Exception e) {
                 logger.warn("Geocoding failed for service [{}]: [{}]", service.getName(), e.getMessage());
@@ -106,7 +127,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         return Optional.empty();
     }
 
-    private Optional<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
+    private List<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
         String url = service.getUrlTemplate()
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
@@ -121,8 +142,8 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
             String response = responseEntity.getBody();
 
-            Optional<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
-            if (recordResponse && geocodeResult.isPresent()) {
+            List<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
+            if (recordResponse && !geocodeResult.isEmpty()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(
                         significantPlace.getId(),
                         response,
@@ -156,16 +177,16 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                         e.getMessage()
                 ));
             }
-            throw new RuntimeException("Failed to call geocoding service: " + e.getMessage(), e);
+            recordError(service);
         }
+        return Collections.emptyList();
     }
 
-    private Optional<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {
+    private List<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(response);
-        return this.resultHandlers.stream()
-                .filter(rh -> rh.canHandle(type))
-                .map(rh -> rh.handle(root))
-                .findFirst().orElseThrow();
+        List<GeocodeResult> results = new ArrayList<>();
+        this.resultHandlers.stream().filter(rh -> rh.canHandle(type)).forEach(rh -> results.addAll(rh.handle(root)));
+        return results;
     }
 
     private void recordSuccess(GeocodeService service) {

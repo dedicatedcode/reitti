@@ -210,8 +210,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label th:text="#{places.category.label}">Type</label>
-                    <select name="type">
+                    <label th:text="#{places.category.label}" for="place-type">Type</label>
+                    <select name="type" id="place-type" >
                         <option th:each="placeType : ${placeTypes}" 
                                 th:value="${placeType}" 
                                 th:text="#{${placeType.messageKey}}"
@@ -223,10 +223,13 @@
             <div class="polygon-actions">
                 <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
                         th:text="#{places.polygon.remove}">Remove Polygon</button>
-                
-                <form th:action="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}" method="post" style="margin-top: 10px;">
+
+                <form th:hx-post="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}"
+                      hx-target="#geocoding-drawer"
+                      hx-swap="innerHTML"
+                      style="margin-top: 10px;">
                     <input type="hidden" name="returnUrl" th:value="${returnUrl}">
-                    <button type="submit" class="btn btn-default btn-block" 
+                    <button type="submit" class="btn btn-default btn-block"
                             th:text="#{places.geocode.button}">Geocode Place</button>
                 </form>
                 
@@ -512,7 +515,23 @@
         map.on('contextmenu', function() {
             setTimeout(checkPolygonChanges, 100);
         });
-        
+
+        document.addEventListener('click', function(event) {
+            const btn = event.target.closest('.apply-geocode-btn');
+            if (btn) {
+                if (btn.dataset.name) document.getElementById('name').value = btn.dataset.name;
+                if (btn.dataset.address) document.getElementById('address').value = btn.dataset.address;
+                if (btn.dataset.city) document.getElementById('city').value = btn.dataset.city;
+                if (btn.dataset.country) document.getElementById('country').value = btn.dataset.country;
+                if (btn.dataset.type) document.getElementById('place-type').value = btn.dataset.type;
+
+                // Close the drawer
+                const drawer = document.getElementById('geocoding-drawer');
+                drawer.classList.remove('active');
+                drawer.innerHTML = '';
+            }
+        });
+
         // Handle geocoding drawer
         document.body.addEventListener('htmx:afterSettle', function(event) {
             if (event.detail.target.id === 'geocoding-drawer') {

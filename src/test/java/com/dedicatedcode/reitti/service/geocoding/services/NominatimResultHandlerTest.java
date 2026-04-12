@@ -5,10 +5,9 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class NominatimResultHandlerTest {
 
@@ -39,12 +38,12 @@ class NominatimResultHandlerTest {
                 ]
                 """;
 
-        Optional<GeocodeResult> result = handler.handle(mapper.readTree(json));
+        List<GeocodeResult> result = handler.handle(mapper.readTree(json));
 
-        assertTrue(result.isPresent());
-        assertEquals("Brandenburg Gate, Berlin, Germany", result.get().label());
-        assertEquals("Pariser Platz", result.get().street());
-        assertEquals("Berlin", result.get().city());
-        assertEquals("de", result.get().countryCode());
+        assertFalse(result.isEmpty());
+        assertEquals("Brandenburg Gate, Berlin, Germany", result.getFirst().label());
+        assertEquals("Pariser Platz", result.getFirst().street());
+        assertEquals("Berlin", result.getFirst().city());
+        assertEquals("de", result.getFirst().countryCode());
     }
 }

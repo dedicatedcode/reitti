@@ -6,10 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class PaikkaResultHandler implements ResultHandler{
@@ -19,51 +16,49 @@ public class PaikkaResultHandler implements ResultHandler{
     }
 
     @Override
-    public Optional<GeocodeResult> handle(JsonNode root) {
+    public List<GeocodeResult> handle(JsonNode root) {
         JsonNode resultsNode = root.path("results");
-        if (!resultsNode.isArray() || resultsNode.isEmpty()) return Optional.empty();
+        if (!resultsNode.isArray() || resultsNode.isEmpty()) return Collections.emptyList();
 
         List<JsonNode> resultList = new ArrayList<>();
         resultsNode.forEach(resultList::add);
 
-        JsonNode best = resultList.stream()
-                .min(Comparator.comparing(this::hasValidName, Comparator.reverseOrder())
+        List<JsonNode> results = resultList.stream()
+                .sorted(Comparator.comparing(this::hasValidName, Comparator.reverseOrder())
                              .thenComparing(this::hasAddress, Comparator.reverseOrder())  // New: prioritize items with addresses
                              .thenComparingInt((JsonNode n) -> getPaikkaTypePriority(n.path("type").asText()))
                              .thenComparingDouble(n -> n.path("distance_km").asDouble()))
-                .orElse(null);
+                .toList();
 
-        if (best == null) {
-            return Optional.empty();
-        }
+       return results.stream().map(best -> {
+            String label = best.path("display_name").asText("");
+            if (!StringUtils.hasText(label) || label.equals("null")) label = best.path("names").path("default").asText("");
 
-        String label = best.path("display_name").asText("");
-        if (!StringUtils.hasText(label) || label.equals("null")) label = best.path("names").path("default").asText("");
+            JsonNode addr = best.path("address");
+            String street = addr.path("street").asText("");
+            String houseNumber = addr.path("house_number").asText("");
+            String postcode = addr.path("postcode").asText("");
+            String city = addr.path("city").asText("");
 
-        JsonNode addr = best.path("address");
-        String street = addr.path("street").asText("");
-        String houseNumber = addr.path("house_number").asText("");
-        String postcode = addr.path("postcode").asText("");
-        String city = addr.path("city").asText("");
+            String district = "";
+            String countryCode = "";
+            for (JsonNode level : best.path("hierarchy")) {
+                if (level.path("level").asInt() == 10) district = level.path("name").asText();
+                if (level.path("level").asInt() == 2) countryCode = level.path("country_code").asText();
+            }
 
-        String district = "";
-        String countryCode = "";
-        for (JsonNode level : best.path("hierarchy")) {
-            if (level.path("level").asInt() == 10) district = level.path("name").asText();
-            if (level.path("level").asInt() == 2) countryCode = level.path("country_code").asText();
-        }
-
-        return createGeoCodeResult(
-                label,
-                street.trim(),
-                houseNumber,
-                postcode,
-                city,
-                district,
-                countryCode,
-                best.path("type").asText(),
-                best.path("subtype").asText()
-        );
+            return createGeoCodeResult(
+                    label,
+                    street.trim(),
+                    houseNumber,
+                    postcode,
+                    city,
+                    district,
+                    countryCode,
+                    best.path("type").asText(),
+                    best.path("subtype").asText()
+            );
+        }).filter(Objects::nonNull).toList();
     }
 
     private boolean hasValidName(JsonNode node) {

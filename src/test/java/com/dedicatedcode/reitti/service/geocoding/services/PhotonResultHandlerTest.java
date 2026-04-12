@@ -5,10 +5,9 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PhotonResultHandlerTest {
 
@@ -39,13 +38,13 @@ class PhotonResultHandlerTest {
                 }
                 """;
 
-        Optional<GeocodeResult> result = handler.handle(mapper.readTree(json));
+        List<GeocodeResult> result = handler.handle(mapper.readTree(json));
 
-        assertTrue(result.isPresent());
-        assertEquals("Eiffel Tower", result.get().label());
-        assertEquals("Avenue Anatole France", result.get().street());
-        assertEquals("5", result.get().houseNumber());
-        assertEquals("Paris", result.get().city());
-        assertEquals("fr", result.get().countryCode());
+        assertFalse(result.isEmpty());
+        assertEquals("Eiffel Tower", result.getFirst().label());
+        assertEquals("Avenue Anatole France", result.getFirst().street());
+        assertEquals("5", result.getFirst().houseNumber());
+        assertEquals("Paris", result.getFirst().city());
+        assertEquals("fr", result.getFirst().countryCode());
     }
 }

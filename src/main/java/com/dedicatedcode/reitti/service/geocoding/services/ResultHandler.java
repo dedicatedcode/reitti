@@ -4,20 +4,19 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.springframework.util.StringUtils;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface ResultHandler {
     boolean canHandle(GeocoderType type);
-    Optional<GeocodeResult> handle(JsonNode root);
 
-    default Optional<GeocodeResult> createGeoCodeResult(String label, String street, String houseNumber, String postcode, String city, String district, String countryCode, String placeTypeValue, String subtypeValue) {
+    List<GeocodeResult> handle(JsonNode root);
+
+    default GeocodeResult createGeoCodeResult(String label, String street, String houseNumber, String postcode, String city, String district, String countryCode, String placeTypeValue, String subtypeValue) {
         if (label.isEmpty() && !street.isEmpty()) {
             label = street;
         }
-        if (StringUtils.hasText(label)) {
-            return Optional.of(new GeocodeResult(
+        return new GeocodeResult(
                     label,
                     street,
                     houseNumber,
@@ -25,10 +24,7 @@ public interface ResultHandler {
                     postcode,
                     district,
                     countryCode != null ? countryCode.toLowerCase() : null,
-                    determinPlaceType(placeTypeValue, subtypeValue))
-            );
-        }
-        return Optional.empty();
+                    determinPlaceType(placeTypeValue, subtypeValue));
     }
 
     private SignificantPlace.PlaceType determinPlaceType(String osmValue, String subtype) {
