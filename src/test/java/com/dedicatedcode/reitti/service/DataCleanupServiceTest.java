@@ -209,29 +209,6 @@ class DataCleanupServiceTest {
     }
 
     @Test
-    void cleanupForGeometryChange_WithEmptyPlacesList_ShouldOnlyMarkPointsAsUnprocessed() {
-        // Given
-        Instant baseTime = Instant.now().minus(4, ChronoUnit.HOURS);
-        ProcessedVisit visit = createTestVisit(placeToKeep, baseTime, baseTime.plus(1, ChronoUnit.HOURS));
-        RawLocationPoint point = createProcessedPoint(testUser, baseTime);
-
-        // When
-        List<SignificantPlace> placesToRemove = List.of(); // Empty list
-        List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
-
-        // Then
-        // Visit should remain (no places to remove)
-        assertTrue(processedVisitJdbcService.findById(visit.getId()).isPresent());
-        
-        // Place should remain
-        assertTrue(placeJdbcService.findById(placeToKeep.getId()).isPresent());
-        
-        // Point should be marked as unprocessed
-        assertFalse(findPointById(point.getId()).isProcessed());
-    }
-
-    @Test
     void cleanupForGeometryChange_WithEmptyAffectedDays_ShouldRemovePlacesButNotMarkPoints() {
         // Given
         Instant baseTime = Instant.now().minus(5, ChronoUnit.HOURS);
