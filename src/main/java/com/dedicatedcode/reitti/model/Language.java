@@ -14,7 +14,8 @@ public enum Language {
     PT_BR(Locale.of("pt", "br"), "language.brazilian_portuguese", "\uD83C\uDDE7\uD83C\uDDF7"),
     TR(Locale.of("tr"), "language.turkish", "\uD83C\uDDF9\uD83C\uDDF7"),
     UK(Locale.of("uk"), "language.ukrainian", "\uD83C\uDDFA\uD83C\uDDE6"),
-    ZH_CN(Locale.of("zh", "cn"), "language.chinese", "\uD83C\uDDE8\uD83C\uDDF3");
+    ZH_CN(Locale.of("zh", "cn"), "language.chinese", "\uD83C\uDDE8\uD83C\uDDF3"),
+    ES(Locale.of("es"), "language.spanish", "\uD83C\uDDEA\uD83C\uDDF8");
 
     private final Locale locale;
     private final String messageKey;
