@@ -44,38 +44,14 @@ jobs:
 
       - name: Create verification issue
         run: |
-          cat > /tmp/checklist.md << 'CHECKLIST_END'
-          ## Manual Verification Checklist
-          Run the application locally or on a test instance against commit ${{ github.sha }}.
-
-          - [ ] Upgrade: Follow the upgrade instructions in the release notes
-          - [ ] Upgrade: Did the migration step run successfully?
-          - [ ] Auth: Local login + session persistence
-          - [ ] Auth: OIDC login, profile sync, logout callback
-          - [ ] Map: Tiles load, fullscreen toggle, colored map
-          - [ ] Live mode: Incoming points refresh the map
-          - [ ] Timeline: Trips/visits display, duration/distance accurate
-          - [ ] Timeline: Visit and Trip selection focuses the map on the selected item
-          - [ ] Timeline: Trip allows editing the detected transportation mode
-          - [ ] Timeline: Visit allows editing the place
-          - [ ] Place-edit: Shows nearby places as points on the map
-          - [ ] Place-edit: allows editing/removing/adding a polygon
-          - [ ] Multi-user: Data isolation confirmed (no cross-leak)
-          - [ ] Multi-user: Tracks and trips visible to all connected users
-          - [ ] Multi-user: Live View visible to all connected users
-          - [ ] Visit Sensitivity: Create a new setting, verify that the recalculation works
-          - [ ] Import: GPX/GeoJSON triggers queue, status visible in UI
-          - [ ] Geocoding: Failover handled gracefully (no UI freeze)
-          - [ ] i18n/Units: Language & Metric/Imperial switches work
+          # Read template and replace placeholders
+          TEMPLATE=$(cat .github/ISSUE_TEMPLATE/release-verification.md)
+          TEMPLATE="${TEMPLATE//\{\{ COMMIT_SHA \}\}/${{ github.sha }}}"
+          TEMPLATE="${TEMPLATE//\{\{ TAG \}\}/${{ steps.vars.outputs.tag }}}"
+          TEMPLATE="${TEMPLATE//\{\{ RUN_URL \}\}/${{ github.run_url }}}"
           
-          ## Next Steps
-          1. Verify against this exact tag: `${{ steps.vars.outputs.tag }}`
-          2. Check all boxes above
-          3. Return to this workflow run: [${{ github.run_url }}](${{ github.run_url }})
-          4. Click **Review deployments** -> **Approve and deploy**
-          5. This issue will auto-close once the release succeeds
-          CHECKLIST_END
-
+          echo "$TEMPLATE" > /tmp/checklist.md
+          
           gh issue create \
             --title "Verify ${{ steps.vars.outputs.tag }}" \
             --label "release-verification" \
