@@ -8,6 +8,8 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,6 +29,11 @@ public class TestConfiguration {
             @Override
             public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
                 return null;
+            }
+
+            @Override
+            public Map<GeocoderType, List<GeocodeResult>> reverseGeocodeAll(SignificantPlace significantPlace) {
+                return Map.of();
             }
         };
     }

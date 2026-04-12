@@ -5,10 +5,9 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class GeoapifyResultHandlerTest {
 
@@ -40,12 +39,12 @@ class GeoapifyResultHandlerTest {
                 }
                 """;
 
-        Optional<GeocodeResult> result = handler.handle(mapper.readTree(json));
+        List<GeocodeResult> result = handler.handle(mapper.readTree(json));
 
-        assertTrue(result.isPresent());
-        assertEquals("Big Ben, London, UK", result.get().label());
-        assertEquals("Bridge Street", result.get().street());
-        assertEquals("London", result.get().city());
-        assertEquals("gb", result.get().countryCode());
+        assertFalse(result.isEmpty());
+        assertEquals("Big Ben, London, UK", result.getFirst().label());
+        assertEquals("Bridge Street", result.getFirst().street());
+        assertEquals("London", result.getFirst().city());
+        assertEquals("gb", result.getFirst().countryCode());
     }
 }

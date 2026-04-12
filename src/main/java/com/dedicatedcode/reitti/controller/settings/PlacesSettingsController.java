@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
@@ -19,6 +20,8 @@ import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
+import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +43,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,7 +58,7 @@ public class PlacesSettingsController {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
-    private final RedisQueueService messageEnqueuer;
+    private final GeocodeServiceManager geocodeServiceManager;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
@@ -67,7 +71,7 @@ public class PlacesSettingsController {
                                     ProcessedVisitJdbcService processedVisitJdbcService,
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
-                                    RedisQueueService messageEnqueuer,
+                                    GeocodeServiceManager geocodeServiceManager,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService,
@@ -79,7 +83,7 @@ public class PlacesSettingsController {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
-        this.messageEnqueuer = messageEnqueuer;
+        this.geocodeServiceManager = geocodeServiceManager;
         this.geometryFactory = geometryFactory;
         this.i18nService = i18nService;
         this.placeChangeDetectionService = placeChangeDetectionService;
@@ -229,41 +233,64 @@ public class PlacesSettingsController {
                                @RequestParam(defaultValue = "0") int page,
                                @RequestParam(defaultValue = "") String search,
                                Authentication authentication,
-                               RedirectAttributes redirectAttributes) {
+                               Model model) {
 
         User user = (User) authentication.getPrincipal();
-        if (this.placeJdbcService.exists(user, placeId)) {
-            try {
-                SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
-
-                // Clear geocoding data and mark as not geocoded
-                SignificantPlace clearedPlace = significantPlace.withGeocoded(false).withAddress(null);
-                placeJdbcService.update(clearedPlace);
-                significantPlaceOverrideJdbcService.clear(user, clearedPlace);
-                // Send SignificantPlaceCreatedEvent to trigger geocoding
-                SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
-                        user.getUsername(),
-                        null,
-                        significantPlace.getId(),
-                        significantPlace.getLatitudeCentroid(),
-                        significantPlace.getLongitudeCentroid(),
-                        UUID.randomUUID().toString()
-                );
-                messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
-
-                redirectAttributes.addFlashAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
-            } catch (Exception e) {
-                redirectAttributes.addFlashAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
-            }
-        } else {
+        if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        // Redirect to returnUrl if provided, otherwise to places list
+        try {
+            SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
+            Map<GeocoderType, List<GeocodeResult>> results = geocodeServiceManager.reverseGeocodeAll(significantPlace);
+
+            model.addAttribute("place", convertToPlaceInfo(significantPlace));
+            model.addAttribute("geocodingResults", results);
+            model.addAttribute("returnUrl", returnUrl);
+            model.addAttribute("page", page);
+            model.addAttribute("search", search);
+
+            return "settings/geocode-results :: content";
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
+            return "redirect:/settings/places";
+        }
+    }
+
+    @PostMapping("/{placeId}/apply-geocode-result")
+    public String applyGeocodeResult(@PathVariable Long placeId,
+                                     @RequestParam String name,
+                                     @RequestParam(required = false) String address,
+                                     @RequestParam(required = false) String city,
+                                     @RequestParam(required = false) String countryCode,
+                                     @RequestParam(required = false) String returnUrl,
+                                     @RequestParam(defaultValue = "0") int page,
+                                     @RequestParam(defaultValue = "") String search,
+                                     Authentication authentication,
+                                     RedirectAttributes redirectAttributes) {
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            SignificantPlace place = placeJdbcService.findById(placeId).orElseThrow();
+            SignificantPlace updated = place.withName(name)
+                    .withAddress(address)
+                    .withCity(city)
+                    .withCountryCode(countryCode)
+                    .withGeocoded(true);
+
+            placeJdbcService.update(updated);
+            significantPlaceOverrideJdbcService.clear(user, updated);
+            redirectAttributes.addFlashAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
+        }
+
         String redirectUrl = returnUrl != null ? returnUrl : "/settings/places?page=" + page + "&search=" + search;
         return "redirect:" + redirectUrl;
     }
-
 
     @GetMapping("/{placeId}/geocoding-response")
     public String getGeocodingResponse(@PathVariable Long placeId,
