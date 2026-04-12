@@ -177,6 +177,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                         e.getMessage()
                 ));
             }
+            recordError(service);
         }
         return Collections.emptyList();
     }
