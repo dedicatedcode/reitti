@@ -67,7 +67,7 @@ Reitti is a comprehensive personal location tracking and analysis application th
 ### Privacy & Self-hosting
 - **Complete Data Control**: Your location data never leaves your server
 - **Self-hosted Solution**: Deploy on your own infrastructure
-- **Asynchronous Processing**: Handle large datasets efficiently with direct processing and RabbitMQ-based task scheduling
+- **Asynchronous Processing**: Handle large datasets efficiently with direct processing and task scheduling
 
 ## Getting Started
 
@@ -92,7 +92,7 @@ The easiest way to get started is using Docker Compose:
    or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
 2. Adjust the compose-file to your needs
 
-3. Start all services (PostgreSQL, RabbitMQ, Redis and Reitti)
+3. Start all services (PostgreSQL, Redis and Reitti)
    ```bash
    docker compose up -d
    ```
@@ -109,7 +109,7 @@ For development or custom deployments:
 
 1. Start infrastructure services
    ```bash
-   docker compose up -d postgis rabbitmq
+   docker compose up -d postgis redis
    ```
 
 2. Build and run the application
@@ -358,13 +358,13 @@ To enable PKCE for the OIDC Client, you need to set `OIDC_AUTHENTICATION_METHOD`
 - **Backup Requirements:** 
   - The PostGIS database needs to be backed up regularly. This database contains all user location data, analysis results, and other persistent information.
   - The storage path used by Reitti needs to be backed up regularly. This contains uploaded files.
-- **Stateless Services:** All other components (RabbitMQ for task scheduling, Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
+- **Stateless Services:** All other components (Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
 
 **Recommended Backup Strategy:**
 - Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
 - Back up the entire storage directory/volume used by Reitti for file storage.
 - Ensure backups are performed regularly and stored securely.
-- No backup is needed for RabbitMQ (task scheduling), Redis, Photon.
+- No backup is needed for Redis and Photon.
 
 **Restore:**
 - In case of disaster recovery, restore both the PostGIS database and the storage path to recover all user data and history.
