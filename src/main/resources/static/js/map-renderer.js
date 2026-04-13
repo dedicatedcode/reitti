@@ -43,16 +43,17 @@ class MapRenderer {
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
-            minZoom: 2
+            minZoom: 2,
+            attributionControl: false
         };
         if (this.viewState.fixed) {
             mapOptions.interactive = false;
         }
-        if (this.viewState.fixed || this.viewState.hideAttribution) {
-            mapOptions.attributionControl = false;
-        }
         this.map = new maplibregl.Map(mapOptions);
 
+        if (!(this.viewState.fixed || this.viewState.hideAttribution)) {
+            this.map.addControl(new maplibregl.AttributionControl(), 'top-right');
+        }
         if (this.viewState.showPhotos) {
             this.photosManager = new PhotoClusterManager(this.map, {
                 clusterRadius: 80,
