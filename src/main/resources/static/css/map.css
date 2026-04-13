@@ -157,3 +157,13 @@ details.maplibregl-ctrl-attrib[open] {
 .maplibregl-ctrl-attrib-button::-webkit-details-marker {
     display: none;
 }
+
+@media (max-width: 800px) {
+    details.maplibregl-ctrl-attrib {
+        top: 50px
+    }
+
+    details.maplibregl-ctrl-attrib.maplibregl-compact-show {
+        width: 50%
+    }
+}
