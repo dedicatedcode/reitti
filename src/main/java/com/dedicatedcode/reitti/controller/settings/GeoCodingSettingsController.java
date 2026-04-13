@@ -111,11 +111,12 @@ public class GeoCodingSettingsController {
                                     @RequestParam(required = false) String apiKey,
                                     @RequestParam(required = false) String lang,
                                     @RequestParam(required = false) Integer limit,
+                                    @RequestParam(required = false) Double radius,
                                     Model model) {
         try {
             double testLat = 48.8584;
             double testLng = 2.2945;
-            GeocodeService tmpService = verifySelection(type, url, apiKey, lang, limit);
+            GeocodeService tmpService = verifySelection(type, url, apiKey, lang, limit, radius);
 
             GeocodeResult result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
@@ -125,7 +126,7 @@ public class GeoCodingSettingsController {
         return "settings/fragments/geocoding :: test-result-display";
     }
 
-    private GeocodeService verifySelection(GeocoderType type, String url, String apiKey, String lang, Integer limit) {
+    private GeocodeService verifySelection(GeocoderType type, String url, String apiKey, String lang, Integer limit, Double radius) {
         if (type != GEO_APIFY && (url == null || url.isEmpty())) {
             throw new IllegalArgumentException("Url must not be empty");
         }
@@ -141,6 +142,9 @@ public class GeoCodingSettingsController {
         }
         if (limit != null) {
             params.put("limit", limit.toString());
+        }
+        if (radius != null) {
+            params.put("radius", radius.toString());
         }
         if (apiKey != null && !apiKey.isEmpty()) {
             params.put("apiKey", apiKey);
@@ -159,6 +163,7 @@ public class GeoCodingSettingsController {
                                        @RequestParam(required = false) String apiKey,
                                        @RequestParam(required = false) String language,
                                        @RequestParam(required = false) Integer limit,
+                                       @RequestParam(required = false) Double radius,
                                        @RequestParam int priority,
                                        Model model) {
         try {
@@ -168,6 +173,9 @@ public class GeoCodingSettingsController {
             }
             if (limit != null) {
                 params.put("limit", limit.toString());
+            }
+            if (radius != null) {
+                params.put("radius", radius.toString());
             }
             if (apiKey != null && !apiKey.isEmpty()) {
                 params.put("apiKey", apiKey);
