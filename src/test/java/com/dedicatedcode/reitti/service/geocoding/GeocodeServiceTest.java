@@ -11,9 +11,11 @@ class GeocodeServiceTest {
 
     @Test
     void testGetUrlTemplatePhoton() {
-        GeocodeService service = new GeocodeService("Photon", "https://photon.example.com", true, 0, null, null, GeocoderType.PHOTON, 1, Map.of());
+
+        Map<String, String> additionalParameters = Map.of("radius", "0.03", "limit", "10");
+        GeocodeService service = new GeocodeService("Photon", "https://photon.example.com", true, 0, null, null, GeocoderType.PHOTON, 1, additionalParameters);
         String template = service.getUrlTemplate();
-        assertEquals("https://photon.example.com/reverse?lon={lng}&lat={lat}&limit=10&layer=house&layer=locality&radius=0.03", template);
+        assertEquals("https://photon.example.com/reverse?lon={lng}&lat={lat}&layer=house&layer=locality&radius=0.03&limit=10", template);
     }
 
     @Test
