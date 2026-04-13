@@ -412,6 +412,11 @@ details > div {
     padding: 16px;
 }
 
+.form-group details summary {
+    font-weight: normal;
+    font-size: 1em;
+}
+
 input:focus {
     outline: 0;
     /* some people use shadows too */

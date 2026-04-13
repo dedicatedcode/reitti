@@ -1,0 +1,1 @@
+UPDATE geocode_services SET additional_params = '{"limit": "10", "radius": "0.03"}' WHERE type = 'PHOTON';

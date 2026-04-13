@@ -82,7 +82,16 @@ public class GeocodeService {
 
     public String getUrlTemplate() {
         return switch (type) {
-            case PHOTON -> this.url + "/reverse?lon={lng}&lat={lat}&limit=10&layer=house&layer=locality&radius=0.03";
+            case PHOTON -> {
+                String urlTemplate = this.url + "/reverse?lon={lng}&lat={lat}&layer=house&layer=locality";
+                if (this.additionalParameters.containsKey("radius")) {
+                    urlTemplate += "&radius=" + this.additionalParameters.get("radius");
+                }
+                if (this.additionalParameters.containsKey("limit")) {
+                    urlTemplate += "&limit=" + this.additionalParameters.get("limit");
+                }
+                yield urlTemplate;
+            }
             case PAIKKA -> {
                 String urlTemplate = this.url + "/api/v1/reverse?lat={lat}&lon={lng}";
                 if (this.additionalParameters.containsKey("language")) {
