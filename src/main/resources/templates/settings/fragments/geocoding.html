@@ -45,7 +45,7 @@
                placeholder="e.g. en, de, fi">
     </div>
 
-    <div class="form-group" th:if="${type.name() == 'PAIKKA'}">
+    <div class="form-group" th:if="${type.name() == 'PAIKKA'  || type.name() == 'PHOTON'}">
         <label for="limit" th:text="#{geocoding.service.limit}">Limit (Optional)</label>
         <input type="number" id="limit" name="limit"
                th:value="${service != null ? service.additionalParameters['limit'] : ''}"
@@ -61,6 +61,19 @@
                     th:selected="${service != null && service.priority == p}">
             </option>
         </select>
+    </div>
+
+
+    <div class="form-group">
+        <details th:if="${type.name() == 'PHOTON'}">
+            <summary>Additional Parameters</summary>
+            <div class="form-group" th:if="${type.name() == 'PHOTON'}">
+                <label for="additionalParameters" th:text="#{geocoding.service.additional_parameters.search_distance}">Search Distance</label>
+                <input type="text" id="additionalParameters" name="radius"
+                          th:value="${service != null ? service.additionalParameters['radius'] : ''}"
+                          placeholder="0.03">
+            </div>
+        </details>
     </div>
 </div>
 
