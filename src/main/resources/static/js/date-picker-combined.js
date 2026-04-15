@@ -245,6 +245,7 @@ class SelectionManager {
     #selectedEndDate = null;
     #selectionMode = SELECTION_MODES.SINGLE;
     #selectionTimeband = null;
+    #hoveredDate = null;
 
     constructor(datePicker) {
         this.#datePicker = datePicker;
@@ -256,6 +257,7 @@ class SelectionManager {
     get selectionTimeband() { return this.#selectionTimeband; }
     get isLocked() { return this.#selectionMode === SELECTION_MODES.LOCKED; }
     get isRangeMode() { return this.#selectionMode === SELECTION_MODES.RANGE; }
+    get hoveredDate() { return this.#hoveredDate; }
 
     clearSelection(preserveLast = true) {
         if (preserveLast && this.#selectedStartDate) {
@@ -269,6 +271,7 @@ class SelectionManager {
             this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = null;
         }
+        this.#hoveredDate = null;
     }
 
     ensureSelection(defaultDate = null) {
@@ -304,6 +307,14 @@ class SelectionManager {
             timeband: this.#datePicker.currentTimeband,
             mode: this.#selectionMode
         };
+    }
+
+    setHoveredDate(itemData) {
+        if (!itemData?.date) {
+            this.#hoveredDate = null;
+            return;
+        }
+        this.#hoveredDate = normalizeDate(itemData.date);
     }
 
     isSoleSelectedDate(date, timeband) {
@@ -578,14 +589,39 @@ class SelectionManager {
     }
 
     getHoverTooltipText(itemData) {
-        if (!this.#selectedStartDate || this.#selectionMode !== SELECTION_MODES.RANGE) return null;
+        // Always show tooltip when there's a selected start date, not just in RANGE mode
+        if (!this.#selectedStartDate) return null;
 
         const timeband = this.#datePicker.currentTimeband;
-        let start = this.#selectedStartDate;
-        let end = this.#getTooltipEndDate(itemData, timeband);
+        const hovered = normalizeDate(itemData.date);
+        const selected = normalizeDate(this.#selectedStartDate);
+
+        if (!hovered || !selected) return null;
+
+        // Determine the range based on current selection mode and hovered date
+        let start = selected;
+        let end = null;
+
+        if (this.#selectionMode === SELECTION_MODES.RANGE && this.#selectedEndDate) {
+            // Already have a range, show the full range
+            end = normalizeDate(this.#selectedEndDate);
+        } else if (this.#selectionMode === SELECTION_MODES.LOCKED) {
+            // In locked mode, the hovered date becomes the end of the range
+            end = this.#getTooltipEndDate(itemData, timeband);
+        } else if (this.#selectionMode === SELECTION_MODES.SINGLE) {
+            // In single mode, show what would happen if we clicked this date
+            // as the start of a new range
+            end = this.#getTooltipEndDate(itemData, timeband);
+        }
+
+        if (!end) {
+            // Fallback: use the hovered date as end
+            end = this.#getTooltipEndDate(itemData, timeband);
+        }
 
         if (!end) return null;
 
+        // Normalize to show correct order
         if (end < start) [start, end] = [end, start];
 
         const strings = this.#datePicker.options.strings;
@@ -665,6 +701,7 @@ class DatePicker {
     #horizontalScrollActive = false;
     #dragClickPrevented = false;
     #isAddingItems = false;
+    #lastHoveredItem = null;
 
     constructor(containerId, options = {}) {
         this.#container = document.getElementById(containerId);
@@ -1233,6 +1270,8 @@ class DatePicker {
         if (fromEl && (!toEl || !this.#scrollContainer.contains(toEl))) {
             this.hideHoverInfo();
             this.hideHoverOverlay();
+            this.#selectionManager.setHoveredDate(null);
+            this.#lastHoveredItem = null;
         }
     }
 
@@ -1261,22 +1300,28 @@ class DatePicker {
     }
 
     handleItemHover(itemData, event) {
-        const sm = this.#selectionManager;
-        const isLockedOrRange = sm.selectionMode === SELECTION_MODES.LOCKED ||
-            sm.selectionMode === SELECTION_MODES.RANGE;
+        // Track the hovered date for tooltip updates
+        this.#selectionManager.setHoveredDate(itemData);
 
-        // Show hover overlay when locked or in range mode
-        if (isLockedOrRange && sm.selectedStartDate) {
+        const sm = this.#selectionManager;
+
+        // Show hover overlay when there's a selected start date (not just in LOCKED/RANGE mode)
+        if (sm.selectedStartDate) {
             const text = sm.getHoverOverlayText(itemData);
             text ? this.showHoverOverlay(text, event) : this.hideHoverOverlay();
         } else {
             this.hideHoverOverlay();
         }
 
-        // Show hover info when locked or in range mode
-        if (isLockedOrRange && sm.selectedStartDate) {
+        // Show hover info when there's a selected start date (not just in LOCKED/RANGE mode)
+        if (sm.selectedStartDate) {
+            // Force tooltip update by passing fresh itemData each time
             const text = sm.getHoverTooltipText(itemData);
-            text ? this.showHoverInfo(text) : this.hideHoverInfo();
+            if (text) {
+                this.showHoverInfo(text);
+            } else {
+                this.hideHoverInfo();
+            }
         } else {
             this.hideHoverInfo();
         }
