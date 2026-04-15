@@ -233,15 +233,17 @@ class TimebandUtils {
         return getTimebandEnd(itemData?.date, timeband);
     }
 }
-
-/** Selection manager **/
+const SELECTION_MODES = {
+    SINGLE: 'single',    // Initial state, single date selected
+    LOCKED: 'locked',    // Date is locked, waiting for second click to create range
+    RANGE: 'range'       // Range is being selected or already selected
+};
 
 class SelectionManager {
     #datePicker = null;
     #selectedStartDate = null;
     #selectedEndDate = null;
-    #isSelectingRange = false;
-    #isDateLocked = false;
+    #selectionMode = SELECTION_MODES.SINGLE;
     #selectionTimeband = null;
 
     constructor(datePicker) {
@@ -250,21 +252,21 @@ class SelectionManager {
 
     get selectedStartDate() { return this.#selectedStartDate; }
     get selectedEndDate() { return this.#selectedEndDate; }
-    get isSelectingRange() { return this.#isSelectingRange; }
-    get isDateLocked() { return this.#isDateLocked; }
+    get selectionMode() { return this.#selectionMode; }
     get selectionTimeband() { return this.#selectionTimeband; }
+    get isLocked() { return this.#selectionMode === SELECTION_MODES.LOCKED; }
+    get isRangeMode() { return this.#selectionMode === SELECTION_MODES.RANGE; }
 
     clearSelection(preserveLast = true) {
         if (preserveLast && this.#selectedStartDate) {
+            this.#selectedStartDate = null;
             this.#selectedEndDate = null;
-            this.#isSelectingRange = false;
-            this.#isDateLocked = false;
+            this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = this.#datePicker.currentTimeband;
         } else {
             this.#selectedStartDate = null;
             this.#selectedEndDate = null;
-            this.#isSelectingRange = false;
-            this.#isDateLocked = false;
+            this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = null;
         }
     }
@@ -274,7 +276,7 @@ class SelectionManager {
             const date = defaultDate || this.#datePicker.options.startDate || new Date();
             this.#selectedStartDate = clampToStartOfDay(date);
             this.#selectedEndDate = null;
-            this.#isSelectingRange = false;
+            this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = this.#datePicker.currentTimeband;
         }
         return this.#selectedStartDate;
@@ -283,8 +285,14 @@ class SelectionManager {
     setSelectedRange(startDate, endDate = null) {
         this.#selectedStartDate = startDate ? clampToStartOfDay(startDate) : null;
         this.#selectedEndDate = endDate ? clampToStartOfDay(endDate) : null;
-        this.#isSelectingRange = false;
-        this.#isDateLocked = false;
+
+        if (startDate && endDate) {
+            this.#selectionMode = SELECTION_MODES.RANGE;
+        } else if (startDate) {
+            this.#selectionMode = SELECTION_MODES.SINGLE;
+        } else {
+            this.#selectionMode = SELECTION_MODES.SINGLE;
+        }
         this.#selectionTimeband = null;
     }
 
@@ -293,13 +301,31 @@ class SelectionManager {
         return {
             startDate: fmt(this.#selectedStartDate),
             endDate: fmt(this.#selectedEndDate),
-            timeband: this.#datePicker.currentTimeband
+            timeband: this.#datePicker.currentTimeband,
+            mode: this.#selectionMode
         };
     }
 
     isSoleSelectedDate(date, timeband) {
-        if (!this.#selectedStartDate || this.#selectedEndDate) return false;
-        return this.#isSameTimeband(date, this.#selectedStartDate, timeband);
+        if (!this.#selectedStartDate) return false;
+
+        if (this.#selectedEndDate) {
+            const start = getTimebandStart(this.#selectedStartDate, timeband);
+            const end = getTimebandEnd(this.#selectedStartDate, timeband);
+
+            const isFullStart = this.#isSameTimeband(this.#selectedStartDate, start, timeband);
+            const isFullEnd = this.#isSameTimeband(this.#selectedEndDate, end, timeband);
+
+            if (!isFullStart || !isFullEnd) return false;
+        }
+
+        // Check if clicked element is within the selected range
+        const clickedStart = getTimebandStart(date, timeband);
+        const clickedEnd = getTimebandEnd(date, timeband);
+        const selStart = getTimebandStart(this.#selectedStartDate, timeband);
+        const selEnd = getTimebandEnd(this.#selectedEndDate || this.#selectedStartDate, timeband);
+
+        return clickedStart >= selStart && clickedEnd <= selEnd;
     }
 
     handleClick(itemData, timeband) {
@@ -307,67 +333,93 @@ class SelectionManager {
         const clicked = getTimebandStart(itemData.date, timeband);
         if (!clicked) return;
 
-        if (!this.#selectedStartDate) {
-            return this.#selectSingle(clicked, timeband);
+        if (!options.singleDateMode) {
+            this.#handleMultiDateModeClick(clicked, timeband);
+            return;
         }
 
-        if (options.singleDateMode) {
-            this.#handleSingleDateModeClick(clicked, timeband);
-        } else if (!options.allowRangeSelection) {
-            this.#handleSingleSelectionClick(clicked, timeband);
-        } else {
-            this.#handleRangeSelectionClick(clicked, timeband);
+        // Single date mode
+        this.#handleSingleDateModeClick(clicked, timeband);
+    }
+
+    #isFullTimebandSelected(clicked, timeband) {
+        if (!this.#selectedStartDate || !this.#selectedEndDate) {
+            return false;
         }
+
+        const clickedStart = getTimebandStart(clicked, timeband);
+        const clickedEnd = getTimebandEnd(clicked, timeband);
+
+        const selectedStart = getTimebandStart(this.#selectedStartDate, timeband);
+        const selectedEnd = getTimebandEnd(this.#selectedEndDate, timeband);
+
+        return this.#isSameTimeband(clickedStart, selectedStart, timeband) &&
+            this.#isSameTimeband(clickedEnd, selectedEnd, timeband);
     }
 
     #handleSingleDateModeClick(clicked, timeband) {
-        if (this.isSoleSelectedDate(clicked, timeband)) {
-            return this.#toggleLock(timeband);
+        const isSameElement = this.isSoleSelectedDate(clicked, timeband);
+
+        if (isSameElement) {
+            // Check if the FULL timeband is already selected
+            // If not, expand to full timeband instead of locking
+            const isFullTimeband = this.#isFullTimebandSelected(clicked, timeband);
+
+            if (isFullTimeband) {
+                // Full timeband is selected - toggle lock
+                if (this.#selectionMode === SELECTION_MODES.LOCKED) {
+                    this.#selectionMode = SELECTION_MODES.SINGLE;
+                } else {
+                    this.#selectionMode = SELECTION_MODES.LOCKED;
+                    this.#selectionTimeband = timeband;
+                }
+            } else {
+                // Not full timeband - expand to full timeband
+                this.#selectFullTimeband(clicked, timeband);
+            }
+            return;
         }
 
+        // Clicked on different element
+        if (this.#selectionMode === SELECTION_MODES.LOCKED) {
+            // LOCKED mode: create range
+            this.#createRangeFromLocked(clicked, timeband);
+        } else if (this.#selectionMode === SELECTION_MODES.RANGE) {
+            // RANGE mode: adjust range
+            this.#handleRangeAdjustment(clicked, timeband);
+        } else {
+            // SINGLE mode: expand to full timeband
+            this.#selectFullTimeband(clicked, timeband);
+        }
+    }
+
+    #handleMultiDateModeClick(clicked, timeband) {
         if (!this.#selectedStartDate) {
-            return this.#selectSingle(clicked, timeband);
-        }
-
-        const same = this.#isSameTimeband(clicked, this.#selectedStartDate, timeband);
-
-        if (same && !this.#selectedEndDate) {
-            return this.#toggleLock(timeband);
-        }
-
-        if (this.#isDateLocked && !this.#selectedEndDate) {
-            return this.#createRangeFromLocked(clicked, timeband);
+            this.#selectSingle(clicked, timeband);
+            return;
         }
 
         if (this.#selectedStartDate && this.#selectedEndDate) {
-            return this.#handleExistingRangeClick(clicked, timeband);
-        }
-
-        return this.#selectSingle(clicked, timeband);
-    }
-
-    #handleSingleSelectionClick(clicked, timeband) {
-        if (this.isSoleSelectedDate(clicked, timeband)) {
+            this.#selectSingle(clicked, timeband);
             return;
         }
-        this.#selectSingle(clicked, timeband);
+
+        // Complete the range
+        this.#completeRange(clicked, timeband);
     }
 
     #selectSingle(date, timeband) {
         this.#selectedStartDate = normalizeDate(date);
         this.#selectedEndDate = null;
-        this.#isSelectingRange = false;
-        this.#isDateLocked = false;
+        this.#selectionMode = SELECTION_MODES.SINGLE;
         this.#selectionTimeband = timeband;
     }
 
-    #toggleLock(timeband) {
-        this.#isDateLocked = !this.#isDateLocked;
-        if (this.#isDateLocked) {
-            this.#selectionTimeband = timeband;
-        } else {
-            this.#selectionTimeband = null;
-        }
+    #selectFullTimeband(date, timeband) {
+        this.#selectedStartDate = getTimebandStart(date, timeband);
+        this.#selectedEndDate = getTimebandEnd(date, timeband);
+        this.#selectionMode = SELECTION_MODES.SINGLE;
+        this.#selectionTimeband = null;
     }
 
     #createRangeFromLocked(clicked, timeband) {
@@ -380,19 +432,17 @@ class SelectionManager {
             this.#selectedEndDate = clickedEnd;
         }
 
-        this.#isSelectingRange = false;
-        this.#isDateLocked = false;
+        this.#selectionMode = SELECTION_MODES.RANGE;
         this.#selectionTimeband = null;
     }
 
-    #handleExistingRangeClick(clicked, timeband) {
+    #handleRangeAdjustment(clicked, timeband) {
         const start = getTimebandStart(this.#selectedStartDate, timeband);
         const end = getTimebandStart(this.#selectedEndDate, timeband);
 
         if (this.#isSameTimeband(clicked, start, timeband)) {
             this.#selectedEndDate = null;
-            this.#isSelectingRange = false;
-            this.#isDateLocked = false;
+            this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = null;
             return;
         }
@@ -400,55 +450,19 @@ class SelectionManager {
         if (this.#isSameTimeband(clicked, end, timeband)) {
             this.#selectedStartDate = normalizeDate(clicked);
             this.#selectedEndDate = null;
-            this.#isSelectingRange = false;
-            this.#isDateLocked = false;
+            this.#selectionMode = SELECTION_MODES.SINGLE;
             this.#selectionTimeband = timeband;
             return;
         }
 
         if (clicked < start) {
             this.#selectedStartDate = clicked;
-        } else if (clicked > end) {
+        }
+        else if (clicked > end) {
             this.#selectedEndDate = getTimebandEnd(clicked, timeband);
-        } else {
-            this.#selectSingle(clicked, timeband);
         }
-
-        this.#isSelectingRange = false;
-        this.#selectionTimeband = null;
-    }
-
-    #handleRangeSelectionClick(clicked, timeband) {
-        if (this.#selectedStartDate && this.#selectedEndDate) {
-            const start = getTimebandStart(this.#selectedStartDate, timeband);
-            const end = getTimebandStart(this.#selectedEndDate, timeband);
-
-            if (this.#isSameTimeband(clicked, start, timeband) ||
-                this.#isSameTimeband(clicked, end, timeband)) {
-                this.#selectedStartDate = normalizeDate(clicked);
-                this.#selectedEndDate = null;
-                this.#isSelectingRange = false;
-                this.#selectionTimeband = null;
-                return;
-            }
-
-            this.#selectedStartDate = clicked;
-            this.#selectedEndDate = null;
-            this.#isSelectingRange = true;
-            this.#selectionTimeband = timeband;
-            return;
-        }
-
-        if (!this.#selectedStartDate) {
-            this.#selectedStartDate = clicked;
-            this.#selectedEndDate = null;
-            this.#isSelectingRange = true;
-            this.#selectionTimeband = timeband;
-            return;
-        }
-
-        if (this.#isSelectingRange) {
-            this.#completeRange(clicked, timeband);
+        else {
+            this.#selectedStartDate = normalizeDate(clicked);
         }
     }
 
@@ -462,7 +476,7 @@ class SelectionManager {
             this.#selectedEndDate = getTimebandEnd(clicked, timeband);
         }
 
-        this.#isSelectingRange = false;
+        this.#selectionMode = SELECTION_MODES.RANGE;
         this.#selectionTimeband = null;
     }
 
@@ -470,20 +484,12 @@ class SelectionManager {
         return isSameByGranularity(a, b, timeband);
     }
 
-    selectFullTimeband(date, timeband) {
-        this.#selectedStartDate = getTimebandStart(date, timeband);
-        this.#selectedEndDate = getTimebandEnd(date, timeband);
-        this.#isSelectingRange = false;
-        this.#isDateLocked = false;
-        this.#selectionTimeband = null;
-    }
-
     canCompleteRangeAtCurrentTimeband() {
-        if (!this.#isSelectingRange || !this.#selectedStartDate || !this.#selectionTimeband) {
+        if (this.#selectionMode !== SELECTION_MODES.RANGE || !this.#selectedStartDate || !this.#selectionTimeband) {
             return false;
         }
         const current = this.#datePicker.currentTimeband;
-        return TIMEBAND_ORDER[current] >= TIMEBAND_ORDER[this.#selectionTimeband];
+        return TIMEBAND_ORDER >= TIMEBAND_ORDER;
     }
 
     completeRangeAtTimeband(itemData) {
@@ -500,8 +506,7 @@ class SelectionManager {
             this.#selectedEndDate = end;
         }
 
-        this.#isSelectingRange = false;
-        this.#isDateLocked = false;
+        this.#selectionMode = SELECTION_MODES.RANGE;
         this.#selectionTimeband = null;
         return true;
     }
@@ -538,7 +543,7 @@ class SelectionManager {
         const same = this.#isSameTimeband(clicked, selected, currentTimeband);
 
         if (same && !this.#selectedEndDate) {
-            return this.#isDateLocked
+            return this.#selectionMode === SELECTION_MODES.LOCKED
                 ? strings.clickToUnlockDate
                 : strings.clickToLockDate;
         }
@@ -547,7 +552,7 @@ class SelectionManager {
             return strings.clickToCollapseRange;
         }
 
-        if (this.#isDateLocked && !this.#selectedEndDate) {
+        if (this.#selectionMode === SELECTION_MODES.LOCKED && !this.#selectedEndDate) {
             return strings.clickToCreateRange;
         }
 
@@ -573,7 +578,7 @@ class SelectionManager {
     }
 
     getHoverTooltipText(itemData) {
-        if (!this.#selectedStartDate || !this.#isSelectingRange) return null;
+        if (!this.#selectedStartDate || this.#selectionMode !== SELECTION_MODES.RANGE) return null;
 
         const timeband = this.#datePicker.currentTimeband;
         let start = this.#selectedStartDate;
@@ -1234,7 +1239,7 @@ class DatePicker {
     handleItemClick(itemData) {
         const sm = this.#selectionManager;
 
-        if (sm.isSelectingRange && sm.selectedStartDate) {
+        if (sm.selectionMode === SELECTION_MODES.RANGE && sm.selectedStartDate) {
             if (sm.canCompleteRangeAtCurrentTimeband()) {
                 return this.#completeRangeSelection(itemData);
             }
@@ -1244,17 +1249,33 @@ class DatePicker {
         }
 
         sm.handleClick(itemData, this.#currentTimeband);
+
+        if (sm.selectionMode === SELECTION_MODES.LOCKED && itemData) {
+            this.handleItemHover(itemData, {
+                clientX: this.#scrollContainer.getBoundingClientRect().left + this.#scrollContainer.scrollLeft + (itemData.element?.offsetLeft || 0),
+                clientY: this.#scrollContainer.getBoundingClientRect().top
+            });
+        }
+
         this.#emitSelectionChange();
     }
 
     handleItemHover(itemData, event) {
-        if (this.#options.singleDateMode && this.#selectionManager.selectedStartDate) {
-            const text = this.#selectionManager.getHoverOverlayText(itemData);
+        const sm = this.#selectionManager;
+        const isLockedOrRange = sm.selectionMode === SELECTION_MODES.LOCKED ||
+            sm.selectionMode === SELECTION_MODES.RANGE;
+
+        // Show hover overlay when locked or in range mode
+        if (isLockedOrRange && sm.selectedStartDate) {
+            const text = sm.getHoverOverlayText(itemData);
             text ? this.showHoverOverlay(text, event) : this.hideHoverOverlay();
+        } else {
+            this.hideHoverOverlay();
         }
 
-        if (this.#selectionManager.isSelectingRange && this.#selectionManager.selectedStartDate) {
-            const text = this.#selectionManager.getHoverTooltipText(itemData);
+        // Show hover info when locked or in range mode
+        if (isLockedOrRange && sm.selectedStartDate) {
+            const text = sm.getHoverTooltipText(itemData);
             text ? this.showHoverInfo(text) : this.hideHoverInfo();
         } else {
             this.hideHoverInfo();
@@ -1537,7 +1558,7 @@ class DatePicker {
 
         if (containsStart && containsEnd) {
             el.classList.add('selected', 'range-start', 'range-end');
-            if (this.#options.singleDateMode && sm.isDateLocked && !sm.selectedEndDate) {
+            if (this.#options.singleDateMode && sm.selectionMode === SELECTION_MODES.LOCKED && !sm.selectedEndDate) {
                 el.classList.add('locked');
             }
         } else if (containsStart) {
@@ -1548,7 +1569,6 @@ class DatePicker {
             el.classList.add('in-range');
         }
     }
-
     scrollToCenter(instant = false) {
         const centerDate = this.#options.startDate || new Date();
         const cfg = this.#timebandConfigs[this.#currentTimeband];
@@ -1781,12 +1801,12 @@ class DatePicker {
 
         if (sm.selectionTimeband === TIMEBANDS.DAY) {
             if (originalTimeband === TIMEBANDS.MONTH) {
-                endDate = new Date(itemData.date.getFullYear(), itemData.date.getMonth(), 1);
+                endDate = new Date(itemData.date.getFullYear(), itemData.date.getMonth() + 1, 0);
             } else if (originalTimeband === TIMEBANDS.YEAR) {
-                endDate = new Date(itemData.date.getFullYear(), 0, 1);
+                endDate = new Date(itemData.date.getFullYear(), 11, 31);
             }
         } else if (sm.selectionTimeband === TIMEBANDS.MONTH && originalTimeband === TIMEBANDS.YEAR) {
-            endDate = new Date(itemData.date.getFullYear(), 0, 1);
+            endDate = new Date(itemData.date.getFullYear(), 11, 31);
         }
 
         if (endDate) {
