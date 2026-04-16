@@ -237,38 +237,3 @@
     right: 0;
     border-radius: 10px 0 0 10px;
 }
-
-/* Hover info */
-.date-picker-hover-info {
-    position: fixed;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    padding: 8px 12px;
-    font-size: 12px;
-    text-align: center;
-    min-height: 20px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    border-radius: 4px;
-    z-index: 1000;
-    pointer-events: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-}
-
-.date-picker-hover-overlay {
-    position: fixed;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 6px 10px;
-    font-size: 11px;
-    text-align: center;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    border-radius: 4px;
-    z-index: 1001;
-    pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    white-space: nowrap;
-    display: none;
-}

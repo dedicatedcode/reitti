@@ -73,9 +73,10 @@
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
 <div id="timeline-controls"></div>
-
 <div class="fab-container" id="fab-container">
-    <!-- Play button with hover-triggered speed control -->
+    <div id="hover-info" class="range-selection-info hidden">
+        2012-01-01 - 2013-03-23
+    </div>
     <div class="play-section">
         <button type="button" class="btn fab-btn" id="play-btn" title="Start Animation">
             <i class="lni lni-play"></i>
@@ -780,6 +781,20 @@
                 clickToLockYear: t('datepicker.click-to-lock-year'),
                 select: t('datepicker.select'),
                 to: t('datepicker.to')
+            },
+            onHoverRange: (range, datePicker, itemData) => {
+                const element = document.getElementById('hover-info');
+
+                if (range === null) {
+                    element.classList.add('hidden');
+                } else {
+                    const dateTimeFormat = Intl.DateTimeFormat(window.userSettings.selectedLocale, { dateStyle: "medium",});
+                    if (range.mode === 'single' && range.timeband === 'day') {
+                        element.innerHTML = `<div class="date-info">${dateTimeFormat.format(range.startDate)}</div>`;
+                    } else {
+                        element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
+                    }
+                    element.classList.remove('hidden')                }
             }
         });
 
