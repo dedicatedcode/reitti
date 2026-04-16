@@ -372,8 +372,6 @@ class SelectionManager {
         const isSameElement = this.isSoleSelectedDate(clicked, timeband);
 
         if (isSameElement) {
-            // Check if the FULL timeband is already selected
-            // If not, expand to full timeband instead of locking
             const isFullTimeband = this.#isFullTimebandSelected(clicked, timeband);
 
             if (isFullTimeband) {
@@ -543,108 +541,66 @@ class SelectionManager {
         return null;
     }
 
-    getHoverOverlayText(itemData) {
-        if (!this.#selectedStartDate) return null;
-
-        const currentTimeband = this.#datePicker.currentTimeband;
-        const clicked = normalizeDate(itemData.date);
-        const selected = normalizeDate(this.#selectedStartDate);
-
-        const strings = this.#datePicker.options.strings;
-        const same = this.#isSameTimeband(clicked, selected, currentTimeband);
-
-        if (same && !this.#selectedEndDate) {
-            return this.#selectionMode === SELECTION_MODES.LOCKED
-                ? strings.clickToUnlockDate
-                : strings.clickToLockDate;
+    calculatePotentialRange(itemData) {
+        if (!this.#selectedStartDate) {
+            return {
+                startDate: null,
+                endDate: null,
+                timeband: this.#datePicker.currentTimeband,
+                mode: this.#selectionMode
+            };
         }
 
-        if (same && this.#selectedEndDate) {
-            return strings.clickToCollapseRange;
-        }
-
-        if (this.#selectionMode === SELECTION_MODES.LOCKED && !this.#selectedEndDate) {
-            return strings.clickToCreateRange;
-        }
-
-        if (this.#selectedEndDate) {
-            return this.#getExistingRangeHoverText(clicked, currentTimeband);
-        }
-
-        return null;
-    }
-
-    #getExistingRangeHoverText(clicked, timeband) {
-        const strings = this.#datePicker.options.strings;
-        const start = normalizeDate(this.#selectedStartDate);
-        const end = normalizeDate(this.#selectedEndDate);
-
-        const isStartBoundary = this.#isSameTimeband(clicked, start, timeband);
-        const isEndBoundary = this.#isSameTimeband(clicked, end, timeband);
-
-        if (isStartBoundary || isEndBoundary) return strings.clickToCollapseRange;
-        if (clicked < start) return strings.clickToExpandRangeBackward;
-        if (clicked > end) return strings.clickToExpandRangeForward;
-        return strings.clickToAdjustRangeStart;
-    }
-
-    getHoverTooltipText(itemData) {
-        // Always show tooltip when there's a selected start date, not just in RANGE mode
-        if (!this.#selectedStartDate) return null;
-
+        const hovered = normalizeDate(itemData?.date);
         const timeband = this.#datePicker.currentTimeband;
-        const hovered = normalizeDate(itemData.date);
-        const selected = normalizeDate(this.#selectedStartDate);
-
-        if (!hovered || !selected) return null;
-
-        // Determine the range based on current selection mode and hovered date
-        let start = selected;
+        let start = this.#selectedStartDate;
         let end = null;
 
-        if (this.#selectionMode === SELECTION_MODES.RANGE && this.#selectedEndDate) {
-            // Already have a range, show the full range
-            end = normalizeDate(this.#selectedEndDate);
-        } else if (this.#selectionMode === SELECTION_MODES.LOCKED) {
-            // In locked mode, the hovered date becomes the end of the range
-            end = this.#getTooltipEndDate(itemData, timeband);
+        if ((this.#selectionMode === SELECTION_MODES.RANGE || this.selectionMode === SELECTION_MODES.LOCKED) && this.#selectedEndDate) {
+            // Calculate what the range would be based on where user hovers
+            const rangeStart = getTimebandStart(this.#selectedStartDate, timeband);
+            const rangeEnd = getTimebandStart(this.#selectedEndDate, timeband);
+
+            if (hovered < rangeStart) {
+                // Hovering before the range - extend start
+                start = getTimebandStart(hovered, timeband);
+                end = normalizeDate(this.#selectedEndDate);
+            } else if (hovered > rangeEnd) {
+                // Hovering after the range - extend end
+                end = getTimebandEnd(hovered, timeband);
+            } else {
+                // Hovering inside the range - adjust start
+                start = getTimebandStart(hovered, timeband);
+                end = normalizeDate(this.#selectedEndDate);
+            }
         } else if (this.#selectionMode === SELECTION_MODES.SINGLE) {
-            // In single mode, show what would happen if we clicked this date
-            // as the start of a new range
-            end = this.#getTooltipEndDate(itemData, timeband);
+            start = getTimebandStart(hovered, timeband);
+            end = getTimebandEnd(hovered, timeband);
         }
 
-        if (!end) {
-            // Fallback: use the hovered date as end
-            end = this.#getTooltipEndDate(itemData, timeband);
-        }
+        if (end && end < start) [end, start] = [ start, end ];
 
-        if (!end) return null;
-
-        // Normalize to show correct order
-        if (end < start) [start, end] = [end, start];
-
-        const strings = this.#datePicker.options.strings;
-        const dp = this.#datePicker;
-
-        return dp.isSameDay(start, end)
-            ? `${strings.select}: ${dp.formatDate(start)}`
-            : `${strings.select}: ${dp.formatDate(start)} ${strings.to} ${dp.formatDate(end)}`;
+        return {
+            startDate: start,
+            endDate: end,
+            timeband: timeband,
+            mode: this.#selectionMode
+        };
     }
 
     #getTooltipEndDate(itemData, timeband) {
         const d = itemData?.date;
         if (!d) return null;
 
-        if (this.#selectionTimeband === TIMEBANDS.DAY) {
+        if (timeband === TIMEBANDS.DAY) {
             return clampToStartOfDay(d);
         }
-        if (this.#selectionTimeband === TIMEBANDS.MONTH) {
+        if (timeband === TIMEBANDS.MONTH) {
             return this.#datePicker.currentTimeband === TIMEBANDS.DAY
                 ? new Date(d.getFullYear(), d.getMonth(), 1)
                 : new Date(d.getFullYear(), d.getMonth() + 1, 0);
         }
-        return (this.#selectionTimeband === TIMEBANDS.YEAR &&
+        return (timeband === TIMEBANDS.YEAR &&
             this.#datePicker.currentTimeband === TIMEBANDS.YEAR)
             ? new Date(d.getFullYear(), 11, 31)
             : new Date(d.getFullYear(), 0, 1);
@@ -667,8 +623,6 @@ class DatePicker {
 
     #leftIndicator = null;
     #rightIndicator = null;
-    #hoverInfo = null;
-    #hoverOverlay = null;
 
     #boundHandlers = {};
 
@@ -743,13 +697,13 @@ class DatePicker {
             startDate: normalizedStart,
             initialTimeband: TIMEBANDS.DAY,
             transitionDuration: 400,
-            hoverInfoPosition: 'above',
             locale: undefined,
             enableDrag: true,
             dragCursor: 'grab',
             draggingCursor: 'grabbing',
             momentumScrolling: true,
             strings: { ...defaultStrings, ...options.strings },
+            onHoverRange: null,
             ...options
         };
 
@@ -823,8 +777,6 @@ class DatePicker {
         this.#container.appendChild(this.#scrollContainer);
 
         this.#createRangeIndicators();
-        this.#createHoverInfo();
-        this.#createHoverOverlay();
     }
 
     #generateInitialItems() {
@@ -1260,7 +1212,9 @@ class DatePicker {
 
     #handleDelegatedHover(e) {
         const data = this.#getItemDataFromEvent(e);
-        if (data) this.handleItemHover(data, e);
+        if (data) {
+            this.handleItemHover(data, e);
+        }
     }
 
     #handleMouseOut(e) {
@@ -1268,10 +1222,11 @@ class DatePicker {
         const fromEl = e.target?.closest?.('.timeband-item');
 
         if (fromEl && (!toEl || !this.#scrollContainer.contains(toEl))) {
-            this.hideHoverInfo();
-            this.hideHoverOverlay();
             this.#selectionManager.setHoveredDate(null);
             this.#lastHoveredItem = null;
+            if (this.#options.onHoverRange) {
+                this.#options.onHoverRange(null, this, null);
+            }
         }
     }
 
@@ -1305,25 +1260,11 @@ class DatePicker {
 
         const sm = this.#selectionManager;
 
-        // Show hover overlay when there's a selected start date (not just in LOCKED/RANGE mode)
-        if (sm.selectedStartDate) {
-            const text = sm.getHoverOverlayText(itemData);
-            text ? this.showHoverOverlay(text, event) : this.hideHoverOverlay();
-        } else {
-            this.hideHoverOverlay();
-        }
-
-        // Show hover info when there's a selected start date (not just in LOCKED/RANGE mode)
-        if (sm.selectedStartDate) {
-            // Force tooltip update by passing fresh itemData each time
-            const text = sm.getHoverTooltipText(itemData);
-            if (text) {
-                this.showHoverInfo(text);
-            } else {
-                this.hideHoverInfo();
-            }
-        } else {
-            this.hideHoverInfo();
+        // Only notify app when the hovered item actually changes
+        if (this.#options.onHoverRange && this.#lastHoveredItem !== itemData) {
+            this.#lastHoveredItem = itemData;
+            const potentialRange = sm.calculatePotentialRange(itemData);
+            this.#options.onHoverRange(potentialRange, this, itemData);
         }
     }
 
@@ -1883,59 +1824,6 @@ class DatePicker {
         return el;
     }
 
-    #createHoverInfo() {
-        this.#hoverInfo = document.createElement('div');
-        this.#hoverInfo.className = 'date-picker-hover-info';
-        document.body.appendChild(this.#hoverInfo);
-    }
-
-    #createHoverOverlay() {
-        this.#hoverOverlay = this.#options.renderHoverOverlay?.(this) ??
-            Object.assign(document.createElement('div'), {
-                className: 'date-picker-hover-overlay'
-            });
-        document.body.appendChild(this.#hoverOverlay);
-    }
-
-    showHoverOverlay(text, event) {
-        if (!this.#hoverOverlay) return;
-
-        Object.assign(this.#hoverOverlay.style, {
-            display: 'block',
-            opacity: '1',
-            left: `${event.clientX + 10}px`,
-            top: `${event.clientY - 30}px`
-        });
-        this.#hoverOverlay.textContent = text;
-    }
-
-    hideHoverOverlay() {
-        if (!this.#hoverOverlay) return;
-        this.#hoverOverlay.style.opacity = '0';
-        setTimeout(() => {
-            if (this.#hoverOverlay) this.#hoverOverlay.style.display = 'none';
-        }, 200);
-    }
-
-    showHoverInfo(text) {
-        if (!this.#hoverInfo) return;
-
-        const rect = this.#container.getBoundingClientRect();
-        const above = this.#options.hoverInfoPosition === 'above';
-
-        Object.assign(this.#hoverInfo.style, {
-            opacity: '1',
-            left: `${rect.left}px`,
-            width: `${rect.width}px`,
-            top: above ? `${rect.top - 40}px` : `${rect.bottom + 8}px`
-        });
-        this.#hoverInfo.textContent = text;
-    }
-
-    hideHoverInfo() {
-        if (this.#hoverInfo) this.#hoverInfo.style.opacity = '0';
-    }
-
     updateRangeIndicators() {
         const sm = this.#selectionManager;
 
@@ -2085,7 +1973,7 @@ class DatePicker {
         clearTimeout(this.#horizontalTimeout);
         cancelAnimationFrame(this.#pendingSelRaf);
 
-        [this.#leftIndicator, this.#rightIndicator, this.#hoverInfo, this.#hoverOverlay]
+        [this.#leftIndicator, this.#rightIndicator]
             .forEach(el => el?.parentNode?.removeChild(el));
 
         this.#items = [];
