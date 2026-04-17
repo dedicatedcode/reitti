@@ -31,7 +31,7 @@ public class MemoryVisit {
                         place.getLongitudeCentroid());
             }
         }
-        return new MemoryVisit(null, true, visit.getPlace().getName(), visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid(), visit.getPlace().getTimezone());
+        return new MemoryVisit(null, true, name, visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid(), visit.getPlace().getTimezone());
     }
 
     public MemoryVisit(Long id, boolean connected, String name, Instant startTime, Instant endTime, double latitudeCentroid, double longitudeCentroid, ZoneId timezone) {
