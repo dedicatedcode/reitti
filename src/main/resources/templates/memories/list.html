@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +30,7 @@
             </div>
         </div>
         <div id="memories-panel" class="memories-overview"></div>
-
+    </div>
     <!-- Memory Processing Overlay -->
     <div id="memory-processing-overlay" class="memory-processing-overlay">
         <div class="memory-processing-content">
@@ -41,23 +41,23 @@
             <div class="memory-processing-steps">
                 <div class="processing-step active" data-step="clustering">
                     <i class="lni lni-bike"></i>
-                    <span th:text="#{memory.processing.step.clustering}">Clustering trips and visits...</span>
+                    <span th:text="#{js.memory.processing.step.clustering}">Clustering trips and visits...</span>
                 </div>
                 <div class="processing-step" data-step="visits">
                     <i class="lni lni-map-marker-1"></i>
-                    <span th:text="#{memory.processing.step.visits}">Creating visit records...</span>
+                    <span th:text="#{js.memory.processing.step.visits}">Creating visit records...</span>
                 </div>
                 <div class="processing-step" data-step="accommodation">
                     <i class="lni lni-home-2"></i>
-                    <span th:text="#{memory.processing.step.accommodation}">Determining accommodation...</span>
+                    <span th:text="#{js.memory.processing.step.accommodation}">Determining accommodation...</span>
                 </div>
                 <div class="processing-step" data-step="texts">
                     <i class="lni lni-text-format"></i>
-                    <span th:text="#{memory.processing.step.texts}">Generating texts...</span>
+                    <span th:text="#{js.memory.processing.step.texts}">Generating texts...</span>
                 </div>
                 <div class="processing-step" data-step="images">
                     <i class="lni lni-photos"></i>
-                    <span th:text="#{memory.processing.step.images}">Copying images...</span>
+                    <span th:text="#{js.memory.processing.step.images}">Copying images...</span>
                 </div>
             </div>
             <div class="memory-processing-progress">
@@ -97,11 +97,11 @@
 
         function startMemoryProcessingAnimation() {
             const steps = [
-                { step: 'clustering', text: /*t('js.memory.processing.step.clustering')*/ 'Clustering trips and visits...' },
-                { step: 'visits', text: /*t('js.memory.processing.step.visits')*/ 'Creating visit records...' },
-                { step: 'accommodation', text: /*t('js.memory.processing.step.accommodation')*/ 'Determining accommodation...' },
-                { step: 'texts', text: /*t('js.memory.processing.step.texts')*/ 'Generating texts...' },
-                { step: 'images', text: /*t('js.memory.processing.step.images')*/ 'Copying images...' }
+                {step: 'clustering', text: t('memory.processing.step.clustering')},
+                {step: 'visits', text: t('memory.processing.step.visits')},
+                {step: 'accommodation', text: t('memory.processing.step.accommodation')},
+                {step: 'texts', text: t('memory.processing.step.texts')},
+                {step: 'images', text: t('memory.processing.step.images')}
             ];
 
             let currentStepIndex = 0;
