@@ -51,7 +51,8 @@ public class MemoryBlockGenerationService {
                                         TripJdbcService tripJdbcService,
                                         I18nService i18nService,
                                         ImmichIntegrationService immichIntegrationService,
-                                        StorageService storageService, HomeDetectionService homeDetectionService) {
+                                        StorageService storageService,
+                                        HomeDetectionService homeDetectionService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.i18n = i18nService;

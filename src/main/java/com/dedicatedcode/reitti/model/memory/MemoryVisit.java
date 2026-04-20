@@ -22,7 +22,6 @@ public class MemoryVisit {
 
         String name = place.getName();
         if (name == null || name.isBlank()) {
-            // Fall back to city, or coordinates as a last resort
             if (place.getCity() != null && !place.getCity().isBlank()) {
                 name = place.getCity();
             } else {
