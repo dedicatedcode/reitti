@@ -182,23 +182,7 @@ public class MemoryController {
         try {
             Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
             Instant end = openEnded ? null : LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
-            Instant today = Instant.now();
-            
-            // Validate dates are not in the future
-            if (start.isAfter(today) || (end != null && end.isAfter(today))) {
-                model.addAttribute("error", i18n.translate("memory.validation.date.future"));
-                model.addAttribute("title", title);
-                model.addAttribute("description", description);
-                model.addAttribute("startDate", startDate);
-                model.addAttribute("startTime", startTime);
-                model.addAttribute("endDate", endDate);
-                model.addAttribute("endTime", endTime);
-                model.addAttribute("year", year);
-                model.addAttribute("openEnded", openEnded);
 
-                return "memories/new :: memory-form";
-            }
-            
             // Validate end date is not before start date
             if (end != null && end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
@@ -305,19 +289,7 @@ public class MemoryController {
         try {
             Instant start = LocalDateTime.of(startDate, startTime).atZone(timezone).toInstant();
             Instant end = openEnded ? null : LocalDateTime.of(endDate, endTime).atZone(timezone).toInstant();
-            Instant today = Instant.now();
-            
-            if (start.isAfter(today) || (end != null && end.isAfter(today))) {
-                model.addAttribute("error", i18n.translate("memory.validation.date.future"));
-                model.addAttribute("memory", new MemoryDTO(memory, timezone));
-                model.addAttribute("openEnded", openEnded);
-                
-                model.addAttribute("cancelEndpoint", "/memories/" + id);
-                model.addAttribute("cancelTarget", ".memory-header");
-                model.addAttribute("formTarget", ".memory-header");
-                return "memories/edit :: edit-memory";
-            }
-            
+
             if (end != null && end.isBefore(start)) {
                 model.addAttribute("error", i18n.translate("memory.validation.end.date.before.start"));
                 model.addAttribute("memory", new MemoryDTO(memory, timezone));
