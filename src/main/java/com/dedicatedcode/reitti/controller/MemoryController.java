@@ -382,16 +382,19 @@ public class MemoryController {
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
 
+        Instant startDate = memory.getStartDate();
+        Instant endDate = memory.getEndDate() != null ? memory.getEndDate() : Instant.now();
+
         switch (type) {
             case "TEXT":
                 return "memories/fragments :: text-block-form";
             case "TRIP_CLUSTER":
-                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate())
+                model.addAttribute("availableTrips", this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate)
                         .stream().map(t -> TripDTO.create(t, timezone))
                         .toList());
                 return "memories/fragments :: trip-block-form";
             case "VISIT_CLUSTER":
-                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate())
+                model.addAttribute("availableVisits", this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate, endDate)
                         .stream().map(v -> VisitDTO.create(v, timezone))
                         .toList());
                 return "memories/fragments :: visit-block-form";

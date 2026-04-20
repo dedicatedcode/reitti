@@ -65,18 +65,18 @@ public class MemoryClusterBlockRepository {
         @Override
         public MemoryClusterBlock mapRow(ResultSet rs, int rowNum) throws SQLException {
             Long blockId = rs.getLong("block_id");
-            String tripIdsJson = rs.getString("part_ids");
-            List<Long> tripIds;
+            String partIdJson = rs.getString("part_ids");
+            List<Long> partIds;
             try {
-                tripIds = objectMapper.readValue(tripIdsJson, new TypeReference<>() {
+                partIds = objectMapper.readValue(partIdJson, new TypeReference<>() {
                 });
             } catch (Exception e) {
-                throw new SQLException("Failed to parse trip_ids JSON", e);
+                throw new SQLException("Failed to parse part_ids JSON", e);
             }
             String title = rs.getString("title");
             String description = rs.getString("description");
             BlockType type = BlockType.valueOf(rs.getString("type"));
-            return new MemoryClusterBlock(blockId, tripIds, title, description, type);
+            return new MemoryClusterBlock(blockId, partIds, title, description, type);
         }
     }
 }

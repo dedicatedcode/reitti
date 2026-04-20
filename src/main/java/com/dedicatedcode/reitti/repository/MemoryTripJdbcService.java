@@ -59,30 +59,6 @@ public class MemoryTripJdbcService {
         return jdbcTemplate.query(sql, new MemoryTripRowMapper(), memoryBlockId);
     }
 
-    public List<MemoryTrip> findByUserAndMemoryId(User user, Long memoryId) {
-        String sql = """
-            SELECT mt.id, mt.start_time, mt.end_time, mt.original_id,
-                           sv.id as start_visit_id, sv.name as start_visit_name, sv.start_time as start_visit_start_time,
-                           sv.original_id as start_visit_original_id,
-                   sv.end_time as start_visit_end_time, sv.latitude_centroid as start_visit_lat, sv.longitude_centroid as start_visit_lon, sv.timezone as start_visit_timezone,
-                           ev.id as end_visit_id, ev.name as end_visit_name, ev.start_time as end_visit_start_time, ev.original_id as end_visit_original_id,
-                   ev.end_time as end_visit_end_time, ev.latitude_centroid as end_visit_lat, ev.longitude_centroid as end_visit_lon, ev.timezone as end_visit_timezone
-            FROM memory_trips mt
-            LEFT JOIN memory_visits sv ON mt.start_visit_id = sv.id
-            LEFT JOIN memory_visits ev ON mt.end_visit_id = ev.id
-            JOIN memory_block mb ON mt.memory_block_id = mb.id
-            WHERE mt.user_id = ? AND mb.memory_id = ?
-            ORDER BY mt.start_time
-            """;
-        
-        return jdbcTemplate.query(sql, new MemoryTripRowMapper(), user.getId(), memoryId);
-    }
-
-    public void deleteByMemoryBlockId(Long memoryBlockId) {
-        String sql = "DELETE FROM memory_trips WHERE memory_block_id = ?";
-        jdbcTemplate.update(sql, memoryBlockId);
-    }
-
     public void deleteById(Long id) {
         String sql = "DELETE FROM memory_trips WHERE id = ?";
         jdbcTemplate.update(sql, id);
