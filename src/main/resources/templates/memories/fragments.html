@@ -120,7 +120,7 @@
                                name="selectedParts"
                                th:value="${visit.id}">
                     </td>
-                    <td th:text="${visit.place.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
+                    <td th:text="${visit.name} + ' (' + ${#temporals.format(visit.startTime, 'MMM d, yyyy HH:mm')} + ' -> ' + ${#temporals.format(visit.endTime, 'HH:mm')} + ')'">Visit details</td>
                 </tr>
                 </tbody>
             </table>
@@ -164,7 +164,7 @@
                                name="selectedParts"
                                th:value="${trip.id}">
                     </td>
-                    <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.place != null ? trip.startVisit.place.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.place != null ? trip.endVisit.place.name : 'Unknown'} + ')'">Trip details</td>
+                    <td th:text="${#temporals.format(trip.startTime, 'MMM d, yyyy HH:mm')} + ' (' + ${trip.startVisit != null and trip.startVisit.name != null ? trip.startVisit.name : 'Unknown'} + ') -> ' + ${#temporals.format(trip.endTime, 'HH:mm')} + ' (' + ${trip.endVisit != null and trip.endVisit.name != null ? trip.endVisit.name : 'Unknown'} + ')'">Trip details</td>
                 </tr>
                 </tbody>
             </table>
