@@ -66,7 +66,7 @@ public class PreviewSignificantPlaceJdbcService {
                 """;
 
         return jdbcTemplate.query(sql, significantPlaceRowMapper,
-                                  userId, distanceInMeters, point.toString());
+                                  userId, previewId, point.toString(), distanceInMeters);
     }
 
     public SignificantPlace create(User user, String previewId, SignificantPlace place) {

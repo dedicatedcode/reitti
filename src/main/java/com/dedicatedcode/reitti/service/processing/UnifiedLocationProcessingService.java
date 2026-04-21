@@ -329,15 +329,13 @@ public class UnifiedLocationProcessingService {
         }
 
         // Merge visits chronologically
-        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(
-                user, previewId, traceId, allVisits, mergeConfig);
+        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, traceId, allVisits, mergeConfig);
 
         // Save processed visits
         if (previewId == null) {
             processedVisits = processedVisitJdbcService.bulkInsert(user, processedVisits);
         } else {
-            processedVisits = previewProcessedVisitJdbcService.bulkInsert(
-                    user, previewId, processedVisits);
+            processedVisits = previewProcessedVisitJdbcService.bulkInsert(user, previewId, processedVisits);
         }
 
         return new VisitMergingResult(allVisits, processedVisits, searchStart, searchEnd, System.currentTimeMillis() - start);
