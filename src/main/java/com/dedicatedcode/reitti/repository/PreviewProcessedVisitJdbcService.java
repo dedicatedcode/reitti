@@ -62,13 +62,6 @@ public class PreviewProcessedVisitJdbcService {
         return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(),
                 Timestamp.from(endTime), Timestamp.from(startTime), previewId);
     }
-    public Optional<ProcessedVisit> findByUserAndId(User user, long id) {
-        String sql = "SELECT pv.* " +
-                "FROM preview_processed_visits pv " +
-                "WHERE pv.user_id = ? AND pv.id = ? ORDER BY pv.start_time";
-        List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
 
     public List<ProcessedVisit> findByUserAndStartTimeBeforeEqualAndEndTimeAfterEqual(User user, String previewId, Instant endTime, Instant startTime) {
         String sql = "SELECT pv.* " +

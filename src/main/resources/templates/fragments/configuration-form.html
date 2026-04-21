@@ -130,7 +130,7 @@
                 
                 <div class="form-group">
                     <label th:text="#{visit.merging.min.distance}">Min Distance Between Visits (meters)</label>
-                    <input type="number" th:field="*{minDistanceBetweenVisits}" class="form-control">
+                    <input type="number" th:field="*{placeRadiusMeters}" class="form-control">
                     <small class="form-text text-muted" th:text="#{visit.merging.min.distance.help}">
                         Minimum distance required between visits to keep them as separate locations. 
                         Visits closer than this distance may be merged if they occur within the time window.
