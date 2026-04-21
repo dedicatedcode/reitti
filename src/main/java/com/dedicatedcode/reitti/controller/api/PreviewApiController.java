@@ -44,7 +44,7 @@ public class PreviewApiController {
         ZoneId userTimezone = ZoneId.of(timezone);
 
         Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
-        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant();
 
         return this.timelineService.buildTimelineEntries(user, previewId, userTimezone, selectedDate, startOfDay, endOfDay);
     }

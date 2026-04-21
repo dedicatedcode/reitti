@@ -18,7 +18,7 @@ public class ConfigurationForm {
     private Long maxMergeTimeBetweenSameStayPoints;
     private Long searchDurationInHours;
     private Long maxMergeTimeBetweenSameVisits;
-    private Long minDistanceBetweenVisits;
+    private Long placeRadiusMeters;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate validSince;
@@ -45,8 +45,8 @@ public class ConfigurationForm {
     public Long getMaxMergeTimeBetweenSameVisits() { return maxMergeTimeBetweenSameVisits; }
     public void setMaxMergeTimeBetweenSameVisits(Long maxMergeTimeBetweenSameVisits) { this.maxMergeTimeBetweenSameVisits = maxMergeTimeBetweenSameVisits; }
     
-    public Long getMinDistanceBetweenVisits() { return minDistanceBetweenVisits; }
-    public void setMinDistanceBetweenVisits(Long minDistanceBetweenVisits) { this.minDistanceBetweenVisits = minDistanceBetweenVisits; }
+    public Long getPlaceRadiusMeters() { return placeRadiusMeters; }
+    public void setPlaceRadiusMeters(Long placeRadiusMeters) { this.placeRadiusMeters = placeRadiusMeters; }
     
     public LocalDate getValidSince() { return validSince; }
     public void setValidSince(LocalDate validSince) { this.validSince = validSince; }
@@ -61,7 +61,7 @@ public class ConfigurationForm {
         form.setMaxMergeTimeBetweenSameStayPoints(config.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
         form.setSearchDurationInHours(config.getVisitMerging().getSearchDurationInHours());
         form.setMaxMergeTimeBetweenSameVisits(config.getVisitMerging().getMaxMergeTimeBetweenSameVisits());
-        form.setMinDistanceBetweenVisits(config.getVisitMerging().getPlaceRadiusMeters());
+        form.setPlaceRadiusMeters(config.getVisitMerging().getPlaceRadiusMeters());
         
         // Check if configuration matches any predefined sensitivity level
         Integer matchingSensitivityLevel = findMatchingSensitivityLevel(config);
@@ -142,7 +142,7 @@ public class ConfigurationForm {
         this.maxMergeTimeBetweenSameStayPoints = visitDetection.getMaxMergeTimeBetweenSameStayPoints();
         this.searchDurationInHours = visitMerging.getSearchDurationInHours();
         this.maxMergeTimeBetweenSameVisits = visitMerging.getMaxMergeTimeBetweenSameVisits();
-        this.minDistanceBetweenVisits = visitMerging.getPlaceRadiusMeters();
+        this.placeRadiusMeters = visitMerging.getPlaceRadiusMeters();
         this.sensitivityLevel = level;
     }
     
@@ -194,7 +194,7 @@ public class ConfigurationForm {
             visitMerging = new DetectionParameter.VisitMerging(
                 searchDurationInHours,
                 maxMergeTimeBetweenSameVisits,
-                minDistanceBetweenVisits
+                placeRadiusMeters
             );
         }
         
