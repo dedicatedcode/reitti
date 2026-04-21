@@ -1,6 +1,6 @@
 services:
   reitti:
-    image: dedicatedcode/reitti:next
+    image: dedicatedcode/reitti:latest
     ports:
       - 8080:8080
     depends_on:
@@ -41,7 +41,7 @@ services:
       timeout: 5s
       retries: 5
   tile-cache:
-    image: dedicatedcode/reitti-tile-cache:next
+    image: dedicatedcode/reitti-tile-cache:latest
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/osm/0/0/0.png"]
