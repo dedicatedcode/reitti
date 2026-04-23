@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -15,6 +14,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DeviceJdbcService {
@@ -43,7 +43,7 @@ public class DeviceJdbcService {
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO devices (user_id, name, color, enabled, show_on_map, created_at, updated_at, version) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, user.getId());
@@ -109,7 +109,6 @@ public class DeviceJdbcService {
         );
     }
 
-    @Cacheable(value = "devices", key = "#user.id")
     public List<Device> getAll(User user) {
         return jdbcTemplate.query(
                 "SELECT * FROM devices WHERE user_id = ? ORDER BY created_at DESC",
@@ -118,12 +117,22 @@ public class DeviceJdbcService {
         );
     }
 
-    @Cacheable(value = "devicesEnabled", key = "#user.id")
     public List<Device> getAllEnabled(User user) {
         return jdbcTemplate.query(
                 "SELECT * FROM devices WHERE user_id = ? AND enabled = TRUE ORDER BY created_at DESC",
                 deviceRowMapper,
                 user.getId()
         );
+    }
+
+    public Optional<Device> findByApiToken(String token) {
+        List<Device> results = jdbcTemplate.query(
+                "SELECT d.* FROM devices d " +
+                        "JOIN api_tokens t ON t.device_id = d.id " +
+                        "WHERE t.token = ?",
+                deviceRowMapper,
+                token
+        );
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 }
