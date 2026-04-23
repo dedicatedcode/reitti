@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -172,6 +173,58 @@ class DeviceJdbcServiceTest {
 
         // When
         List<Device> found = deviceJdbcService.getAllEnabled(user);
+
+        // Then
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void shouldFindDeviceByApiToken() {
+        // Given
+        User user = testingService.randomUser();
+        Device device = new Device(
+                null,
+                "Token Device",
+                true,
+                true,
+                "#FF5733",
+                Instant.now(),
+                Instant.now(),
+                null
+        );
+        Device saved = deviceJdbcService.save(device, user);
+
+        // Create API token associated with device
+        String token = "test-api-token-" + System.currentTimeMillis();
+        testingService.createApiToken(user, token, saved.id());
+
+        // When
+        Optional<Device> found = deviceJdbcService.findByApiToken(token);
+
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().id()).isEqualTo(saved.id());
+        assertThat(found.get().name()).isEqualTo("Token Device");
+    }
+
+    @Test
+    void shouldReturnEmptyWhenApiTokenNotFound() {
+        // Given
+        User user = testingService.randomUser();
+        Device device = new Device(
+                null,
+                "Some Device",
+                true,
+                true,
+                "#FF5733",
+                Instant.now(),
+                Instant.now(),
+                null
+        );
+        deviceJdbcService.save(device, user);
+
+        // When
+        Optional<Device> found = deviceJdbcService.findByApiToken("non-existent-token");
 
         // Then
         assertThat(found).isEmpty();
