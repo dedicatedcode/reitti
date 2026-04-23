@@ -10,7 +10,6 @@ import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.queue.RedisQueueService;
@@ -120,7 +119,7 @@ public class GeoCodingSettingsController {
             Map<String, Object> result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
 
-        }catch (Exception e) {
+        } catch (Exception e) {
             model.addAttribute("testResult", Map.of("success", false, "message", e.getMessage()));
         }
         return "settings/fragments/geocoding :: test-result-display";
@@ -157,15 +156,15 @@ public class GeoCodingSettingsController {
 
     @PostMapping
     public String saveGeocodeService(@RequestParam(required = false) Long id,
-                                       @RequestParam String name,
-                                       @RequestParam(required = false) String url,
-                                       @RequestParam GeocoderType type,
-                                       @RequestParam(required = false) String apiKey,
-                                       @RequestParam(required = false) String language,
-                                       @RequestParam(required = false) Integer limit,
-                                       @RequestParam(required = false) Double radius,
-                                       @RequestParam int priority,
-                                       Model model) {
+                                     @RequestParam String name,
+                                     @RequestParam(required = false) String url,
+                                     @RequestParam GeocoderType type,
+                                     @RequestParam(required = false) String apiKey,
+                                     @RequestParam(required = false) String language,
+                                     @RequestParam(required = false) Integer limit,
+                                     @RequestParam(required = false) Double radius,
+                                     @RequestParam int priority,
+                                     Model model) {
         try {
             Map<String, String> params = new HashMap<>();
             if (language != null && !language.isEmpty()) {
