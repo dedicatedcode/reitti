@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -36,7 +37,7 @@ public class DeviceJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @CacheEvict(value = "devices", key = "#user.id")
+    @CacheEvict(value = "devices", allEntries = true)
     public Device save(Device device, User user) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
@@ -70,7 +71,7 @@ public class DeviceJdbcService {
         );
     }
 
-    @CacheEvict(value = "devices", key = "#user.id")
+    @CacheEvict(value = "devices", allEntries = true)
     public Device update(Device device, User user) {
         int updated = jdbcTemplate.update(
                 "UPDATE devices SET name = ?, color = ?, enabled = ?, show_on_map = ?, updated_at = ?, version = version + 1 " +
@@ -100,7 +101,7 @@ public class DeviceJdbcService {
         );
     }
 
-    @CacheEvict(value = "devices", key = "#user.id")
+    @CacheEvict(value = "devices", allEntries = true)
     public void delete(Device device, User user) {
         jdbcTemplate.update(
                 "DELETE FROM devices WHERE id = ? AND user_id = ?",
@@ -125,6 +126,7 @@ public class DeviceJdbcService {
         );
     }
 
+    @Cacheable(value = "devices", key = "#token")
     public Optional<Device> findByApiToken(String token) {
         List<Device> results = jdbcTemplate.query(
                 "SELECT d.* FROM devices d " +
