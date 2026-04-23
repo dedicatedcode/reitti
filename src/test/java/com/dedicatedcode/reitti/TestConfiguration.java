@@ -27,7 +27,7 @@ public class TestConfiguration {
             }
 
             @Override
-            public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
+            public Map<String, Object> test(GeocodeService service, double testLat, double testLng) {
                 return null;
             }
 

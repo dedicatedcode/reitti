@@ -113,15 +113,15 @@ public class GeoCodingSettingsController {
                                     @RequestParam(required = false) Integer limit,
                                     @RequestParam(required = false) Double radius,
                                     Model model) {
+        double testLat = 48.8584;
+        double testLng = 2.2945;
         try {
-            double testLat = 48.8584;
-            double testLng = 2.2945;
             GeocodeService tmpService = verifySelection(type, url, apiKey, lang, limit, radius);
-
-            GeocodeResult result = geocodeServiceManager.test(tmpService, testLat, testLng);
+            Map<String, Object> result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
-        } catch (Exception e) {
-            model.addAttribute("testError", e.getMessage());
+
+        }catch (Exception e) {
+            model.addAttribute("testResult", Map.of("success", false, "message", e.getMessage()));
         }
         return "settings/fragments/geocoding :: test-result-display";
     }

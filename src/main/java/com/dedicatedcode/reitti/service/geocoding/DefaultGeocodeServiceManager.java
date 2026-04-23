@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.ResultHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,10 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -34,6 +32,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final List<ResultHandler> resultHandlers;
+    private final I18nService i18nService;
     private final int maxErrors;
 
     public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
@@ -41,12 +40,14 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                                         RestTemplate restTemplate,
                                         ObjectMapper objectMapper,
                                         List<ResultHandler> resultHandlers,
+                                        I18nService i18nService,
                                         @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.resultHandlers = resultHandlers;
+        this.i18nService = i18nService;
         this.maxErrors = maxErrors;
     }
 
@@ -98,9 +99,17 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     @Override
-    public GeocodeResult test(GeocodeService service, double testLat, double testLng) {
-        List<GeocodeResult> geocodeResult = performGeocode(service, testLat, testLng, null, false);
-        return geocodeResult.stream().findFirst().orElseThrow(() -> new RuntimeException("Failed to call geocoding service: " + service.getName()));
+    public Map<String, Object> test(GeocodeService service, double testLat, double testLng) {
+        try {
+            String response = callService(service, testLat, testLng);
+            extractGeoCodeResult(service.getType(), response);
+            return Map.of("success", true, "message", i18nService.translate("geocoding.test.success"));
+
+        } catch (Exception e) {
+            logger.warn("Failed to call geocoding service [{}]: [{}]", service.getName(), e.getMessage());
+            return Map.of("success", false, "message", i18nService.translate("geocoding.test.error",e.getMessage()));
+
+        }
     }
 
     private Optional<GeocodeResult> callGeocodeService(List<? extends GeocodeService> availableServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
@@ -128,19 +137,8 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     }
 
     private List<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
-        String url = service.getUrlTemplate()
-                .replace("{lat}", String.valueOf(latitude))
-                .replace("{lng}", String.valueOf(longitude));
-
-        logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
-
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.USER_AGENT, "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            String response = responseEntity.getBody();
+            String response = callService(service, latitude, longitude);
 
             List<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && !geocodeResult.isEmpty()) {
@@ -180,6 +178,25 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             recordError(service);
         }
         return Collections.emptyList();
+    }
+
+    private String callService(GeocodeService service, double latitude, double longitude) {
+        String url = service.getUrlTemplate()
+                .replace("{lat}", String.valueOf(latitude))
+                .replace("{lng}", String.valueOf(longitude));
+
+        logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.USER_AGENT, "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        if (responseEntity.getStatusCode() == HttpStatus.OK) {
+            return responseEntity.getBody();
+        } else {
+            throw new IllegalStateException("Service responded with status code [" + responseEntity.getStatusCode() + "]");
+        }
     }
 
     private List<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {

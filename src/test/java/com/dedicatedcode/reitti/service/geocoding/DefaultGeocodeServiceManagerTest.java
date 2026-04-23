@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.PaikkaResultHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,9 @@ class DefaultGeocodeServiceManagerTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private I18nService i18nService;
+
     private DefaultGeocodeServiceManager geocodeServiceManager;
 
     @BeforeEach
@@ -51,6 +55,7 @@ class DefaultGeocodeServiceManagerTest {
                 restTemplate,
                 objectMapper,
                 Collections.singletonList(new PaikkaResultHandler()),
+                i18nService,
                 3
         );
     }
