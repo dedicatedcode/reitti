@@ -44,7 +44,7 @@ public class DeviceJdbcService {
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO devices (user_id, name, color, enabled, show_on_map, created_at, updated_at, version) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, user.getId());

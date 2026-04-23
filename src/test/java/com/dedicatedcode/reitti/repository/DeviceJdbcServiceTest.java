@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -194,12 +195,11 @@ class DeviceJdbcServiceTest {
         );
         Device saved = deviceJdbcService.save(device, user);
 
-        // Create API token associated with device
-        String token = "test-api-token-" + System.currentTimeMillis();
-        testingService.createApiToken(user, token, saved.id());
+        // Create API token associated with a device
+        ApiToken apiToken = testingService.createApiToken(user, "test-api-token", saved);
 
         // When
-        Optional<Device> found = deviceJdbcService.findByApiToken(token);
+        Optional<Device> found = deviceJdbcService.findByApiToken(apiToken.getToken());
 
         // Then
         assertThat(found).isPresent();
