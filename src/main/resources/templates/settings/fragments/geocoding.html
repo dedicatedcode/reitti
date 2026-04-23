@@ -118,14 +118,12 @@
 </div>
 
 <div th:fragment="test-result-display">
-    <div th:if="${testResult}" class="alert alert-success">
-        <strong>Success!</strong> Service returned a valid location:
-        <pre th:text="${testResult.toString()}"></pre>
+    <div th:if="${testResult['success']}" class="alert alert-success">
+        <span th:text="${testResult['message']}"></span>
     </div>
 
-    <div th:if="${testError}" class="alert alert-danger">
-        <strong>Test Failed:</strong>
-        <span th:text="${testError}">Error message</span>
+    <div th:unless="${testResult['success']}" class="alert alert-danger">
+        <span th:text="${testResult['message']}"></span>
     </div>
 </div>
 </body>

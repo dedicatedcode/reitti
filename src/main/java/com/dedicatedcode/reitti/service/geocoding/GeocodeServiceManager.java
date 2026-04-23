@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface GeocodeServiceManager {
     Optional<GeocodeResult> reverseGeocode(SignificantPlace significantPlace, boolean recordResponse);
 
-    GeocodeResult test(GeocodeService service, double testLat, double testLng);
+    Map<String, Object> test(GeocodeService service, double testLat, double testLng);
 
     Map<GeocoderType, List<GeocodeResult>> reverseGeocodeAll(SignificantPlace significantPlace);
 }
