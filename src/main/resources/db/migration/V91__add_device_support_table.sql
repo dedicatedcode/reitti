@@ -10,4 +10,4 @@ CREATE TABLE devices (
     version INTEGER NOT NULL DEFAULT 1
 );
 
-ALTER TABLE api_tokens ADD COLUMN device_id BIGINT REFERENCES devices(id);
+ALTER TABLE api_tokens ADD COLUMN device_id BIGINT REFERENCES devices(id) ON DELETE CASCADE;
