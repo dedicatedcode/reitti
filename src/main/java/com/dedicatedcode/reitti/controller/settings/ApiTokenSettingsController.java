@@ -42,7 +42,12 @@ public class ApiTokenSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
-                .map(t -> new ApiTokenDto(t.getId(), t.getToken(), t.getName(), adjustInstant(t.getCreatedAt(), timezone), adjustInstant(t.getLastUsedAt(), timezone))).toList());
+                .map(t -> new ApiTokenDto(t.getId(),
+                                          t.getDeviceId(),
+                                          t.getToken(),
+                                          t.getName(),
+                                          adjustInstant(t.getCreatedAt(), timezone),
+                                          adjustInstant(t.getLastUsedAt(), timezone))).toList());
         return "settings/api-tokens";
     }
 
@@ -96,7 +101,7 @@ public class ApiTokenSettingsController {
         return "settings/api-tokens :: api-tokens-content";
     }
 
-    public record ApiTokenDto(Long id, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
+    public record ApiTokenDto(Long id, Long deviceId, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
 
     public record ApiTokenUsageDTO(String token, String name, LocalDateTime at, String endpoint, String ip) {
     }
