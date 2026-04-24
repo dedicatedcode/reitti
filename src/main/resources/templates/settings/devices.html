@@ -73,6 +73,22 @@
                             </td>
                             <td th:text="${#temporals.format(device.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
                             <td>
+                                <button class="btn"
+                                        th:attr="hx-get=@{/settings/devices/edit/{id}(id=${device.id()})}"
+                                        hx-target="#device-form-container"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.edit}">
+                                    Edit
+                                </button>
+
+                                <button class="btn"
+                                        th:attr="hx-post=@{/settings/devices/{id}/toggle(id=${device.id()})}"
+                                        hx-target="#devices"
+                                        hx-swap="innerHTML"
+                                        th:text="${device.enabled() ? #messages.msg('devices.disable') : #messages.msg('devices.enable')}">
+                                    Toggle
+                                </button>
+
                                 <button class="btn btn-danger"
                                         th:attr="hx-post=@{/settings/devices/{id}/delete(id=${device.id()})}, hx-confirm=#{devices.delete.confirm}"
                                         hx-target="#devices"
@@ -85,9 +101,10 @@
                     </table>
                 </div>
 
-                <div class="settings-card">
+                <div class="settings-card" id="device-form-container">
                     <form th:action="@{/settings/devices}" method="post" class="device-form"
                           style="margin-bottom: 20px;">
+                        <h3 th:text="#{devices.add.title}">Add New Device</h3>
                         <div class="form-group">
                             <label for="deviceName" th:text="#{devices.name.label}">Device Name</label>
                             <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
@@ -165,6 +182,64 @@
 </div>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+    
+    function updateCustomColor(color) {
+        const customColorRadio = document.getElementById('customColorRadio');
+        const customColorText = document.getElementById('customColorText');
+        const customColorSwatch = document.getElementById('customColorSwatch');
+        
+        customColorRadio.value = color;
+        customColorRadio.checked = true;
+        customColorText.value = color;
+        customColorSwatch.style.backgroundColor = color;
+        customColorSwatch.innerHTML = '';
+    }
+    
+    function updateCustomColorFromText(color) {
+        if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            const customColorInput = document.getElementById('customColorInput');
+            customColorInput.value = color;
+            updateCustomColor(color);
+        }
+    }
+    
+    function showCustomColorInput() {
+        document.getElementById('customColorInputSection').style.display = 'block';
+    }
+    
+    function hideCustomColorInput() {
+        document.getElementById('customColorInputSection').style.display = 'none';
+        const customColorSwatch = document.getElementById('customColorSwatch');
+        customColorSwatch.style.backgroundColor = '';
+        customColorSwatch.innerHTML = '<span class="custom-color-icon">+</span>';
+    }
+    
+    // Initialize custom color functionality
+    (function() {
+        const customColorOption = document.querySelector('.custom-color-option');
+        
+        // Add click handler for custom color option
+        customColorOption.addEventListener('click', () => {
+            const customColorRadio = document.getElementById('customColorRadio');
+            const customColorInput = document.getElementById('customColorInput');
+            
+            customColorRadio.checked = true;
+            showCustomColorInput();
+            
+            if (!customColorRadio.value) {
+                updateCustomColor(customColorInput.value);
+            }
+        });
+        
+        // Add change handlers for other color options to hide custom input
+        document.querySelectorAll('input[name="color"]:not(#customColorRadio)').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    hideCustomColorInput();
+                }
+            });
+        });
+    })();
 </script>
 </body>
 </html>
