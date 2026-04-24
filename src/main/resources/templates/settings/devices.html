@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="devices" class="settings-section active">
+            <div th:fragment="devices-content">
+                <h2 th:text="#{devices.title}">Devices</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Device created successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div class="settings-card" th:if="${devices.isEmpty()}">
+                    <p th:text="#{devices.no.devices}">No devices found. Create one to get started.</p>
+                </div>
+
+                <div class="settings-card">
+                    <table th:if="${!devices.isEmpty()}">
+                        <thead>
+                        <tr>
+                            <th th:text="#{devices.table.name}">Name</th>
+                            <th th:text="#{devices.table.color}">Color</th>
+                            <th th:text="#{devices.table.enabled}">Enabled</th>
+                            <th th:text="#{devices.table.showOnMap}">Show on Map</th>
+                            <th th:text="#{devices.table.created}">Created</th>
+                            <th th:text="#{devices.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="device : ${devices}">
+                            <td th:text="${device.name()}"></td>
+                            <td>
+                                <span class="color-swatch" th:style="'background-color: ' + ${device.color()}"></span>
+                                <span th:text="${device.color()}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${device.enabled()}" th:text="#{form.yes}">Yes</span>
+                                <span th:unless="${device.enabled()}" th:text="#{form.no}">No</span>
+                            </td>
+                            <td>
+                                <span th:if="${device.showOnMap()}" th:text="#{form.yes}">Yes</span>
+                                <span th:unless="${device.showOnMap()}" th:text="#{form.no}">No</span>
+                            </td>
+                            <td th:text="${#temporals.format(device.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
+                            <td>
+                                <button class="btn btn-danger"
+                                        th:attr="hx-post=@{/settings/devices/{id}/delete(id=${device.id()})}, hx-confirm=#{devices.delete.confirm}"
+                                        hx-target="#devices"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.delete}">Delete
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-card">
+                    <form th:action="@{/settings/devices}" method="post" class="device-form"
+                          style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="deviceName" th:text="#{devices.name.label}">Device Name</label>
+                            <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
+                        </div>
+                        <div class="form-group">
+                            <label for="deviceColor" th:text="#{devices.color.label}">Color</label>
+                            <input type="color" id="deviceColor" name="color" value="#FF5733">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="enabled" checked> <span th:text="#{devices.enabled.label}">Enabled</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="showOnMap" checked> <span th:text="#{devices.showOnMap.label}">Show on Map</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+</script>
+</body>
+</html>
