@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
-import com.dedicatedcode.reitti.service.TimeUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -43,7 +42,12 @@ public class ApiTokenSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
-                .map(t -> new ApiTokeDTO(t.getId(), t.getToken(), t.getName(), adjustInstant(t.getCreatedAt(), timezone), adjustInstant(t.getLastUsedAt(),timezone))).toList());
+                .map(t -> new ApiTokenDto(t.getId(),
+                                          t.getDeviceId(),
+                                          t.getToken(),
+                                          t.getName(),
+                                          adjustInstant(t.getCreatedAt(), timezone),
+                                          adjustInstant(t.getLastUsedAt(), timezone))).toList());
         return "settings/api-tokens";
     }
 
@@ -97,7 +101,7 @@ public class ApiTokenSettingsController {
         return "settings/api-tokens :: api-tokens-content";
     }
 
-    public record ApiTokeDTO(Long id, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
+    public record ApiTokenDto(Long id, Long deviceId, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
 
     public record ApiTokenUsageDTO(String token, String name, LocalDateTime at, String endpoint, String ip) {
     }

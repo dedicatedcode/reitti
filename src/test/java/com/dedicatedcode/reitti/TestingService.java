@@ -2,7 +2,9 @@ package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportProcessor;
@@ -17,6 +19,7 @@ import org.awaitility.Awaitility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -55,7 +58,8 @@ public class TestingService {
     private ImportProcessor importBatchProcessor;
     @Autowired
     private SignificantPlaceJdbcService significantPlaceJdbcService;
-
+    @Autowired
+    private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
     private LocationDataIngestPipeline locationDataIngestPipeline;
 
@@ -172,5 +176,9 @@ public class TestingService {
 
     public SignificantPlace newSignificantPlace(User user) {
         return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
+    }
+
+    public ApiToken createApiToken(User user, String name, Device device) {
+        return this.apiTokenJdbcService.save(new ApiToken(user, name, device));
     }
 }

@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.model.ClusteredPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,7 +18,6 @@ public class PreviewRawLocationPointJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
-    private final PointReaderWriter pointReaderWriter;
 
     public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
         this.jdbcTemplate = jdbcTemplate;
@@ -36,7 +34,6 @@ public class PreviewRawLocationPointJdbcService {
                 rs.getLong("version")
         );
 
-        this.pointReaderWriter = pointReaderWriter;
     }
 
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
@@ -56,35 +53,6 @@ public class PreviewRawLocationPointJdbcService {
                 "ORDER BY rlp.timestamp " +
                 "LIMIT ? OFFSET ?";
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), previewId, limit, offset);
-    }
-
-    public List<ClusteredPoint> findClusteredPointsInTimeRangeForUser(
-            User user, String previewId, Instant startTime, Instant endTime, int minimumPoints, double distanceInMeters) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.ignored, rlp.version , " +
-                "ST_ClusterDBSCAN(rlp.geom, ?, ?) over () AS cluster_id " +
-                "FROM preview_raw_location_points rlp " +
-                "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ?";
-
-        return jdbcTemplate.query(sql, (rs, _) -> {
-
-                    RawLocationPoint point = new RawLocationPoint(
-                            rs.getLong("id"),
-                            rs.getTimestamp("timestamp").toInstant(),
-                            this.pointReaderWriter.read(rs.getString("geom")),
-                            rs.getDouble("accuracy_meters"),
-                            rs.getObject("elevation_meters", Double.class),
-                            rs.getBoolean("processed"),
-                            rs.getBoolean("synthetic"),
-                            rs.getBoolean("ignored"),
-                            false,
-                            rs.getLong("version")
-                    );
-
-                    Integer clusterId = rs.getObject("cluster_id", Integer.class);
-
-                    return new ClusteredPoint(point, clusterId);
-                }, distanceInMeters, minimumPoints, user.getId(),
-                Timestamp.from(startTime), Timestamp.from(endTime), previewId);
     }
 
     public void bulkUpdateProcessedStatus(List<RawLocationPoint> points) {

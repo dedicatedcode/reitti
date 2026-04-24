@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.ApiTokenUsage;
-import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,7 +28,7 @@ public class ApiTokenJdbcService {
     @Transactional(readOnly = true)
     public Optional<ApiToken> findByToken(String token) {
         String sql = """
-            SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
+            SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
@@ -45,7 +45,7 @@ public class ApiTokenJdbcService {
     @Transactional(readOnly = true)
     public List<ApiToken> findByUser(User user) {
         String sql = """
-            SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
+            SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
@@ -58,7 +58,7 @@ public class ApiTokenJdbcService {
     @Transactional(readOnly = true)
     public Optional<ApiToken> findById(Long id) {
         String sql = """
-            SELECT at.id, at.token, at.name, at.created_at, at.last_used_at,
+            SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
@@ -81,17 +81,18 @@ public class ApiTokenJdbcService {
     }
 
     private ApiToken insert(ApiToken apiToken) {
-        String sql = "INSERT INTO api_tokens (token, user_id, name, created_at, last_used_at) VALUES (?, ?, ?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO api_tokens (token, user_id, device_id, name, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
         
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
             apiToken.getToken(),
             apiToken.getUser().getId(),
+            apiToken.getDeviceId(),
             apiToken.getName(),
             Timestamp.from(apiToken.getCreatedAt()),
             apiToken.getLastUsedAt() != null ? Timestamp.from(apiToken.getLastUsedAt()) : null
         );
         
-        return new ApiToken(id, apiToken.getToken(), apiToken.getUser(), apiToken.getName(), 
+        return new ApiToken(id, apiToken.getToken(), apiToken.getUser(), apiToken.getDeviceId(), apiToken.getName(),
                            apiToken.getCreatedAt(), apiToken.getLastUsedAt());
     }
 
@@ -125,13 +126,6 @@ public class ApiTokenJdbcService {
     }
 
     @Transactional(readOnly = true)
-    public boolean existsById(Long id) {
-        String sql = "SELECT COUNT(*) FROM api_tokens WHERE id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
-        return count != null && count > 0;
-    }
-
-    @Transactional(readOnly = true)
     public long count() {
         String sql = "SELECT COUNT(*) FROM api_tokens";
         Long count = jdbcTemplate.queryForObject(sql, Long.class);
@@ -154,6 +148,7 @@ public class ApiTokenJdbcService {
             rs.getLong("id"),
             rs.getString("token"),
             user,
+            rs.getString("device_id") != null ? rs.getLong("device_id") : null,
             rs.getString("name"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("last_used_at") != null ? rs.getTimestamp("last_used_at").toInstant() : null
@@ -169,7 +164,7 @@ public class ApiTokenJdbcService {
     }
 
     public List<ApiTokenUsage> getUsages(User user, int maxRows) {
-        return this.jdbcTemplate.query("SELECT t.token, t.name, au.at, au.endpoint, au.ip FROM api_tokens t RIGHT JOIN api_token_usages au on t.id = au.token_id WHERE t.user_id = ? ORDER BY au.at DESC LIMIT ?", this::mapRowToApiUsage, user.getId(), maxRows);
+        return this.jdbcTemplate.query("SELECT t.token, t.name,  t.device_id, au.at, au.endpoint, au.ip FROM api_tokens t RIGHT JOIN api_token_usages au on t.id = au.token_id WHERE t.user_id = ? ORDER BY au.at DESC LIMIT ?", this::mapRowToApiUsage, user.getId(), maxRows);
     }
 
     public void trackUsage(String token, String requestPath, String remoteIp) {

@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model.security;
 
+import com.dedicatedcode.reitti.model.devices.Device;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -8,7 +10,9 @@ public class ApiToken {
     private final Long id;
     
     private final String token;
-    
+
+    private final Long deviceId;
+
     private final User user;
     
     private final String name;
@@ -18,19 +22,23 @@ public class ApiToken {
     private final Instant lastUsedAt;
     
     public ApiToken(User user, String name) {
-        this(null, null, user, name, null, null);
+        this(user, name, null);
     }
-    
-    public ApiToken(Long id, String token, User user, String name, Instant createdAt, Instant lastUsedAt) {
+
+    public ApiToken(User user, String name, Device device) {
+        this(null, null, user, device != null ? device.id() : null, name, null, null);
+    }
+
+    public ApiToken(Long id, String token, User user, Long deviceId, String name, Instant createdAt, Instant lastUsedAt) {
         this.id = id;
         this.token = token != null ? token : UUID.randomUUID().toString();
         this.user = user;
+        this.deviceId = deviceId;
         this.name = name;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.lastUsedAt = lastUsedAt;
     }
-    
-    // Getters
+
     public Long getId() {
         return id;
     }
@@ -42,7 +50,11 @@ public class ApiToken {
     public User getUser() {
         return user;
     }
-    
+
+    public Long getDeviceId() {
+        return deviceId;
+    }
+
     public String getName() {
         return name;
     }
@@ -57,6 +69,6 @@ public class ApiToken {
     
     // Wither method
     public ApiToken withLastUsedAt(Instant lastUsedAt) {
-        return new ApiToken(this.id, this.token, this.user, this.name, this.createdAt, lastUsedAt);
+        return new ApiToken(this.id, this.token, this.user, this.deviceId, this.name, this.createdAt, lastUsedAt);
     }
 }

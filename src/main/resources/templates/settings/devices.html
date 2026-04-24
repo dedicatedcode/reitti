@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="devices" class="settings-section active">
+            <div th:fragment="devices-content">
+                <h2 th:text="#{devices.title}">Devices</h2>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Device created successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div class="settings-card" th:if="${devices.isEmpty()}">
+                    <p th:text="#{devices.no.devices}">No devices were found. Create one to get started.</p>
+                </div>
+
+                <div class="settings-card" th:if="${!devices.isEmpty()}">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th th:text="#{devices.table.name}">Name</th>
+                            <th th:text="#{devices.table.enabled}">Enabled</th>
+                            <th th:text="#{devices.table.showOnMap}">Show on Map</th>
+                            <th th:text="#{devices.table.created}">Created</th>
+                            <th th:text="#{devices.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="device : ${devices}">
+                            <td> <span class="color-swatch" th:style="'margin-right: 8px; background-color: ' + ${device.color()}"></span><span th:text="${device.name()}"></span></td>
+                            <td>
+                                <span th:if="${device.enabled()}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{devices.status.enabled}">Enabled</span>
+                                </span>
+                                <span th:unless="${device.enabled()}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{devices.status.disabled}">Disabled</span>
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${device.showOnMap()}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{common.choice.yes}">Yes</span>
+                                </span>
+                                <span th:unless="${device.showOnMap()}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{common.choice.no}">No</span>
+                                </span>
+                            </td>
+                            <td th:text="${#temporals.format(device.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
+                            <td>
+                                <button class="btn"
+                                        th:attr="hx-get=@{/settings/devices/edit/{id}(id=${device.id()})}"
+                                        hx-target="#device-form-container"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.edit}">
+                                    Edit
+                                </button>
+
+                                <button class="btn"
+                                        th:attr="hx-post=@{/settings/devices/{id}/toggle(id=${device.id()})}"
+                                        hx-target="#devices"
+                                        hx-swap="innerHTML"
+                                        th:text="${device.enabled() ? #messages.msg('common.choice.disable') : #messages.msg('common.choice.enable')}">
+                                    Toggle
+                                </button>
+
+                                <button class="btn btn-danger"
+                                        th:attr="hx-post=@{/settings/devices/{id}/delete(id=${device.id()})}, hx-confirm=#{devices.delete.confirm}"
+                                        hx-target="#devices"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.delete}">Delete
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-card" id="device-form-container">
+                    <form th:fragment="device-edit-form" 
+                          th:hx-post="${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}"
+                          hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
+                        <h3 th:text="#{${device != null ? 'devices.edit.title' : 'devices.add.title'}}">Add New Device</h3>
+                        <div class="form-group">
+                            <label for="deviceName" th:text="#{devices.name.label}">Device Name</label>
+                            <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}" th:value="${device?.name()}">
+                        </div>
+                        <div class="form-group">
+                            <h3 th:text="#{devices.color.theme.label}">Color Theme</h3>
+                            <p class="form-description" th:text="#{devices.color.theme.description}">Choose your preferred accent color for the interface.</p>
+
+                            <div class="color-picker-section">
+                                <div class="color-options">
+                                    <label class="color-option" th:each="colorOption : ${defaultColors}">
+                                        <input type="radio"
+                                               name="color"
+                                               th:value="${colorOption.key}"
+                                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
+                                               style="display: none;">
+                                        <div class="color-swatch"
+                                             th:style="'background-color: ' + ${colorOption.key}"
+                                             th:title="${colorOption.value}"></div>
+                                    </label>
+
+                                    <!-- Custom color option -->
+                                    <label class="color-option custom-color-option">
+                                        <input type="radio"
+                                               name="color"
+                                               id="customColorRadio"
+                                               value=""
+                                               style="display: none;">
+                                        <div class="color-swatch custom-color-swatch"
+                                             id="customColorSwatch"
+                                             th:title="#{devices.color.theme.custom}">
+                                            <span class="custom-color-icon">+</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Custom color input -->
+                                <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
+                                    <label for="customColorInput" th:text="#{devices.color.theme.custom.input}">Custom Color:</label>
+                                    <div class="custom-color-input-wrapper">
+                                        <input type="color"
+                                               id="customColorInput"
+                                               th:value="${device != null && !#maps.containsKey(defaultColors, device.color()) ? device.color() : '#f1ba63'}"
+                                               onchange="updateCustomColor(this.value)">
+                                        <input type="text"
+                                               id="customColorText"
+                                               th:value="${device != null && !#maps.containsKey(defaultColors, device.color()) ? device.color() : '#f1ba63'}"
+                                               placeholder="#f1ba63"
+                                               pattern="^#[0-9A-Fa-f]{6}$"
+                                               onchange="updateCustomColorFromText(this.value)">
+                                    </div>
+                                </div>
+
+                                <div class="color-actions">
+                                    <button type="button"
+                                            class="btn btn-secondary"
+                                            onclick="resetToDefaultColor()"
+                                            th:text="#{devices.color.theme.reset}">Reset to Default</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="enabled" id="deviceEnabled" th:checked="${device?.enabled() != false}">
+                            <label data-testid="enabledCheckbox" for="deviceEnabled" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{devices.enabled.label}">Enabled</span>
+                            </label>
+                        </div>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="showOnMap" id="deviceShowOnMap" th:checked="${device?.showOnMap() != false}">
+                            <label data-testid="showOnMapCheckbox" for="deviceShowOnMap" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{devices.showOnMap.label}">Show on Map</span>
+                            </label>
+                        </div>
+                        
+                        <button th:if="${device == null}" type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
+                        <button th:if="${device != null}" type="submit" class="btn" th:text="#{form.update}">Update Device</button>
+                        <button th:if="${device != null}" type="button" class="btn btn-secondary"
+                                th:hx-get="@{/settings/devices}"
+                                hx-target="body"
+                                hx-swap="outerHTML"
+                                th:text="#{form.cancel}">Cancel</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+    
+    function updateCustomColor(color) {
+        const customColorRadio = document.getElementById('customColorRadio');
+        const customColorText = document.getElementById('customColorText');
+        const customColorSwatch = document.getElementById('customColorSwatch');
+        
+        customColorRadio.value = color;
+        customColorRadio.checked = true;
+        customColorText.value = color;
+        customColorSwatch.style.backgroundColor = color;
+        customColorSwatch.innerHTML = '';
+    }
+    
+    function updateCustomColorFromText(color) {
+        if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            const customColorInput = document.getElementById('customColorInput');
+            customColorInput.value = color;
+            updateCustomColor(color);
+        }
+    }
+    
+    function showCustomColorInput() {
+        document.getElementById('customColorInputSection').style.display = 'block';
+    }
+    
+    function hideCustomColorInput() {
+        document.getElementById('customColorInputSection').style.display = 'none';
+        const customColorSwatch = document.getElementById('customColorSwatch');
+        customColorSwatch.style.backgroundColor = '';
+        customColorSwatch.innerHTML = '<span class="custom-color-icon">+</span>';
+    }
+
+    function resetToDefaultColor() {
+        const defaultColorInput = document.querySelector('input[name="color"][value="#f1ba63"]');
+        if (defaultColorInput) {
+            defaultColorInput.checked = true;
+            hideCustomColorInput();
+        }
+    }
+
+
+    // Initialize custom color functionality
+    (function() {
+        const customColorOption = document.querySelector('.custom-color-option');
+        
+        // Add click handler for custom color option
+        customColorOption.addEventListener('click', () => {
+            const customColorRadio = document.getElementById('customColorRadio');
+            const customColorInput = document.getElementById('customColorInput');
+            
+            customColorRadio.checked = true;
+            showCustomColorInput();
+            
+            if (!customColorRadio.value) {
+                updateCustomColor(customColorInput.value);
+            }
+        });
+        
+        // Add change handlers for other color options to hide custom input
+        document.querySelectorAll('input[name="color"]:not(#customColorRadio)').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    hideCustomColorInput();
+                }
+            });
+        });
+    })();
+</script>
+</body>
+</html>
