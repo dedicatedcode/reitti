@@ -47,17 +47,22 @@
                         </thead>
                         <tbody>
                         <tr th:each="token : ${tokens}">
-                            <td th:text="${token.name}"></td>
-                            <td th:text="${token.token}"></td>
-                            <td th:text="${#temporals.format(token.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
-                            <td th:text="${token.lastUsedAt != null ? #temporals.format(token.lastUsedAt, 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
+                            <td th:text="${token.name()}"></td>
+                            <td th:text="${token.token()}"></td>
+                            <td th:text="${#temporals.format(token.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
+                            <td th:text="${token.lastUsedAt() != null ? #temporals.format(token.lastUsedAt(), 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
                             <td>
-                                <button class="btn btn-danger"
-                                        th:attr="hx-post=@{/settings/api-tokens/{id}/delete(id=${token.id})}, hx-confirm=#{tokens.delete.confirm}"
-                                        hx-target="#api-tokens"
-                                        hx-swap="innerHTML"
-                                        th:text="#{form.delete}">Delete
-                                </button>
+                                <span th:if="${token.deviceId() != null}" class="token-device-linked">
+                                    <a th:href="@{/settings/devices}" class="btn btn-secondary" th:text="#{tokens.link.to.device}">View Device</a>
+                                </span>
+                                <span th:unless="${token.deviceId() != null}">
+                                    <button class="btn btn-danger"
+                                            th:attr="hx-post=@{/settings/api-tokens/{id}/delete(id=${token.id()})}, hx-confirm=#{tokens.delete.confirm}"
+                                            hx-target="#api-tokens"
+                                            hx-swap="innerHTML"
+                                            th:text="#{form.delete}">Delete
+                                    </button>
+                                </span>
                             </td>
                         </tr>
                         </tbody>
@@ -110,3 +115,4 @@
     window.userSettings = /*[[${userSettings}]]*/ {}
 </script>
 </body>
+</html>
