@@ -30,7 +30,7 @@
                 </div>
 
                 <div class="settings-card" th:if="${devices.isEmpty()}">
-                    <p th:text="#{devices.no.devices}">No devices found. Create one to get started.</p>
+                    <p th:text="#{devices.no.devices}">No devices were found. Create one to get started.</p>
                 </div>
 
                 <div class="settings-card">
@@ -102,9 +102,8 @@
                 </div>
 
                 <div class="settings-card" id="device-form-container">
-                    <form th:action="@{/settings/devices}" method="post" class="device-form"
-                          style="margin-bottom: 20px;">
-                        <h3 th:text="#{devices.add.title}">Add New Device</h3>
+                    <form th:fragment="device-edit-form" th:hx-post="@{/settings/devices}" hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
+                        <h3 th:text="#{${device != null ? 'devices.edit.title' : 'devices.add.title'}}">Add New Device</h3>
                         <div class="form-group">
                             <label for="deviceName" th:text="#{devices.name.label}">Device Name</label>
                             <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
@@ -180,7 +179,7 @@
                                 <span class="label-text" th:text="#{devices.showOnMap.label}">Show on Map</span>
                             </label>
                         </div>
-                        <button type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
+                        <button th:if="${device == null}" type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
                     </form>
                 </div>
 
