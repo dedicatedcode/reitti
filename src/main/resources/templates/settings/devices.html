@@ -33,12 +33,11 @@
                     <p th:text="#{devices.no.devices}">No devices were found. Create one to get started.</p>
                 </div>
 
-                <div class="settings-card">
-                    <table th:if="${!devices.isEmpty()}">
+                <div class="settings-card" th:if="${!devices.isEmpty()}">
+                    <table>
                         <thead>
                         <tr>
                             <th th:text="#{devices.table.name}">Name</th>
-                            <th th:text="#{devices.table.color}">Color</th>
                             <th th:text="#{devices.table.enabled}">Enabled</th>
                             <th th:text="#{devices.table.showOnMap}">Show on Map</th>
                             <th th:text="#{devices.table.created}">Created</th>
@@ -47,10 +46,7 @@
                         </thead>
                         <tbody>
                         <tr th:each="device : ${devices}">
-                            <td th:text="${device.name()}"></td>
-                            <td>
-                                <span class="color-swatch" th:style="'background-color: ' + ${device.color()}"></span>
-                            </td>
+                            <td> <span class="color-swatch" th:style="'margin-right: 8px; background-color: ' + ${device.color()}"></span><span th:text="${device.name()}"></span></td>
                             <td>
                                 <span th:if="${device.enabled()}">
                                     <i class="lni lni-check"></i>
@@ -103,7 +99,7 @@
 
                 <div class="settings-card" id="device-form-container">
                     <form th:fragment="device-edit-form" 
-                          th:action="${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}"
+                          th:hx-post="${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}"
                           hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{${device != null ? 'devices.edit.title' : 'devices.add.title'}}">Add New Device</h3>
                         <div class="form-group">
@@ -120,7 +116,7 @@
                                         <input type="radio"
                                                name="color"
                                                th:value="${colorOption.key}"
-                                               th:checked="${device != null && device.color() == colorOption.key}"
+                                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
                                                style="display: none;">
                                         <div class="color-swatch"
                                              th:style="'background-color: ' + ${colorOption.key}"
@@ -182,16 +178,13 @@
                             </label>
                         </div>
                         
-                        <!-- Create button for new device -->
                         <button th:if="${device == null}" type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
-                        
-                        <!-- Update and Cancel buttons for editing existing device -->
-                        <div th:if="${device != null}" class="form-actions">
-                            <button type="submit" class="btn" th:text="#{form.update}">Update Device</button>
-                            <button type="button" class="btn btn-secondary" 
-                                    th:attr="hx-get=@{/settings/devices}, hx-target=#{device-form-container}, hx-swap=innerHTML"
-                                    th:text="#{form.cancel}">Cancel</button>
-                        </div>
+                        <button th:if="${device != null}" type="submit" class="btn" th:text="#{form.update}">Update Device</button>
+                        <button th:if="${device != null}" type="button" class="btn btn-secondary"
+                                th:hx-get="@{/settings/devices}"
+                                hx-target="device-form-container"
+                                hx-swap="innerHTML"
+                                th:text="#{form.cancel}">Cancel</button>
                     </form>
                 </div>
 

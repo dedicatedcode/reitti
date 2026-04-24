@@ -55,7 +55,8 @@ public class DeviceSettingsController {
                 .orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
         model.addAttribute("defaultColors", getDefaultColors());
-        model.addAttribute("device", new DeviceDTO(device.id(), device.name(), device.color(), 
+        model.addAttribute("selectedColor", device.color());
+        model.addAttribute("device", new DeviceDTO(device.id(), device.name(), device.color(),
                 device.enabled(), device.showOnMap(),
                 adjustInstant(device.createdAt(), timezone), adjustInstant(device.updatedAt(), timezone)));
         
@@ -66,8 +67,8 @@ public class DeviceSettingsController {
     public String createDevice(@AuthenticationPrincipal User user,
                                @RequestParam String name,
                                @RequestParam String color,
-                               @RequestParam(required = false, defaultValue = "true") boolean enabled,
-                               @RequestParam(required = false, defaultValue = "true") boolean showOnMap,
+                               @RequestParam(required = false, defaultValue = "false") boolean enabled,
+                               @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                Model model) {
         try {
@@ -88,10 +89,8 @@ public class DeviceSettingsController {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.creation", e.getMessage()));
         }
 
-        // Get updated device list and add to model
         addDevicesToModel(user, timezone, model);
 
-        // Return the devices-content fragment
         return "settings/devices :: devices-content";
     }
 
@@ -100,8 +99,8 @@ public class DeviceSettingsController {
                                @AuthenticationPrincipal User user,
                                @RequestParam String name,
                                @RequestParam String color,
-                               @RequestParam(required = false, defaultValue = "true") boolean enabled,
-                               @RequestParam(required = false, defaultValue = "true") boolean showOnMap,
+                               @RequestParam(required = false, defaultValue = "false") boolean enabled,
+                               @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                Model model) {
         try {
@@ -127,10 +126,8 @@ public class DeviceSettingsController {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.update", e.getMessage()));
         }
 
-        // Get updated device list and add to model
         addDevicesToModel(user, timezone, model);
 
-        // Return the devices-content fragment
         return "settings/devices :: devices-content";
     }
 
@@ -162,10 +159,8 @@ public class DeviceSettingsController {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.toggle", e.getMessage()));
         }
 
-        // Get updated device list and add to model
         addDevicesToModel(user, timezone, model);
 
-        // Return the devices-content fragment
         return "settings/devices :: devices-content";
     }
 
