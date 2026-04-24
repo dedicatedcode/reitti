@@ -102,11 +102,13 @@
                 </div>
 
                 <div class="settings-card" id="device-form-container">
-                    <form th:fragment="device-edit-form" th:hx-post="@{/settings/devices}" hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
+                    <form th:fragment="device-edit-form" 
+                          th:action="${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}"
+                          hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{${device != null ? 'devices.edit.title' : 'devices.add.title'}}">Add New Device</h3>
                         <div class="form-group">
                             <label for="deviceName" th:text="#{devices.name.label}">Device Name</label>
-                            <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
+                            <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}" th:value="${device?.name()}">
                         </div>
                         <div class="form-group">
                             <h3 th:text="#{devices.color.theme.label}">Color Theme</h3>
@@ -118,7 +120,7 @@
                                         <input type="radio"
                                                name="color"
                                                th:value="${colorOption.key}"
-                                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
+                                               th:checked="${device != null && device.color() == colorOption.key}"
                                                style="display: none;">
                                         <div class="color-swatch"
                                              th:style="'background-color: ' + ${colorOption.key}"
@@ -146,11 +148,11 @@
                                     <div class="custom-color-input-wrapper">
                                         <input type="color"
                                                id="customColorInput"
-                                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
+                                               th:value="${device != null && !#maps.containsKey(defaultColors, device.color()) ? device.color() : '#f1ba63'}"
                                                onchange="updateCustomColor(this.value)">
                                         <input type="text"
                                                id="customColorText"
-                                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
+                                               th:value="${device != null && !#maps.containsKey(defaultColors, device.color()) ? device.color() : '#f1ba63'}"
                                                placeholder="#f1ba63"
                                                pattern="^#[0-9A-Fa-f]{6}$"
                                                onchange="updateCustomColorFromText(this.value)">
@@ -166,20 +168,30 @@
                             </div>
                         </div>
                         <div class="form-group slide-reveal-container">
-                            <input type="checkbox" name="enabled" id="deviceEnabled" checked>
+                            <input type="checkbox" name="enabled" id="deviceEnabled" th:checked="${device?.enabled() != false}">
                             <label data-testid="enabledCheckbox" for="deviceEnabled" class="slide-reveal">
                                 <span class="slide-box"></span>
                                 <span class="label-text" th:text="#{devices.enabled.label}">Enabled</span>
                             </label>
                         </div>
                         <div class="form-group slide-reveal-container">
-                            <input type="checkbox" name="showOnMap" id="deviceShowOnMap" checked>
+                            <input type="checkbox" name="showOnMap" id="deviceShowOnMap" th:checked="${device?.showOnMap() != false}">
                             <label data-testid="showOnMapCheckbox" for="deviceShowOnMap" class="slide-reveal">
                                 <span class="slide-box"></span>
                                 <span class="label-text" th:text="#{devices.showOnMap.label}">Show on Map</span>
                             </label>
                         </div>
+                        
+                        <!-- Create button for new device -->
                         <button th:if="${device == null}" type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
+                        
+                        <!-- Update and Cancel buttons for editing existing device -->
+                        <div th:if="${device != null}" class="form-actions">
+                            <button type="submit" class="btn" th:text="#{form.update}">Update Device</button>
+                            <button type="button" class="btn btn-secondary" 
+                                    th:attr="hx-get=@{/settings/devices}, hx-target=#{device-form-container}, hx-swap=innerHTML"
+                                    th:text="#{form.cancel}">Cancel</button>
+                        </div>
                     </form>
                 </div>
 
