@@ -85,7 +85,7 @@
                                         th:attr="hx-post=@{/settings/devices/{id}/toggle(id=${device.id()})}"
                                         hx-target="#devices"
                                         hx-swap="innerHTML"
-                                        th:text="${device.enabled() ? #messages.msg('devices.disable') : #messages.msg('devices.enable')}">
+                                        th:text="${device.enabled() ? #messages.msg('common.choice.disable') : #messages.msg('common.choice.enable')}">
                                     Toggle
                                 </button>
 
@@ -110,50 +110,59 @@
                             <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
                         </div>
                         <div class="form-group">
-                            <label th:text="#{devices.color.label}">Color</label>
+                            <h3 th:text="#{devices.color.theme.label}">Color Theme</h3>
+                            <p class="form-description" th:text="#{devices.color.theme.description}">Choose your preferred accent color for the interface.</p>
+
                             <div class="color-picker-section">
                                 <div class="color-options">
                                     <label class="color-option" th:each="colorOption : ${defaultColors}">
-                                        <input type="radio" 
-                                               name="color" 
-                                               th:value="${colorOption.key}" 
-                                               th:checked="${colorOption.key == '#FF5733'}"
+                                        <input type="radio"
+                                               name="color"
+                                               th:value="${colorOption.key}"
+                                               th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
                                                style="display: none;">
-                                        <div class="color-swatch" 
+                                        <div class="color-swatch"
                                              th:style="'background-color: ' + ${colorOption.key}"
                                              th:title="${colorOption.value}"></div>
                                     </label>
-                                    
+
                                     <!-- Custom color option -->
                                     <label class="color-option custom-color-option">
-                                        <input type="radio" 
-                                               name="color" 
+                                        <input type="radio"
+                                               name="color"
                                                id="customColorRadio"
                                                value=""
                                                style="display: none;">
-                                        <div class="color-swatch custom-color-swatch" 
+                                        <div class="color-swatch custom-color-swatch"
                                              id="customColorSwatch"
-                                             th:title="#{users.color.theme.custom}">
+                                             th:title="#{devices.color.theme.custom}">
                                             <span class="custom-color-icon">+</span>
                                         </div>
                                     </label>
                                 </div>
-                                
+
                                 <!-- Custom color input -->
                                 <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
-                                    <label for="customColorInput" th:text="#{users.color.theme.custom.input}">Custom Color:</label>
+                                    <label for="customColorInput" th:text="#{devices.color.theme.custom.input}">Custom Color:</label>
                                     <div class="custom-color-input-wrapper">
-                                        <input type="color" 
-                                               id="customColorInput" 
-                                               value="#FF5733"
+                                        <input type="color"
+                                               id="customColorInput"
+                                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
                                                onchange="updateCustomColor(this.value)">
-                                        <input type="text" 
-                                               id="customColorText" 
-                                               value="#FF5733"
-                                               placeholder="#FF5733"
+                                        <input type="text"
+                                               id="customColorText"
+                                               th:value="${selectedColor != null && !#lists.contains(defaultColors.![key], selectedColor) ? selectedColor : '#f1ba63'}"
+                                               placeholder="#f1ba63"
                                                pattern="^#[0-9A-Fa-f]{6}$"
                                                onchange="updateCustomColorFromText(this.value)">
                                     </div>
+                                </div>
+
+                                <div class="color-actions">
+                                    <button type="button"
+                                            class="btn btn-secondary"
+                                            onclick="resetToDefaultColor()"
+                                            th:text="#{devices.color.theme.reset}">Reset to Default</button>
                                 </div>
                             </div>
                         </div>
@@ -213,7 +222,16 @@
         customColorSwatch.style.backgroundColor = '';
         customColorSwatch.innerHTML = '<span class="custom-color-icon">+</span>';
     }
-    
+
+    function resetToDefaultColor() {
+        const defaultColorInput = document.querySelector('input[name="color"][value="#f1ba63"]');
+        if (defaultColorInput) {
+            defaultColorInput.checked = true;
+            hideCustomColorInput();
+        }
+    }
+
+
     // Initialize custom color functionality
     (function() {
         const customColorOption = document.querySelector('.custom-color-option');

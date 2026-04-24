@@ -73,6 +73,11 @@
            th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
            th:title="#{settings.integrations.description}"
            th:text="#{settings.integrations}">Integrations</a>
+        <a th:href="@{/settings/devices}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'devices'} ? 'active' : ''"
+           th:title="#{settings.devices.description}"
+           th:text="#{settings.devices}">Devices</a>
         <a th:href="@{/settings/logging}"
            th:if="${isAdmin}"
            class="settings-nav-item"

@@ -4,8 +4,7 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
+import com.dedicatedcode.reitti.service.I18nService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,12 +21,12 @@ import java.util.Map;
 public class DeviceSettingsController {
 
     private final DeviceJdbcService deviceJdbcService;
-    private final MessageSource messageSource;
+    private final I18nService i18n;
 
     public DeviceSettingsController(DeviceJdbcService deviceJdbcService,
-                                    MessageSource messageSource) {
+                                    I18nService i18n) {
         this.deviceJdbcService = deviceJdbcService;
-        this.messageSource = messageSource;
+        this.i18n = i18n;
     }
 
     @GetMapping
@@ -84,9 +83,9 @@ public class DeviceSettingsController {
                     1L
             );
             deviceJdbcService.save(device, user);
-            model.addAttribute("successMessage", getMessage("message.success.device.created"));
+            model.addAttribute("successMessage", i18n.translate("message.success.device.created"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.device.creation", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("message.error.device.creation", e.getMessage()));
         }
 
         // Get updated device list and add to model
@@ -123,9 +122,9 @@ public class DeviceSettingsController {
                     existingDevice.version() + 1
             );
             deviceJdbcService.update(updatedDevice, user);
-            model.addAttribute("successMessage", getMessage("message.success.device.updated"));
+            model.addAttribute("successMessage", i18n.translate("message.success.device.updated"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.device.update", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("message.error.device.update", e.getMessage()));
         }
 
         // Get updated device list and add to model
@@ -158,9 +157,9 @@ public class DeviceSettingsController {
                     device.version() + 1
             );
             deviceJdbcService.update(updatedDevice, user);
-            model.addAttribute("successMessage", getMessage("message.success.device.toggled"));
+            model.addAttribute("successMessage", i18n.translate("message.success.device.toggled"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.device.toggle", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("message.error.device.toggle", e.getMessage()));
         }
 
         // Get updated device list and add to model
@@ -182,9 +181,9 @@ public class DeviceSettingsController {
                     .orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
             deviceJdbcService.delete(deviceToDelete, user);
-            model.addAttribute("successMessage", getMessage("message.success.device.deleted"));
+            model.addAttribute("successMessage", i18n.translate("message.success.device.deleted"));
         } catch (Exception e) {
-            model.addAttribute("errorMessage", getMessage("message.error.device.deletion", e.getMessage()));
+            model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion", e.getMessage()));
         }
 
         // Get updated device list and add to model
@@ -218,10 +217,6 @@ public class DeviceSettingsController {
                 "#dfe6e9", "Gray",
                 "#a29bfe", "Purple"
         );
-    }
-
-    private String getMessage(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
     private LocalDateTime adjustInstant(Instant instant, ZoneId zoneId) {
