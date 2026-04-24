@@ -182,8 +182,8 @@
                         <button th:if="${device != null}" type="submit" class="btn" th:text="#{form.update}">Update Device</button>
                         <button th:if="${device != null}" type="button" class="btn btn-secondary"
                                 th:hx-get="@{/settings/devices}"
-                                hx-target="devices"
-                                hx-swap="innerHTML"
+                                hx-target="body"
+                                hx-swap="outerHTML"
                                 th:text="#{form.cancel}">Cancel</button>
                     </form>
                 </div>
