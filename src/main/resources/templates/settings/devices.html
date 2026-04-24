@@ -50,15 +50,26 @@
                             <td th:text="${device.name()}"></td>
                             <td>
                                 <span class="color-swatch" th:style="'background-color: ' + ${device.color()}"></span>
-                                <span th:text="${device.color()}"></span>
                             </td>
                             <td>
-                                <span th:if="${device.enabled()}" th:text="#{form.yes}">Yes</span>
-                                <span th:unless="${device.enabled()}" th:text="#{form.no}">No</span>
+                                <span th:if="${device.enabled()}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{form.yes}">Yes</span>
+                                </span>
+                                <span th:unless="${device.enabled()}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{form.no}">No</span>
+                                </span>
                             </td>
                             <td>
-                                <span th:if="${device.showOnMap()}" th:text="#{form.yes}">Yes</span>
-                                <span th:unless="${device.showOnMap()}" th:text="#{form.no}">No</span>
+                                <span th:if="${device.showOnMap()}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{form.yes}">Yes</span>
+                                </span>
+                                <span th:unless="${device.showOnMap()}" style="color: red;">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{form.no}">No</span>
+                                </span>
                             </td>
                             <td th:text="${#temporals.format(device.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
                             <td>
@@ -82,17 +93,65 @@
                             <input type="text" id="deviceName" name="name" required th:placeholder="#{devices.name.placeholder}">
                         </div>
                         <div class="form-group">
-                            <label for="deviceColor" th:text="#{devices.color.label}">Color</label>
-                            <input type="color" id="deviceColor" name="color" value="#FF5733">
+                            <label th:text="#{devices.color.label}">Color</label>
+                            <div class="color-picker-section">
+                                <div class="color-options">
+                                    <label class="color-option" th:each="colorOption : ${defaultColors}">
+                                        <input type="radio" 
+                                               name="color" 
+                                               th:value="${colorOption.key}" 
+                                               th:checked="${colorOption.key == '#FF5733'}"
+                                               style="display: none;">
+                                        <div class="color-swatch" 
+                                             th:style="'background-color: ' + ${colorOption.key}"
+                                             th:title="${colorOption.value}"></div>
+                                    </label>
+                                    
+                                    <!-- Custom color option -->
+                                    <label class="color-option custom-color-option">
+                                        <input type="radio" 
+                                               name="color" 
+                                               id="customColorRadio"
+                                               value=""
+                                               style="display: none;">
+                                        <div class="color-swatch custom-color-swatch" 
+                                             id="customColorSwatch"
+                                             th:title="#{devices.color.custom}">
+                                            <span class="custom-color-icon">+</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <!-- Custom color input -->
+                                <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
+                                    <label for="customColorInput" th:text="#{devices.color.custom.input}">Custom Color:</label>
+                                    <div class="custom-color-input-wrapper">
+                                        <input type="color" 
+                                               id="customColorInput" 
+                                               value="#FF5733"
+                                               onchange="updateCustomColor(this.value)">
+                                        <input type="text" 
+                                               id="customColorText" 
+                                               value="#FF5733"
+                                               placeholder="#FF5733"
+                                               pattern="^#[0-9A-Fa-f]{6}$"
+                                               onchange="updateCustomColorFromText(this.value)">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" name="enabled" checked> <span th:text="#{devices.enabled.label}">Enabled</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="enabled" id="deviceEnabled" checked>
+                            <label data-testid="enabledCheckbox" for="deviceEnabled" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{devices.enabled.label}">Enabled</span>
                             </label>
                         </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" name="showOnMap" checked> <span th:text="#{devices.showOnMap.label}">Show on Map</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="showOnMap" id="deviceShowOnMap" checked>
+                            <label data-testid="showOnMapCheckbox" for="deviceShowOnMap" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{devices.showOnMap.label}">Show on Map</span>
                             </label>
                         </div>
                         <button type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
