@@ -54,21 +54,21 @@
                             <td>
                                 <span th:if="${device.enabled()}">
                                     <i class="lni lni-check"></i>
-                                    <span th:text="#{form.yes}">Yes</span>
+                                    <span th:text="#{devices.status.enabled}">Enabled</span>
                                 </span>
                                 <span th:unless="${device.enabled()}" style="color: red;">
                                     <i class="lni lni-xmark"></i>
-                                    <span th:text="#{form.no}">No</span>
+                                    <span th:text="#{devices.status.disabled}">Disabled</span>
                                 </span>
                             </td>
                             <td>
                                 <span th:if="${device.showOnMap()}">
                                     <i class="lni lni-check"></i>
-                                    <span th:text="#{form.yes}">Yes</span>
+                                    <span th:text="#{common.choice.yes}">Yes</span>
                                 </span>
                                 <span th:unless="${device.showOnMap()}" style="color: red;">
                                     <i class="lni lni-xmark"></i>
-                                    <span th:text="#{form.no}">No</span>
+                                    <span th:text="#{common.choice.no}">No</span>
                                 </span>
                             </td>
                             <td th:text="${#temporals.format(device.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
@@ -116,7 +116,7 @@
                                                style="display: none;">
                                         <div class="color-swatch custom-color-swatch" 
                                              id="customColorSwatch"
-                                             th:title="#{devices.color.custom}">
+                                             th:title="#{users.color.theme.custom}">
                                             <span class="custom-color-icon">+</span>
                                         </div>
                                     </label>
@@ -124,7 +124,7 @@
                                 
                                 <!-- Custom color input -->
                                 <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
-                                    <label for="customColorInput" th:text="#{devices.color.custom.input}">Custom Color:</label>
+                                    <label for="customColorInput" th:text="#{users.color.theme.custom.input}">Custom Color:</label>
                                     <div class="custom-color-input-wrapper">
                                         <input type="color" 
                                                id="customColorInput" 
