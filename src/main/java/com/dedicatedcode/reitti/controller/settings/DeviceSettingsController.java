@@ -2,7 +2,9 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ApiTokenJdbcService;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,11 +23,14 @@ import java.util.Map;
 public class DeviceSettingsController {
 
     private final DeviceJdbcService deviceJdbcService;
+    private final ApiTokenJdbcService apiTokenJdbcService;
     private final I18nService i18n;
 
     public DeviceSettingsController(DeviceJdbcService deviceJdbcService,
+                                    ApiTokenJdbcService apiTokenJdbcService,
                                     I18nService i18n) {
         this.deviceJdbcService = deviceJdbcService;
+        this.apiTokenJdbcService = apiTokenJdbcService;
         this.i18n = i18n;
     }
 
@@ -83,7 +88,9 @@ public class DeviceSettingsController {
                     now,
                     1L
             );
-            deviceJdbcService.save(device, user);
+            Device saved = deviceJdbcService.save(device, user);
+            ApiToken apiToken = new ApiToken(user, saved.name(), saved);
+            this.apiTokenJdbcService.save(apiToken);
             model.addAttribute("successMessage", i18n.translate("message.success.device.created"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.creation", e.getMessage()));
@@ -153,7 +160,7 @@ public class DeviceSettingsController {
                     Instant.now(),
                     device.version() + 1
             );
-            deviceJdbcService.update(updatedDevice, user);
+            this.deviceJdbcService.update(updatedDevice, user);
             model.addAttribute("successMessage", i18n.translate("message.success.device.toggled"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.toggle", e.getMessage()));
