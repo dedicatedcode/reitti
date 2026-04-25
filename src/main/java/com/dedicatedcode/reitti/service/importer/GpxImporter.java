@@ -62,14 +62,17 @@ public class GpxImporter {
 
                         if ("trkpt".equals(elementName)) {
                             // Start of a new track point
-                            if (!reader.hasAttribute("lat") || !reader.hasAttribute("lon")) {
+                            String latAttr = reader.getAttributeValue(null, "lat");
+                            String lonAttr = reader.getAttributeValue(null, "lon");
+
+                            if (latAttr == null || lonAttr == null) {
                                 logger.warn("Track point missing lat or lon attribute, skipping");
                                 continue;
                             }
 
                             currentPoint = new LocationPoint();
-                            double latitude = Double.parseDouble(reader.getAttributeValue(null, "lat"));
-                            double longitude = Double.parseDouble(reader.getAttributeValue(null, "lon"));
+                            double latitude = Double.parseDouble(latAttr);
+                            double longitude = Double.parseDouble(lonAttr);
                             currentPoint.setLatitude(latitude);
                             currentPoint.setLongitude(longitude);
                             // Default accuracy for GPX files
