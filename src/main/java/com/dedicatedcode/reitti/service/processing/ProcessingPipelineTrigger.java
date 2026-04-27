@@ -8,12 +8,15 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import org.jobrunr.jobs.annotations.Job;
+import org.jobrunr.jobs.context.JobContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -31,25 +34,27 @@ public class ProcessingPipelineTrigger {
     private final UserJdbcService userJdbcService;
     private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final int batchSize;
-    private final ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+    private final int processingSettleTime;
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
                                      UnifiedLocationProcessingService unifiedLocationProcessingService,
-                                     @Value("${reitti.import.batch-size:100}") int batchSize) {
+                                     @Value("${reitti.import.batch-size:100}") int batchSize,
+                                     @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.unifiedLocationProcessingService = unifiedLocationProcessingService;
         this.batchSize = batchSize;
+        this.processingSettleTime = processingSettleTime;
     }
 
     @Scheduled(cron = "${reitti.process-data.schedule}")
     public void start() {
-        if (stateHolder.isImportRunning() || !isIdle()) {
+        if (stateHolder.isImportRunning()) {
             log.warn("Data Import is currently running, wil skip this run");
             return;
         }
@@ -60,6 +65,22 @@ public class ProcessingPipelineTrigger {
 
     public void start(User user) {
         handleDataForUser(user, null, UUID.randomUUID().toString(), false);
+    }
+
+    @Job(name = "Process incoming data")
+    public void execute(TriggerProcessingEvent event, JobContext jobContext) {
+        Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
+        if (byUsername.isPresent()) {
+            long secondsSinceLastChange = Duration.between(this.userJdbcService.getLastDataModificationAt(byUsername.get()), Instant.now()).getSeconds();
+
+            if (secondsSinceLastChange < processingSettleTime) {
+                log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
+            } else {
+                handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), true);
+            }
+        } else {
+            log.warn("No user found for username: {}", event.getUsername());
+        }
     }
 
     public void handle(TriggerProcessingEvent event, boolean immediate) {
@@ -97,11 +118,7 @@ public class ProcessingPipelineTrigger {
                     previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 }
 
-                if (!immediate) {
-                    executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
-                } else {
-                    unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
-                }
+                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
                 totalProcessed += currentBatch.size();
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);
@@ -110,13 +127,5 @@ public class ProcessingPipelineTrigger {
 
         stateHolder.importFinished();
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
-    }
-
-    public boolean isIdle() {
-        return executorService.getQueue().isEmpty() &&
-               executorService.getActiveCount() == 0;
-    }
-    public int getPendingCount() {
-        return executorService.getActiveCount() + executorService.getQueue().size();
     }
 }

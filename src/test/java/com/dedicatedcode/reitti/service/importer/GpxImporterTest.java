@@ -34,8 +34,8 @@ class GpxImporterTest {
     @Test
     void shouldImportDefaultGPXFile() {
         InputStream stream = getClass().getResourceAsStream("/data/gpx/20250617.gpx");
-        gpxImporter.importGpx(stream, user);
-        this.testingService.awaitDataImport(100);
+        gpxImporter.importGpx(stream, user, null, null);
+        this.testingService.awaitDataImport(20);
         assertFalse(processedVisitJdbcService.findByUser(user).isEmpty());
     }
 }

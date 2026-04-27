@@ -1,11 +1,15 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportProcessor;
+import com.dedicatedcode.reitti.repository.ImportJobRepository;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobState;
+import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -14,9 +18,11 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -27,19 +33,34 @@ public class GpxImporter {
     private static final int BATCH_SIZE = 1000;
 
     private final ImportStateHolder stateHolder;
-    private final ImportProcessor batchProcessor;
+    private final LocationPointStagingService stagingService;
+    private final PromotionJobHandler promotionJobHandler;
+    private final ImportJobRepository importJobRepository;
+    private final int graceTimeSeconds;
+    private final JobScheduler jobScheduler;
 
-    public GpxImporter(ImportStateHolder stateHolder, ImportProcessor batchProcessor) {
+    public GpxImporter(ImportStateHolder stateHolder,
+                       LocationPointStagingService stagingService,
+                       PromotionJobHandler promotionJobHandler, ImportJobRepository importJobRepository,
+                       @Value("${reitti.import.processing-idle-start-time}") int graceTimeSeconds,
+                       JobScheduler jobScheduler) {
         this.stateHolder = stateHolder;
-        this.batchProcessor = batchProcessor;
+        this.stagingService = stagingService;
+        this.promotionJobHandler = promotionJobHandler;
+        this.importJobRepository = importJobRepository;
+        this.graceTimeSeconds = graceTimeSeconds;
+        this.jobScheduler = jobScheduler;
     }
 
-    public Map<String, Object> importGpx(InputStream inputStream, User user) {
+    public Map<String, Object> importGpx(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
             stateHolder.importStarted();
             logger.info("Importing GPX file for user {}", user.getUsername());
+
+            UUID jobId = UUID.randomUUID();
+            stagingService.start(jobId, user, originalFilename);
 
             XMLInputFactory factory = XMLInputFactory.newInstance();
             // Disable external entity processing for security
@@ -97,7 +118,7 @@ public class GpxImporter {
 
                                 // Process in batches to avoid memory issues
                                 if (batch.size() >= BATCH_SIZE) {
-                                    batchProcessor.processBatch(user, batch);
+                                    stagingService.insertBatch(jobId, user, device, batch);
                                     batch.clear();
                                 }
                             } else {
@@ -128,12 +149,16 @@ public class GpxImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.processBatch(user, batch);
+                stagingService.insertBatch(jobId, user, device, batch);
             }
 
-            logger.info("Successfully imported and queued {} location points from GPX file for user {}",
-                    processedCount.get(), user.getUsername());
-
+            logger.info("Successfully imported and queued [{}] location points from GPX file for user [{}]", processedCount.get(), user.getUsername());
+            importJobRepository.updateState(jobId, JobState.AWAITING);
+            if (graceTimeSeconds > 0) {
+                jobScheduler.schedule(LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId));
+            } else {
+                jobScheduler.enqueue(() -> promotionJobHandler.execute(user, device, jobId));
+            }
             return Map.of(
                     "success", true,
                     "message", "Successfully queued " + processedCount.get() + " location points for processing",

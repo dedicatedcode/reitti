@@ -84,7 +84,7 @@ public class GpxApiController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = gpxImporter.importGpx(inputStream, user);
+                Map<String, Object> result = gpxImporter.importGpx(inputStream, user, null, file.getOriginalFilename());
                 
                 if ((Boolean) result.get("success")) {
                     response.put("success", true);

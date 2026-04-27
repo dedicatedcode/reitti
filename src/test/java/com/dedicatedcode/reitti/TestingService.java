@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.ApiToken;
@@ -12,22 +10,26 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
+import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.awaitility.Awaitility;
+import org.jobrunr.jobs.states.StateName;
+import org.jobrunr.scheduling.JobScheduler;
+import org.jobrunr.storage.StorageProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 @Service
 public class TestingService {
@@ -62,11 +64,21 @@ public class TestingService {
     private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
     private LocationDataIngestPipeline locationDataIngestPipeline;
+    @Autowired
+    private LocationPointStagingService locationPointStagingService;
+    @Autowired
+    private PromotionJobHandler promotionJobHandler;
+    @Autowired
+    private JobScheduler jobScheduler;
+    @Autowired
+    private StorageProvider storageProvider;
+    @Autowired
+    private ImportJobRepository importJobRepository;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
-            gpxImporter.importGpx(is, user);
+            gpxImporter.importGpx(is, user, null, null);
         } else if (path.endsWith(".geojson")) {
             geoJsonImporter.importGeoJson(is, user);
         } else {
@@ -74,31 +86,9 @@ public class TestingService {
         }
     }
 
-
-
     public void processWhileImport(User user, String file) {
-        GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
-            @Override
-            public void processBatch(User user, List<LocationPoint> batch) {
-                for (int i = 0; i < batch.size(); i += 5) {
-                    int endIndex = Math.min(i + 5, batch.size());
-                    List<LocationPoint> chunk = batch.subList(i, endIndex);
-                    locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
-                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
-                    trigger.handle(triggerEvent, true);
-                }
-            }
-
-            @Override
-            public void scheduleProcessingTrigger(String username) {
-            }
-
-            @Override
-            public boolean isIdle() {
-                return false;
-            }
-        });
-        importer.importGpx(getClass().getResourceAsStream(file), user);
+        GpxImporter importer = new GpxImporter(new ImportStateHolder(), locationPointStagingService, promotionJobHandler, importJobRepository, 0, jobScheduler);
+        importer.importGpx(getClass().getResourceAsStream(file), user, null, file);
     }
 
     public User admin() {
@@ -130,7 +120,9 @@ public class TestingService {
                                 return pendingMessageCount == 0;
                             });
 
-                    if (!queuesAreEmpty) {
+                    long runningJobs = Stream.of(StateName.AWAITING, StateName.ENQUEUED, StateName.PROCESSING, StateName.SCHEDULED)
+                            .map(storageProvider::countJobs).reduce(Long::sum).orElseThrow();
+                    if (!queuesAreEmpty || runningJobs > 0) {
                         stableChecks.set(0);
                         return false;
                     }
@@ -146,7 +138,7 @@ public class TestingService {
                     lastRawCount.set(currentRawCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable && this.trigger.isIdle() && importBatchProcessor.isIdle()) {
+                    if (countsStable && importBatchProcessor.isIdle()) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);

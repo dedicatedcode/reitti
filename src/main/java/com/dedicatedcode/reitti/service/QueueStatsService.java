@@ -64,7 +64,7 @@ public class QueueStatsService {
     private QueueStats getQueueStats(String name) {
         int currentMessageCount;
         if (name.equals(STAY_DETECTION_QUEUE)) {
-            currentMessageCount = this.processingPipelineTrigger.getPendingCount();
+            currentMessageCount = 10; //ToDo: fix this this.processingPipelineTrigger.getPendingCount();
             updatingStayDetectionQueue(currentMessageCount);
         }else if (name.equals(LOCATION_DATA_QUEUE)) {
             currentMessageCount = this.defaultImportProcessor.getPendingTaskCount();
@@ -105,7 +105,8 @@ public class QueueStatsService {
             long processingTimePerMessage = estimateProcessingTimePerMessage(STAY_DETECTION_QUEUE);
             List<ProcessingRecord> history = processingHistory.get(STAY_DETECTION_QUEUE);
             LocalDateTime now = LocalDateTime.now();
-            history.add(new ProcessingRecord(now, this.processingPipelineTrigger.getPendingCount(), processingTimePerMessage));
+            history.add(new ProcessingRecord(now, 10, processingTimePerMessage)); //Todo: Fix this
+//            history.add(new ProcessingRecord(now, this.processingPipelineTrigger.getPendingCount(), processingTimePerMessage));
             cleanupOldRecords(history, now);
         }
 

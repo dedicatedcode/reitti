@@ -83,7 +83,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user);
+                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user, null, file.getOriginalFilename());
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

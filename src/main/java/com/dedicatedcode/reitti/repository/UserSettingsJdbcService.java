@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
@@ -113,6 +114,11 @@ public class UserSettingsJdbcService {
         filtered.stream().map(LocationPoint::getTimestamp).max(Comparator.naturalOrder()).ifPresent(timestamp -> {
             this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(timestamp), user.getId());
         });
+    }
+
+    @CacheEvict(cacheNames = "user-settings", key = "#user.id")
+    public void updateNewestData(User user, Instant timestamp) {
+        this.jdbcTemplate.update("UPDATE user_settings SET latest_data = GREATEST(latest_data, ?) WHERE user_id = ?", Timestamp.from(timestamp), user.getId());
     }
 
     @CacheEvict(cacheNames = "user-settings", key = "#user.id")
