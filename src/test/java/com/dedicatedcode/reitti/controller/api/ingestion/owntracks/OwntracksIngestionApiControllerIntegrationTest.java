@@ -139,7 +139,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 .andExpect(jsonPath("$[1].tst").exists());
 
         // Verify location batching was called
-        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), nullable(Device.class), any(LocationPoint.class));
     }
 
     @Test
@@ -171,7 +171,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 .andExpect(jsonPath("$[1].lon").value(24.9384));
 
         // Verify location batching was called
-        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), nullable(Device.class), any(LocationPoint.class));
     }
 
     @Test

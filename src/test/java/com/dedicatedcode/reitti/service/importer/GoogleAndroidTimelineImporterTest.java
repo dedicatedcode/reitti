@@ -1,44 +1,26 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.processing.DetectionParameter;
-import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImportJobRepository;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jobrunr.jobs.lambdas.JobLambda;
 import org.jobrunr.scheduling.JobScheduler;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class GoogleAndroidTimelineImporterTest {
 
     @Test
     void shouldParseNewGoogleTakeOutFileFromAndroid() {
-        LocationDataIngestPipeline mock = mock(LocationDataIngestPipeline.class);
-
-        VisitDetectionParametersService parametersService = mock(VisitDetectionParametersService.class);
-        DetectionParameter config = new DetectionParameter(-1L,
-                new DetectionParameter.VisitDetection(300, 300),
-                new DetectionParameter.VisitMerging(24,300, 100),
-                new DetectionParameter.LocationDensity(50, 720),
-                null, RecalculationState.DONE);
-        when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
+        // Mock JobScheduler to verify scheduling behavior
         JobScheduler jobScheduler = mock(JobScheduler.class);
+
         GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(),
                                                                                         new ImportStateHolder(),
                                                                                         mock(LocationPointStagingService.class),
@@ -52,18 +34,7 @@ class GoogleAndroidTimelineImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
-        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture()));
-
-        List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
-        assertEquals(1, capturedEvents.size());
-
-        // Verify that all events are for the correct user
-        for (List<LocationPoint> points : capturedEvents) {
-            assertNotNull(points);
-            assertFalse(points.isEmpty());
-
-            points.forEach(point -> assertNotNull(point.getAccuracyMeters()));
-        }
+        // Verify that jobScheduler.enqueue was called since graceTimeSeconds is 0
+        verify(jobScheduler, times(1)).enqueue(any(UUID.class), any(JobLambda.class));
     }
 }
