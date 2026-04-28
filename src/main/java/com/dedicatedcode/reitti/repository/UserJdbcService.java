@@ -136,7 +136,14 @@ public class UserJdbcService {
         this.jdbcTemplate.update("UPDATE users SET last_data_modified_at = ? WHERE id = ?", Timestamp.from(lastDataModificationAt), user.getId());
     }
 
-    public Instant getLastDataModificationAt(User user) {
-        return this.jdbcTemplate.queryForObject("SELECT last_data_modified_at FROM users WHERE id = ?", (rs, rowNum) -> rs.getTimestamp("last_data_modified_at").toInstant(), user.getId());
+    public Optional<Instant> getLastDataModificationAt(User user) {
+        return this.jdbcTemplate.queryForObject("SELECT last_data_modified_at FROM users WHERE id = ?", (rs, rowNum) -> {
+            Timestamp lastDataModifiedAt = rs.getTimestamp("last_data_modified_at");
+            if (lastDataModifiedAt == null) {
+                return Optional.empty();
+            } else {
+                return Optional.of(lastDataModifiedAt.toInstant());
+            }
+        }, user.getId());
     }
 }

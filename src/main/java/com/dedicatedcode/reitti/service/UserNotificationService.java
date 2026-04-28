@@ -12,7 +12,7 @@ import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,19 +29,21 @@ import java.util.stream.Collectors;
 @Service
 public class UserNotificationService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
-    private final RedisQueueService messageEnqueuer;
     private final ReittiSubscriptionService reittiSubscriptionService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
+    private final JobScheduler jobScheduler;
+    private final UserSseEmitterService userSseEmitterService;
 
-    public UserNotificationService(RedisQueueService messageEnqueuer,
+    public UserNotificationService(JobScheduler jobScheduler,
                                    ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
-                                   UserSharingJdbcService userSharingJdbcService) {
-        this.messageEnqueuer = messageEnqueuer;
+                                   UserSharingJdbcService userSharingJdbcService, UserSseEmitterService userSseEmitterService) {
+        this.jobScheduler = jobScheduler;
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
+        this.userSseEmitterService = userSseEmitterService;
     }
 
     public void newTrips(User user, List<Trip> trips) {
@@ -83,17 +85,23 @@ public class UserNotificationService {
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
+            this.jobScheduler.enqueue(() -> {
+                    this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
+            });
         }
     }
     public void sendToQueue(User user, User changedUser, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId));
+            this.jobScheduler.enqueue(() -> {
+                this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId));
+            });
         }
     }
 
     private void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.messageEnqueuer.enqueue(MessageDispatcherService.USER_EVENT_QUEUE, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
+        this.jobScheduler.enqueue(() -> {
+            this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
+        });
     }
 
     private void notifyOtherUsers(User user, SSEType eventType, Set<LocalDate> dates) {

@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.ImportProcessor;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
@@ -14,7 +13,6 @@ import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import org.awaitility.Awaitility;
 import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.scheduling.JobScheduler;
@@ -46,8 +44,6 @@ public class TestingService {
     private GeoJsonImporter geoJsonImporter;
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
-    @Autowired
-    private RedisQueueService redisQueueService;
     @Autowired
     private TripJdbcService tripRepository;
     @Autowired
@@ -109,15 +105,9 @@ public class TestingService {
                 .alias("Wait for processing to complete")
                 .until(() -> {
                     // Check all queues are empty
-                    boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
-                            .allMatch(name -> {
-                                long pendingMessageCount = this.redisQueueService.getQueueSummary().totalPending();
-                                return pendingMessageCount == 0;
-                            });
-
                     long runningJobs = Stream.of(StateName.AWAITING, StateName.ENQUEUED, StateName.PROCESSING, StateName.SCHEDULED)
                             .map(storageProvider::countJobs).reduce(Long::sum).orElseThrow();
-                    if (!queuesAreEmpty || runningJobs > 0) {
+                    if (runningJobs > 0) {
                         stableChecks.set(0);
                         return false;
                     }
@@ -143,13 +133,6 @@ public class TestingService {
     }
 
     public void clearData() {
-        QUEUES_TO_CHECK.forEach(name -> this.redisQueueService.purgeAllQueues());
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
         //now clear the database
         this.tripRepository.deleteAll();
         this.processedVisitRepository.deleteAll();

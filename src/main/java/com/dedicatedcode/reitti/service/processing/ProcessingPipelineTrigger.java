@@ -53,8 +53,12 @@ public class ProcessingPipelineTrigger {
     public void execute(TriggerProcessingEvent event, JobContext jobContext) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            long secondsSinceLastChange = Duration.between(this.userJdbcService.getLastDataModificationAt(byUsername.get()), Instant.now()).getSeconds();
-            if (secondsSinceLastChange < processingSettleTime) {
+            Optional<Instant> lastDataModificationAt = this.userJdbcService.getLastDataModificationAt(byUsername.get());
+            boolean shallSkip = lastDataModificationAt
+                    .map(instant -> Duration.between(instant, Instant.now()).getSeconds())
+                    .map(seconds -> seconds < processingSettleTime)
+                    .orElse(false);
+            if (shallSkip) {
                 log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
             } else {
                 handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), jobContext);

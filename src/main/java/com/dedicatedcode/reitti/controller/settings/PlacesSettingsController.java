@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.PlaceInfo;
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.AvailableCountry;
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
@@ -22,7 +21,6 @@ import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.locationtech.jts.geom.Coordinate;
@@ -44,10 +42,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
-
-import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
 
 @Controller
 @RequestMapping("/settings/places")
