@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller.api.ingestion.owntracks;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -119,7 +120,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         // Mock the location batching service to avoid actual processing
-        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
+        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
@@ -138,7 +139,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 .andExpect(jsonPath("$[1].tst").exists());
 
         // Verify location batching was called
-        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(LocationPoint.class));
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
     }
 
     @Test
@@ -154,7 +155,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         // Mock the location batching service
-        doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(LocationPoint.class));
+        doNothing().when(locationBatchingService).addLocationPoint(any(User.class),any(Device.class),  any(LocationPoint.class));
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
                         .with(user(testUser))
@@ -170,7 +171,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 .andExpect(jsonPath("$[1].lon").value(24.9384));
 
         // Verify location batching was called
-        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(LocationPoint.class));
+        verify(locationBatchingService, times(1)).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
     }
 
     @Test

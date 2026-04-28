@@ -55,7 +55,8 @@ public class MessageDispatcherService {
     @RedisQueueListener(value = TRIGGER_PROCESSING_QUEUE)
     public void handleTriggerProcessingEvent(TriggerProcessingEvent event) {
         logger.info("Dispatching TriggerProcessingEvent {}", event);
-        processingPipelineTrigger.handle(event, false);
-        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
+        //todo: add this back
+//        processingPipelineTrigger.handle(event, false);
+//        visitDetectionPreviewService.updatePreviewStatus(event.getPreviewId());
     }
 }

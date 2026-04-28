@@ -54,7 +54,6 @@ public class DefaultImportProcessor implements ImportProcessor {
         });
     }
 
-    @Override
     public void scheduleProcessingTrigger(String username) {
         {
             ScheduledFuture<?> existingTrigger = pendingTriggers.get(username);
@@ -66,7 +65,7 @@ public class DefaultImportProcessor implements ImportProcessor {
                 try {
                     logger.debug("Triggered processing for user: {}", username);
                     TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
-                    processingPipelineTrigger.handle(triggerEvent, false);
+//                    processingPipelineTrigger.handle(triggerEvent, false);
                     pendingTriggers.remove(username);
                 } catch (Exception e) {
                     logger.error("Failed to trigger processing for user: {}", username, e);

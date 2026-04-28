@@ -4,12 +4,14 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ImportJobRepository;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jobrunr.scheduling.JobScheduler;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -36,10 +38,16 @@ class GoogleAndroidTimelineImporterTest {
                 new DetectionParameter.LocationDensity(50, 720),
                 null, RecalculationState.DONE);
         when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
-        ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
-        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
+        JobScheduler jobScheduler = mock(JobScheduler.class);
+        GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(),
+                                                                                        new ImportStateHolder(),
+                                                                                        mock(LocationPointStagingService.class),
+                                                                                        mock(ImportJobRepository.class),
+                                                                                        mock(PromotionJobHandler.class),
+                                                                                        jobScheduler,
+                                                                                        0);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user);
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user, null, "timeline_from_android_randomized.json");
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));

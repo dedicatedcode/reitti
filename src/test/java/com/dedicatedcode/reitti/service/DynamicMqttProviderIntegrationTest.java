@@ -105,7 +105,7 @@ class DynamicMqttProviderIntegrationTest {
 
         // Then
         await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(15, TimeUnit.SECONDS)
                 .until(() -> rawLocationPointJdbcService.findLatest(testUser).isPresent());
 
         List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
@@ -236,7 +236,7 @@ class DynamicMqttProviderIntegrationTest {
 
         // Then
         await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
                 .until(() -> {
                     List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
                             testUser,

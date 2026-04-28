@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import org.jobrunr.jobs.annotations.Job;
 import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.jobs.context.JobDashboardProgressBar;
 import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,12 +41,17 @@ public class LocationDataCleanupJob {
     }
 
     @Job(name = "Cleanup incoming data")
-    public void execute(User user, Device device, Instant start, Instant end) {
+    public void execute(User user, Device device, Instant start, Instant end, JobContext jobContext) {
         log.debug("Starting LocationDataCleanupJob for user [{}] and device [{}] between {} and {}", user, device, start, end);
+        JobDashboardProgressBar progressBar = jobContext.progressBar(4);
         anomalyProcessingService.processAndMarkAnomalies(user, start, end);
+        progressBar.incrementSucceeded();
         locationDataDensityNormalizer.normalize(user, new TimeRange(start, end));
+        progressBar.incrementSucceeded();
         userSettingsJdbcService.updateNewestData(user, end);
+        progressBar.incrementSucceeded();
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());
+        progressBar.incrementSucceeded();
         if (device == null) {
             jobScheduler.schedule(
                     Instant.now().plus(10, ChronoUnit.SECONDS),

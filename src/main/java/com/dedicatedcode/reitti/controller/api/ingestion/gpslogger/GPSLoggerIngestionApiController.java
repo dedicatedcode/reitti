@@ -58,7 +58,7 @@ public class GPSLoggerIngestionApiController {
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
-            this.locationBatchingService.addLocationPoint(user, locationPoint);
+            this.locationBatchingService.addLocationPoint(user, null, locationPoint);
             logger.debug("Successfully received and queued GpsLogger location point for user {}",
                          user.getUsername());
 

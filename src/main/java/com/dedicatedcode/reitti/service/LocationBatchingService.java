@@ -1,147 +1,165 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import jakarta.annotation.PreDestroy;
+import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextClosedEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class LocationBatchingService {
     
     private static final Logger logger = LoggerFactory.getLogger(LocationBatchingService.class);
     
-    private final ImportProcessor importProcessor;
     private final Map<String, UserBatch> userBatches = new ConcurrentHashMap<>();
-    private final ReentrantLock flushLock = new ReentrantLock();
-    
-    @Value("${reitti.batching.max-batch-size:100}")
-    private int maxBatchSize;
-    
-    @Value("${reitti.batching.max-wait-time-ms:5000}")
-    private long maxWaitTimeMs;
+    private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
+    private final LocationPointStagingService locationPointStagingService;
+    private final PromotionJobHandler promotionJobHandler;
+    private final JobScheduler jobScheduler;
+
+    private final int maxBatchSize;
+    private final long maxWaitTimeMs;
     
     @Autowired
-    public LocationBatchingService(ImportProcessor importProcessor) {
-        this.importProcessor = importProcessor;
+    public LocationBatchingService(LocationPointStagingService locationPointStagingService, PromotionJobHandler promotionJobHandler,
+                                   JobScheduler jobScheduler,
+                                   @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
+                                   @Value("${reitti.batching.max-wait-time-ms:5000}") int maxWaitTimeMs) {
+        this.locationPointStagingService = locationPointStagingService;
+        this.promotionJobHandler = promotionJobHandler;
+        this.jobScheduler = jobScheduler;
+        this.maxBatchSize = maxBatchSize;
+        this.maxWaitTimeMs = maxWaitTimeMs;
     }
-    
-    public void addLocationPoint(User user, LocationPoint locationPoint) {
-        String username = user.getUsername();
-        
-        userBatches.compute(username, (key, existingBatch) -> {
+
+    public void addLocationPoint(User user, Device device, LocationPoint locationPoint) {
+        String sessionKey = getSessionKey(user, device);
+
+        userBatches.compute(sessionKey, (key, existingBatch) -> {
             if (existingBatch == null) {
-                existingBatch = new UserBatch(user);
+                existingBatch = new UserBatch(user, device, key);
             }
-            
+
             existingBatch.addLocationPoint(locationPoint);
-            
-            // Check if we should flush this batch immediately
+
             if (existingBatch.shouldFlush(maxBatchSize, maxWaitTimeMs)) {
-                flushBatch(username, existingBatch);
-                return new UserBatch(user);
+                executeFlush(existingBatch);
+                return null;
             }
-            
             return existingBatch;
         });
     }
-    
-    @Scheduled(fixedDelayString = "${reitti.batching.flush-interval-ms:2000}")
-    public void flushExpiredBatches() {
-        flushLock.lock();
+
+    private String getSessionKey(User user, Device device) {
+        return String.format("stream_%d_%s_%s",
+                             user.getId(),
+                             device != null ? device.id() : "main",
+                             LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
+                .toLowerCase();
+    }
+
+    private void executeFlush(UserBatch batch) {
+        if (batch.isEmpty()) return;
+
         try {
-            List<String> usersToFlush = new ArrayList<>();
-            
-            userBatches.forEach((username, batch) -> {
-                if (batch.shouldFlush(maxBatchSize, maxWaitTimeMs)) {
-                    usersToFlush.add(username);
-                }
-            });
-            
-            for (String username : usersToFlush) {
-                UserBatch batch = userBatches.remove(username);
-                if (batch != null && !batch.isEmpty()) {
-                    flushBatch(username, batch);
-                }
+            String pKey = batch.getPartitionKey();
+
+            if (!initializedPartitions.contains(pKey)) {
+                locationPointStagingService.ensurePartitionExists(pKey);
+                initializedPartitions.add(pKey);
             }
-        } finally {
-            flushLock.unlock();
-        }
-    }
-    
-    @PreDestroy
-    @EventListener(ContextClosedEvent.class)
-    public void flushAllBatches() {
-        logger.info("Application shutting down, flushing all pending location batches");
-        flushLock.lock();
-        try {
-            userBatches.forEach((username, batch) -> {
-                if (!batch.isEmpty()) {
-                    flushBatch(username, batch);
-                }
-            });
-            userBatches.clear();
-        } finally {
-            flushLock.unlock();
-        }
-    }
-    
-    private void flushBatch(String username, UserBatch batch) {
-        if (batch.isEmpty()) {
-            return;
-        }
-        
-        try {
-            List<LocationPoint> points = batch.getLocationPoints();
-            logger.debug("Flushing batch of {} location points for user {}", points.size(), username);
-            importProcessor.processBatch(batch.getUser(), points);
+
+            logger.debug("Flushing batch of {} location points for partition {}", batch.getLocationPoints().size(), pKey);
+            locationPointStagingService.insertBatch(pKey,
+                                                    batch.getUser(),
+                                                    batch.getDevice(),
+                                                    batch.getLocationPoints()
+            );
+            batch.clear();
+            this.jobScheduler.enqueue(() -> promotionJobHandler.execute(batch.user, batch.device, pKey, false, JobContext.Null));
         } catch (Exception e) {
-            logger.error("Error flushing batch for user {}", username, e);
+            logger.error("Failed to flush batch for partition {}", batch.getPartitionKey(), e);
         }
     }
-    
+
+    @Scheduled(fixedDelay = 2000)
+    public void flushExpiredBatches() {
+        userBatches.forEach((key, batch) -> {
+            if (batch.shouldFlush(maxBatchSize, maxWaitTimeMs)) {
+                userBatches.computeIfPresent(key, (ignored, b) -> {
+                    executeFlush(b);
+                    return null;
+                });
+            }
+        });
+    }
+
+    @PreDestroy
+    public void onShutdown() {
+        logger.info("Flushing batches on shutdown...");
+        userBatches.forEach((ignored, batch) -> executeFlush(batch));
+    }
+
     private static class UserBatch {
         private final User user;
-        private final List<LocationPoint> locationPoints;
-        private final long createdAt;
-        
-        public UserBatch(User user) {
+        private final Device device;
+        private final String partitionKey;
+        private final List<LocationPoint> locationPoints = new ArrayList<>();
+        private final long createdAt = System.currentTimeMillis();
+
+        public UserBatch(User user, Device device, String partitionKey) {
             this.user = user;
-            this.locationPoints = new ArrayList<>();
-            this.createdAt = System.currentTimeMillis();
+            this.device = device;
+            this.partitionKey = partitionKey;
         }
-        
+
         public void addLocationPoint(LocationPoint point) {
             locationPoints.add(point);
         }
-        
-        public boolean shouldFlush(int maxBatchSize, long maxWaitTimeMs) {
-            return locationPoints.size() >= maxBatchSize || 
-                   (System.currentTimeMillis() - createdAt) >= maxWaitTimeMs;
+
+        public boolean shouldFlush(int size, long ms) {
+            return locationPoints.size() >= size || (System.currentTimeMillis() - createdAt) >= ms;
         }
-        
+
         public boolean isEmpty() {
             return locationPoints.isEmpty();
         }
-        
+
         public List<LocationPoint> getLocationPoints() {
-            return new ArrayList<>(locationPoints);
+            return locationPoints;
         }
-        
+
+        public String getPartitionKey() {
+            return partitionKey;
+        }
+
         public User getUser() {
             return user;
+        }
+
+        public Device getDevice() {
+            return device;
+        }
+
+        public void clear() {
+            this.locationPoints.clear();
         }
     }
 }

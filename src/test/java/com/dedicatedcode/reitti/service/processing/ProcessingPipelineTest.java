@@ -148,9 +148,9 @@ public class ProcessingPipelineTest {
     }
 
     @Test
-    void shouldCalculateIncludingGapsWithIncomingData() {
+    void shouldCalculateIncludingGapsWithIncomingData() throws InterruptedException {
         this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_1_2025-12-06_081704.gpx");
-        this.testingService.processWhileImport(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
+        this.testingService.importAndProcess(user, "/data/gpx/overnight-visit-with-gaps/track_2_2025-12-06_081704.gpx");
 
         List<ProcessedVisit> processedVisitsInOrder = currentVisits();
 

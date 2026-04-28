@@ -86,11 +86,6 @@ public class TestingService {
         }
     }
 
-    public void processWhileImport(User user, String file) {
-        GpxImporter importer = new GpxImporter(new ImportStateHolder(), locationPointStagingService, promotionJobHandler, importJobRepository, 0, jobScheduler);
-        importer.importGpx(getClass().getResourceAsStream(file), user, null, file);
-    }
-
     public User admin() {
         return this.userJdbcService.findById(1L)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + (Long) 1L));

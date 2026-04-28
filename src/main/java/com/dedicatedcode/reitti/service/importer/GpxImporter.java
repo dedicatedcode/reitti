@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ImportJobRepository;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobState;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import org.jobrunr.jobs.context.JobContext;
 import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +44,7 @@ public class GpxImporter {
     public GpxImporter(ImportStateHolder stateHolder,
                        LocationPointStagingService stagingService,
                        PromotionJobHandler promotionJobHandler, ImportJobRepository importJobRepository,
-                       @Value("${reitti.import.processing-idle-start-time}") int graceTimeSeconds,
+                       @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds,
                        JobScheduler jobScheduler) {
         this.stateHolder = stateHolder;
         this.stagingService = stagingService;
@@ -59,8 +61,10 @@ public class GpxImporter {
             stateHolder.importStarted();
             logger.info("Importing GPX file for user {}", user.getUsername());
 
-            UUID jobId = UUID.randomUUID();
-            stagingService.start(jobId, user, originalFilename);
+            String jobId = UUID.randomUUID().toString();
+            stagingService.ensurePartitionExists(jobId);
+
+            this.importJobRepository.create(UUID.fromString(jobId), user, JobType.GPS_IMPORT, JobState.PREPARING, originalFilename);
 
             XMLInputFactory factory = XMLInputFactory.newInstance();
             // Disable external entity processing for security
@@ -153,11 +157,11 @@ public class GpxImporter {
             }
 
             logger.info("Successfully imported and queued [{}] location points from GPX file for user [{}]", processedCount.get(), user.getUsername());
-            importJobRepository.updateState(jobId, JobState.AWAITING);
+            importJobRepository.updateState(UUID.fromString(jobId), JobState.AWAITING);
             if (graceTimeSeconds > 0) {
-                jobScheduler.schedule(LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId));
+                jobScheduler.schedule(UUID.fromString(jobId), LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
             } else {
-                jobScheduler.enqueue(() -> promotionJobHandler.execute(user, device, jobId));
+                jobScheduler.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
             }
             return Map.of(
                     "success", true,

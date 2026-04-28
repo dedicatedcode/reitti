@@ -1,51 +1,73 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.ImportJobRepository;
 import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
+import com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint;
+import com.dedicatedcode.reitti.service.jobs.JobState;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleIOSTimelineImporter.class);
     private final ImportStateHolder stateHolder;
+    private final ImportJobRepository importJobRepository;
+    private final PromotionJobHandler promotionJobHandler;
+    private final JobScheduler jobScheduler;
+    private final int graceTimeSeconds;
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
-                                     DefaultImportProcessor batchProcessor) {
-        super(objectMapper, batchProcessor);
+                                     LocationPointStagingService stagingService,
+                                     ImportJobRepository importJobRepository,
+                                     PromotionJobHandler promotionJobHandler,
+                                     JobScheduler jobScheduler,
+                                     @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
+        super(objectMapper, stagingService);
         this.stateHolder = stateHolder;
+        this.importJobRepository = importJobRepository;
+        this.promotionJobHandler = promotionJobHandler;
+        this.jobScheduler = jobScheduler;
+        this.graceTimeSeconds = graceTimeSeconds;
     }
 
-    public Map<String, Object> importTimeline(InputStream inputStream, User user) {
+    public Map<String, Object> importTimeline(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
 
         try {
             logger.info("Importing Google Timeline IOS file for user {}", user.getUsername());
             stateHolder.importStarted();
+            String jobId = UUID.randomUUID().toString();
+            this.stagingService.ensurePartitionExists(jobId);
+            this.importJobRepository.create(UUID.fromString(jobId), user, JobType.GOOGLE_TIMELINE_IMPORT, JobState.PREPARING, originalFilename);
+
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
 
-            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
 
             List<IOSSemanticSegment> semanticSegments = objectMapper.readValue(parser, new TypeReference<>() {});
             logger.info("Found {} semantic segments", semanticSegments.size());
@@ -55,16 +77,16 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                 if (semanticSegment.getVisit() != null) {
                     IOSVisit visit = semanticSegment.getVisit();
                     Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation());
-                    latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(user, start, end, lng, batch)));
+                    latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(jobId, user,device, start, end, lng, batch)));
                 }
 
                 if (semanticSegment.getTimelinePath() != null) {
-                    List<com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint> timelinePath = semanticSegment.getTimelinePath();
+                    List<TimelinePathPoint> timelinePath = semanticSegment.getTimelinePath();
                     logger.info("Found timeline path from start [{}] to end [{}]. Will insert [{}] synthetic geo locations based on timeline path.", semanticSegment.getStartTime(), semanticSegment.getEndTime(), timelinePath.size());
-                    for (com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint timelinePathPoint : timelinePath) {
+                    for (TimelinePathPoint timelinePathPoint : timelinePath) {
                         parseLatLng(timelinePathPoint.getPoint()).ifPresent(location -> {
                             ZonedDateTime current = start.plusMinutes(Long.parseLong(timelinePathPoint.getDurationMinutesOffsetFromStartTime()));
-                            createAndScheduleLocationPoint(location, current, user, batch);
+                            createAndScheduleLocationPoint(location, current, jobId, user, device, batch);
                             processedCount.incrementAndGet();
                         });
                     }
@@ -73,9 +95,14 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.processBatch(user, batch);
+                stagingService.insertBatch(jobId, user, device, batch);
             }
-
+            importJobRepository.updateState(UUID.fromString(jobId), JobState.AWAITING);
+            if (graceTimeSeconds > 0) {
+                jobScheduler.schedule(UUID.fromString(jobId), LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+            } else {
+                jobScheduler.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+            }
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}",
                     processedCount.get(), user.getUsername());
 

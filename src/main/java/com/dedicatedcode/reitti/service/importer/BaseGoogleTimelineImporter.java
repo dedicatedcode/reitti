@@ -1,8 +1,8 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,22 +16,22 @@ public abstract class BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(BaseGoogleTimelineImporter.class);
 
     protected final ObjectMapper objectMapper;
-    protected final DefaultImportProcessor batchProcessor;
+    protected final LocationPointStagingService stagingService;
 
     public BaseGoogleTimelineImporter(ObjectMapper objectMapper,
-                                      DefaultImportProcessor batchProcessor) {
+                                      LocationPointStagingService stagingService) {
         this.objectMapper = objectMapper;
-        this.batchProcessor = batchProcessor;
+        this.stagingService = stagingService;
     }
 
-    protected int handleVisit(User user, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
+    protected int handleVisit(String jobId, User user, Device device, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
         logger.info("Found visit at [{}] from start [{}] to end [{}].", latLng, startTime, endTime);
-        createAndScheduleLocationPoint(latLng, startTime, user, batch);
-        createAndScheduleLocationPoint(latLng, endTime, user, batch);
+        createAndScheduleLocationPoint(latLng, startTime, jobId,  user, device, batch);
+        createAndScheduleLocationPoint(latLng, endTime, jobId, user, device, batch);
         return 2;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, User user, List<LocationPoint> batch) {
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, String jobId, User user, Device device, List<LocationPoint> batch) {
         LocationPoint point = new LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
@@ -39,8 +39,8 @@ public abstract class BaseGoogleTimelineImporter {
         point.setAccuracyMeters(10.0);
         batch.add(point);
         logger.trace("Created location point at [{}]", point);
-        if (batch.size() >= batchProcessor.getBatchSize()) {
-            batchProcessor.processBatch(user, batch);
+        if (batch.size() >= stagingService.getBatchSize()) {
+            stagingService.insertBatch(jobId, user, device, batch);
             batch.clear();
         }
     }

@@ -160,7 +160,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleAndroidTimelineImporter.importTimeline(inputStream, user);
+            Map<String, Object> result = this.googleAndroidTimelineImporter.importTimeline(inputStream, user, null, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -192,7 +192,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleTimelineIOSImporter.importTimeline(inputStream, user);
+            Map<String, Object> result = this.googleTimelineIOSImporter.importTimeline(inputStream, user, null, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));

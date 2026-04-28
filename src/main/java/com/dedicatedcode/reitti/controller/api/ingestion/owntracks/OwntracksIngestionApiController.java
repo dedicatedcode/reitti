@@ -79,7 +79,7 @@ public class OwntracksIngestionApiController {
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
-            this.locationBatchingService.addLocationPoint(user, locationPoint);
+            this.locationBatchingService.addLocationPoint(user, null, locationPoint);
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                          user.getUsername());
 

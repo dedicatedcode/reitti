@@ -325,7 +325,7 @@ public class UnifiedLocationProcessingService {
         }
 
         if (allVisits.isEmpty()) {
-            return new VisitMergingResult(List.of(), List.of(), searchStart, searchEnd, System.currentTimeMillis() - start);
+            return new VisitMergingResult(new ArrayList<>(), new ArrayList<>(), searchStart, searchEnd, System.currentTimeMillis() - start);
         }
 
         // Merge visits chronologically

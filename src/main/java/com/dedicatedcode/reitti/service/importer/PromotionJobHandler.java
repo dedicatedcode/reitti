@@ -7,12 +7,12 @@ import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.jobrunr.jobs.annotations.Job;
+import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.jobs.context.JobDashboardProgressBar;
 import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 public class PromotionJobHandler {
@@ -33,12 +33,23 @@ public class PromotionJobHandler {
     }
 
     @Job(name = "Promote imported points to devices table")
-    public void execute(User user, Device device, UUID jobId) {
-        this.importJobRepository.updateState(jobId, JobState.RUNNING);
-        TimeRange timeRange = this.stagingService.getTimeRange(jobId);
-        int promote = this.stagingService.promote(jobId);
+    public void execute(User user, Device device, String partitionKey, boolean dropPartition, JobContext jobContext) {
+        JobDashboardProgressBar jobDashboardProgressBar = jobContext.progressBar(3);
+        this.importJobRepository.updateState(jobContext.getJobId(), JobState.RUNNING);
+        jobDashboardProgressBar.incrementSucceeded();
+        TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
+        int promote = this.stagingService.promote(partitionKey);
+        jobDashboardProgressBar.incrementSucceeded();
         log.debug("Promoted [{}] points into live table", promote);
-        this.stagingService.dropPartition(jobId);
-        this.jobScheduler.enqueue(() -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end()));
+        if (dropPartition) {
+            this.stagingService.dropPartition(partitionKey);
+        }
+        jobDashboardProgressBar.incrementSucceeded();
+        this.importJobRepository.updateState(jobContext.getJobId(), JobState.COMPLETED);
+        if (promote > 0) {
+            this.jobScheduler.enqueue(() -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end(), JobContext.Null));
+        } else {
+            log.debug("No points to promote, timerange was [{}]", timeRange);
+        }
     }
 }
