@@ -47,37 +47,36 @@ public class LocationDataDensityNormalizer {
             logger.trace("No points to normalize for user {}", user.getUsername());
             return;
         }
+        normalize(user, computeTimeRange(newPoints));
+    }
+    public void normalize(User user,  TimeRange inputRange) {
 
         ReentrantLock userLock = userLocks.computeIfAbsent(user.getUsername(), _ -> new ReentrantLock());
 
         userLock.lock();
         try {
-            logger.debug("Starting batch density normalization for {} points for user {}",
-                    newPoints.size(), user.getUsername());
+            logger.debug("Starting batch density normalization for user {}", user.getUsername());
 
-            // Step 1: Compute the time range that encompasses all new points
-            TimeRange inputRange = computeTimeRange(newPoints);
-
-            // Step 2: Get detection parameters (use the earliest point's time for config lookup)
+            // Step 1: Get detection parameters (use the earliest point's time for config lookup)
             DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(user, inputRange.start());
             DetectionParameter.LocationDensity densityConfig = detectionParams.getLocationDensity();
 
-            // Step 3: Expand the time range by the interpolation window to catch boundary gaps
+            // Step 2: Expand the time range by the interpolation window to catch boundary gaps
             long maxInterpolationGapMinutes = densityConfig.getMaxInterpolationGapMinutes();
             Duration window = Duration.ofMinutes(maxInterpolationGapMinutes);
             TimeRange expandedRange = new TimeRange(
                     inputRange.start().minus(window),
                     inputRange.end().plus(window)
             );
-            // Step 4: Delete all synthetic points in the expanded range
+            // Step 3: Delete all synthetic points in the expanded range
             rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start(), expandedRange.end());
 
-            // Step 5: Fetch all existing points in the expanded range (single DB query)
+            // Step 4: Fetch all existing points in the expanded range (single DB query)
             List<RawLocationPoint> existingPoints = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, expandedRange.start().minus(maxInterpolationGapMinutes, ChronoUnit.MINUTES), expandedRange.end().plus(maxInterpolationGapMinutes, ChronoUnit.MINUTES));
 
             logger.debug("Found {} existing points in expanded range [{} - {}]", existingPoints.size(), expandedRange.start(), expandedRange.end());
 
-            // Step 7: Sort deterministically by timestamp, then by ID (for repeatability)
+            // Step 5: Sort deterministically by timestamp, then by ID (for repeatability)
             existingPoints.sort(Comparator
                     .comparing(RawLocationPoint::getTimestamp)
                     .thenComparing(p -> p.getGeom().latitude())
@@ -86,7 +85,7 @@ public class LocationDataDensityNormalizer {
 
             logger.trace("Processing {} total points after merge", existingPoints.size());
 
-            // Step 8: Process gaps (generate synthetic points)
+            // Step 6: Process gaps (generate synthetic points)
             processGaps(user, existingPoints, densityConfig);
             handleExcessDensity(user, existingPoints);
             logger.debug("Completed batch density normalization for user {}", user.getUsername());
@@ -268,5 +267,4 @@ public class LocationDataDensityNormalizer {
 
     }
 
-    public record TimeRange(Instant start, Instant end) {}
 }

@@ -1,10 +1,13 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.scheduling.JobScheduler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -26,6 +29,7 @@ public class ManageDataController {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final I18nService i18n;
+    private final JobScheduler jobScheduler;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${reitti.data-management.delete-all.hostname-verification.enabled:true}") boolean deleteAllHostnameVerificationEnabled,
@@ -34,7 +38,8 @@ public class ManageDataController {
                                 ProcessingPipelineTrigger processingPipelineTrigger,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 UserSettingsJdbcService userSettingsJdbcService,
-                                I18nService i18nService) {
+                                I18nService i18nService,
+                                JobScheduler jobScheduler) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
@@ -43,6 +48,7 @@ public class ManageDataController {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.i18n = i18nService;
+        this.jobScheduler = jobScheduler;
     }
 
     @GetMapping("/settings/manage-data")
@@ -77,13 +83,13 @@ public class ManageDataController {
     }
 
     @PostMapping("/settings/manage-data/process-visits-trips")
-    public String processVisitsTrips(Model model) {
+    public String processVisitsTrips(@AuthenticationPrincipal User user, Model model) {
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
         }
 
         try {
-            processingPipelineTrigger.start();
+            jobScheduler.enqueue(() -> processingPipelineTrigger.execute(new TriggerProcessingEvent(user.getUsername(), null, null), JobContext.Null));
             model.addAttribute("successMessage", i18n.translate("data.process.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("data.process.error", e.getMessage()));
@@ -101,7 +107,7 @@ public class ManageDataController {
         try {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
-            processingPipelineTrigger.start();
+            jobScheduler.enqueue(() -> processingPipelineTrigger.execute(new TriggerProcessingEvent(user.getUsername(), null, null), JobContext.Null));
             model.addAttribute("successMessage", i18n.translate("data.clear.reprocess.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("data.clear.reprocess.error", e.getMessage()));

@@ -8,18 +8,18 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import org.jobrunr.jobs.annotations.Job;
+import org.jobrunr.jobs.context.JobContext;
+import org.jobrunr.jobs.context.JobDashboardProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Service
 public class ProcessingPipelineTrigger {
@@ -31,49 +31,47 @@ public class ProcessingPipelineTrigger {
     private final UserJdbcService userJdbcService;
     private final UnifiedLocationProcessingService unifiedLocationProcessingService;
     private final int batchSize;
-    private final ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
+    private final int processingSettleTime;
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
                                      UnifiedLocationProcessingService unifiedLocationProcessingService,
-                                     @Value("${reitti.import.batch-size:100}") int batchSize) {
+                                     @Value("${reitti.import.batch-size:100}") int batchSize,
+                                     @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.unifiedLocationProcessingService = unifiedLocationProcessingService;
         this.batchSize = batchSize;
+        this.processingSettleTime = processingSettleTime;
     }
 
-    @Scheduled(cron = "${reitti.process-data.schedule}")
-    public void start() {
-        if (stateHolder.isImportRunning() || !isIdle()) {
-            log.warn("Data Import is currently running, wil skip this run");
-            return;
-        }
-        for (User user : userJdbcService.findAll()) {
-            handleDataForUser(user, null, UUID.randomUUID().toString(), false);
-        }
-    }
-
-    public void start(User user) {
-        handleDataForUser(user, null, UUID.randomUUID().toString(), false);
-    }
-
-    public void handle(TriggerProcessingEvent event, boolean immediate) {
+    @Job(name = "Process incoming data")
+    public void execute(TriggerProcessingEvent event, JobContext jobContext) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), immediate);
+            Optional<Instant> lastDataModificationAt = this.userJdbcService.getLastDataModificationAt(byUsername.get());
+            boolean shallSkip = lastDataModificationAt
+                    .map(instant -> Duration.between(instant, Instant.now()).getSeconds())
+                    .map(seconds -> seconds < processingSettleTime)
+                    .orElse(false);
+            if (shallSkip) {
+                log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
+            } else {
+                handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), jobContext);
+            }
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(User user, String previewId, String traceId, boolean immediate) {
+    private void handleDataForUser(User user, String previewId, String traceId, JobContext jobContext) {
         int totalProcessed = 0;
 
+        JobDashboardProgressBar progressBar = jobContext.progressBar(0);
         while (true) {
             stateHolder.importStarted();
             try {
@@ -85,9 +83,11 @@ public class ProcessingPipelineTrigger {
                 }
 
                 if (currentBatch.isEmpty()) {
+                    progressBar.setProgress(totalProcessed);
                     break;
                 }
 
+                progressBar.setProgress(totalProcessed + currentBatch.size(), totalProcessed, 0);
                 Instant earliest = currentBatch.getFirst().getTimestamp();
                 Instant latest = currentBatch.getLast().getTimestamp();
                 log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
@@ -96,27 +96,13 @@ public class ProcessingPipelineTrigger {
                 } else {
                     previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 }
-
-                if (!immediate) {
-                    executorService.submit(() -> unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId)));
-                } else {
-                    unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
-                }
+                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
                 totalProcessed += currentBatch.size();
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);
             }
         }
-
         stateHolder.importFinished();
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
-    }
-
-    public boolean isIdle() {
-        return executorService.getQueue().isEmpty() &&
-               executorService.getActiveCount() == 0;
-    }
-    public int getPendingCount() {
-        return executorService.getActiveCount() + executorService.getQueue().size();
     }
 }

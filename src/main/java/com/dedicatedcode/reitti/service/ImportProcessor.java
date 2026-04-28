@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface ImportProcessor {
     void processBatch(User user, List<LocationPoint> batch);
-    void scheduleProcessingTrigger(String username);
     boolean isIdle();
 }

@@ -64,7 +64,6 @@ public class LocationDataIngestPipeline {
             int updatedRows = rawLocationPointJdbcService.bulkInsert(user, validPoints);
             List<Instant> timestamp = validPoints.stream().map(LocationPoint::getTimestamp).sorted().toList();
             anomalyProcessingService.processAndMarkAnomalies(user, timestamp.getFirst(), timestamp.getLast());
-
             densityNormalizer.normalize(user, validPoints);
             userSettingsJdbcService.updateNewestData(user, validPoints);
             userNotificationService.newRawLocationData(user, validPoints);
