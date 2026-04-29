@@ -1,36 +1,36 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.repository.ImportJobRepository;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.jobs.JobState;
-import org.jobrunr.jobs.Job;
-import org.jobrunr.jobs.states.StateName;
 import org.jobrunr.storage.StorageProvider;
-import org.jobrunr.storage.navigation.OffsetBasedPageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/queue-stats")
 public class QueueStatsApiController {
 
     private final StorageProvider storageProvider;
-    private final ImportJobRepository importJobRepository;
-    private final OffsetBasedPageRequest amountRequest = new OffsetBasedPageRequest("updatedAt:ASC", 0, 100);
+    private final JobMetadataRepository jobMetadataRepository;
 
     public QueueStatsApiController(StorageProvider storageProvider,
-                                   ImportJobRepository importJobRepository) {
+                                   JobMetadataRepository jobMetadataRepository) {
         this.storageProvider = storageProvider;
-        this.importJobRepository = importJobRepository;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
 
 
     @DeleteMapping("/{jobId}")
     public ResponseEntity<Void> cancelJob(@PathVariable UUID jobId) {
         // Check if it's an ImportJob in waiting state
-        Optional<JobState> importJobState = importJobRepository.getState(jobId);
+        Optional<JobState> importJobState = jobMetadataRepository.getState(jobId);
 
         if (importJobState.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -43,7 +43,7 @@ public class QueueStatsApiController {
         // Cancel the job
         try {
             storageProvider.deletePermanently(jobId);
-            importJobRepository.updateState(jobId, JobState.CANCELLED);
+            jobMetadataRepository.updateState(jobId, JobState.CANCELLED, Instant.now());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -54,7 +54,7 @@ public class QueueStatsApiController {
             UUID id,
             String name,
             String description,
-            String state,
+            JobState state,
             Instant enqueuedAt,
             Instant scheduledAt,
             Instant processingAt,

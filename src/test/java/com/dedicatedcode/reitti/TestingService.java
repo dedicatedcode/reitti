@@ -9,20 +9,14 @@ import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
-import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
-import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
 import org.awaitility.Awaitility;
 import org.jobrunr.jobs.states.StateName;
-import org.jobrunr.scheduling.JobScheduler;
 import org.jobrunr.storage.StorageProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,10 +25,6 @@ import java.util.stream.Stream;
 
 @Service
 public class TestingService {
-
-    private static final List<String> QUEUES_TO_CHECK = List.of(
-            "reitti.place.created.v2"
-    );
 
     @Autowired
     private UserJdbcService userJdbcService;
@@ -49,8 +39,6 @@ public class TestingService {
     @Autowired
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
-    private ProcessingPipelineTrigger trigger;
-    @Autowired
     private UserService userService;
     @Autowired
     private ImportProcessor importBatchProcessor;
@@ -59,17 +47,7 @@ public class TestingService {
     @Autowired
     private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
-    private LocationDataIngestPipeline locationDataIngestPipeline;
-    @Autowired
-    private LocationPointStagingService locationPointStagingService;
-    @Autowired
-    private PromotionJobHandler promotionJobHandler;
-    @Autowired
-    private JobScheduler jobScheduler;
-    @Autowired
     private StorageProvider storageProvider;
-    @Autowired
-    private ImportJobRepository importJobRepository;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);

@@ -15,8 +15,6 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jobrunr.jobs.Job;
-import org.jobrunr.jobs.JobBuilder;
 import org.jobrunr.jobs.context.JobContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,9 +61,6 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
         try {
             String importJobId = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(importJobId);
-            // Create non-JobRunr import job metadata
-            this.jobMetadataRepository.insert(UUID.fromString(importJobId), user.getId(), JobType.GOOGLE_TIMELINE_IMPORT, 
-                    "Google Timeline Import", JobState.PREPARING.name(), Instant.now(), null);
 
             logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
             this.stateHolder.importStarted();
@@ -105,21 +100,19 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                 stagingService.insertBatch(importJobId, user, device, batch);
             }
 
-            // Update import job state to AWAITING
-            jobMetadataRepository.updateState(UUID.fromString(importJobId), JobState.AWAITING.name(), Instant.now());
-
-            // Create promotion JobRunr job
-            Job promotionJob = JobBuilder.aJob()
-                    .withId(UUID.randomUUID())
-                    .withName("Promote imported points to devices table")
-                    .withDetails(() -> promotionJobHandler.execute(user, device, importJobId, true, JobContext.Null))
-                    .build();
-
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobId(UUID.fromString(importJobId))
+                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
+                    .friendlyName("GPS Data Promotion").build();
             if (graceTimeSeconds > 0) {
                 LocalDateTime scheduledTime = LocalDateTime.now().plusSeconds(graceTimeSeconds);
-                jobSchedulingService.schedule(promotionJob, scheduledTime, user.getId(), JobType.GOOGLE_TIMELINE_IMPORT, "Google Timeline Import Promotion");
+                jobSchedulingService.schedule(UUID.fromString(importJobId),
+                                              () -> promotionJobHandler.execute(user, device, importJobId, true, JobContext.Null),
+                                              scheduledTime,
+                                              metadata);
             } else {
-                jobSchedulingService.enqueue(promotionJob, user.getId(), JobType.GOOGLE_TIMELINE_IMPORT, "Google Timeline Import Promotion");
+                jobSchedulingService.enqueue(UUID.fromString(importJobId), () -> promotionJobHandler.execute(user, device, importJobId, true, JobContext.Null), metadata);
             }
             
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}", 

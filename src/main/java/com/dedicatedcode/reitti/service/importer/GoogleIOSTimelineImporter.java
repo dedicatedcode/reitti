@@ -3,12 +3,11 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ImportJobRepository;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
 import com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -34,23 +33,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleIOSTimelineImporter.class);
     private final ImportStateHolder stateHolder;
-    private final ImportJobRepository importJobRepository;
     private final PromotionJobHandler promotionJobHandler;
-    private final JobScheduler jobScheduler;
+    private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
                                      LocationPointStagingService stagingService,
-                                     ImportJobRepository importJobRepository,
                                      PromotionJobHandler promotionJobHandler,
-                                     JobScheduler jobScheduler,
+                                     JobSchedulingService jobSchedulingService,
                                      @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         super(objectMapper, stagingService);
         this.stateHolder = stateHolder;
-        this.importJobRepository = importJobRepository;
         this.promotionJobHandler = promotionJobHandler;
-        this.jobScheduler = jobScheduler;
+        this.jobSchedulingService = jobSchedulingService;
         this.graceTimeSeconds = graceTimeSeconds;
     }
 
@@ -62,7 +58,6 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
             stateHolder.importStarted();
             String jobId = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(jobId);
-            this.importJobRepository.create(UUID.fromString(jobId), user, JobType.GOOGLE_TIMELINE_IMPORT, JobState.PREPARING, originalFilename);
 
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
@@ -97,11 +92,15 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
             if (!batch.isEmpty()) {
                 stagingService.insertBatch(jobId, user, device, batch);
             }
-            importJobRepository.updateState(UUID.fromString(jobId), JobState.AWAITING);
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobId(UUID.fromString(jobId))
+                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
+                    .friendlyName("GPS Data Promotion").build();
             if (graceTimeSeconds > 0) {
-                jobScheduler.schedule(UUID.fromString(jobId), LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+                jobSchedulingService.schedule(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null), LocalDateTime.now().plusSeconds(graceTimeSeconds), metadata);
             } else {
-                jobScheduler.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+                jobSchedulingService.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null), metadata);
             }
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}",
                     processedCount.get(), user.getUsername());

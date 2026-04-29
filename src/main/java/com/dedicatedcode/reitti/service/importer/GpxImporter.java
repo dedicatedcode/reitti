@@ -3,8 +3,8 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ImportJobRepository;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.jobrunr.jobs.context.JobContext;
@@ -37,21 +37,19 @@ public class GpxImporter {
     private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
     private final PromotionJobHandler promotionJobHandler;
-    private final ImportJobRepository importJobRepository;
+    private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
-    private final JobScheduler jobScheduler;
 
     public GpxImporter(ImportStateHolder stateHolder,
                        LocationPointStagingService stagingService,
-                       PromotionJobHandler promotionJobHandler, ImportJobRepository importJobRepository,
+                       PromotionJobHandler promotionJobHandler,
                        @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds,
-                       JobScheduler jobScheduler) {
+                       JobSchedulingService jobSchedulingService) {
         this.stateHolder = stateHolder;
         this.stagingService = stagingService;
         this.promotionJobHandler = promotionJobHandler;
-        this.importJobRepository = importJobRepository;
         this.graceTimeSeconds = graceTimeSeconds;
-        this.jobScheduler = jobScheduler;
+        this.jobSchedulingService = jobSchedulingService;
     }
 
     public Map<String, Object> importGpx(InputStream inputStream, User user, Device device, String originalFilename) {
@@ -63,8 +61,6 @@ public class GpxImporter {
 
             String jobId = UUID.randomUUID().toString();
             stagingService.ensurePartitionExists(jobId);
-
-            this.importJobRepository.create(UUID.fromString(jobId), user, JobType.GPS_IMPORT, JobState.PREPARING, originalFilename);
 
             XMLInputFactory factory = XMLInputFactory.newInstance();
             // Disable external entity processing for security
@@ -157,11 +153,19 @@ public class GpxImporter {
             }
 
             logger.info("Successfully imported and queued [{}] location points from GPX file for user [{}]", processedCount.get(), user.getUsername());
-            importJobRepository.updateState(UUID.fromString(jobId), JobState.AWAITING);
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobId(UUID.fromString(jobId))
+                    .jobType(JobType.GPX_IMPORT)
+                    .friendlyName("GPS Data Promotion").build();
             if (graceTimeSeconds > 0) {
-                jobScheduler.schedule(UUID.fromString(jobId), LocalDateTime.now().plusSeconds(graceTimeSeconds), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+                jobSchedulingService.schedule(UUID.fromString(jobId),
+                                              () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null),
+                                              LocalDateTime.now().plusSeconds(graceTimeSeconds),
+                                              metadata);
             } else {
-                jobScheduler.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null));
+                jobSchedulingService.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null),
+                                             metadata);
             }
             return Map.of(
                     "success", true,

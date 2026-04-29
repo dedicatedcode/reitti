@@ -1,14 +1,17 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Collections;
 
 @Repository
 public class JobMetadataRepository {
@@ -18,84 +21,84 @@ public class JobMetadataRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void insert(UUID jobId, Long userId, JobType jobType, String friendlyName, String initialState, Instant enqueuedAt, Instant scheduledAt) {
+    public void insert(UUID jobId, User user, JobType jobType, String friendlyName, JobState initialState, Instant enqueuedAt, Instant scheduledAt) {
         jdbcTemplate.update(
-            "INSERT INTO import_jobs (id, user_id, job_type, friendly_name, state, enqueued_at, scheduled_at, created_at, updated_at) " +
+            "INSERT INTO import_jobs (id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, created_at, updated_at) " +
             "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
             jobId,
-            userId,
+            user.getId(),
             jobType.name(),
             friendlyName,
-            initialState,
-            enqueuedAt,
-            scheduledAt
+            initialState.name(),
+            toTimestamp(enqueuedAt),
+            toTimestamp(scheduledAt)
         );
     }
 
-    public void updateState(UUID jobId, String newState, Instant stateTimestamp) {
-        String column;
-        switch (newState) {
-            case "PROCESSING":
-                column = "processing_at";
-                break;
-            case "SUCCEEDED":
-            case "FAILED":
-            case "COMPLETED":
-                column = "finished_at";
-                break;
-            default:
-                column = null;
-        }
+    private Timestamp toTimestamp(Instant instant) {
+        return instant == null ? null : Timestamp.from(instant);
+    }
+
+    private Instant toInstant(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant();
+    }
+
+    public void updateState(UUID jobId, JobState newState, Instant stateTimestamp) {
+        String column = switch (newState) {
+            case RUNNING -> "processing_at";
+            case FAILED, COMPLETED -> "finished_at";
+            default -> null;
+        };
 
         if (column != null) {
             jdbcTemplate.update(
-                "UPDATE import_jobs SET state = ?, " + column + " = ?, updated_at = NOW() WHERE id = ?",
+                "UPDATE import_jobs SET status = ?, " + column + " = ?, updated_at = NOW() WHERE id = ?",
                 newState,
-                stateTimestamp,
+                toTimestamp(stateTimestamp),
                 jobId
             );
         } else {
             jdbcTemplate.update(
-                "UPDATE import_jobs SET state = ?, updated_at = NOW() WHERE id = ?",
+                "UPDATE import_jobs SET status = ?, updated_at = NOW() WHERE id = ?",
                 newState,
                 jobId
             );
         }
     }
 
-    public Optional<String> getState(UUID jobId) {
-        try {
-            String state = jdbcTemplate.queryForObject(
-                "SELECT state FROM import_jobs WHERE id = ?",
-                String.class,
-                jobId
-            );
-            return Optional.of(state);
-        } catch (Exception e) {
+    public Optional<JobState> getState(UUID jobId) {
+        String state = jdbcTemplate.queryForObject(
+            "SELECT status FROM import_jobs WHERE id = ?",
+            String.class,
+            jobId
+        );
+        if (state != null) {
+            return Optional.of(JobState.valueOf(state));
+        } else {
             return Optional.empty();
         }
     }
 
-    public List<JobMetadata> findByStates(List<String> states) {
+    public List<JobMetadata> findByStates(List<JobState> states) {
         if (states.isEmpty()) {
             return List.of();
         }
         String inClause = String.join(",", Collections.nCopies(states.size(), "?"));
-        String sql = "SELECT id, user_id, job_type, friendly_name, state, enqueued_at, scheduled_at, processing_at, finished_at " +
-                     "FROM import_jobs WHERE state IN (" + inClause + ") ORDER BY created_at DESC";
+        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at " +
+                     "FROM import_jobs WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             JobMetadata metadata = new JobMetadata();
             metadata.setId(UUID.fromString(rs.getString("id")));
             metadata.setUserId(rs.getLong("user_id"));
-            metadata.setJobType(rs.getString("job_type"));
+            metadata.setJobType(rs.getString("type"));
             metadata.setFriendlyName(rs.getString("friendly_name"));
-            metadata.setState(rs.getString("state"));
-            metadata.setEnqueuedAt(rs.getTimestamp("enqueued_at") != null ? rs.getTimestamp("enqueued_at").toInstant() : null);
-            metadata.setScheduledAt(rs.getTimestamp("scheduled_at") != null ? rs.getTimestamp("scheduled_at").toInstant() : null);
-            metadata.setProcessingAt(rs.getTimestamp("processing_at") != null ? rs.getTimestamp("processing_at").toInstant() : null);
-            metadata.setFinishedAt(rs.getTimestamp("finished_at") != null ? rs.getTimestamp("finished_at").toInstant() : null);
+            metadata.setState(JobState.valueOf(rs.getString("status")));
+            metadata.setEnqueuedAt(toInstant(rs.getTimestamp("enqueued_at")));
+            metadata.setScheduledAt(toInstant(rs.getTimestamp("scheduled_at")));
+            metadata.setProcessingAt(toInstant(rs.getTimestamp("processing_at")));
+            metadata.setFinishedAt(toInstant(rs.getTimestamp("finished_at")));
             return metadata;
-        }, states.toArray());
+        }, states.stream().map(Enum::name).toArray());
     }
 
     public static class JobMetadata {
@@ -103,7 +106,7 @@ public class JobMetadataRepository {
         private Long userId;
         private String jobType;
         private String friendlyName;
-        private String state;
+        private JobState state;
         private Instant enqueuedAt;
         private Instant scheduledAt;
         private Instant processingAt;
@@ -117,8 +120,14 @@ public class JobMetadataRepository {
         public void setJobType(String jobType) { this.jobType = jobType; }
         public String getFriendlyName() { return friendlyName; }
         public void setFriendlyName(String friendlyName) { this.friendlyName = friendlyName; }
-        public String getState() { return state; }
-        public void setState(String state) { this.state = state; }
+
+        public JobState getState() {
+            return state;
+        }
+
+        public void setState(JobState state) {
+            this.state = state;
+        }
         public Instant getEnqueuedAt() { return enqueuedAt; }
         public void setEnqueuedAt(Instant enqueuedAt) { this.enqueuedAt = enqueuedAt; }
         public Instant getScheduledAt() { return scheduledAt; }

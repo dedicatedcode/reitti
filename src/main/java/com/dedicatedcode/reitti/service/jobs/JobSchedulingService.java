@@ -22,19 +22,23 @@ public class JobSchedulingService {
         this.jobMetadataRepository = jobMetadataRepository;
     }
 
-    public void enqueue(UUID jobId, JobLambda job, User user, JobType jobType, String friendlyName) {
+    public void enqueue(JobLambda job, Metadata jobMetaData) {
+        UUID jobId = UUID.randomUUID();
+        enqueue(jobId, job, new Metadata(jobId, jobMetaData.user, jobMetaData.jobType, jobMetaData.friendlyName));
+    }
+    public void enqueue(UUID jobId, JobLambda job, Metadata jobMetaData) {
         Instant now = Instant.now();
-        jobMetadataRepository.insert(jobId, user.getId(), jobType, friendlyName, JobState.RUNNING, now, null);
+        jobMetadataRepository.insert(jobId, jobMetaData.user, jobMetaData.jobType, jobMetaData.friendlyName, JobState.CREATED, now, null);
         jobScheduler.enqueue(job);
     }
 
     /**
      * Schedule a pre-built Job with associated metadata to run at a specific time.
      */
-    public void schedule(UUID jobId, JobLambda job, LocalDateTime scheduledTime, User user, JobType jobType, String friendlyName) {
+    public void schedule(UUID jobId, JobLambda job, LocalDateTime scheduledTime, Metadata jobMetaData) {
         Instant now = Instant.now();
         Instant scheduledAt = scheduledTime.atZone(ZoneId.systemDefault()).toInstant();
-        jobMetadataRepository.insert(jobId, user.getId(), jobType, friendlyName, JobState.AWAITING, now, scheduledAt);
+        jobMetadataRepository.insert(jobId, jobMetaData.user, jobMetaData.jobType, jobMetaData.friendlyName, JobState.AWAITING, now, scheduledAt);
         jobScheduler.schedule(jobId, scheduledTime, job);
     }
 

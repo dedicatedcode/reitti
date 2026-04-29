@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class PromotionJobHandler {
     private static final Logger log = LoggerFactory.getLogger(PromotionJobHandler.class);
@@ -43,11 +45,8 @@ public class PromotionJobHandler {
         jobDashboardProgressBar.incrementSucceeded();
         if (promote > 0) {
             this.jobSchedulingService.enqueue(
-                () -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end(), JobContext.Null),
-                user.getId(),
-                JobType.LOCATION_DATA_CLEANUP,
-                "Location Data Cleanup"
-            );
+                    () -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end(), JobContext.Null),
+                    JobSchedulingService.Metadata.builder().user(user).jobType(JobType.LOCATION_DATA_CLEANUP).friendlyName("Location Data Cleanup").build());
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);
         }

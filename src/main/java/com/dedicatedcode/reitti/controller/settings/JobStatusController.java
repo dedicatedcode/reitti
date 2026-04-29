@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.controller.api.QueueStatsApiController.JobInfo;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.service.jobs.JobState;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -39,7 +40,7 @@ public class JobStatusController {
 
         // Get pending/running jobs (PREPARING, AWAITING, RUNNING)
         List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
-            List.of("PREPARING", "AWAITING", "RUNNING")
+            List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
         );
         for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
             JobInfo jobInfo = mapToJobInfo(metadata);
@@ -50,7 +51,7 @@ public class JobStatusController {
 
         // Get past jobs (COMPLETED, FAILED)
         List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
-            List.of("COMPLETED", "FAILED")
+            List.of(JobState.COMPLETED, JobState.FAILED)
         );
         for (JobMetadataRepository.JobMetadata metadata : pastJobMetadata) {
             JobInfo jobInfo = mapToJobInfo(metadata);
@@ -78,7 +79,7 @@ public class JobStatusController {
 
         // Get pending/running jobs
         List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
-            List.of("PREPARING", "AWAITING", "RUNNING")
+            List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
         );
         for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
             JobInfo jobInfo = mapToJobInfo(metadata);
@@ -89,7 +90,7 @@ public class JobStatusController {
 
         // Get past jobs
         List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
-            List.of("COMPLETED", "FAILED")
+            List.of(JobState.COMPLETED, JobState.FAILED)
         );
         for (JobMetadataRepository.JobMetadata metadata : pastJobMetadata) {
             JobInfo jobInfo = mapToJobInfo(metadata);
@@ -106,12 +107,12 @@ public class JobStatusController {
 
     private JobInfo mapToJobInfo(JobMetadataRepository.JobMetadata metadata) {
         try {
-            String state = metadata.getState();
+            JobState state = metadata.getState();
             String jobName = metadata.getFriendlyName();
             String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
 
             // Check if job can be cancelled (AWAITING state)
-            boolean canCancel = "AWAITING".equals(state);
+            boolean canCancel = state == JobState.AWAITING;
 
             return new JobInfo(
                     metadata.getId(),
