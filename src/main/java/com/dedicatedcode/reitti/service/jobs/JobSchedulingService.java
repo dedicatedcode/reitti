@@ -1,9 +1,8 @@
 package com.dedicatedcode.reitti.service.jobs;
 
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
-import org.jobrunr.jobs.Job;
-import org.jobrunr.jobs.JobBuilder;
-import org.jobrunr.jobs.JobRunnable;
+import org.jobrunr.jobs.lambdas.JobLambda;
 import org.jobrunr.scheduling.JobScheduler;
 import org.springframework.stereotype.Service;
 
@@ -23,46 +22,23 @@ public class JobSchedulingService {
         this.jobMetadataRepository = jobMetadataRepository;
     }
 
-    /**
-     * Enqueue a pre-built Job with associated metadata.
-     */
-    public void enqueue(Job job, Long userId, JobType jobType, String friendlyName) {
-        UUID jobId = job.getId();
+    public void enqueue(UUID jobId, JobLambda job, User user, JobType jobType, String friendlyName) {
         Instant now = Instant.now();
-        jobMetadataRepository.insert(jobId, userId, jobType, friendlyName, "ENQUEUED", now, null);
+        jobMetadataRepository.insert(jobId, user.getId(), jobType, friendlyName, JobState.RUNNING, now, null);
         jobScheduler.enqueue(job);
-    }
-
-    /**
-     * Enqueue a lambda-based job with associated metadata.
-     */
-    public void enqueue(JobRunnable jobRunnable, Long userId, JobType jobType, String friendlyName) {
-        Job job = JobBuilder.aJob()
-                .withId(UUID.randomUUID())
-                .withDetails(jobRunnable)
-                .build();
-        enqueue(job, userId, jobType, friendlyName);
     }
 
     /**
      * Schedule a pre-built Job with associated metadata to run at a specific time.
      */
-    public void schedule(Job job, LocalDateTime scheduledTime, Long userId, JobType jobType, String friendlyName) {
-        UUID jobId = job.getId();
+    public void schedule(UUID jobId, JobLambda job, LocalDateTime scheduledTime, User user, JobType jobType, String friendlyName) {
         Instant now = Instant.now();
         Instant scheduledAt = scheduledTime.atZone(ZoneId.systemDefault()).toInstant();
-        jobMetadataRepository.insert(jobId, userId, jobType, friendlyName, "SCHEDULED", now, scheduledAt);
-        jobScheduler.schedule(job, scheduledTime);
+        jobMetadataRepository.insert(jobId, user.getId(), jobType, friendlyName, JobState.AWAITING, now, scheduledAt);
+        jobScheduler.schedule(jobId, scheduledTime, job);
     }
 
-    /**
-     * Schedule a lambda-based job with associated metadata to run at a specific time.
-     */
-    public void schedule(JobRunnable jobRunnable, LocalDateTime scheduledTime, Long userId, JobType jobType, String friendlyName) {
-        Job job = JobBuilder.aJob()
-                .withId(UUID.randomUUID())
-                .withDetails(jobRunnable)
-                .build();
-        schedule(job, scheduledTime, userId, jobType, friendlyName);
+    public record Metadata(UUID jobId, User user, JobType jobType, String friendlyName) {
+        //add a builder here AI!
     }
 }
