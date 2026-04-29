@@ -23,7 +23,7 @@
                 <h2 th:text="#{jobs.title}">Job Status</h2>
 
                     <div class="jobs-section settings-card">
-                        <h3 th:text="#{jobs.pending.title}">Pending & Running Jobs</h3>
+                        <h3 th:text="#{jobs.pending.title}">Pending &amp; Running Jobs</h3>
                         <div th:if="${#lists.isEmpty(pendingJobs)}">
                             <p th:text="#{jobs.pending.empty}">No pending or running jobs.</p>
                         </div>
