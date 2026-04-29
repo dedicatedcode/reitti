@@ -2,12 +2,13 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.jobrunr.jobs.annotations.Job;
 import org.jobrunr.jobs.context.JobContext;
 import org.jobrunr.jobs.context.JobDashboardProgressBar;
-import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -16,14 +17,14 @@ import org.springframework.stereotype.Component;
 public class PromotionJobHandler {
     private static final Logger log = LoggerFactory.getLogger(PromotionJobHandler.class);
     private final LocationPointStagingService stagingService;
-    private final JobScheduler jobScheduler;
+    private final JobSchedulingService jobSchedulingService;
     private final LocationDataCleanupJob locationDataCleanupJob;
 
     public PromotionJobHandler(LocationPointStagingService stagingService,
-                               JobScheduler jobScheduler,
+                               JobSchedulingService jobSchedulingService,
                                LocationDataCleanupJob locationDataCleanupJob) {
         this.stagingService = stagingService;
-        this.jobScheduler = jobScheduler;
+        this.jobSchedulingService = jobSchedulingService;
         this.locationDataCleanupJob = locationDataCleanupJob;
     }
 
@@ -41,7 +42,12 @@ public class PromotionJobHandler {
         }
         jobDashboardProgressBar.incrementSucceeded();
         if (promote > 0) {
-            this.jobScheduler.enqueue(() -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end(), JobContext.Null));
+            this.jobSchedulingService.enqueue(
+                () -> locationDataCleanupJob.execute(user, device, timeRange.start(), timeRange.end(), JobContext.Null),
+                user.getId(),
+                JobType.LOCATION_DATA_CLEANUP,
+                "Location Data Cleanup"
+            );
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);
         }
