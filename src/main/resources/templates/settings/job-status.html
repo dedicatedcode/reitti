@@ -22,26 +22,84 @@
             <div th:fragment="queue-stats-content">
                 <h2 th:text="#{jobs.title}">Job Status</h2>
 
-                <div class="queue-status">
-                    <div class="queue-card" th:each="queue : ${queueStats}">
-                        <div class="queue-name" th:text="${queue.displayName()}">Queue Name</div>
-                        <div class="queue-count" th:text="${queue.count()}">0</div>
-                        <div class="queue-time" th:text="#{jobs.estimated.time(${queue.estimatedTime()})}">Est. processing time: 0 min</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" th:style="'width:' + ${queue.rate()} + '%'"></div>
+                    <div class="jobs-section settings-card">
+                        <h3 th:text="#{jobs.pending.title}">Pending & Running Jobs</h3>
+                        <div th:if="${#lists.isEmpty(pendingJobs)}">
+                            <p th:text="#{jobs.pending.empty}">No pending or running jobs.</p>
                         </div>
-                        <div class="queue-description" th:text="${queue.description()}">Queue Description</div>
+                        <div th:unless="${#lists.isEmpty(pendingJobs)}">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th th:text="#{jobs.table.name}">Name</th>
+                                    <th th:text="#{jobs.table.state}">State</th>
+                                    <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
+                                    <th th:text="#{jobs.table.scheduledAt}">Scheduled At</th>
+                                    <th th:text="#{jobs.table.actions}">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="job : ${pendingJobs}">
+                                    <td th:text="${job.name()}"></td>
+                                    <td>
+                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}" th:text="${job.state()}">STATE</span>
+                                    </td>
+                                    <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
+                                    <td th:text="${job.scheduledAt() != null ? #temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
+                                    <td>
+                                        <button th:if="${job.canCancel()}"
+                                                class="btn btn-danger"
+                                                th:attr="hx-delete=@{/api/v1/queue-stats/{id}(id=${job.id()})}"
+                                                hx-target="#job-status"
+                                                hx-swap="innerHTML"
+                                                th:text="#{form.cancel}">Cancel</button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <div style="margin-top: 20px;">
-                    <button class="btn"
-                            hx-trigger="every 2s"
-                            th:hx-get="@{/settings/queue-stats-content}"
-                            hx-target="#job-status"
-                            hx-swap="innerHTML"
-                            th:text="#{jobs.refresh}">Refresh Status</button>
-                </div>
+                    <!-- Past Jobs -->
+                    <div class="jobs-section settings-card" style="margin-top: 30px;">
+                        <h3 th:text="#{jobs.past.title}">Past Jobs</h3>
+                        <div th:if="${#lists.isEmpty(pastJobs)}">
+                            <p th:text="#{jobs.past.empty}">No past jobs available.</p>
+                        </div>
+                        <div th:unless="${#lists.isEmpty(pastJobs)}">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th th:text="#{jobs.table.id}">ID</th>
+                                    <th th:text="#{jobs.table.name}">Name</th>
+                                    <th th:text="#{jobs.table.state}">State</th>
+                                    <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
+                                    <th th:text="#{jobs.table.finishedAt}">Finished At</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="job : ${pastJobs}">
+                                    <td th:text="${job.id()}"></td>
+                                    <td th:text="${job.name()}"></td>
+                                    <td>
+                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}" th:text="${job.state()}">STATE</span>
+                                    </td>
+                                    <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
+                                    <td th:text="${job.finishedAt() != null ? #temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+<!--                <div style="margin-top: 20px;">-->
+<!--                    <button class="btn"-->
+<!--                            hx-trigger="every 5s"-->
+<!--                            th:hx-get="@{/settings/queue-stats-content}"-->
+<!--                            hx-target="#job-status"-->
+<!--                            hx-swap="innerHTML"-->
+<!--                            th:text="#{jobs.refresh}">Refresh Status</button>-->
+<!--                </div>-->
             </div>
         </div>
     </div>
