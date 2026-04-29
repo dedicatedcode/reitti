@@ -32,6 +32,7 @@
                                 <thead>
                                 <tr>
                                     <th th:text="#{jobs.table.name}">Name</th>
+                                    <th th:text="#{jobs.table.description}">Description</th>
                                     <th th:text="#{jobs.table.state}">State</th>
                                     <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
                                     <th th:text="#{jobs.table.scheduledAt}">Scheduled At</th>
@@ -41,8 +42,12 @@
                                 <tbody>
                                 <tr th:each="job : ${pendingJobs}">
                                     <td th:text="${job.name()}"></td>
+                                    <td th:text="${job.description()}"></td>
                                     <td>
-                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}" th:text="${job.state()}">STATE</span>
+                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}">
+                                            <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : job.state().name() == 'RUNNING' ? 'lnr-sync' : job.state().name() == 'AWAITING' ? 'lnr-clock' : 'lnr-question-circle')}"></i>
+                                            <span th:text="${job.state()}">STATE</span>
+                                        </span>
                                     </td>
                                     <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
                                     <td th:text="${job.scheduledAt() != null ? #temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
@@ -61,7 +66,7 @@
                     </div>
 
                     <!-- Past Jobs -->
-                    <div class="jobs-section settings-card" style="margin-top: 30px;">
+                    <div class="jobs-section settings-card">
                         <h3 th:text="#{jobs.past.title}">Past Jobs</h3>
                         <div th:if="${#lists.isEmpty(pastJobs)}">
                             <p th:text="#{jobs.past.empty}">No past jobs available.</p>
@@ -72,6 +77,7 @@
                                 <tr>
                                     <th th:text="#{jobs.table.id}">ID</th>
                                     <th th:text="#{jobs.table.name}">Name</th>
+                                    <th th:text="#{jobs.table.description}">Description</th>
                                     <th th:text="#{jobs.table.state}">State</th>
                                     <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
                                     <th th:text="#{jobs.table.finishedAt}">Finished At</th>
@@ -81,8 +87,12 @@
                                 <tr th:each="job : ${pastJobs}">
                                     <td th:text="${job.id()}"></td>
                                     <td th:text="${job.name()}"></td>
+                                    <td th:text="${job.description()}"></td>
                                     <td>
-                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}" th:text="${job.state()}">STATE</span>
+                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}">
+                                            <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : job.state().name() == 'RUNNING' ? 'lnr-sync' : job.state().name() == 'AWAITING' ? 'lnr-clock' : 'lnr-question-circle')}"></i>
+                                            <span th:text="${job.state()}">STATE</span>
+                                        </span>
                                     </td>
                                     <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
                                     <td th:text="${job.finishedAt() != null ? #temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
