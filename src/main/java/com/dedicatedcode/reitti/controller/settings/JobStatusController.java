@@ -3,13 +3,7 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.controller.api.QueueStatsApiController.JobInfo;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ImportJobRepository;
-import com.dedicatedcode.reitti.service.jobs.JobState;
-import org.jobrunr.jobs.Job;
-import org.jobrunr.jobs.states.StateName;
-import org.jobrunr.storage.StorageProvider;
-import org.jobrunr.storage.navigation.OffsetBasedPageRequest;
-import org.jobrunr.storage.navigation.PageRequest;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -20,24 +14,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/settings")
 public class JobStatusController {
 
-    private final StorageProvider storageProvider;
     private final boolean dataManagementEnabled;
-    private final ImportJobRepository importJobRepository;
-    private final OffsetBasedPageRequest amountRequest = new OffsetBasedPageRequest("updatedAt:ASC", 0, 100);
+    private final JobMetadataRepository jobMetadataRepository;
 
-    public JobStatusController(StorageProvider storageProvider,
-                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                               ImportJobRepository importJobRepository) {
-        this.storageProvider = storageProvider;
+    public JobStatusController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                               JobMetadataRepository jobMetadataRepository) {
         this.dataManagementEnabled = dataManagementEnabled;
-        this.importJobRepository = importJobRepository;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
 
     @GetMapping("/job-status")
@@ -49,43 +37,23 @@ public class JobStatusController {
         List<JobInfo> pendingJobs = new ArrayList<>();
         List<JobInfo> pastJobs = new ArrayList<>();
 
-        // Get pending/running jobs (ENQUEUED, PROCESSING, SCHEDULED)
-        List<Job> enqueuedJobs = storageProvider.getJobList(StateName.ENQUEUED, amountRequest);
-        for (Job job : enqueuedJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
+        // Get pending/running jobs (PREPARING, AWAITING, RUNNING)
+        List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
+            List.of("PREPARING", "AWAITING", "RUNNING")
+        );
+        for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
+            JobInfo jobInfo = mapToJobInfo(metadata);
             if (jobInfo != null) {
                 pendingJobs.add(jobInfo);
             }
         }
 
-        List<Job> processingJobs = storageProvider.getJobList(StateName.PROCESSING, amountRequest);
-        for (Job job : processingJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pendingJobs.add(jobInfo);
-            }
-        }
-
-        List<Job> scheduledJobs = storageProvider.getJobList(StateName.SCHEDULED, amountRequest);
-        for (Job job : scheduledJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pendingJobs.add(jobInfo);
-            }
-        }
-
-        // Get past jobs (SUCCEEDED, FAILED)
-        List<Job> failedJobs = storageProvider.getJobList(StateName.FAILED, amountRequest);
-        for (Job job : failedJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pastJobs.add(jobInfo);
-            }
-        }
-
-        List<Job> succeededJobs = storageProvider.getJobList(StateName.SUCCEEDED, amountRequest);
-        for (Job job : succeededJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
+        // Get past jobs (COMPLETED, FAILED)
+        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
+            List.of("COMPLETED", "FAILED")
+        );
+        for (JobMetadataRepository.JobMetadata metadata : pastJobMetadata) {
+            JobInfo jobInfo = mapToJobInfo(metadata);
             if (jobInfo != null) {
                 pastJobs.add(jobInfo);
             }
@@ -96,7 +64,6 @@ public class JobStatusController {
 
         // Sort past jobs by finished time (most recent first)
         pastJobs.sort((a, b) -> compareInstant(b.finishedAt(), a.finishedAt()));
-
 
         model.addAttribute("pendingJobs", pendingJobs);
         model.addAttribute("pastJobs", pastJobs);
@@ -109,43 +76,23 @@ public class JobStatusController {
         List<JobInfo> pendingJobs = new ArrayList<>();
         List<JobInfo> pastJobs = new ArrayList<>();
 
-        // Get pending/running jobs (ENQUEUED, PROCESSING, SCHEDULED)
-        List<Job> enqueuedJobs = storageProvider.getJobList(StateName.ENQUEUED, amountRequest);
-        for (Job job : enqueuedJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
+        // Get pending/running jobs
+        List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
+            List.of("PREPARING", "AWAITING", "RUNNING")
+        );
+        for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
+            JobInfo jobInfo = mapToJobInfo(metadata);
             if (jobInfo != null) {
                 pendingJobs.add(jobInfo);
             }
         }
 
-        List<Job> processingJobs = storageProvider.getJobList(StateName.PROCESSING, amountRequest);
-        for (Job job : processingJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pendingJobs.add(jobInfo);
-            }
-        }
-
-        List<Job> scheduledJobs = storageProvider.getJobList(StateName.SCHEDULED, amountRequest);
-        for (Job job : scheduledJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pendingJobs.add(jobInfo);
-            }
-        }
-
-        // Get past jobs (SUCCEEDED, FAILED)
-        List<Job> failedJobs = storageProvider.getJobList(StateName.FAILED, amountRequest);
-        for (Job job : failedJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
-            if (jobInfo != null) {
-                pastJobs.add(jobInfo);
-            }
-        }
-
-        List<Job> succeededJobs = storageProvider.getJobList(StateName.SUCCEEDED, amountRequest);
-        for (Job job : succeededJobs) {
-            JobInfo jobInfo = mapToJobInfo(job);
+        // Get past jobs
+        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
+            List.of("COMPLETED", "FAILED")
+        );
+        for (JobMetadataRepository.JobMetadata metadata : pastJobMetadata) {
+            JobInfo jobInfo = mapToJobInfo(metadata);
             if (jobInfo != null) {
                 pastJobs.add(jobInfo);
             }
@@ -157,37 +104,24 @@ public class JobStatusController {
         return "settings/job-status :: queue-stats-content";
     }
 
-    private JobInfo mapToJobInfo(Job job) {
+    private JobInfo mapToJobInfo(JobMetadataRepository.JobMetadata metadata) {
         try {
-            UUID jobId = job.getId();
-            String state = job.getState().name();
-            Instant enqueuedAt = job.getCreatedAt();
-            Instant scheduledAt = job.getCreatedAt();
-            Instant processingAt = job.getUpdatedAt();
-            Instant finishedAt = job.getUpdatedAt();
+            String state = metadata.getState();
+            String jobName = metadata.getFriendlyName();
+            String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
 
-            // Get job details for more info
-            String jobName = job.getJobName();
-            String jobDescription = job.getJobDetails() != null ? job.getJobDetails().toString() : "";
-
-            // Check if this is an ImportJob that can be cancelled
-            boolean canCancel = false;
-            if (state.equals("ENQUEUED") || state.equals("PROCESSING") || state.equals("SCHEDULED")) {
-                Optional<JobState> importJobState = importJobRepository.getState(jobId);
-                if (importJobState.isPresent() && importJobState.get() == JobState.AWAITING) {
-                    canCancel = true;
-                }
-            }
+            // Check if job can be cancelled (AWAITING state)
+            boolean canCancel = "AWAITING".equals(state);
 
             return new JobInfo(
-                    jobId,
+                    metadata.getId(),
                     jobName,
                     jobDescription,
                     state,
-                    enqueuedAt,
-                    scheduledAt,
-                    processingAt,
-                    finishedAt,
+                    metadata.getEnqueuedAt(),
+                    metadata.getScheduledAt(),
+                    metadata.getProcessingAt(),
+                    metadata.getFinishedAt(),
                     canCancel
             );
         } catch (Exception e) {
@@ -201,5 +135,4 @@ public class JobStatusController {
         if (b == null) return -1;
         return b.compareTo(a); // Most recent first
     }
-
 }
