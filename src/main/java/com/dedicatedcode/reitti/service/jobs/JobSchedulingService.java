@@ -39,6 +39,39 @@ public class JobSchedulingService {
     }
 
     public record Metadata(UUID jobId, User user, JobType jobType, String friendlyName) {
-        //add a builder here AI!
+        public static class Builder {
+            private UUID jobId;
+            private User user;
+            private JobType jobType;
+            private String friendlyName;
+
+            public Builder jobId(UUID jobId) {
+                this.jobId = jobId;
+                return this;
+            }
+
+            public Builder user(User user) {
+                this.user = user;
+                return this;
+            }
+
+            public Builder jobType(JobType jobType) {
+                this.jobType = jobType;
+                return this;
+            }
+
+            public Builder friendlyName(String friendlyName) {
+                this.friendlyName = friendlyName;
+                return this;
+            }
+
+            public Metadata build() {
+                return new Metadata(jobId, user, jobType, friendlyName);
+            }
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
     }
 }
