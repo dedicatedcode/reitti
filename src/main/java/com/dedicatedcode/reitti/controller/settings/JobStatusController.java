@@ -64,6 +64,14 @@ public class JobStatusController {
             childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(child);
         }
 
+        // Get past jobs for calculating average runtime
+        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
+            List.of(JobState.COMPLETED, JobState.FAILED)
+        );
+
+        // Calculate average runtime by job type
+        Map<String, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastJobMetadata);
+
         // Build parent job info with children
         List<JobInfo> pendingJobs = new ArrayList<>();
         for (JobMetadataRepository.JobMetadata parent : parentJobs) {
@@ -79,6 +87,11 @@ public class JobStatusController {
                     .filter(j -> j.state() == JobState.COMPLETED || j.state() == JobState.FAILED)
                     .count();
 
+                // Get estimated duration based on job type
+                String jobType = parent.getJobType();
+                AverageRuntime avgRuntime = averageRuntimes.get(jobType);
+                Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
+
                 pendingJobs.add(new JobInfo(
                     jobInfo.id(),
                     jobInfo.name(),
@@ -92,17 +105,12 @@ public class JobStatusController {
                     children,
                     completedChildren,
                     children.size(),
-                    null
+                    estimatedDuration
                 ));
             }
         }
 
-        // Get past jobs (COMPLETED, FAILED) - only top-level parents
-        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
-            List.of(JobState.COMPLETED, JobState.FAILED)
-        );
-
-        // Filter to only top-level parent jobs
+        // Filter to only top-level parent jobs for past jobs
         List<JobMetadataRepository.JobMetadata> pastParentJobs = pastJobMetadata.stream()
             .filter(job -> job.getParentJobId() == null)
             .toList();
@@ -123,12 +131,8 @@ public class JobStatusController {
             return bTime.compareTo(aTime);
         });
 
-        // Calculate average runtime by job type
-        Map<String, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastJobMetadata);
-
         model.addAttribute("pendingJobs", pendingJobs);
         model.addAttribute("pastJobs", pastJobs);
-        model.addAttribute("averageRuntimes", averageRuntimes);
 
         return "settings/job-status :: queue-stats-content";
     }

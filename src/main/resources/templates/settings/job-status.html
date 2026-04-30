@@ -117,24 +117,6 @@
             color: #333;
         }
 
-        .average-runtime-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-        }
-
-        .average-runtime-table th,
-        .average-runtime-table td {
-            padding: 8px 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .average-runtime-table th {
-            background: #f5f5f5;
-            font-weight: 600;
-        }
-
         .jobs-section {
             margin-bottom: 24px;
         }
@@ -198,6 +180,11 @@
                                     <span th:text="#{jobs.scheduledAt}">Scheduled</span>:
                                     <span th:text="${#temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
                                 </span>
+                                <span th:if="${job.durationSeconds() != null}" class="job-duration">
+                                    <i class="lnr lnr-hourglass"></i>
+                                    <span th:text="#{jobs.estimated}">Est.</span>:
+                                    <span th:text="${job.formattedDuration()}">0s</span>
+                                </span>
                                 <button th:if="${job.canCancel()}"
                                         class="btn btn-danger btn-sm"
                                         th:attr="hx-delete=@{/api/v1/queue-stats/{id}(id=${job.id()})}"
@@ -237,29 +224,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Average Runtime Table -->
-                <div class="jobs-section" th:unless="${#maps.isEmpty(averageRuntimes)}">
-                    <h3 th:text="#{jobs.averageRuntime.title}">Average Runtime by Job Type</h3>
-                    <table class="average-runtime-table">
-                        <thead>
-                            <tr>
-                                <th th:text="#{jobs.averageRuntime.jobType}">Job Type</th>
-                                <th th:text="#{jobs.averageRuntime.averageTime}">Average Time</th>
-                                <th th:text="#{jobs.averageRuntime.samples}">Samples</th>
-                                <th th:text="#{jobs.averageRuntime.estimate}">Estimated Duration</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="entry : ${averageRuntimes}">
-                                <td th:text="${entry.key}">JOB_TYPE</td>
-                                <td th:text="${entry.value.formattedDuration}">0s</td>
-                                <td th:text="${entry.value.sampleCount}">0</td>
-                                <td th:text="${entry.value.estimatedDuration}">0 min</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
 
                 <!-- Past Jobs -->
