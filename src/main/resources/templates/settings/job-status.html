@@ -75,7 +75,6 @@
                             <table>
                                 <thead>
                                 <tr>
-                                    <th th:text="#{jobs.table.id}">ID</th>
                                     <th th:text="#{jobs.table.name}">Name</th>
                                     <th th:text="#{jobs.table.description}">Description</th>
                                     <th th:text="#{jobs.table.state}">State</th>
@@ -85,7 +84,6 @@
                                 </thead>
                                 <tbody>
                                 <tr th:each="job : ${pastJobs}">
-                                    <td th:text="${job.id()}"></td>
                                     <td th:text="${job.name()}"></td>
                                     <td th:text="${job.description()}"></td>
                                     <td>
@@ -104,7 +102,7 @@
 
                 <div style="margin-top: 20px;">
                     <button class="btn"
-                            hx-trigger="click, every 5s"
+                            hx-trigger="click, load, every 5s"
                             th:hx-get="@{/settings/queue-stats-content}"
                             hx-target="#job-status"
                             hx-swap="innerHTML"

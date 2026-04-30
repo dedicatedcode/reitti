@@ -35,40 +35,6 @@ public class JobStatusController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
 
-        List<JobInfo> pendingJobs = new ArrayList<>();
-        List<JobInfo> pastJobs = new ArrayList<>();
-
-        // Get pending/running jobs (PREPARING, AWAITING, RUNNING)
-        List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
-            List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
-        );
-        for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
-            JobInfo jobInfo = mapToJobInfo(metadata);
-            if (jobInfo != null) {
-                pendingJobs.add(jobInfo);
-            }
-        }
-
-        // Get past jobs (COMPLETED, FAILED)
-        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
-            List.of(JobState.COMPLETED, JobState.FAILED)
-        );
-        for (JobMetadataRepository.JobMetadata metadata : pastJobMetadata) {
-            JobInfo jobInfo = mapToJobInfo(metadata);
-            if (jobInfo != null) {
-                pastJobs.add(jobInfo);
-            }
-        }
-
-        // Sort pending jobs by enqueued time (most recent first)
-        pendingJobs.sort((a, b) -> compareInstant(b.enqueuedAt(), a.enqueuedAt()));
-
-        // Sort past jobs by finished time (most recent first)
-        pastJobs.sort((a, b) -> compareInstant(b.finishedAt(), a.finishedAt()));
-
-        model.addAttribute("pendingJobs", pendingJobs);
-        model.addAttribute("pastJobs", pastJobs);
-
         return "settings/job-status";
     }
 
