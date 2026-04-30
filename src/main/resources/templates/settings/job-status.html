@@ -12,6 +12,150 @@
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
+    <style>
+        .job-card {
+            background: var(--card-background, #fff);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .job-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .job-card-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin: 0;
+        }
+
+        .job-card-description {
+            color: #666;
+            font-size: 0.9em;
+            margin: 4px 0;
+        }
+
+        .job-card-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .job-progress {
+            margin-top: 12px;
+        }
+
+        .job-progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .job-progress-fill {
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.3s ease;
+        }
+
+        .job-progress-text {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .child-jobs-container {
+            margin-top: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+        }
+
+        .child-jobs-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #666;
+            font-size: 0.9em;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .child-jobs-toggle:hover {
+            color: #333;
+        }
+
+        .child-jobs-list {
+            display: none;
+            margin-top: 8px;
+            padding-left: 16px;
+        }
+
+        .child-jobs-list.open {
+            display: block;
+        }
+
+        .child-job-item {
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+        }
+
+        .job-duration {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .average-runtime-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .average-runtime-table th,
+        .average-runtime-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .average-runtime-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .jobs-section {
+            margin-bottom: 24px;
+        }
+
+        .jobs-section h3 {
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+
+        .empty-state {
+            color: #888;
+            font-style: italic;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.85em;
+        }
+    </style>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -22,83 +166,142 @@
             <div th:fragment="queue-stats-content">
                 <h2 th:text="#{jobs.title}">Job Status</h2>
 
-                    <div class="jobs-section settings-card">
-                        <h3 th:text="#{jobs.pending.title}">Pending &amp; Running Jobs</h3>
-                        <div th:if="${#lists.isEmpty(pendingJobs)}">
-                            <p th:text="#{jobs.pending.empty}">No pending or running jobs.</p>
-                        </div>
-                        <div th:unless="${#lists.isEmpty(pendingJobs)}">
-                            <table>
-                                <thead>
-                                <tr>
-                                    <th th:text="#{jobs.table.name}">Name</th>
-                                    <th th:text="#{jobs.table.description}">Description</th>
-                                    <th th:text="#{jobs.table.state}">State</th>
-                                    <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
-                                    <th th:text="#{jobs.table.scheduledAt}">Scheduled At</th>
-                                    <th th:text="#{jobs.table.actions}">Actions</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="job : ${pendingJobs}">
-                                    <td th:text="${job.name()}"></td>
-                                    <td th:text="${job.description()}"></td>
-                                    <td>
-                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}">
-                                            <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : job.state().name() == 'RUNNING' ? 'lnr-sync' : job.state().name() == 'AWAITING' ? 'lnr-clock' : 'lnr-question-circle')}"></i>
-                                            <span th:text="${job.state()}">STATE</span>
-                                        </span>
-                                    </td>
-                                    <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
-                                    <td th:text="${job.scheduledAt() != null ? #temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
-                                    <td>
-                                        <button th:if="${job.canCancel()}"
-                                                class="btn btn-danger"
-                                                th:attr="hx-delete=@{/api/v1/queue-stats/{id}(id=${job.id()})}"
-                                                hx-target="#job-status"
-                                                hx-swap="innerHTML"
-                                                th:text="#{form.cancel}">Cancel</button>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <!-- Pending & Running Jobs -->
+                <div class="jobs-section">
+                    <h3 th:text="#{jobs.pending.title}">Pending &amp; Running Jobs</h3>
+
+                    <div th:if="${#lists.isEmpty(pendingJobs)}">
+                        <p class="empty-state" th:text="#{jobs.pending.empty}">No pending or running jobs.</p>
                     </div>
 
-                    <!-- Past Jobs -->
-                    <div class="jobs-section settings-card">
-                        <h3 th:text="#{jobs.past.title}">Past Jobs</h3>
-                        <div th:if="${#lists.isEmpty(pastJobs)}">
-                            <p th:text="#{jobs.past.empty}">No past jobs available.</p>
-                        </div>
-                        <div th:unless="${#lists.isEmpty(pastJobs)}">
-                            <table>
-                                <thead>
-                                <tr>
-                                    <th th:text="#{jobs.table.name}">Name</th>
-                                    <th th:text="#{jobs.table.description}">Description</th>
-                                    <th th:text="#{jobs.table.state}">State</th>
-                                    <th th:text="#{jobs.table.enqueuedAt}">Enqueued At</th>
-                                    <th th:text="#{jobs.table.finishedAt}">Finished At</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="job : ${pastJobs}">
-                                    <td th:text="${job.name()}"></td>
-                                    <td th:text="${job.description()}"></td>
-                                    <td>
-                                        <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state())}">
-                                            <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : job.state().name() == 'RUNNING' ? 'lnr-sync' : job.state().name() == 'AWAITING' ? 'lnr-clock' : 'lnr-question-circle')}"></i>
-                                            <span th:text="${job.state()}">STATE</span>
-                                        </span>
-                                    </td>
-                                    <td th:text="${job.enqueuedAt() != null ? #temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
-                                    <td th:text="${job.finishedAt() != null ? #temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
-                                </tr>
-                                </tbody>
-                            </table>
+                    <div th:unless="${#lists.isEmpty(pendingJobs)}">
+                        <div th:each="job : ${pendingJobs}" class="job-card">
+                            <div class="job-card-header">
+                                <div>
+                                    <div class="job-card-title" th:text="${job.name()}">Job Name</div>
+                                    <div class="job-card-description" th:text="${job.description()}">Description</div>
+                                </div>
+                                <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state().name())}">
+                                    <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : job.state().name() == 'RUNNING' ? 'lnr-sync' : job.state().name() == 'AWAITING' ? 'lnr-clock' : 'lnr-question-circle')}"></i>
+                                    <span th:text="${job.state()}">STATE</span>
+                                </span>
+                            </div>
+
+                            <div class="job-card-meta">
+                                <span th:if="${job.enqueuedAt() != null}">
+                                    <i class="lnr lnr-clock"></i>
+                                    <span th:text="#{jobs.enqueuedAt}">Enqueued</span>:
+                                    <span th:text="${#temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                </span>
+                                <span th:if="${job.scheduledAt() != null}">
+                                    <i class="lnr lnr-calendar-full"></i>
+                                    <span th:text="#{jobs.scheduledAt}">Scheduled</span>:
+                                    <span th:text="${#temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                </span>
+                                <button th:if="${job.canCancel()}"
+                                        class="btn btn-danger btn-sm"
+                                        th:attr="hx-delete=@{/api/v1/queue-stats/{id}(id=${job.id()})}"
+                                        hx-target="#job-status"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.cancel}">Cancel</button>
+                            </div>
+
+                            <!-- Progress for parent jobs with children -->
+                            <div th:if="${job.totalChildren() > 0}" class="job-progress">
+                                <div class="job-progress-bar">
+                                    <div class="job-progress-fill" th:style="'width: ' + ${job.progressPercent()} + '%'"></div>
+                                </div>
+                                <div class="job-progress-text" th:text="${job.progressText()}">0 / 0 child jobs</div>
+                            </div>
+
+                            <!-- Collapsible child jobs -->
+                            <div th:if="${job.totalChildren() > 0}" class="child-jobs-container">
+                                <button class="child-jobs-toggle" th:attr="onclick=|toggleChildJobs('${job.id()}')|">
+                                    <i class="lnr lnr-chevron-right" th:id="'toggle-icon-' + ${job.id()}"></i>
+                                    <span th:text="#{jobs.childJobs}">Child Jobs</span>
+                                    <span th:text="${'(' + job.totalChildren() + ')'}">(0)</span>
+                                </button>
+                                <div th:id="'child-jobs-' + ${job.id()}" class="child-jobs-list">
+                                    <div th:each="child : ${job.children()}" class="child-job-item">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span>
+                                                <span th:text="${child.name()}">Child Job</span>
+                                                <span th:if="${child.finishedAt() != null && child.enqueuedAt() != null}" 
+                                                      th:with="duration=${T(java.time.Duration).between(child.enqueuedAt(), child.finishedAt()).toSeconds()}"
+                                                      th:text="${' (' + duration + 's)'}"></span>
+                                            </span>
+                                            <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(child.state().name())}" th:text="${child.state()}">STATE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Average Runtime Table -->
+                <div class="jobs-section" th:unless="${#maps.isEmpty(averageRuntimes)}">
+                    <h3 th:text="#{jobs.averageRuntime.title}">Average Runtime by Job Type</h3>
+                    <table class="average-runtime-table">
+                        <thead>
+                            <tr>
+                                <th th:text="#{jobs.averageRuntime.jobType}">Job Type</th>
+                                <th th:text="#{jobs.averageRuntime.averageTime}">Average Time</th>
+                                <th th:text="#{jobs.averageRuntime.samples}">Samples</th>
+                                <th th:text="#{jobs.averageRuntime.estimate}">Estimated Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${averageRuntimes}">
+                                <td th:text="${entry.key}">JOB_TYPE</td>
+                                <td th:text="${entry.value.formattedDuration}">0s</td>
+                                <td th:text="${entry.value.sampleCount}">0</td>
+                                <td th:text="${entry.value.estimatedDuration}">0 min</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Past Jobs -->
+                <div class="jobs-section">
+                    <h3 th:text="#{jobs.past.title}">Past Jobs</h3>
+
+                    <div th:if="${#lists.isEmpty(pastJobs)}">
+                        <p class="empty-state" th:text="#{jobs.past.empty}">No past jobs available.</p>
+                    </div>
+
+                    <div th:unless="${#lists.isEmpty(pastJobs)}">
+                        <div th:each="job : ${pastJobs}" class="job-card">
+                            <div class="job-card-header">
+                                <div>
+                                    <div class="job-card-title" th:text="${job.name()}">Job Name</div>
+                                    <div class="job-card-description" th:text="${job.description()}">Description</div>
+                                </div>
+                                <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state().name())}">
+                                    <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : 'lnr-question-circle')}"></i>
+                                    <span th:text="${job.state()}">STATE</span>
+                                </span>
+                            </div>
+
+                            <div class="job-card-meta">
+                                <span th:if="${job.enqueuedAt() != null}">
+                                    <i class="lnr lnr-clock"></i>
+                                    <span th:text="#{jobs.enqueuedAt}">Enqueued</span>:
+                                    <span th:text="${#temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                </span>
+                                <span th:if="${job.finishedAt() != null}">
+                                    <i class="lnr lnr-checkmark-circle"></i>
+                                    <span th:text="#{jobs.finishedAt}">Finished</span>:
+                                    <span th:text="${#temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                </span>
+                                <span th:if="${job.formattedDuration() != null}" class="job-duration">
+                                    <i class="lnr lnr-hourglass"></i>
+                                    <span th:text="${job.formattedDuration()}">0s</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div style="margin-top: 20px;">
                     <button class="btn"
@@ -114,6 +317,19 @@
 </div>
 </body>
 <script th:inline="javascript">
-    window.userSettings = /*[[${userSettings}]]*/ {}
+    function toggleChildJobs(jobId) {
+        const list = document.getElementById('child-jobs-' + jobId);
+        const icon = document.getElementById('toggle-icon-' + jobId);
+
+        if (list.classList.contains('open')) {
+            list.classList.remove('open');
+            icon.classList.remove('lnr-chevron-down');
+            icon.classList.add('lnr-chevron-right');
+        } else {
+            list.classList.add('open');
+            icon.classList.remove('lnr-chevron-right');
+            icon.classList.add('lnr-chevron-down');
+        }
+    }
 </script>
 </html>
