@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti.service.jobs;
 
-import com.dedicatedcode.reitti.controller.api.QueueStatsApiController;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -21,21 +19,21 @@ public record JobInfo(
         long totalChildren,
         Long durationSeconds
 ) {
-    public String getProgressText() {
+    public String progressText() {
         if (totalChildren > 0) {
             return completedChildren + " / " + totalChildren + " child jobs";
         }
         return null;
     }
 
-    public int getProgressPercent() {
+    public int progressPercent() {
         if (totalChildren > 0) {
             return (int) ((completedChildren * 100) / totalChildren);
         }
         return 0;
     }
 
-    public String getFormattedDuration() {
+    public String formattedDuration() {
         if (durationSeconds == null || durationSeconds == 0) {
             return null;
         }

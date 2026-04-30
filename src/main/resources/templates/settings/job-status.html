@@ -14,11 +14,10 @@
     <script th:src="@{/js/util.js}"></script>
     <style>
         .job-card {
-            background: var(--card-background, #fff);
+            background: var(--color-background-dark-light);
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .job-card-header {
@@ -144,8 +143,8 @@
 <div class="settings-container">
     <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
     <div class="settings-content-area">
-        <div id="job-status" class="settings-section active">
-            <div th:fragment="queue-stats-content">
+        <div class="settings-section active">
+            <div id="job-status" th:fragment="queue-stats-content">
                 <h2 th:text="#{jobs.title}">Job Status</h2>
 
                 <!-- Pending & Running Jobs -->
@@ -267,20 +266,25 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 20px;">
-                    <button class="btn"
-                            hx-trigger="click, load, every 5s"
-                            th:hx-get="@{/settings/queue-stats-content}"
-                            hx-target="#job-status"
-                            hx-swap="innerHTML"
-                            th:text="#{jobs.refresh}">Refresh Status</button>
-                </div>
+
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn"
+                        hx-trigger="click, load, every 5s"
+                        th:hx-get="@{/settings/queue-stats-content}"
+                        hx-target="#job-status"
+                        hx-swap="innerHTML"
+                        th:text="#{jobs.refresh}">Refresh Status</button>
             </div>
         </div>
     </div>
 </div>
 </body>
 <script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+    window.userSettings = /*[[${userSettings}]]*/ {};
+
     function toggleChildJobs(jobId) {
         const list = document.getElementById('child-jobs-' + jobId);
         const icon = document.getElementById('toggle-icon-' + jobId);
