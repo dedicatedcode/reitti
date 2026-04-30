@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.controller.api.QueueStatsApiController.JobInfo;
+import com.dedicatedcode.reitti.service.jobs.JobInfo;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings")
