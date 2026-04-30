@@ -13,6 +13,11 @@ class MapControls {
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
+                <label class="map-style-selector" title="Change Map style">
+                    <i class="lni lni-layers-1"></i>
+                    <select id="map-style-select">
+                    </select>
+                </label>
                 <button type="button" class="btn map-control-btn active" id="toggle-3d-btn" title="${t('map.display-control.mode.3d.enabled.title')}">
                     <i class="lni lni-map-marker-1"></i>
                     <span>${t('map.display-control.mode.3d.enabled.text')}</span>
@@ -48,10 +53,21 @@ class MapControls {
         this.toggleSatelliteModeBtn = document.getElementById('toggle-satellite-btn');
         this.toggleGlobeProjectionModeBtn = document.getElementById('toggle-globeprojection-btn');
         this.compassBtn = document.getElementById('compass-btn');
+        this.mapStyleSelect = document.getElementById('map-style-select');
+        this.refreshMapStyleOptions();
         this._setup();
     }
 
     _setup() {
+        this.mapStyleSelect.addEventListener('change', () => {
+            MapRenderer.setActiveMapStyleId(this.mapStyleSelect.value);
+            this.emit('selectionChanged', this.getState());
+        });
+        document.addEventListener('mapStylesChanged', (event) => {
+            this.refreshMapStyleOptions(event.detail?.activeStyleId);
+            this.emit('selectionChanged', this.getState());
+        });
+
         this.toggle3dBtn.addEventListener('click', () => {
             const isEnabled = this.toggle3dBtn.classList.contains('active');
             if (isEnabled) {
@@ -137,6 +153,7 @@ class MapControls {
 
     getState() {
         return {
+            mapStyleId: this.mapStyleSelect.value,
             is3d: this.toggle3dBtn.classList.contains('active'),
             renderTerrain: this.toggleTerrainModeBtn.classList.contains('active'),
             renderBuildings: this.toggleBuildingsModeBtn.classList.contains('active'),
@@ -144,6 +161,25 @@ class MapControls {
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
         }
     }
+
+    refreshMapStyleOptions(preferredStyleId = null) {
+        const mapStyles = MapRenderer.getMapStyles();
+        const storedMapStyleId = preferredStyleId || MapRenderer.getActiveMapStyleId();
+        const selectedMapStyleId = mapStyles.some(style => style.id === storedMapStyleId)
+            ? storedMapStyleId
+            : MapRenderer.getDefaultMapStyleId();
+
+        this.mapStyleSelect.innerHTML = mapStyles
+            .map(style => `<option value="${this._escapeHtml(style.id)}"${style.id === selectedMapStyleId ? ' selected' : ''}>${this._escapeHtml(style.label)}</option>`)
+            .join('');
+        window.reittiActiveMapStyleId = selectedMapStyleId;
+    }
+
+    setMapStyleId(mapStyleId) {
+        this.refreshMapStyleOptions(mapStyleId);
+        window.reittiActiveMapStyleId = this.mapStyleSelect.value;
+    }
+
     _enable3d() {
         const span = this.toggle3dBtn.querySelector('span');
         localStorage.setItem('is3d', 'true')
@@ -222,6 +258,16 @@ class MapControls {
         this.toggleGlobeProjectionModeBtn.classList.remove('active');
         span.textContent = t('map.display-control.globe_projection.disabled.text');
         this.toggleGlobeProjectionModeBtn.title = t('map.display-control.globe_projection.disabled.title');
+    }
+
+    _escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[character]));
     }
 
     _deepMerge(target, source) {
