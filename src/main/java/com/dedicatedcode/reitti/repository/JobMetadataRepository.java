@@ -21,18 +21,18 @@ public class JobMetadataRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void insert(UUID jobId, User user, JobType jobType, String friendlyName, JobState initialState, Instant enqueuedAt, Instant scheduledAt) {
+    public void insert(UUID jobId, User user, JobType jobType, String friendlyName, JobState initialState, Instant enqueuedAt, Instant scheduledAt, UUID parentId) {
         jdbcTemplate.update(
-            "INSERT INTO import_jobs (id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+            "INSERT INTO import_jobs (id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, parent_job_id, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
             jobId,
             user.getId(),
             jobType.name(),
             friendlyName,
             initialState.name(),
             toTimestamp(enqueuedAt),
-            toTimestamp(scheduledAt)
-        );
+            toTimestamp(scheduledAt),
+            parentId);
     }
 
     private Timestamp toTimestamp(Instant instant) {
@@ -88,8 +88,8 @@ public class JobMetadataRepository {
             return List.of();
         }
         String inClause = String.join(",", Collections.nCopies(states.size(), "?"));
-        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at " +
-                     "FROM import_jobs WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
+        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id " +
+                "FROM import_jobs WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             JobMetadata metadata = new JobMetadata();
             metadata.setId(UUID.fromString(rs.getString("id")));
@@ -101,12 +101,20 @@ public class JobMetadataRepository {
             metadata.setScheduledAt(toInstant(rs.getTimestamp("scheduled_at")));
             metadata.setProcessingAt(toInstant(rs.getTimestamp("processing_at")));
             metadata.setFinishedAt(toInstant(rs.getTimestamp("finished_at")));
+
+            String parentJobIdStr = rs.getString("parent_job_id");
+            if (parentJobIdStr != null) {
+                metadata.setParentJobId(UUID.fromString(parentJobIdStr));
+            }
+
             return metadata;
         }, states.stream().map(Enum::name).toArray());
     }
 
     public static class JobMetadata {
         private UUID id;
+        private UUID parentJobId;
+
         private Long userId;
         private String jobType;
         private String friendlyName;
@@ -118,6 +126,8 @@ public class JobMetadataRepository {
 
         public UUID getId() { return id; }
         public void setId(UUID id) { this.id = id; }
+        public UUID getParentJobId() { return parentJobId; }
+        public void setParentJobId(UUID parentJobId) { this.parentJobId = parentJobId; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
         public String getJobType() { return jobType; }

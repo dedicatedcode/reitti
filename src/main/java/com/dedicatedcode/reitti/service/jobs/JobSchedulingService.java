@@ -35,7 +35,7 @@ public class JobSchedulingService implements SchedulerListener {
         UUID jobId = UUID.randomUUID();
         // 1. Maintain your custom metadata for your dashboard
         JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
-        jobMetadataRepository.insert(jobId, meta.user, meta.jobType, meta.friendlyName, state, now, scheduledAt);
+        jobMetadataRepository.insert(jobId, meta.user, meta.jobType, meta.friendlyName, state, now, scheduledAt, meta.parentId);
 
         // 2. Schedule the actual task in db-scheduler
         // We use the JobId as the "Instance ID" so we can cancel it later if needed
@@ -96,12 +96,12 @@ public class JobSchedulingService implements SchedulerListener {
 
     }
 
-    public record Metadata(User user, JobType jobType, String friendlyName) {
+    public record Metadata(User user, JobType jobType, String friendlyName, UUID parentId) {
         public static class Builder {
             private User user;
             private JobType jobType;
             private String friendlyName;
-
+            private UUID parentId;
             public Builder user(User user) {
                 this.user = user;
                 return this;
@@ -117,8 +117,13 @@ public class JobSchedulingService implements SchedulerListener {
                 return this;
             }
 
+            public Builder parentId(UUID parentId) {
+                this.parentId = parentId;
+                return this;
+            }
+
             public Metadata build() {
-                return new Metadata(user, jobType, friendlyName);
+                return new Metadata(user, jobType, friendlyName, parentId);
             }
         }
 
