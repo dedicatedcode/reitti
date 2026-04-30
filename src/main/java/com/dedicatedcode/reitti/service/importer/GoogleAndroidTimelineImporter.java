@@ -3,19 +3,17 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
 import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
 import com.dedicatedcode.reitti.service.importer.dto.Visit;
-import com.dedicatedcode.reitti.service.jobs.JobState;
-import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jobrunr.jobs.context.JobContext;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +22,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -35,22 +32,19 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleAndroidTimelineImporter.class);
     private final ImportStateHolder stateHolder;
-    private final JobMetadataRepository jobMetadataRepository;
-    private final PromotionJobHandler promotionJobHandler;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
                                          ImportStateHolder stateHolder,
                                          LocationPointStagingService stagingService,
-                                         JobMetadataRepository jobMetadataRepository,
-                                         PromotionJobHandler promotionJobHandler,
+                                         Task<PromotionJobHandler.PromotionTaskData> promotionTask,
                                          JobSchedulingService jobSchedulingService,
                                          @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         super(objectMapper, stagingService);
         this.stateHolder = stateHolder;
-        this.jobMetadataRepository = jobMetadataRepository;
-        this.promotionJobHandler = promotionJobHandler;
+        this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
         this.graceTimeSeconds = graceTimeSeconds;
     }
@@ -59,8 +53,8 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
-            String importJobId = UUID.randomUUID().toString();
-            this.stagingService.ensurePartitionExists(importJobId);
+            String partitionKey = UUID.randomUUID().toString();
+            this.stagingService.ensurePartitionExists(partitionKey);
 
             logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
             this.stateHolder.importStarted();
@@ -79,7 +73,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     Visit visit = semanticSegment.getVisit();
                     Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation().getLatLng());
                     if (latLng.isPresent()) {
-                        latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(importJobId, user, device, start, end, lng, batch)));
+                        latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(partitionKey, user, device, start, end, lng, batch)));
                     }
                 }
 
@@ -88,7 +82,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     logger.info("Found timeline path from start [{}] to end [{}]. Will insert [{}] geo locations based on timeline path.", semanticSegment.getStartTime(), semanticSegment.getEndTime(), timelinePath.size());
                     for (TimelinePathPoint timelinePathPoint : timelinePath) {
                         parseLatLng(timelinePathPoint.getPoint()).ifPresent(location -> {
-                            createAndScheduleLocationPoint(location, ZonedDateTime.parse(timelinePathPoint.getTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0), importJobId, user, device, batch);
+                            createAndScheduleLocationPoint(location, ZonedDateTime.parse(timelinePathPoint.getTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0), partitionKey, user, device, batch);
                             processedCount.incrementAndGet();
                         });
                     }
@@ -97,24 +91,18 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                stagingService.insertBatch(importJobId, user, device, batch);
+                stagingService.insertBatch(partitionKey, user, device, batch);
             }
 
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
-                    .jobId(UUID.fromString(importJobId))
                     .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
                     .friendlyName("GPS Data Promotion").build();
-            if (graceTimeSeconds > 0) {
-                LocalDateTime scheduledTime = LocalDateTime.now().plusSeconds(graceTimeSeconds);
-                jobSchedulingService.schedule(UUID.fromString(importJobId),
-                                              () -> promotionJobHandler.execute(user, device, importJobId, true, JobContext.Null),
-                                              scheduledTime,
+            jobSchedulingService.scheduleTask(promotionTask,
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true),
+                                              Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
-            } else {
-                jobSchedulingService.enqueue(UUID.fromString(importJobId), () -> promotionJobHandler.execute(user, device, importJobId, true, JobContext.Null), metadata);
-            }
-            
+
             logger.info("Successfully imported and queued {} location points from Google Timeline for user {}", 
                     processedCount.get(), user.getUsername());
             

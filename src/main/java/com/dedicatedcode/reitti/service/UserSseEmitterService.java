@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,4 +95,6 @@ public class UserSseEmitterService implements SmartLifecycle {
     public boolean isRunning() {
         return true;
     }
+
+    public record TaskData(User user, SSEEvent eventData) implements Serializable {}
 }

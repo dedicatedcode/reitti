@@ -9,19 +9,19 @@ import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
+import com.github.kagkarlsson.scheduler.ScheduledExecution;
+import com.github.kagkarlsson.scheduler.Scheduler;
 import org.awaitility.Awaitility;
-import org.jobrunr.jobs.states.StateName;
-import org.jobrunr.storage.StorageProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 @Service
 public class TestingService {
@@ -47,7 +47,7 @@ public class TestingService {
     @Autowired
     private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
-    private StorageProvider storageProvider;
+    private Scheduler scheduler;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
@@ -82,10 +82,10 @@ public class TestingService {
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
                 .until(() -> {
-                    // Check all queues are empty
-                    long runningJobs = Stream.of(StateName.AWAITING, StateName.ENQUEUED, StateName.PROCESSING, StateName.SCHEDULED)
-                            .map(storageProvider::countJobs).reduce(Long::sum).orElseThrow();
-                    if (runningJobs > 0) {
+                    List<ScheduledExecution<Object>> instances = scheduler.getScheduledExecutions()
+                            .stream().filter(t -> !t.getTaskInstance().getTaskName().equals("sse-emitter-task")).toList();
+
+                    if (!instances.isEmpty()) {
                         stableChecks.set(0);
                         return false;
                     }

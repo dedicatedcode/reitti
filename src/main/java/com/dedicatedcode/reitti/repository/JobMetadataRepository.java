@@ -43,6 +43,10 @@ public class JobMetadataRepository {
         return timestamp == null ? null : timestamp.toInstant();
     }
 
+    public void updateProgress(UUID jobId, long current, long max, String message) {
+        this.jdbcTemplate.update("UPDATE import_jobs SET current_progress = ?, max_progress = ?, progress_message = ? WHERE id = ?", current, max, message, jobId);
+    }
+
     public void updateState(UUID jobId, JobState newState, Instant stateTimestamp) {
         String column = switch (newState) {
             case RUNNING -> "processing_at";
@@ -53,14 +57,14 @@ public class JobMetadataRepository {
         if (column != null) {
             jdbcTemplate.update(
                 "UPDATE import_jobs SET status = ?, " + column + " = ?, updated_at = NOW() WHERE id = ?",
-                newState,
+                newState.name(),
                 toTimestamp(stateTimestamp),
                 jobId
             );
         } else {
             jdbcTemplate.update(
                 "UPDATE import_jobs SET status = ?, updated_at = NOW() WHERE id = ?",
-                newState,
+                newState.name(),
                 jobId
             );
         }

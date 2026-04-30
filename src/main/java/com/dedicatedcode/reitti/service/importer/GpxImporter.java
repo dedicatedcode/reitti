@@ -5,10 +5,8 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.scheduling.JobScheduler;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +18,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,18 +33,18 @@ public class GpxImporter {
 
     private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
-    private final PromotionJobHandler promotionJobHandler;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GpxImporter(ImportStateHolder stateHolder,
                        LocationPointStagingService stagingService,
-                       PromotionJobHandler promotionJobHandler,
+                       Task<PromotionJobHandler.PromotionTaskData> promotionTask,
                        @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds,
                        JobSchedulingService jobSchedulingService) {
         this.stateHolder = stateHolder;
         this.stagingService = stagingService;
-        this.promotionJobHandler = promotionJobHandler;
+        this.promotionTask = promotionTask;
         this.graceTimeSeconds = graceTimeSeconds;
         this.jobSchedulingService = jobSchedulingService;
     }
@@ -59,8 +56,8 @@ public class GpxImporter {
             stateHolder.importStarted();
             logger.info("Importing GPX file for user {}", user.getUsername());
 
-            String jobId = UUID.randomUUID().toString();
-            stagingService.ensurePartitionExists(jobId);
+            String partitionKey = UUID.randomUUID().toString();
+            stagingService.ensurePartitionExists(partitionKey);
 
             XMLInputFactory factory = XMLInputFactory.newInstance();
             // Disable external entity processing for security
@@ -118,7 +115,7 @@ public class GpxImporter {
 
                                 // Process in batches to avoid memory issues
                                 if (batch.size() >= BATCH_SIZE) {
-                                    stagingService.insertBatch(jobId, user, device, batch);
+                                    stagingService.insertBatch(partitionKey, user, device, batch);
                                     batch.clear();
                                 }
                             } else {
@@ -149,24 +146,19 @@ public class GpxImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                stagingService.insertBatch(jobId, user, device, batch);
+                stagingService.insertBatch(partitionKey, user, device, batch);
             }
 
             logger.info("Successfully imported and queued [{}] location points from GPX file for user [{}]", processedCount.get(), user.getUsername());
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
-                    .jobId(UUID.fromString(jobId))
-                    .jobType(JobType.GPX_IMPORT)
+                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
                     .friendlyName("GPS Data Promotion").build();
-            if (graceTimeSeconds > 0) {
-                jobSchedulingService.schedule(UUID.fromString(jobId),
-                                              () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null),
-                                              LocalDateTime.now().plusSeconds(graceTimeSeconds),
+            jobSchedulingService.scheduleTask(promotionTask,
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true),
+                                              Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
-            } else {
-                jobSchedulingService.enqueue(UUID.fromString(jobId), () -> promotionJobHandler.execute(user, device, jobId, true, JobContext.Null),
-                                             metadata);
-            }
+
             return Map.of(
                     "success", true,
                     "message", "Successfully queued " + processedCount.get() + " location points for processing",

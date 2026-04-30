@@ -10,8 +10,8 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
-import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -24,6 +24,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import static com.dedicatedcode.reitti.service.jobs.JobType.REVERSE_GEOCODE;
 
 /**
  * Unified service that processes the entire GPS pipeline atomically per user.
@@ -51,8 +53,8 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
-    private final JobScheduler jobScheduler;
-    private final ReverseGeocodingListener reverseGeocodingListener;
+    private final JobSchedulingService jobScheduler;
+    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -71,8 +73,8 @@ public class UnifiedLocationProcessingService {
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory,
-            JobScheduler jobScheduler,
-            ReverseGeocodingListener reverseGeocodingListener) {
+            JobSchedulingService jobScheduler,
+            Task<SignificantPlaceCreatedEvent> reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -90,7 +92,7 @@ public class UnifiedLocationProcessingService {
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
         this.jobScheduler = jobScheduler;
-        this.reverseGeocodingListener = reverseGeocodingListener;
+        this.reverseGeocodingTask = reverseGeocodingTask;
     }
 
     /**
@@ -864,7 +866,12 @@ public class UnifiedLocationProcessingService {
                 place.getLongitudeCentroid(),
                 traceId
         );
-        this.jobScheduler.enqueue(() -> reverseGeocodingListener.handleSignificantPlaceCreated(event));
+        this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                      JobSchedulingService.Metadata.builder()
+                                          .user(user)
+                                          .jobType(REVERSE_GEOCODE)
+                                          .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
+                                          .build());
         logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 

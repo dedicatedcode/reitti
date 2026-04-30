@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.12</version>
+        <version>3.5.14</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.dedicatedcode</groupId>
@@ -66,9 +66,9 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jobrunr</groupId>
-            <artifactId>jobrunr-spring-boot-3-starter</artifactId>
-            <version>8.3.1</version>
+            <groupId>com.github.kagkarlsson</groupId>
+            <artifactId>db-scheduler-spring-boot-starter</artifactId>
+            <version>16.7.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

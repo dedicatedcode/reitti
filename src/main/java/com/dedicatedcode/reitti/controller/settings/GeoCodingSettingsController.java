@@ -12,8 +12,9 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,8 +37,8 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceJdbcService placeJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
-    private final JobScheduler jobScheduler;
-    private final ReverseGeocodingListener reverseGeocodingListener;
+    private final JobSchedulingService jobScheduler;
+    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -49,7 +50,8 @@ public class GeoCodingSettingsController {
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
-                                       JobScheduler jobScheduler, ReverseGeocodingListener reverseGeocodingListener,
+                                       JobSchedulingService jobScheduler,
+                                       Task<SignificantPlaceCreatedEvent> reverseGeocodingTask,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
@@ -60,7 +62,7 @@ public class GeoCodingSettingsController {
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
         this.jobScheduler = jobScheduler;
-        this.reverseGeocodingListener = reverseGeocodingListener;
+        this.reverseGeocodingTask = reverseGeocodingTask;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
@@ -259,7 +261,11 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    this.jobScheduler.enqueue(() -> reverseGeocodingListener.handleSignificantPlaceCreated(event));
+                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(currentUser)
+                                                          .friendlyName("Manual reverse geocoding")
+                                                          .jobType(JobType.REVERSE_GEOCODE).build());
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.run.success", nonGeocodedPlaces.size()));
@@ -300,7 +306,11 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    this.jobScheduler.enqueue(() -> reverseGeocodingListener.handleSignificantPlaceCreated(event));
+                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(currentUser)
+                                                          .friendlyName("Manual reverse geocoding")
+                                                          .jobType(JobType.REVERSE_GEOCODE).build());
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.clear.success", allPlaces.size()));

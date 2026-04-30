@@ -3,9 +3,8 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +18,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
+
 @Service
 public class VisitDetectionPreviewService {
     private static final Logger log = LoggerFactory.getLogger(VisitDetectionPreviewService.class);
@@ -26,16 +27,16 @@ public class VisitDetectionPreviewService {
     private static final long READY_THRESHOLD_SECONDS = 5;
 
     private final JdbcTemplate jdbcTemplate;
-    private final JobScheduler jobScheduler;
-    private final ProcessingPipelineTrigger processingPipelineTrigger;
+    private final JobSchedulingService jobScheduler;
+    private final Task<TriggerProcessingEvent> processingEventTask;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
 
     public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate,
-                                        JobScheduler jobScheduler,
-                                        ProcessingPipelineTrigger processingPipelineTrigger) {
+                                        JobSchedulingService jobScheduler,
+                                        Task<TriggerProcessingEvent> processingEventTask) {
         this.jdbcTemplate = jdbcTemplate;
         this.jobScheduler = jobScheduler;
-        this.processingPipelineTrigger = processingPipelineTrigger;
+        this.processingEventTask = processingEventTask;
     }
 
     public String startPreview(User user, DetectionParameter config, Instant date) {
@@ -70,7 +71,10 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
-        this.jobScheduler.enqueue(() -> processingPipelineTrigger.execute(triggerEvent, JobContext.Null));
+        this.jobScheduler.enqueueTask(processingEventTask, triggerEvent,
+                                  JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
+                                          .friendlyName("Preview Visit Detection")
+                                          .build());
         updatePreviewStatus(previewId);
         
         return previewId;

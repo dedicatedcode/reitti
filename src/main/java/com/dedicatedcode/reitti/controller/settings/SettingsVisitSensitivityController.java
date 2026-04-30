@@ -8,9 +8,9 @@ import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,25 +37,28 @@ public class SettingsVisitSensitivityController {
     private static final Logger log = LoggerFactory.getLogger(SettingsVisitSensitivityController.class);
     private final VisitDetectionParametersJdbcService configurationService;
     private final VisitDetectionPreviewService visitDetectionPreviewService;
-    private final ProcessingPipelineTrigger processingPipelineTrigger;
+    private final Task<TriggerProcessingEvent> processingEventTask;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
-    private final JobScheduler jobScheduler;
+    private final JobSchedulingService jobScheduler;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
 
     public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
-                                              ProcessingPipelineTrigger processingPipelineTrigger,
+                                              Task<TriggerProcessingEvent> processingEventTask,
                                               TripJdbcService tripJdbcService,
                                               ProcessedVisitJdbcService processedVisitJdbcService,
                                               MessageSource messageSource,
-                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled, JobScheduler jobScheduler, RawLocationPointJdbcService rawLocationPointJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService) {
+                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                              JobSchedulingService jobScheduler,
+                                              RawLocationPointJdbcService rawLocationPointJdbcService,
+                                              SignificantPlaceJdbcService significantPlaceJdbcService) {
         this.configurationService = configurationService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
-        this.processingPipelineTrigger = processingPipelineTrigger;
+        this.processingEventTask = processingEventTask;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.messageSource = messageSource;
@@ -277,7 +280,11 @@ public class SettingsVisitSensitivityController {
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
-                jobScheduler.enqueue(() -> processingPipelineTrigger.execute(new TriggerProcessingEvent(user.getUsername(), null, null), JobContext.Null));
+                jobScheduler.enqueueTask(processingEventTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+                                     JobSchedulingService.Metadata.builder()
+                                             .user(user)
+                                             .friendlyName("Manual processing")
+                                             .jobType(JobType.LOCATION_PROCESSING).build());
             } catch (Exception e) {
                 log.error("Error clearing time range", e);
             }

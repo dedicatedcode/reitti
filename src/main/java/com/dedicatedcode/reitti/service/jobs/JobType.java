@@ -2,7 +2,11 @@ package com.dedicatedcode.reitti.service.jobs;
 
 public enum JobType {
     GPS_IMPORT,
+    GPS_INGESTION,
     GPX_IMPORT,
     GOOGLE_TIMELINE_IMPORT,
-    LOCATION_DATA_CLEANUP
+    VISIT_TRIP_DETECTION,
+    SSE_EVENT,
+    REVERSE_GEOCODE,
+    LOCATION_PROCESSING, LOCATION_DATA_CLEANUP
 }

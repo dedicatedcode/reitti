@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.jobs.JobState;
-import org.jobrunr.storage.StorageProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,12 +16,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1/queue-stats")
 public class QueueStatsApiController {
 
-    private final StorageProvider storageProvider;
     private final JobMetadataRepository jobMetadataRepository;
 
-    public QueueStatsApiController(StorageProvider storageProvider,
-                                   JobMetadataRepository jobMetadataRepository) {
-        this.storageProvider = storageProvider;
+    public QueueStatsApiController(JobMetadataRepository jobMetadataRepository) {
         this.jobMetadataRepository = jobMetadataRepository;
     }
 
@@ -42,7 +38,7 @@ public class QueueStatsApiController {
 
         // Cancel the job
         try {
-            storageProvider.deletePermanently(jobId);
+//            storageProvider.deletePermanently(jobId);
             jobMetadataRepository.updateState(jobId, JobState.CANCELLED, Instant.now());
             return ResponseEntity.ok().build();
         } catch (Exception e) {

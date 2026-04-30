@@ -4,13 +4,11 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import org.jobrunr.jobs.annotations.Job;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.jobs.context.JobDashboardProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ProcessingPipelineTrigger {
@@ -30,6 +29,7 @@ public class ProcessingPipelineTrigger {
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final UserJdbcService userJdbcService;
     private final UnifiedLocationProcessingService unifiedLocationProcessingService;
+    private final JobMetadataRepository jobMetadataRepository;
     private final int batchSize;
     private final int processingSettleTime;
 
@@ -37,7 +37,7 @@ public class ProcessingPipelineTrigger {
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
-                                     UnifiedLocationProcessingService unifiedLocationProcessingService,
+                                     UnifiedLocationProcessingService unifiedLocationProcessingService, JobMetadataRepository jobMetadataRepository,
                                      @Value("${reitti.import.batch-size:100}") int batchSize,
                                      @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime) {
         this.stateHolder = stateHolder;
@@ -45,12 +45,12 @@ public class ProcessingPipelineTrigger {
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.unifiedLocationProcessingService = unifiedLocationProcessingService;
+        this.jobMetadataRepository = jobMetadataRepository;
         this.batchSize = batchSize;
         this.processingSettleTime = processingSettleTime;
     }
 
-    @Job(name = "Process incoming data")
-    public void execute(TriggerProcessingEvent event, JobContext jobContext) {
+    public void execute(UUID jobId, TriggerProcessingEvent event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
             Optional<Instant> lastDataModificationAt = this.userJdbcService.getLastDataModificationAt(byUsername.get());
@@ -61,17 +61,16 @@ public class ProcessingPipelineTrigger {
             if (shallSkip) {
                 log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
             } else {
-                handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), jobContext);
+                handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId());
             }
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(User user, String previewId, String traceId, JobContext jobContext) {
+    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId) {
         int totalProcessed = 0;
 
-        JobDashboardProgressBar progressBar = jobContext.progressBar(0);
         while (true) {
             stateHolder.importStarted();
             try {
@@ -83,11 +82,11 @@ public class ProcessingPipelineTrigger {
                 }
 
                 if (currentBatch.isEmpty()) {
-                    progressBar.setProgress(totalProcessed);
+                    jobMetadataRepository.updateProgress(jobId, totalProcessed, totalProcessed, "Done");
                     break;
                 }
 
-                progressBar.setProgress(totalProcessed + currentBatch.size(), totalProcessed, 0);
+                jobMetadataRepository.updateProgress(jobId,totalProcessed + currentBatch.size(), totalProcessed, "Processing...");
                 Instant earliest = currentBatch.getFirst().getTimestamp();
                 Instant latest = currentBatch.getLast().getTimestamp();
                 log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
