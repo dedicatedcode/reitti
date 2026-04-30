@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.service.jobs.JobInfo;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.service.jobs.JobInfo;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -217,7 +217,7 @@ public class JobStatusController {
     }
 
     public record AverageRuntime(long averageSeconds, int sampleCount) {
-        public String getFormattedDuration() {
+        public String formattedDuration() {
             long hours = averageSeconds / 3600;
             long minutes = (averageSeconds % 3600) / 60;
             long seconds = averageSeconds % 60;
