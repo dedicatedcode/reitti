@@ -15,6 +15,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -50,6 +51,24 @@ public class JobSchedulingService implements SchedulerListener {
         jobScheduler.getObject().cancel(TaskInstanceId.of(taskId, jobId.toString()));
     }
 
+    public UUID createParentJob(User user, JobType jobType, String friendlyName) {
+        UUID parentJobId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        jobMetadataRepository.insert(
+                parentJobId,
+                user,
+                jobType,
+                friendlyName,
+                JobState.AWAITING,
+                now,
+                now,
+                null // no parent - this is the root
+        );
+
+        return parentJobId;
+    }
+
     @Override
     public void onExecutionScheduled(TaskInstanceId taskInstanceId, Instant executionTime) {
         UUID jobId = UUID.fromString(taskInstanceId.getId());
@@ -62,6 +81,10 @@ public class JobSchedulingService implements SchedulerListener {
         UUID jobId = UUID.fromString(currentlyExecuting.getTaskInstance().getId());
         this.jobMetadataRepository.updateState(jobId, JobState.RUNNING, Instant.now());
         log.trace("Job with ID {} is now in the state of {}", jobId, JobState.RUNNING);
+        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
+        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), JobState.RUNNING);
+        }
     }
 
     @Override
@@ -73,6 +96,10 @@ public class JobSchedulingService implements SchedulerListener {
             log.error("Job with ID {} failed", jobId, executionComplete.getCause().orElseThrow());
         } else {
             log.trace("Job with ID {} is now in the state of {}", jobId, state);
+        }
+        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
+        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
         }
     }
 

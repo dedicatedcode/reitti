@@ -12,131 +12,6 @@
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
-    <style>
-        .job-card {
-            background: var(--color-background-dark-light);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-
-        .job-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .job-card-title {
-            font-weight: 600;
-            font-size: 1.1em;
-            margin: 0;
-        }
-
-        .job-card-description {
-            color: #666;
-            font-size: 0.9em;
-            margin: 4px 0;
-        }
-
-        .job-card-meta {
-            display: flex;
-            gap: 16px;
-            font-size: 0.85em;
-            color: #888;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .job-progress {
-            margin-top: 12px;
-        }
-
-        .job-progress-bar {
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .job-progress-fill {
-            height: 100%;
-            background: #4caf50;
-            transition: width 0.3s ease;
-        }
-
-        .job-progress-text {
-            font-size: 0.85em;
-            color: #666;
-            margin-top: 4px;
-        }
-
-        .child-jobs-container {
-            margin-top: 12px;
-            border-top: 1px solid #eee;
-            padding-top: 12px;
-        }
-
-        .child-jobs-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            color: #666;
-            font-size: 0.9em;
-            background: none;
-            border: none;
-            padding: 0;
-        }
-
-        .child-jobs-toggle:hover {
-            color: #333;
-        }
-
-        .child-jobs-list {
-            display: none;
-            margin-top: 8px;
-            padding-left: 16px;
-        }
-
-        .child-jobs-list.open {
-            display: block;
-        }
-
-        .child-job-item {
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 4px;
-            margin-bottom: 4px;
-            font-size: 0.9em;
-        }
-
-        .job-duration {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .jobs-section {
-            margin-bottom: 24px;
-        }
-
-        .jobs-section h3 {
-            margin-bottom: 12px;
-            font-size: 1.2em;
-        }
-
-        .empty-state {
-            color: #888;
-            font-style: italic;
-            padding: 16px;
-            text-align: center;
-        }
-
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 0.85em;
-        }
-    </style>
 </head>
 <body class="settings-page">
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
@@ -176,12 +51,12 @@
                                 </span>
                                 <span th:if="${job.scheduledAt() != null}">
                                     <i class="lnr lnr-calendar-full"></i>
-                                    <span th:text="#{jobs.scheduledAt}">Scheduled</span>:
+                                    <span th:text="#{jobs.scheduledAt}">Scheduled</span>
                                     <span th:text="${#temporals.format(job.scheduledAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
                                 </span>
                                 <span th:if="${job.durationSeconds() != null}" class="job-duration">
                                     <i class="lnr lnr-hourglass"></i>
-                                    <span th:text="#{jobs.estimated}">Est.</span>:
+                                    <span th:text="#{jobs.estimated}">Est.</span>
                                     <span th:text="${job.formattedDuration()}">0s</span>
                                 </span>
                                 <button th:if="${job.canCancel()}"
@@ -234,32 +109,29 @@
                     </div>
 
                     <div th:unless="${#lists.isEmpty(pastJobs)}">
-                        <div th:each="job : ${pastJobs}" class="job-card">
+                        <div th:each="job : ${pastJobs}" class="job-card done">
                             <div class="job-card-header">
-                                <div>
-                                    <div class="job-card-title" th:text="${job.name()}">Job Name</div>
-                                    <div class="job-card-description" th:text="${job.description()}">Description</div>
+                                <div class="job-card-title" th:text="${job.name()}">Job Name</div>
+                                <div class="job-card-meta">
+                                    <span th:if="${job.enqueuedAt() != null}">
+                                        <i class="lnr lnr-clock"></i>
+                                        <span th:text="#{jobs.enqueuedAt}">Enqueued</span>
+                                        <span th:text="${#temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                    </span>
+                                        <span th:if="${job.finishedAt() != null}">
+                                        <i class="lnr lnr-checkmark-circle"></i>
+                                        <span th:text="#{jobs.finishedAt}">Finished</span>
+                                        <span th:text="${#temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                                    </span>
+                                        <span th:if="${job.formattedDuration() != null}" class="job-duration">
+                                        <i class="lnr lnr-hourglass"></i>
+                                        <span th:text="${job.formattedDuration()}">0s</span>
+                                    </span>
                                 </div>
+                                <div class="job-card-description" th:text="${job.description()}">Description</div>
                                 <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(job.state().name())}">
                                     <i th:class="${'lnr ' + (job.state().name() == 'COMPLETED' ? 'lnr-checkmark-circle' : job.state().name() == 'FAILED' ? 'lnr-cross-circle' : 'lnr-question-circle')}"></i>
                                     <span th:text="${job.state()}">STATE</span>
-                                </span>
-                            </div>
-
-                            <div class="job-card-meta">
-                                <span th:if="${job.enqueuedAt() != null}">
-                                    <i class="lnr lnr-clock"></i>
-                                    <span th:text="#{jobs.enqueuedAt}">Enqueued</span>:
-                                    <span th:text="${#temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
-                                </span>
-                                <span th:if="${job.finishedAt() != null}">
-                                    <i class="lnr lnr-checkmark-circle"></i>
-                                    <span th:text="#{jobs.finishedAt}">Finished</span>:
-                                    <span th:text="${#temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
-                                </span>
-                                <span th:if="${job.formattedDuration() != null}" class="job-duration">
-                                    <i class="lnr lnr-hourglass"></i>
-                                    <span th:text="${job.formattedDuration()}">0s</span>
                                 </span>
                             </div>
                         </div>

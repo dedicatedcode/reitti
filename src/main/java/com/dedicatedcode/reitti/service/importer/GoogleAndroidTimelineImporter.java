@@ -55,7 +55,11 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
         try {
             String partitionKey = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(partitionKey);
-
+            UUID parentJobId = jobSchedulingService.createParentJob(
+                    user,
+                    JobType.GOOGLE_TIMELINE_IMPORT,
+                    "Google Timeline Android Import - " + originalFilename
+            );
             logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
             this.stateHolder.importStarted();
             JsonFactory factory = objectMapper.getFactory();
@@ -97,9 +101,11 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
                     .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
-                    .friendlyName("GPS Data Promotion").build();
+                    .friendlyName("GPS Data Promotion")
+                    .parentId(parentJobId)
+                    .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true),
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true, parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
 

@@ -55,7 +55,11 @@ public class GpxImporter {
         try {
             stateHolder.importStarted();
             logger.info("Importing GPX file for user {}", user.getUsername());
-
+            UUID parentJobId = jobSchedulingService.createParentJob(
+                    user,
+                    JobType.GPX_IMPORT,
+                    "GPX Import - " + originalFilename
+            );
             String partitionKey = UUID.randomUUID().toString();
             stagingService.ensurePartitionExists(partitionKey);
 
@@ -153,9 +157,11 @@ public class GpxImporter {
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
                     .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
-                    .friendlyName("GPS Data Promotion").build();
+                    .friendlyName("GPS Data Promotion")
+                    .parentId(parentJobId)
+                    .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true),
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true, parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
 

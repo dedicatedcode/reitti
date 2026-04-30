@@ -69,6 +69,7 @@ public class TaskConfig {
                             data.user(),
                             data.device(),
                             data.partitionKey(),
+                            data.parentJobId(),
                             data.isManual()
                     );
                 });

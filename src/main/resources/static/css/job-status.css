@@ -1,11 +1,19 @@
 /* Job Status Page Styles */
 
 .job-card {
-    background: var(--color-background-dark-light);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
     border: 1px solid var(--color-highlight-transparent);
+    transition: all 0.3s ease, box-shadow 0.3s ease;
+}
+
+.job-card.done {
+    padding: 8px 16px;
+}
+
+.job-card:hover {
+    transform: translateY(-4px);
     box-shadow: var(--box-shadow);
 }
 
@@ -16,6 +24,10 @@
     margin-bottom: 8px;
 }
 
+.job-card.done .job-card-header {
+    margin-bottom: 0;
+}
+
 .job-card-title {
     font-weight: 600;
     font-size: 1.1em;
@@ -24,7 +36,7 @@
 }
 
 .job-card-description {
-    color: var(--color-text-gray);
+    color: var(--color-text-white);
     font-size: 0.9em;
     margin: 4px 0;
 }
@@ -33,9 +45,13 @@
     display: flex;
     gap: 16px;
     font-size: 0.85em;
-    color: var(--color-text-gray);
+    color: var(--color-text-white);
     margin-top: 8px;
     flex-wrap: wrap;
+}
+
+.job-card.done .job-card-meta {
+    margin-top: 4px;
 }
 
 .job-card-meta i {

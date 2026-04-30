@@ -32,7 +32,7 @@ public class PromotionJobHandler {
         this.locationDataCleanupTask = locationDataCleanupTask;
     }
 
-    public void execute(UUID jobId, User user, Device device, String partitionKey, boolean dropPartition) {
+    public void execute(UUID jobId, User user, Device device, String partitionKey, UUID parentJobId, boolean dropPartition) {
         TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
         metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
         int promote = this.stagingService.promote(partitionKey);
@@ -45,9 +45,15 @@ public class PromotionJobHandler {
         metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
 
         if (promote > 0) {
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobType(JobType.LOCATION_DATA_CLEANUP)
+                    .friendlyName("Location Data Cleanup")
+                    .parentId(parentJobId)
+                    .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
                                                   new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end()),
-                    JobSchedulingService.Metadata.builder().user(user).jobType(JobType.LOCATION_DATA_CLEANUP).friendlyName("Location Data Cleanup").build());
+                                                  metadata);
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);
         }
@@ -58,7 +64,8 @@ public class PromotionJobHandler {
             User user,
             Device device,
             String partitionKey,
-            boolean isManual
+            boolean isManual,
+            UUID parentJobId
     ) implements Serializable {
     }
 }

@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
@@ -16,6 +17,25 @@ import java.util.UUID;
 @Repository
 public class JobMetadataRepository {
     private final JdbcTemplate jdbcTemplate;
+    private final RowMapper<JobMetadata> jobMetadataRowMapper = (rs, rowNum) -> {
+        JobMetadata metadata = new JobMetadata();
+        metadata.setId(UUID.fromString(rs.getString("id")));
+        metadata.setUserId(rs.getLong("user_id"));
+        metadata.setJobType(rs.getString("type"));
+        metadata.setFriendlyName(rs.getString("friendly_name"));
+        metadata.setState(JobState.valueOf(rs.getString("status")));
+        metadata.setEnqueuedAt(toInstant(rs.getTimestamp("enqueued_at")));
+        metadata.setScheduledAt(toInstant(rs.getTimestamp("scheduled_at")));
+        metadata.setProcessingAt(toInstant(rs.getTimestamp("processing_at")));
+        metadata.setFinishedAt(toInstant(rs.getTimestamp("finished_at")));
+
+        String parentJobIdStr = rs.getString("parent_job_id");
+        if (parentJobIdStr != null) {
+            metadata.setParentJobId(UUID.fromString(parentJobIdStr));
+        }
+
+        return metadata;
+    };
 
     public JobMetadataRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -90,25 +110,45 @@ public class JobMetadataRepository {
         String inClause = String.join(",", Collections.nCopies(states.size(), "?"));
         String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id " +
                 "FROM import_jobs WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            JobMetadata metadata = new JobMetadata();
-            metadata.setId(UUID.fromString(rs.getString("id")));
-            metadata.setUserId(rs.getLong("user_id"));
-            metadata.setJobType(rs.getString("type"));
-            metadata.setFriendlyName(rs.getString("friendly_name"));
-            metadata.setState(JobState.valueOf(rs.getString("status")));
-            metadata.setEnqueuedAt(toInstant(rs.getTimestamp("enqueued_at")));
-            metadata.setScheduledAt(toInstant(rs.getTimestamp("scheduled_at")));
-            metadata.setProcessingAt(toInstant(rs.getTimestamp("processing_at")));
-            metadata.setFinishedAt(toInstant(rs.getTimestamp("finished_at")));
+        return jdbcTemplate.query(sql, jobMetadataRowMapper, states.stream().map(Enum::name).toArray());
+    }
 
-            String parentJobIdStr = rs.getString("parent_job_id");
-            if (parentJobIdStr != null) {
-                metadata.setParentJobId(UUID.fromString(parentJobIdStr));
+    public List<JobMetadata> findByParentJobId(UUID parentId) {
+        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id " +
+                "FROM import_jobs WHERE parent_job_id = ?";
+        return jdbcTemplate.query(sql, jobMetadataRowMapper, parentId);
+    }
+
+    public Optional<JobMetadata> findById(UUID jobId) {
+        return Optional.ofNullable(this.jdbcTemplate.queryForObject("SELECT * FROM import_jobs WHERE id = ?", jobMetadataRowMapper, jobId));
+    }
+
+    public void updateParentJobState(UUID parentJobId, JobState newState) {
+        Optional<JobMetadata> parent = findById(parentJobId);
+        if (parent.isEmpty()) return;
+
+        JobState currentState = parent.get().getState();
+
+        if (newState == JobState.RUNNING) {
+            // Only update if currently awaiting
+            if (currentState == JobState.AWAITING) {
+                updateState(parentJobId, JobState.RUNNING, Instant.now());
             }
+        } else if (newState == JobState.COMPLETED || newState == JobState.FAILED) {
+            // Check all children before completing
+            List<JobMetadata> childJobs = findByParentJobId(parentJobId);
 
-            return metadata;
-        }, states.stream().map(Enum::name).toArray());
+            boolean allComplete = childJobs.stream()
+                    .allMatch(j -> j.getState() == JobState.COMPLETED || j.getState() == JobState.FAILED);
+
+            if (allComplete) {
+                boolean anyFailed = childJobs.stream()
+                        .anyMatch(j -> j.getState() == JobState.FAILED);
+
+                JobState finalState = anyFailed ? JobState.FAILED : JobState.COMPLETED;
+                updateState(parentJobId, finalState, Instant.now());
+            }
+        }
     }
 
     public static class JobMetadata {
