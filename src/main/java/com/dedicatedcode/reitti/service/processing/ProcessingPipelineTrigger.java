@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -53,22 +52,13 @@ public class ProcessingPipelineTrigger {
     public void execute(UUID jobId, TriggerProcessingEvent event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            Optional<Instant> lastDataModificationAt = this.userJdbcService.getLastDataModificationAt(byUsername.get());
-            boolean shallSkip = lastDataModificationAt
-                    .map(instant -> Duration.between(instant, Instant.now()).getSeconds())
-                    .map(seconds -> seconds < processingSettleTime)
-                    .orElse(false);
-            if (shallSkip) {
-                log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
-            } else {
-                handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId());
-            }
+            handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId) {
+    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId) {
         int totalProcessed = 0;
 
         while (true) {
@@ -95,7 +85,7 @@ public class ProcessingPipelineTrigger {
                 } else {
                     previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 }
-                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
+                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId));
                 totalProcessed += currentBatch.size();
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);

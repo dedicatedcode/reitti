@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Controller
@@ -280,10 +281,12 @@ public class SettingsVisitSensitivityController {
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
-                jobScheduler.enqueueTask(processingEventTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+                UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Manual processing");
+                jobScheduler.enqueueTask(processingEventTask, new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
                                      JobSchedulingService.Metadata.builder()
                                              .user(user)
                                              .friendlyName("Manual processing")
+                                             .parentId(parentJob)
                                              .jobType(JobType.LOCATION_PROCESSING).build());
             } catch (Exception e) {
                 log.error("Error clearing time range", e);

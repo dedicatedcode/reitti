@@ -54,7 +54,8 @@ public class TaskConfig {
                             data.user(),
                             data.device(),
                             data.start(),
-                            data.end()
+                            data.end(),
+                            data.parentJobId()
                     );
                 });
     }

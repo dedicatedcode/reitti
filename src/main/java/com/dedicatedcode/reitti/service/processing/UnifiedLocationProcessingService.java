@@ -103,6 +103,7 @@ public class UnifiedLocationProcessingService {
         long startTime = System.currentTimeMillis();
         String username = event.getUsername();
         String previewId = event.getPreviewId();
+        UUID parentJobId = event.getParentJobId();
 
         logger.info("Processing location data for user [{}], mode: {}", username, previewId == null ? "LIVE" : "PREVIEW");
 
@@ -141,10 +142,10 @@ public class UnifiedLocationProcessingService {
         // STEP 4: Notifications
         // ---------------------
         if (previewId == null) {
-            userNotificationService.newVisits(user, mergingResult.processedVisits);
-            userNotificationService.newTrips(user, tripResult.trips);
+            userNotificationService.newVisits(user, mergingResult.processedVisits, parentJobId);
+            userNotificationService.newTrips(user, tripResult.trips, parentJobId);
         } else {
-            userNotificationService.newTrips(user, tripResult.trips, previewId);
+            userNotificationService.newTrips(user, tripResult.trips, previewId, parentJobId);
         }
 
         long duration = System.currentTimeMillis() - startTime;

@@ -52,7 +52,7 @@ public class PromotionJobHandler {
                     .parentId(parentJobId)
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end()),
+                                                  new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end(), parentJobId),
                                                   metadata);
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);

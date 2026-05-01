@@ -17,10 +17,14 @@ public record JobInfo(
         List<JobInfo> children,
         long completedChildren,
         long totalChildren,
-        Long durationSeconds
+        Long durationSeconds,
+        float progressPercentValue,
+        String progressMessage
 ) {
     public String progressText() {
-        if (totalChildren > 0) {
+        if (progressMessage != null) {
+            return progressMessage;
+        } else if (totalChildren > 0) {
             return completedChildren + " / " + totalChildren + " child jobs";
         }
         return null;
@@ -29,8 +33,9 @@ public record JobInfo(
     public int progressPercent() {
         if (totalChildren > 0) {
             return (int) ((completedChildren * 100) / totalChildren);
+        } else {
+            return (int)(progressPercentValue * 100);
         }
-        return 0;
     }
 
     public String formattedDuration() {

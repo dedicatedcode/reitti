@@ -76,38 +76,37 @@ public class JobStatusController {
         List<JobInfo> pendingJobs = new ArrayList<>();
         for (JobMetadataRepository.JobMetadata parent : parentJobs) {
             JobInfo jobInfo = mapToJobInfo(parent);
-            if (jobInfo != null) {
-                List<JobMetadataRepository.JobMetadata> childrenMetadata = childrenByParent.getOrDefault(parent.getId(), List.of());
-                List<JobInfo> children = childrenMetadata.stream()
-                    .map(this::mapToJobInfo)
-                    .filter(Objects::nonNull)
-                    .toList();
+            List<JobMetadataRepository.JobMetadata> childrenMetadata = childrenByParent.getOrDefault(parent.getId(), List.of());
+            List<JobInfo> children = childrenMetadata.stream()
+                .map(this::mapToJobInfo)
+                .toList();
 
-                long completedChildren = children.stream()
-                    .filter(j -> j.state() == JobState.COMPLETED || j.state() == JobState.FAILED)
-                    .count();
+            long completedChildren = children.stream()
+                .filter(j -> j.state() == JobState.COMPLETED || j.state() == JobState.FAILED)
+                .count();
 
-                // Get estimated duration based on job type
-                String jobType = parent.getJobType();
-                AverageRuntime avgRuntime = averageRuntimes.get(jobType);
-                Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
+            // Get estimated duration based on job type
+            String jobType = parent.getJobType();
+            AverageRuntime avgRuntime = averageRuntimes.get(jobType);
+            Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
 
-                pendingJobs.add(new JobInfo(
-                    jobInfo.id(),
-                    jobInfo.name(),
-                    jobInfo.description(),
-                    jobInfo.state(),
-                    jobInfo.enqueuedAt(),
-                    jobInfo.scheduledAt(),
-                    jobInfo.processingAt(),
-                    jobInfo.finishedAt(),
-                    jobInfo.canCancel(),
-                    children,
-                    completedChildren,
-                    children.size(),
-                    estimatedDuration
-                ));
-            }
+            pendingJobs.add(new JobInfo(
+                jobInfo.id(),
+                jobInfo.name(),
+                jobInfo.description(),
+                jobInfo.state(),
+                jobInfo.enqueuedAt(),
+                jobInfo.scheduledAt(),
+                jobInfo.processingAt(),
+                jobInfo.finishedAt(),
+                jobInfo.canCancel(),
+                children,
+                completedChildren,
+                children.size(),
+                estimatedDuration,
+                0,
+                null
+            ));
         }
 
         // Filter to only top-level parent jobs for past jobs
@@ -118,10 +117,7 @@ public class JobStatusController {
         // Build past job info with duration
         List<JobInfo> pastJobs = new ArrayList<>();
         for (JobMetadataRepository.JobMetadata metadata : pastParentJobs) {
-            JobInfo jobInfo = mapToJobInfoWithDuration(metadata);
-            if (jobInfo != null) {
-                pastJobs.add(jobInfo);
-            }
+            pastJobs.add(mapToJobInfoWithDuration(metadata));
         }
 
         // Sort past jobs by finishedAt descending (most recent first)
@@ -130,7 +126,6 @@ public class JobStatusController {
             Instant bTime = b.finishedAt() != null ? b.finishedAt() : Instant.EPOCH;
             return bTime.compareTo(aTime);
         });
-
         model.addAttribute("pendingJobs", pendingJobs);
         model.addAttribute("pastJobs", pastJobs);
 
@@ -162,14 +157,13 @@ public class JobStatusController {
     }
 
     private JobInfo mapToJobInfo(JobMetadataRepository.JobMetadata metadata) {
-        try {
-            JobState state = metadata.getState();
-            String jobName = metadata.getFriendlyName();
-            String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
+        JobState state = metadata.getState();
+        String jobName = metadata.getFriendlyName();
+        String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
 
-            boolean canCancel = state == JobState.AWAITING;
+        boolean canCancel = state == JobState.AWAITING;
 
-            return new JobInfo(
+        return new JobInfo(
                 metadata.getId(),
                 jobName,
                 jobDescription,
@@ -182,25 +176,23 @@ public class JobStatusController {
                 List.of(),
                 0,
                 0,
-                null
-            );
-        } catch (Exception e) {
-            return null;
-        }
+                null,
+                ((float) metadata.getMaxProgress() / metadata.getCurrentProgress()) * 100f,
+                metadata.getProgressMessage()
+        );
     }
 
     private JobInfo mapToJobInfoWithDuration(JobMetadataRepository.JobMetadata metadata) {
-        try {
-            JobState state = metadata.getState();
-            String jobName = metadata.getFriendlyName();
-            String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
+        JobState state = metadata.getState();
+        String jobName = metadata.getFriendlyName();
+        String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
 
-            long durationSeconds = 0;
-            if (metadata.getFinishedAt() != null && metadata.getEnqueuedAt() != null) {
-                durationSeconds = Duration.between(metadata.getEnqueuedAt(), metadata.getFinishedAt()).getSeconds();
-            }
+        long durationSeconds = 0;
+        if (metadata.getFinishedAt() != null && metadata.getEnqueuedAt() != null) {
+            durationSeconds = Duration.between(metadata.getEnqueuedAt(), metadata.getFinishedAt()).getSeconds();
+        }
 
-            return new JobInfo(
+        return new JobInfo(
                 metadata.getId(),
                 jobName,
                 jobDescription,
@@ -213,11 +205,11 @@ public class JobStatusController {
                 List.of(),
                 0,
                 0,
-                durationSeconds > 0 ? durationSeconds : null
-            );
-        } catch (Exception e) {
-            return null;
-        }
+                durationSeconds > 0 ? durationSeconds : null,
+                ((float) metadata.getMaxProgress() / metadata.getCurrentProgress()) * 100f,
+                metadata.getProgressMessage()
+        );
+
     }
 
     public record AverageRuntime(long averageSeconds, int sampleCount) {

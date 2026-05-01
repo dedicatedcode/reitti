@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.UUID;
+
 @Controller
 public class ManageDataController {
 
@@ -91,10 +93,12 @@ public class ManageDataController {
         }
 
         try {
-            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+            UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Manual processing");
+            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
                                      JobSchedulingService.Metadata.builder()
                                              .user(user)
                                              .friendlyName("Manual processing")
+                                             .parentId(parentJob)
                                              .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.process.success"));
         } catch (Exception e) {
@@ -113,10 +117,12 @@ public class ManageDataController {
         try {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
-            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+            UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Manual processing");
+            this.jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
                                  JobSchedulingService.Metadata.builder()
                                          .user(user)
                                          .friendlyName("Manual processing")
+                                         .parentId(parentJob)
                                          .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.clear.reprocess.success"));
         } catch (Exception e) {

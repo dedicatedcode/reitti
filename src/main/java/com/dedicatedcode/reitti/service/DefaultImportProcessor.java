@@ -49,31 +49,7 @@ public class DefaultImportProcessor implements ImportProcessor {
         this.importExecutors.submit(() -> {
             logger.trace("Sending batch of {} locations for storing", points.size());
             locationDataIngestPipeline.processLocationData(user.getUsername(), points);
-            logger.trace("Sending batch of {} locations for processing", points.size());
-            scheduleProcessingTrigger(user.getUsername());
         });
-    }
-
-    public void scheduleProcessingTrigger(String username) {
-        {
-            ScheduledFuture<?> existingTrigger = pendingTriggers.get(username);
-            if (existingTrigger != null && !existingTrigger.isDone()) {
-                existingTrigger.cancel(false);
-            }
-
-            ScheduledFuture<?> newTrigger = scheduler.schedule(() -> {
-                try {
-                    logger.debug("Triggered processing for user: {}", username);
-                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(username, null, UUID.randomUUID().toString());
-//                    processingPipelineTrigger.handle(triggerEvent, false);
-                    pendingTriggers.remove(username);
-                } catch (Exception e) {
-                    logger.error("Failed to trigger processing for user: {}", username, e);
-                }
-            }, processingIdleStartTime, TimeUnit.SECONDS);
-
-            pendingTriggers.put(username, newTrigger);
-        }
     }
 
     @Override

@@ -1,62 +1,43 @@
 package com.dedicatedcode.reitti.service.importer;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.processing.DetectionParameter;
-import com.dedicatedcode.reitti.model.processing.RecalculationState;
+import com.dedicatedcode.reitti.IntegrationTest;
+import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@IntegrationTest
 class GoogleRecordsImporterTest {
+
+    @Autowired
+    private GoogleRecordsImporter googleRecordsImporter;
+    @Autowired
+    private ProcessedVisitJdbcService processedVisitJdbcService;
+    @Autowired
+    private TestingService testingService;
+    private User user;
+
+    @BeforeEach
+    void setUp() {
+        this.user = this.testingService.randomUser();
+    }
 
     @Test
     void shouldParseOldFormat() {
-        LocationDataIngestPipeline mock = mock(LocationDataIngestPipeline.class);
 
-        VisitDetectionParametersService parametersService = mock(VisitDetectionParametersService.class);
-        DetectionParameter config = new DetectionParameter(-1L,
-                                                           new DetectionParameter.VisitDetection(300, 300),
-                                                           new DetectionParameter.VisitMerging(24, 300, 100),
-                                                           new DetectionParameter.LocationDensity(50, 720),
-                                                           null, RecalculationState.DONE);
-        when(parametersService.getCurrentConfiguration(any(), any(Instant.class))).thenReturn(config);
-        ProcessingPipelineTrigger processingPipeLineTrigger = mock(ProcessingPipelineTrigger.class);
-        GoogleRecordsImporter importHandler = new GoogleRecordsImporter(new ObjectMapper(), new ImportStateHolder(), new DefaultImportProcessor(mock, 100, 5, processingPipeLineTrigger));
-        com.dedicatedcode.reitti.model.security.User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user);
+        Map<String, Object> result = googleRecordsImporter.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user, null, "Records.json");
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        ArgumentCaptor<List<LocationPoint>> eventCaptor = ArgumentCaptor.forClass(List.class);
-        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> verify(mock, times(1)).processLocationData(eq("test"), eventCaptor.capture()));
-
-        List<List<LocationPoint>> capturedEvents = eventCaptor.getAllValues();
-        assertEquals(1, capturedEvents.size());
-
-        // Verify that all events are for the correct user
-        for (List<LocationPoint> points : capturedEvents) {
-            assertNotNull(points);
-            assertFalse(points.isEmpty());
-
-            points.forEach(point -> assertNotNull(point.getAccuracyMeters()));
-        }
+        this.testingService.awaitDataImport(30);
+        assertFalse(processedVisitJdbcService.findByUser(user).isEmpty());
     }
 }

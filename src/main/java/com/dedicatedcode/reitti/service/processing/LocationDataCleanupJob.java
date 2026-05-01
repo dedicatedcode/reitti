@@ -45,7 +45,7 @@ public class LocationDataCleanupJob {
         this.metadataRepository = metadataRepository;
     }
 
-    public void execute(UUID jobId, User user, Device device, Instant start, Instant end) {
+    public void execute(UUID jobId, User user, Device device, Instant start, Instant end, UUID parentJobId) {
         log.debug("Starting LocationDataCleanupJob for user [{}] and device [{}] between {} and {}", user, device, start, end);
         this.metadataRepository.updateProgress(jobId, 0,4, "Anomaly processing started ...");
         anomalyProcessingService.processAndMarkAnomalies(user, start, end);
@@ -57,10 +57,11 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device == null) {
             jobScheduler.scheduleTask(processingEventTask,
-                                      new TriggerProcessingEvent(user.getUsername(), null, null),
+                                      new TriggerProcessingEvent(user.getUsername(), null, null, parentJobId),
                                       Instant.now().plus(10, ChronoUnit.SECONDS),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                               .user(user)
+                                              .parentId(parentJobId)
                                               .friendlyName("Detect Visits and Trips").build()
             );
         }
@@ -68,6 +69,6 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 4,4, "Finished");
     }
 
-    public record TaskData(User user, Device device, Instant start, Instant end) implements Serializable {
+    public record TaskData(User user, Device device, Instant start, Instant end, UUID parentJobId) implements Serializable {
     }
 }

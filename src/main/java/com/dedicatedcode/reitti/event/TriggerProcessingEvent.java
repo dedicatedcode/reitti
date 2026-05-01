@@ -12,15 +12,18 @@ public class TriggerProcessingEvent implements Serializable {
     private final String previewId;
     private final Instant receivedAt;
     private final String traceId;
+    private final UUID parentJobId;
 
     @JsonCreator
     public TriggerProcessingEvent(
             @JsonProperty("username") String username,
             String previewId,
-            @JsonProperty("trace-id") String traceId) {
+            @JsonProperty("trace-id") String traceId,
+            UUID parentJobId) {
         this.username = username;
         this.previewId = previewId;
         this.traceId = traceId;
+        this.parentJobId = parentJobId;
         this.receivedAt = Instant.now();
     }
 
@@ -38,6 +41,10 @@ public class TriggerProcessingEvent implements Serializable {
 
     public String getTraceId() {
         return traceId;
+    }
+
+    public UUID getParentJobId() {
+        return parentJobId;
     }
 
     @Override

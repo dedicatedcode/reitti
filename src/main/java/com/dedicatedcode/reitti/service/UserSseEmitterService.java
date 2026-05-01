@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -96,5 +97,5 @@ public class UserSseEmitterService implements SmartLifecycle {
         return true;
     }
 
-    public record TaskData(User user, SSEEvent eventData) implements Serializable {}
+    public record TaskData(User user, SSEEvent eventData, UUID parentJobId) implements Serializable {}
 }

@@ -163,6 +163,9 @@ public class JobMetadataRepository {
         private Instant scheduledAt;
         private Instant processingAt;
         private Instant finishedAt;
+        private String progressMessage;
+        private long currentProgress;
+        private long maxProgress;
 
         public UUID getId() { return id; }
         public void setId(UUID id) { this.id = id; }
@@ -190,5 +193,11 @@ public class JobMetadataRepository {
         public void setProcessingAt(Instant processingAt) { this.processingAt = processingAt; }
         public Instant getFinishedAt() { return finishedAt; }
         public void setFinishedAt(Instant finishedAt) { this.finishedAt = finishedAt; }
+        public String getProgressMessage() { return progressMessage; }
+        public void setProgressMessage(String progressMessage) { this.progressMessage = progressMessage; }
+        public long getCurrentProgress() { return currentProgress; }
+        public void setCurrentProgress(long currentProgress) { this.currentProgress = currentProgress; }
+        public long getMaxProgress() { return maxProgress; }
+        public void setMaxProgress(long maxProgress) { this.maxProgress = maxProgress; }
     }
 }
