@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.service.UserSseEmitterService;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.service.processing.UnifiedLocationProcessingService;
 import com.github.kagkarlsson.scheduler.task.Task;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +24,15 @@ public class TaskConfig {
                 .execute((instance, context) -> {
                     UserSseEmitterService.TaskData data = instance.getData();
                     userSseEmitterService.sendEventToUser(data.user(), data.eventData());
+                });
+    }
+
+    @Bean
+    public Task<LocationProcessEvent> locationProcessingTask(UnifiedLocationProcessingService unifiedLocationProcessingService) {
+        return Tasks.oneTime("location-processing-task", LocationProcessEvent.class)
+                .execute((instance, context) -> {
+                    LocationProcessEvent data = instance.getData();
+                    unifiedLocationProcessingService.processLocationEvent(data);
                 });
     }
 

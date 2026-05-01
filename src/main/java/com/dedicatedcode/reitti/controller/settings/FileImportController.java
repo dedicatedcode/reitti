@@ -231,7 +231,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user);
+                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, null, filename);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

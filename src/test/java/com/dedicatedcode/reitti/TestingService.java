@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
@@ -41,8 +40,6 @@ public class TestingService {
     @Autowired
     private UserService userService;
     @Autowired
-    private ImportProcessor importBatchProcessor;
-    @Autowired
     private SignificantPlaceJdbcService significantPlaceJdbcService;
     @Autowired
     private ApiTokenJdbcService apiTokenJdbcService;
@@ -54,7 +51,7 @@ public class TestingService {
         if (path.endsWith(".gpx")) {
             gpxImporter.importGpx(is, user, null, null);
         } else if (path.endsWith(".geojson")) {
-            geoJsonImporter.importGeoJson(is, user);
+            geoJsonImporter.importGeoJson(is, user, null, null);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
@@ -101,7 +98,7 @@ public class TestingService {
                     lastRawCount.set(currentRawCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable && importBatchProcessor.isIdle()) {
+                    if (countsStable) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);

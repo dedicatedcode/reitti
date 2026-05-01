@@ -1,10 +1,12 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,28 +27,34 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GeoJsonImporterTest {
-
-    @Mock
-    private ImportStateHolder stateHolder;
-
-    @Mock
-    private DefaultImportProcessor batchProcessor;
-
     @Mock
     private User user;
+    @Mock
+    private ImportStateHolder stateHolder;
+    @Mock
+    private LocationPointStagingService stagingService;
+    @Mock
+    private JobSchedulingService jobSchedulingService;
+    @Mock
+    private Task task;
 
     private GeoJsonImporter geoJsonImporter;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        geoJsonImporter = new GeoJsonImporter(objectMapper, stateHolder, batchProcessor);
+        this.geoJsonImporter = new GeoJsonImporter(
+                new ObjectMapper(),
+                stateHolder,
+                stagingService,
+                task,
+                jobSchedulingService,
+                0
+        );
     }
 
     @Test
     void shouldImportFeatureCollectionWithIsoTimestamp() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
+        when(this.stagingService.getBatchSize()).thenReturn(100);
 
         String geoJson = """
             {
@@ -79,13 +87,13 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).processBatch(eq(user), captor.capture());
+        verify(stagingService).insertBatch(any(), eq(user), any(), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
@@ -108,7 +116,7 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldImportFeatureCollectionWithUnixEpochTimestamp() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
+        when(this.stagingService.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "FeatureCollection",
@@ -140,13 +148,12 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
-
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).processBatch(eq(user), captor.capture());
+        verify(stagingService).insertBatch(any(), eq(user), any(), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(2, points.size());
@@ -166,7 +173,7 @@ class GeoJsonImporterTest {
 
     @Test
     void shouldImportSingleFeature() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
+        when(this.stagingService.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "Feature",
@@ -182,13 +189,13 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).processBatch(eq(user), captor.capture());
+        verify(stagingService).insertBatch(any(), eq(user), any(), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         assertEquals(1, points.size());
@@ -210,11 +217,11 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
-        verify(batchProcessor, never()).processBatch(any(), any());
+        verify(stagingService, never()).insertBatch(any(), any(), any(), any());
     }
 
     @Test
@@ -226,18 +233,17 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(invalidJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Invalid GeoJSON"));
-        verify(batchProcessor, never()).processBatch(any(), any());
+        verify(stagingService, never()).insertBatch(any(), any(), any(), any());
         verify(stateHolder).importStarted();
         verify(stateHolder).importFinished();
     }
 
     @Test
     void shouldHandleUnsupportedGeoJsonType() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "LineString",
@@ -246,17 +252,16 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Unsupported GeoJSON type"));
-        verify(batchProcessor, never()).processBatch(any(), any());
+        verify(stagingService, never()).insertBatch(any(), any(), any(), any());
     }
 
     @Test
     void shouldSkipFeaturesWithoutTimestamp() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
-
+        when(this.stagingService.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "FeatureCollection",
@@ -276,16 +281,16 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
-        verify(batchProcessor, never()).processBatch(any(), any());
+        verify(stagingService, never()).insertBatch(any(), any(), any(), any());
     }
 
     @Test
     void shouldUseDefaultAccuracyWhenNotProvided() {
-        when(batchProcessor.getBatchSize()).thenReturn(100);
+        when(this.stagingService.getBatchSize()).thenReturn(100);
         String geoJson = """
             {
               "type": "Feature",
@@ -300,13 +305,13 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user);
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(batchProcessor).processBatch(eq(user), captor.capture());
+        verify(stagingService).insertBatch(any(), eq(user), nullable(Device.class), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         LocationPoint point = points.get(0);

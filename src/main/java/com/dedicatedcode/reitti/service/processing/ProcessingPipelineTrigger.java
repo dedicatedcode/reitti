@@ -9,6 +9,9 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,26 +30,28 @@ public class ProcessingPipelineTrigger {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final UserJdbcService userJdbcService;
-    private final UnifiedLocationProcessingService unifiedLocationProcessingService;
+    private final Task<LocationProcessEvent> locationProcessTask;
+    private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository jobMetadataRepository;
     private final int batchSize;
-    private final int processingSettleTime;
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
-                                     UnifiedLocationProcessingService unifiedLocationProcessingService, JobMetadataRepository jobMetadataRepository,
+                                     JobMetadataRepository jobMetadataRepository,
                                      @Value("${reitti.import.batch-size:100}") int batchSize,
-                                     @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime) {
+                                     @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime,
+                                     Task<LocationProcessEvent> locationProcessTask,
+                                     JobSchedulingService jobSchedulingService) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
-        this.unifiedLocationProcessingService = unifiedLocationProcessingService;
+        this.locationProcessTask = locationProcessTask;
+        this.jobSchedulingService = jobSchedulingService;
         this.jobMetadataRepository = jobMetadataRepository;
         this.batchSize = batchSize;
-        this.processingSettleTime = processingSettleTime;
     }
 
     public void execute(UUID jobId, TriggerProcessingEvent event) {
@@ -85,7 +90,14 @@ public class ProcessingPipelineTrigger {
                 } else {
                     previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 }
-                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId));
+
+                LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
+                JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                        .jobType(JobType.LOCATION_PROCESSING)
+                        .parentId(parentJobId).user(user)
+                        .friendlyName("Location processing for user " + user.getUsername())
+                        .build();
+                this.jobSchedulingService.enqueueTask(this.locationProcessTask, data, metadata);
                 totalProcessed += currentBatch.size();
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);

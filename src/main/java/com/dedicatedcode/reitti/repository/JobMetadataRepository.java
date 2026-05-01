@@ -21,7 +21,7 @@ public class JobMetadataRepository {
         JobMetadata metadata = new JobMetadata();
         metadata.setId(UUID.fromString(rs.getString("id")));
         metadata.setUserId(rs.getLong("user_id"));
-        metadata.setJobType(rs.getString("type"));
+        metadata.setJobType(JobType.valueOf(rs.getString("type")));
         metadata.setFriendlyName(rs.getString("friendly_name"));
         metadata.setState(JobState.valueOf(rs.getString("status")));
         metadata.setEnqueuedAt(toInstant(rs.getTimestamp("enqueued_at")));
@@ -156,7 +156,7 @@ public class JobMetadataRepository {
         private UUID parentJobId;
 
         private Long userId;
-        private String jobType;
+        private JobType jobType;
         private String friendlyName;
         private JobState state;
         private Instant enqueuedAt;
@@ -173,8 +173,8 @@ public class JobMetadataRepository {
         public void setParentJobId(UUID parentJobId) { this.parentJobId = parentJobId; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
-        public String getJobType() { return jobType; }
-        public void setJobType(String jobType) { this.jobType = jobType; }
+        public JobType getJobType() { return jobType; }
+        public void setJobType(JobType jobType) { this.jobType = jobType; }
         public String getFriendlyName() { return friendlyName; }
         public void setFriendlyName(String friendlyName) { this.friendlyName = friendlyName; }
 
