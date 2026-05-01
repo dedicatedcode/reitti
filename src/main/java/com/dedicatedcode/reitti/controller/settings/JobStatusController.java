@@ -45,11 +45,20 @@ public class JobStatusController {
             List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
         );
 
+        // Also get completed/failed jobs to include completed children in parent job info
+        List<JobMetadataRepository.JobMetadata> completedJobMetadata = jobMetadataRepository.findByStates(
+            List.of(JobState.COMPLETED, JobState.FAILED)
+        );
+
+        // Combine all job metadata for building parent job info with children
+        List<JobMetadataRepository.JobMetadata> allJobMetadata = new ArrayList<>(pendingJobMetadata);
+        allJobMetadata.addAll(completedJobMetadata);
+
         // Separate parent jobs from child jobs
         List<JobMetadataRepository.JobMetadata> parentJobs = new ArrayList<>();
         List<JobMetadataRepository.JobMetadata> childJobs = new ArrayList<>();
 
-        for (JobMetadataRepository.JobMetadata metadata : pendingJobMetadata) {
+        for (JobMetadataRepository.JobMetadata metadata : allJobMetadata) {
             if (metadata.getParentJobId() == null) {
                 parentJobs.add(metadata);
             } else {
@@ -64,7 +73,7 @@ public class JobStatusController {
             childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(child);
         }
 
-        // Get past jobs for calculating average runtime
+        // Get past jobs for calculating average runtime (only parent jobs)
         List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
             List.of(JobState.COMPLETED, JobState.FAILED)
         );
