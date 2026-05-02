@@ -142,10 +142,10 @@ public class UnifiedLocationProcessingService {
         // STEP 4: Notifications
         // ---------------------
         if (previewId == null) {
-            userNotificationService.newVisits(user, mergingResult.processedVisits, parentJobId);
-            userNotificationService.newTrips(user, tripResult.trips, parentJobId);
+            userNotificationService.newVisits(user, mergingResult.processedVisits);
+            userNotificationService.newTrips(user, tripResult.trips);
         } else {
-            userNotificationService.newTrips(user, tripResult.trips, previewId, parentJobId);
+            userNotificationService.newTrips(user, tripResult.trips, previewId);
         }
 
         long duration = System.currentTimeMillis() - startTime;

@@ -126,10 +126,9 @@ public class GeoJsonImporter {
                     .user(user)
                     .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
                     .friendlyName("GeoJson Data Promotion")
-                    .parentId(parentJobId)
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true, parentJobId),
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
             if (processedCount.get() == 0) {

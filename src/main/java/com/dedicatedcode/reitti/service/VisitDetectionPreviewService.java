@@ -71,11 +71,10 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         UUID parentJob = this.jobScheduler.createParentJob(user, VISIT_TRIP_DETECTION, previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString(), parentJob);
+        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
         this.jobScheduler.enqueueTask(processingEventTask, triggerEvent,
                                   JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
                                           .friendlyName("Preview Visit Detection")
-                                          .parentId(parentJob)
                                           .build());
         updatePreviewStatus(previewId);
         

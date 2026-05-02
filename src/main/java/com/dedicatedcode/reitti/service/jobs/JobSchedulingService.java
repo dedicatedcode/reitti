@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.jobs;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.service.JobContext;
 import com.github.kagkarlsson.scheduler.CurrentlyExecuting;
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.github.kagkarlsson.scheduler.event.SchedulerListener;
@@ -30,20 +31,24 @@ public class JobSchedulingService implements SchedulerListener {
         this.jobMetadataRepository = jobMetadataRepository;
     }
 
-    public <T> void scheduleTask(Task<T> task, T data, Instant scheduledAt, Metadata meta) {
-        Instant now = Instant.now();
-
-        UUID jobId = UUID.randomUUID();
-        // 1. Maintain your custom metadata for your dashboard
-        JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
-        jobMetadataRepository.insert(jobId, meta.user, meta.jobType, meta.friendlyName, state, now, scheduledAt, meta.parentId);
-
-        // 2. Schedule the actual task in db-scheduler
-        // We use the JobId as the "Instance ID" so we can cancel it later if needed
-        jobScheduler.getObject().schedule(task.instance(jobId.toString(), data), scheduledAt);
+    public <T extends JobContext<T>> void scheduleTask(Task<T> task, T data, Instant scheduledAt, Metadata meta) {
+        scheduleTask(UUID.randomUUID(), task, data, scheduledAt, meta);
     }
 
-    public <T> void enqueueTask(Task<T> task, T data, Metadata meta) {
+    private <T extends JobContext<T>> void scheduleTask(UUID jobId, Task<T> task, T data, Instant scheduledAt, Metadata meta) {
+        Instant now = Instant.now();
+
+        JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
+        jobMetadataRepository.insert(jobId, meta.user, meta.jobType, meta.friendlyName, state, now, scheduledAt, data.getParentJobId());
+
+        T updatedData = data.withJobId(jobId);
+        if (data.getParentJobId() != null) {
+            updatedData = updatedData.withParentJobId(data.getParentJobId());
+        }
+        jobScheduler.getObject().schedule(task.instance(jobId.toString(), updatedData), scheduledAt);
+    }
+
+    public <T extends JobContext<T>> void enqueueTask(Task<T> task, T data, Metadata meta) {
         scheduleTask(task, data, Instant.now(), meta);
     }
 
@@ -63,7 +68,7 @@ public class JobSchedulingService implements SchedulerListener {
                 JobState.AWAITING,
                 now,
                 now,
-                null // no parent - this is the root
+                null
         );
 
         return parentJobId;
@@ -123,12 +128,12 @@ public class JobSchedulingService implements SchedulerListener {
 
     }
 
-    public record Metadata(User user, JobType jobType, String friendlyName, UUID parentId) {
+
+    public record Metadata(User user, JobType jobType, String friendlyName) {
         public static class Builder {
             private User user;
             private JobType jobType;
             private String friendlyName;
-            private UUID parentId;
             public Builder user(User user) {
                 this.user = user;
                 return this;
@@ -144,13 +149,8 @@ public class JobSchedulingService implements SchedulerListener {
                 return this;
             }
 
-            public Builder parentId(UUID parentId) {
-                this.parentId = parentId;
-                return this;
-            }
-
             public Metadata build() {
-                return new Metadata(user, jobType, friendlyName, parentId);
+                return new Metadata(user, jobType, friendlyName);
             }
         }
 

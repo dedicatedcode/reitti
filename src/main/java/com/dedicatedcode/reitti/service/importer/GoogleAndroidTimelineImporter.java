@@ -102,10 +102,9 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     .user(user)
                     .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
                     .friendlyName("GPS Data Promotion")
-                    .parentId(parentJobId)
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true, parentJobId),
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
 

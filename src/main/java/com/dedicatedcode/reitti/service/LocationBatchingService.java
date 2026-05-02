@@ -96,7 +96,7 @@ public class LocationBatchingService {
             );
             batch.clear();
             this.jobScheduler.enqueueTask(promotionTask,
-                                          new PromotionJobHandler.PromotionTaskData(batch.user, batch.device, pKey, false, null),
+                                          new PromotionJobHandler.PromotionTaskData(batch.user, batch.device, pKey, false),
                                           JobSchedulingService.Metadata.builder()
                                                   .user(batch.user)
                                                   .jobType(JobType.GPS_INGESTION)

@@ -1,29 +1,34 @@
 package com.dedicatedcode.reitti.event;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.dedicatedcode.reitti.service.JobContext;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 
-public class TriggerProcessingEvent implements Serializable {
+public class TriggerProcessingEvent extends JobContext<TriggerProcessingEvent> implements Serializable {
     private final String username;
     private final String previewId;
     private final Instant receivedAt;
     private final String traceId;
-    private final UUID parentJobId;
 
-    @JsonCreator
     public TriggerProcessingEvent(
-            @JsonProperty("username") String username,
+            String username,
             String previewId,
-            @JsonProperty("trace-id") String traceId,
+            String traceId) {
+        this(username, previewId, traceId, null, null);
+    }
+
+    public TriggerProcessingEvent(
+            String username,
+            String previewId,
+            String traceId,
+            UUID jobId,
             UUID parentJobId) {
+        super(jobId, parentJobId);
         this.username = username;
         this.previewId = previewId;
         this.traceId = traceId;
-        this.parentJobId = parentJobId;
         this.receivedAt = Instant.now();
     }
 
@@ -43,8 +48,14 @@ public class TriggerProcessingEvent implements Serializable {
         return traceId;
     }
 
-    public UUID getParentJobId() {
-        return parentJobId;
+    @Override
+    public TriggerProcessingEvent withJobId(UUID jobId) {
+        return new  TriggerProcessingEvent(username, previewId, traceId, jobId, parentJobId);
+    }
+
+    @Override
+    public TriggerProcessingEvent withParentJobId(UUID parentJobId) {
+        return new   TriggerProcessingEvent(username, previewId, traceId, jobId, parentJobId);
     }
 
     @Override

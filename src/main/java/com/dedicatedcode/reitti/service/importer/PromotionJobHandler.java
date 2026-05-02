@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
@@ -12,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
 import java.util.UUID;
 
 @Component
@@ -36,7 +36,7 @@ public class PromotionJobHandler {
         TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
         metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
         int promote = this.stagingService.promote(partitionKey);
-        metadataRepository.updateProgress(jobId, 1, 3, "Droping partition");
+        metadataRepository.updateProgress(jobId, 1, 3, "Dropping partition");
 
         log.debug("Promoted [{}] points into live table", promote);
         if (dropPartition) {
@@ -49,10 +49,9 @@ public class PromotionJobHandler {
                     .user(user)
                     .jobType(JobType.LOCATION_DATA_CLEANUP)
                     .friendlyName("Location Data Cleanup")
-                    .parentId(parentJobId)
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end(), parentJobId),
+                                                  new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end()),
                                                   metadata);
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);
@@ -60,12 +59,61 @@ public class PromotionJobHandler {
         metadataRepository.updateProgress(jobId, 3, 3, "Done");
     }
 
-    public record PromotionTaskData(
-            User user,
-            Device device,
-            String partitionKey,
-            boolean isManual,
-            UUID parentJobId
-    ) implements Serializable {
+    public static final class PromotionTaskData extends JobContext<PromotionTaskData> {
+        private final User user;
+        private final Device device;
+        private final String partitionKey;
+        private final boolean isManual;
+
+        public PromotionTaskData(User user, Device device, String partitionKey, boolean isManual) {
+            this.user = user;
+            this.device = device;
+            this.partitionKey = partitionKey;
+            this.isManual = isManual;
+        }
+
+        public PromotionTaskData(User user, Device device, String partitionKey, boolean isManual, UUID jobId, UUID parentJobId) {
+            super(jobId, parentJobId);
+            this.user = user;
+            this.device = device;
+            this.partitionKey = partitionKey;
+            this.isManual = isManual;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public Device getDevice() {
+            return device;
+        }
+
+        public String getPartitionKey() {
+            return partitionKey;
+        }
+
+        public boolean isManual() {
+            return isManual;
+        }
+
+        @Override
+        public String toString() {
+            return "PromotionTaskData[" +
+                    "user=" + user + ", " +
+                    "device=" + device + ", " +
+                    "partitionKey=" + partitionKey + ", " +
+                    "isManual=" + isManual + ", " +
+                    "parentJobId=" + parentJobId + ']';
+        }
+
+        @Override
+        public PromotionTaskData withJobId(UUID jobId) {
+            return new PromotionTaskData(user, device, partitionKey, isManual, jobId, parentJobId);
+        }
+
+        @Override
+        public PromotionTaskData withParentJobId(UUID parentJobId) {
+            return new PromotionTaskData(user, device, partitionKey, isManual, jobId, parentJobId);
+        }
     }
 }

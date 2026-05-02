@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
@@ -45,7 +46,12 @@ public class LocationDataCleanupJob {
         this.metadataRepository = metadataRepository;
     }
 
-    public void execute(UUID jobId, User user, Device device, Instant start, Instant end, UUID parentJobId) {
+    public void execute(TaskData data) {
+        UUID jobId = data.getJobId();
+        User user = data.getUser();
+        Device device = data.getDevice();
+        Instant start = data.getStart();
+        Instant end = data.getEnd();
         log.debug("Starting LocationDataCleanupJob for user [{}] and device [{}] between {} and {}", user, device, start, end);
         this.metadataRepository.updateProgress(jobId, 0,4, "Anomaly processing started ...");
         anomalyProcessingService.processAndMarkAnomalies(user, start, end);
@@ -57,11 +63,10 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device == null) {
             jobScheduler.scheduleTask(processingEventTask,
-                                      new TriggerProcessingEvent(user.getUsername(), null, null, parentJobId),
+                                      new TriggerProcessingEvent(user.getUsername(), null, null).withParentJobId(jobId),
                                       Instant.now().plus(10, ChronoUnit.SECONDS),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                               .user(user)
-                                              .parentId(parentJobId)
                                               .friendlyName("Detect Visits and Trips").build()
             );
         }
@@ -69,6 +74,57 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 4,4, "Finished");
     }
 
-    public record TaskData(User user, Device device, Instant start, Instant end, UUID parentJobId) implements Serializable {
+    public static final class TaskData extends JobContext<TaskData> {
+        private final User user;
+        private final Device device;
+        private final Instant start;
+        private final Instant end;
+
+        public TaskData(User user, Device device, Instant start, Instant end) {
+            this(user, device, start, end, null, null);
+        }
+
+        public TaskData(User user, Device device, Instant start, Instant end, UUID jobId, UUID parentJobId) {
+            super(jobId, parentJobId);
+            this.user = user;
+            this.device = device;
+            this.start = start;
+            this.end = end;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public Device getDevice() {
+            return device;
+        }
+
+        public Instant getStart() {
+            return start;
+        }
+
+        public Instant getEnd() {
+            return end;
+        }
+
+        @Override
+        public TaskData withJobId(UUID jobId) {
+            return new TaskData(user, device, start, end, jobId, parentJobId);
+        }
+
+        @Override
+        public TaskData withParentJobId(UUID parentJobId) {
+            return new TaskData(user, device, start, end, jobId, parentJobId);
+        }
+
+        @Override
+        public String toString() {
+            return "TaskData[" +
+                    "user=" + user + ", " +
+                    "device=" + device + ", " +
+                    "start=" + start + ", " +
+                    "end=" + end + "]";
+        }
     }
 }

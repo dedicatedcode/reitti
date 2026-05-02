@@ -269,10 +269,9 @@ public class OwnTracksRecorderIntegrationService {
                     .user(user)
                     .jobType(JobType.OWNTRACKS_IMPORT)
                     .friendlyName("Owntracks History Import")
-                    .parentId(parentJobId)
                     .build();
             jobSchedulingService.enqueueTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true, parentJobId),
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               metadata);
             
             logger.info("Loaded {} total historical location points for user {}", totalLocationPoints, user.getUsername());

@@ -93,12 +93,10 @@ public class ManageDataController {
         }
 
         try {
-            UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Manual processing");
-            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
+            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
                                      JobSchedulingService.Metadata.builder()
                                              .user(user)
                                              .friendlyName("Manual processing")
-                                             .parentId(parentJob)
                                              .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.process.success"));
         } catch (Exception e) {
@@ -117,12 +115,10 @@ public class ManageDataController {
         try {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
-            UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Manual processing");
-            this.jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
+            this.jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
                                  JobSchedulingService.Metadata.builder()
                                          .user(user)
                                          .friendlyName("Manual processing")
-                                         .parentId(parentJob)
                                          .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.clear.reprocess.success"));
         } catch (Exception e) {

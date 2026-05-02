@@ -63,11 +63,10 @@ public class DataCleanupService {
 
         UUID parentJob = this.jobScheduler.createParentJob(user, JobType.LOCATION_PROCESSING, "Geometry change");
         jobScheduler.scheduleTask(processingEventTask,
-                                  new TriggerProcessingEvent(user.getUsername(), null, null, parentJob),
+                                  new TriggerProcessingEvent(user.getUsername(), null, null),
                                   Instant.now().plus(10, ChronoUnit.SECONDS),
                                   JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                           .user(user)
-                                          .parentId(parentJob)
                                           .friendlyName("Detect Visits and Trips").build()
         );
     }
