@@ -3,11 +3,15 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -16,7 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
 
 @Controller
 public class ManageDataController {
@@ -25,26 +29,26 @@ public class ManageDataController {
     private final boolean deleteAllHostnameVerificationEnabled;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final ProcessingPipelineTrigger processingPipelineTrigger;
+    private final Task<TriggerProcessingEvent> processingTask;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final I18nService i18n;
-    private final JobScheduler jobScheduler;
+    private final JobSchedulingService jobScheduler;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${reitti.data-management.delete-all.hostname-verification.enabled:true}") boolean deleteAllHostnameVerificationEnabled,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
-                                ProcessingPipelineTrigger processingPipelineTrigger,
+                                Task<TriggerProcessingEvent> processingTask,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 UserSettingsJdbcService userSettingsJdbcService,
                                 I18nService i18nService,
-                                JobScheduler jobScheduler) {
+                                JobSchedulingService jobScheduler) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.processingPipelineTrigger = processingPipelineTrigger;
+        this.processingTask = processingTask;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.i18n = i18nService;
@@ -89,7 +93,11 @@ public class ManageDataController {
         }
 
         try {
-            jobScheduler.enqueue(() -> processingPipelineTrigger.execute(new TriggerProcessingEvent(user.getUsername(), null, null), JobContext.Null));
+            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+                                     JobSchedulingService.Metadata.builder()
+                                             .user(user)
+                                             .friendlyName("Manual processing")
+                                             .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.process.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("data.process.error", e.getMessage()));
@@ -107,7 +115,11 @@ public class ManageDataController {
         try {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
-            jobScheduler.enqueue(() -> processingPipelineTrigger.execute(new TriggerProcessingEvent(user.getUsername(), null, null), JobContext.Null));
+            this.jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+                                 JobSchedulingService.Metadata.builder()
+                                         .user(user)
+                                         .friendlyName("Manual processing")
+                                         .jobType(JobType.LOCATION_PROCESSING).build());
             model.addAttribute("successMessage", i18n.translate("data.clear.reprocess.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("data.clear.reprocess.error", e.getMessage()));

@@ -5,9 +5,10 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import jakarta.annotation.PreDestroy;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.scheduling.JobScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,19 +32,20 @@ public class LocationBatchingService {
     private final Map<String, UserBatch> userBatches = new ConcurrentHashMap<>();
     private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
     private final LocationPointStagingService locationPointStagingService;
-    private final PromotionJobHandler promotionJobHandler;
-    private final JobScheduler jobScheduler;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobSchedulingService jobScheduler;
 
     private final int maxBatchSize;
     private final long maxWaitTimeMs;
     
     @Autowired
-    public LocationBatchingService(LocationPointStagingService locationPointStagingService, PromotionJobHandler promotionJobHandler,
-                                   JobScheduler jobScheduler,
+    public LocationBatchingService(LocationPointStagingService locationPointStagingService,
+                                   Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                   JobSchedulingService jobScheduler,
                                    @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
                                    @Value("${reitti.batching.max-wait-time-ms:5000}") int maxWaitTimeMs) {
         this.locationPointStagingService = locationPointStagingService;
-        this.promotionJobHandler = promotionJobHandler;
+        this.promotionTask = promotionTask;
         this.jobScheduler = jobScheduler;
         this.maxBatchSize = maxBatchSize;
         this.maxWaitTimeMs = maxWaitTimeMs;
@@ -93,7 +95,12 @@ public class LocationBatchingService {
                                                     batch.getLocationPoints()
             );
             batch.clear();
-            this.jobScheduler.enqueue(() -> promotionJobHandler.execute(batch.user, batch.device, pKey, false, JobContext.Null));
+            this.jobScheduler.enqueueTask(promotionTask,
+                                          new PromotionJobHandler.PromotionTaskData(batch.user, batch.device, pKey, false),
+                                          JobSchedulingService.Metadata.builder()
+                                                  .user(batch.user)
+                                                  .jobType(JobType.GPS_INGESTION)
+                                                  .friendlyName("GPS Data Promotion").build());
         } catch (Exception e) {
             logger.error("Failed to flush batch for partition {}", batch.getPartitionKey(), e);
         }

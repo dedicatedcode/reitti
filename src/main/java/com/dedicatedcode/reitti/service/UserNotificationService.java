@@ -12,7 +12,9 @@ import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
-import org.jobrunr.scheduling.JobScheduler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,11 +22,10 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.dedicatedcode.reitti.service.jobs.JobSchedulingService.*;
 
 @Service
 public class UserNotificationService {
@@ -32,31 +33,19 @@ public class UserNotificationService {
     private final ReittiSubscriptionService reittiSubscriptionService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
-    private final JobScheduler jobScheduler;
-    private final UserSseEmitterService userSseEmitterService;
+    private final JobSchedulingService jobScheduler;
+    private final Task<UserSseEmitterService.TaskData> userSSEEmitterTask;
 
-    public UserNotificationService(JobScheduler jobScheduler,
+    public UserNotificationService(JobSchedulingService jobScheduler,
                                    ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
-                                   UserSharingJdbcService userSharingJdbcService, UserSseEmitterService userSseEmitterService) {
+                                   UserSharingJdbcService userSharingJdbcService,
+                                   Task<UserSseEmitterService.TaskData> userSSEEmitterTask) {
         this.jobScheduler = jobScheduler;
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
-        this.userSseEmitterService = userSseEmitterService;
-    }
-
-    public void newTrips(User user, List<Trip> trips) {
-       newTrips(user, trips, null);
-    }
-
-    public void newTrips(User user, List<Trip> trips, String previewId) {
-        SSEType eventType = SSEType.TRIPS;
-        log.debug("New trips for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
-        sendToQueue(user, dates, eventType, previewId);
-        notifyOtherUsers(user, eventType, dates);
-        notifyReittiSubscriptions(user, eventType, dates);
+        this.userSSEEmitterTask = userSSEEmitterTask;
     }
 
     public void placeUpdate(User user, SignificantPlace place, String previewId) {
@@ -74,6 +63,18 @@ public class UserNotificationService {
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
+    public void newTrips(User user, List<Trip> trips) {
+        newTrips(user,  trips, null);
+    }
+    public void newTrips(User user, List<Trip> trips, String previewId) {
+        SSEType eventType = SSEType.TRIPS;
+        log.debug("New trips for user [{}]", user.getId());
+        Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
+        sendToQueue(user, dates, eventType, previewId);
+        notifyOtherUsers(user, eventType, dates);
+        notifyReittiSubscriptions(user, eventType, dates);
+    }
+
     public void newRawLocationData(User user, List<LocationPoint> filtered) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}]", user.getId());
@@ -85,23 +86,20 @@ public class UserNotificationService {
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.jobScheduler.enqueue(() -> {
-                    this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
-            });
+            this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId)),
+                                      Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
         }
     }
     public void sendToQueue(User user, User changedUser, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.jobScheduler.enqueue(() -> {
-                this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId));
-            });
+            this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId)),
+                                      Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
         }
     }
 
     private void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.jobScheduler.enqueue(() -> {
-            this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
-        });
+        this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId)),
+                                  Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
     }
 
     private void notifyOtherUsers(User user, SSEType eventType, Set<LocalDate> dates) {

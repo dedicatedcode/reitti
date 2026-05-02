@@ -11,8 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -93,5 +97,64 @@ public class UserSseEmitterService implements SmartLifecycle {
     @Override
     public boolean isRunning() {
         return true;
+    }
+
+    public static final class TaskData extends JobContext<TaskData> {
+        private final User user;
+        private final SSEEvent eventData;
+
+        public TaskData(User user, SSEEvent eventData) {
+            this(user, eventData, null,  null);
+        }
+        public TaskData(User user, SSEEvent eventData, UUID jobId, UUID parentJobId) {
+            super(jobId, parentJobId);
+            this.user = user;
+            this.eventData = eventData;
+        }
+
+        public User user() {
+            return user;
+        }
+
+        public SSEEvent eventData() {
+            return eventData;
+        }
+
+        public UUID parentJobId() {
+            return parentJobId;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) return true;
+            if (obj == null || obj.getClass() != this.getClass()) return false;
+            var that = (TaskData) obj;
+            return Objects.equals(this.user, that.user) &&
+                    Objects.equals(this.eventData, that.eventData) &&
+                    Objects.equals(this.parentJobId, that.parentJobId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(user, eventData, parentJobId);
+        }
+
+        @Override
+        public String toString() {
+            return "TaskData[" +
+                    "user=" + user + ", " +
+                    "eventData=" + eventData + ", " +
+                    "parentJobId=" + parentJobId + ']';
+        }
+
+        @Override
+        public TaskData withJobId(UUID jobId) {
+            return new TaskData(user, eventData, jobId, parentJobId);
+        }
+
+        @Override
+        public TaskData withParentJobId(UUID parentJobId) {
+            return new TaskData(user, eventData, jobId, parentJobId);
+        }
     }
 }

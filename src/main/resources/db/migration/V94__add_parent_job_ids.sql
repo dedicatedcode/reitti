@@ -1,0 +1,1 @@
+ALTER TABLE import_jobs ADD COLUMN parent_job_id UUID REFERENCES import_jobs(id) ON DELETE CASCADE;

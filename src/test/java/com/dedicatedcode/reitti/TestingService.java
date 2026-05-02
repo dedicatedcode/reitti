@@ -5,18 +5,12 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportProcessor;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
-import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
-import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.github.kagkarlsson.scheduler.ScheduledExecution;
+import com.github.kagkarlsson.scheduler.Scheduler;
 import org.awaitility.Awaitility;
-import org.jobrunr.jobs.states.StateName;
-import org.jobrunr.scheduling.JobScheduler;
-import org.jobrunr.storage.StorageProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -27,14 +21,9 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 @Service
 public class TestingService {
-
-    private static final List<String> QUEUES_TO_CHECK = List.of(
-            "reitti.place.created.v2"
-    );
 
     @Autowired
     private UserJdbcService userJdbcService;
@@ -49,34 +38,20 @@ public class TestingService {
     @Autowired
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
-    private ProcessingPipelineTrigger trigger;
-    @Autowired
     private UserService userService;
-    @Autowired
-    private ImportProcessor importBatchProcessor;
     @Autowired
     private SignificantPlaceJdbcService significantPlaceJdbcService;
     @Autowired
     private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
-    private LocationDataIngestPipeline locationDataIngestPipeline;
-    @Autowired
-    private LocationPointStagingService locationPointStagingService;
-    @Autowired
-    private PromotionJobHandler promotionJobHandler;
-    @Autowired
-    private JobScheduler jobScheduler;
-    @Autowired
-    private StorageProvider storageProvider;
-    @Autowired
-    private ImportJobRepository importJobRepository;
+    private Scheduler scheduler;
 
     public void importData(User user, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
             gpxImporter.importGpx(is, user, null, null);
         } else if (path.endsWith(".geojson")) {
-            geoJsonImporter.importGeoJson(is, user);
+            geoJsonImporter.importGeoJson(is, user, null, null);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
@@ -104,10 +79,10 @@ public class TestingService {
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
                 .until(() -> {
-                    // Check all queues are empty
-                    long runningJobs = Stream.of(StateName.AWAITING, StateName.ENQUEUED, StateName.PROCESSING, StateName.SCHEDULED)
-                            .map(storageProvider::countJobs).reduce(Long::sum).orElseThrow();
-                    if (runningJobs > 0) {
+                    List<ScheduledExecution<Object>> instances = scheduler.getScheduledExecutions()
+                            .stream().filter(t -> !t.getTaskInstance().getTaskName().equals("sse-emitter-task")).toList();
+
+                    if (!instances.isEmpty()) {
                         stableChecks.set(0);
                         return false;
                     }
@@ -123,7 +98,7 @@ public class TestingService {
                     lastRawCount.set(currentRawCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable && importBatchProcessor.isIdle()) {
+                    if (countsStable) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);

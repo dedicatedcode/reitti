@@ -2,12 +2,18 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.ImportProcessor;
+import com.dedicatedcode.reitti.service.LocationBatchingService;
+import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -35,14 +41,22 @@ public class OwnTracksRecorderIntegrationService {
     private final OwnTracksRecorderIntegrationJdbcService jdbcService;
     private final UserJdbcService userJdbcService;
     private final RestTemplate restTemplate;
-    private final ImportProcessor importBatchProcessor;
+    private final LocationPointStagingService stagingService;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobSchedulingService jobSchedulingService;
+    private final LocationBatchingService locationBatchingService;
 
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
                                                UserJdbcService userJdbcService,
-                                               ImportProcessor importBatchProcessor) {
+                                               LocationPointStagingService stagingService,
+                                               Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                               JobSchedulingService jobSchedulingService, LocationBatchingService locationBatchingService) {
         this.jdbcService = jdbcService;
         this.userJdbcService = userJdbcService;
-        this.importBatchProcessor = importBatchProcessor;
+        this.stagingService = stagingService;
+        this.promotionTask = promotionTask;
+        this.jobSchedulingService = jobSchedulingService;
+        this.locationBatchingService = locationBatchingService;
         this.restTemplate = new RestTemplate();
     }
 
@@ -53,7 +67,8 @@ public class OwnTracksRecorderIntegrationService {
         List<User> allUsers = userJdbcService.findAll();
         int processedIntegrations = 0;
         int totalLocationPoints = 0;
-        
+        Device device = null;
+
         for (User user : allUsers) {
             Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
             
@@ -89,7 +104,7 @@ public class OwnTracksRecorderIntegrationService {
                     }
                     
                     if (!validPoints.isEmpty()) {
-                        importBatchProcessor.processBatch(user, validPoints);
+                        validPoints.forEach(p -> this.locationBatchingService.addLocationPoint(user, device, p));
                         totalLocationPoints += validPoints.size();
                         logger.info("Imported {} location points for user {}", validPoints.size(), user.getUsername());
                         
@@ -195,9 +210,16 @@ public class OwnTracksRecorderIntegrationService {
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
             throw new IllegalStateException("No enabled OwnTracks Recorder integration found for user");
         }
-        
+
+        Device device = null;
         OwnTracksRecorderIntegration integration = integrationOpt.get();
-        
+        String partitionKey = UUID.randomUUID().toString();
+        this.stagingService.ensurePartitionExists(partitionKey);
+        UUID parentJobId = jobSchedulingService.createParentJob(
+                user,
+                JobType.OWNTRACKS_IMPORT,
+                "Owntracks History Import"
+        );
         try {
             // First, fetch all recs for the user
             Set<YearMonth> availableMonths = fetchAvailableMonths(integration);
@@ -230,7 +252,7 @@ public class OwnTracksRecorderIntegrationService {
                         }
                         
                         if (!validPoints.isEmpty()) {
-                            importBatchProcessor.processBatch(user, validPoints);
+                            this.stagingService.insertBatch(partitionKey, user, null, validPoints);
                             totalLocationPoints += validPoints.size();
                             logger.debug("Loaded {} location points for user {} from month {}", 
                                        validPoints.size(), user.getUsername(), month);
@@ -242,6 +264,15 @@ public class OwnTracksRecorderIntegrationService {
                     // Continue with other months
                 }
             }
+
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobType(JobType.OWNTRACKS_IMPORT)
+                    .friendlyName("Owntracks History Import")
+                    .build();
+            jobSchedulingService.enqueueTask(promotionTask,
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              metadata);
             
             logger.info("Loaded {} total historical location points for user {}", totalLocationPoints, user.getUsername());
             

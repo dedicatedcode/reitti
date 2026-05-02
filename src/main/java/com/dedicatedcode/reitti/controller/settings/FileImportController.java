@@ -3,8 +3,6 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,8 +22,6 @@ import java.util.Map;
 @RequestMapping("/settings/import")
 public class FileImportController {
 
-    private static final Logger logger = LoggerFactory.getLogger(FileImportController.class);
-    
     private final GpxImporter gpxImporter;
     private final GoogleRecordsImporter googleRecordsImporter;
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
@@ -114,7 +110,7 @@ public class FileImportController {
     @PostMapping("/google-records")
     public String importGoogleRecords(@RequestParam("file") MultipartFile file,
                                      Authentication authentication,
-                                     Model model) {
+                                      Model model) {
         User user = (User) authentication.getPrincipal();
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
@@ -128,7 +124,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleRecordsImporter.importGoogleRecords(inputStream, user);
+            Map<String, Object> result = this.googleRecordsImporter.importGoogleRecords(inputStream, user, null, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -235,7 +231,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user);
+                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, null, filename);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

@@ -1,24 +1,30 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -28,15 +34,26 @@ public class GoogleRecordsImporter {
     
     private final ObjectMapper objectMapper;
     private final ImportStateHolder stateHolder;
-    private final DefaultImportProcessor batchProcessor;
-    
-    public GoogleRecordsImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, DefaultImportProcessor batchProcessor) {
+    private final LocationPointStagingService stagingService;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobSchedulingService jobSchedulingService;
+    private final int graceTimeSeconds;
+
+    public GoogleRecordsImporter(ObjectMapper objectMapper,
+                                 ImportStateHolder stateHolder,
+                                 LocationPointStagingService stagingService,
+                                 Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                 JobSchedulingService jobSchedulingService,
+                                 @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         this.objectMapper = objectMapper;
         this.stateHolder = stateHolder;
-        this.batchProcessor = batchProcessor;
+        this.stagingService = stagingService;
+        this.promotionTask = promotionTask;
+        this.jobSchedulingService = jobSchedulingService;
+        this.graceTimeSeconds = graceTimeSeconds;
     }
     
-    public Map<String, Object> importGoogleRecords(InputStream inputStream, User user) {
+    public Map<String, Object> importGoogleRecords(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
         
         try {
@@ -45,8 +62,15 @@ public class GoogleRecordsImporter {
 
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
-            
-            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            UUID parentJobId = jobSchedulingService.createParentJob(
+                    user,
+                    JobType.GOOGLE_TIMELINE_IMPORT,
+                    "Google Records Import - " + originalFilename
+            );
+            String partitionKey = UUID.randomUUID().toString();
+            stagingService.ensurePartitionExists(partitionKey);
+
+            List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
             boolean foundData = false;
             
             // Look for "locations" array (old Records.json format)
@@ -56,7 +80,7 @@ public class GoogleRecordsImporter {
                     
                     if ("locations".equals(fieldName)) {
                         foundData = true;
-                        processedCount.addAndGet(processLocationsArray(parser, batch, user));
+                        processedCount.addAndGet(processLocationsArray(parser, batch, user, device, partitionKey));
                         break;
                     }
                 }
@@ -68,12 +92,21 @@ public class GoogleRecordsImporter {
             
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.processBatch(user, batch);
+                stagingService.insertBatch(partitionKey, user, device, batch);
             }
             
             logger.info("Successfully imported and queued {} location points from Google Records for user {}", 
                     processedCount.get(), user.getUsername());
-            
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
+                    .friendlyName("GPS Data Promotion")
+                    .build();
+            jobSchedulingService.scheduleTask(promotionTask,
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              Instant.now().plusSeconds(graceTimeSeconds),
+                                              metadata);
+
             return Map.of(
                     "success", true,
                     "message", "Successfully queued " + processedCount.get() + " location points for processing",
@@ -91,7 +124,7 @@ public class GoogleRecordsImporter {
     /**
      * Processes the Records.json format with "locations" array
      */
-    private int processLocationsArray(JsonParser parser, List<LocationPoint> batch, User user) throws IOException {
+    private int processLocationsArray(JsonParser parser, List<LocationPoint> batch, User user, Device device, String partitionKey) throws IOException {
         int processedCount = 0;
         
         // Move to the array
@@ -113,8 +146,8 @@ public class GoogleRecordsImporter {
                         batch.add(point);
                         processedCount++;
 
-                        if (batch.size() >= batchProcessor.getBatchSize()) {
-                            batchProcessor.processBatch(user, batch);
+                        if (batch.size() >= stagingService.getBatchSize()) {
+                            stagingService.insertBatch(partitionKey, user, device, batch);
                             batch.clear();
                         }
                     }

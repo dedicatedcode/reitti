@@ -6,4 +6,5 @@ public enum JobState {
     RUNNING,
     COMPLETED,
     FAILED,
+    CREATED, CANCELLED
 }

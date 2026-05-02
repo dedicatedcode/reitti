@@ -4,22 +4,20 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
-import org.jobrunr.jobs.annotations.Job;
-import org.jobrunr.jobs.context.JobContext;
-import org.jobrunr.jobs.context.JobDashboardProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ProcessingPipelineTrigger {
@@ -29,49 +27,38 @@ public class ProcessingPipelineTrigger {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final UserJdbcService userJdbcService;
-    private final UnifiedLocationProcessingService unifiedLocationProcessingService;
+    private final UnifiedLocationProcessingService locationProcessTask;
+    private final JobMetadataRepository jobMetadataRepository;
     private final int batchSize;
-    private final int processingSettleTime;
 
     public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
                                      RawLocationPointJdbcService rawLocationPointJdbcService,
                                      PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                      UserJdbcService userJdbcService,
-                                     UnifiedLocationProcessingService unifiedLocationProcessingService,
+                                     JobMetadataRepository jobMetadataRepository,
                                      @Value("${reitti.import.batch-size:100}") int batchSize,
-                                     @Value("${reitti.import.processing-idle-start-time}") int processingSettleTime) {
+                                     UnifiedLocationProcessingService locationProcessTask) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
-        this.unifiedLocationProcessingService = unifiedLocationProcessingService;
+        this.jobMetadataRepository = jobMetadataRepository;
         this.batchSize = batchSize;
-        this.processingSettleTime = processingSettleTime;
+        this.locationProcessTask = locationProcessTask;
     }
 
-    @Job(name = "Process incoming data")
-    public void execute(TriggerProcessingEvent event, JobContext jobContext) {
+    public void execute(UUID jobId, TriggerProcessingEvent event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            Optional<Instant> lastDataModificationAt = this.userJdbcService.getLastDataModificationAt(byUsername.get());
-            boolean shallSkip = lastDataModificationAt
-                    .map(instant -> Duration.between(instant, Instant.now()).getSeconds())
-                    .map(seconds -> seconds < processingSettleTime)
-                    .orElse(false);
-            if (shallSkip) {
-                log.trace("Skipping processing for user [{}] because data was recently changed", byUsername.get());
-            } else {
-                handleDataForUser(byUsername.get(), event.getPreviewId(), event.getTraceId(), jobContext);
-            }
+            handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(User user, String previewId, String traceId, JobContext jobContext) {
+    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId) {
         int totalProcessed = 0;
 
-        JobDashboardProgressBar progressBar = jobContext.progressBar(0);
         while (true) {
             stateHolder.importStarted();
             try {
@@ -83,11 +70,11 @@ public class ProcessingPipelineTrigger {
                 }
 
                 if (currentBatch.isEmpty()) {
-                    progressBar.setProgress(totalProcessed);
+                    jobMetadataRepository.updateProgress(jobId, totalProcessed, totalProcessed, "Done");
                     break;
                 }
 
-                progressBar.setProgress(totalProcessed + currentBatch.size(), totalProcessed, 0);
+                jobMetadataRepository.updateProgress(jobId,totalProcessed + currentBatch.size(), totalProcessed, "Processing...");
                 Instant earliest = currentBatch.getFirst().getTimestamp();
                 Instant latest = currentBatch.getLast().getTimestamp();
                 log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
@@ -96,7 +83,9 @@ public class ProcessingPipelineTrigger {
                 } else {
                     previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
                 }
-                unifiedLocationProcessingService.processLocationEvent(new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId));
+
+                LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
+                locationProcessTask.processLocationEvent(data);
                 totalProcessed += currentBatch.size();
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);
