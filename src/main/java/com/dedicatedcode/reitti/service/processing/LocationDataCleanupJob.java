@@ -62,9 +62,8 @@ public class LocationDataCleanupJob {
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device == null) {
-            jobScheduler.scheduleTask(processingEventTask,
+            jobScheduler.enqueueTask(processingEventTask,
                                       new TriggerProcessingEvent(user.getUsername(), null, null).withParentJobId(jobId),
-                                      Instant.now().plus(10, ChronoUnit.SECONDS),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                               .user(user)
                                               .friendlyName("Detect Visits and Trips").build()

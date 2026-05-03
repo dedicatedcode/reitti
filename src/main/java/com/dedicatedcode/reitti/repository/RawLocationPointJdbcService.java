@@ -623,4 +623,8 @@ public class RawLocationPointJdbcService {
         ), user.getId(), Timestamp.from(start), Timestamp.from(end));
         return result;
     }
+
+    public long countUnprocessedByUser(User user) {
+        return this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ? AND processed = false AND ignored = false", Long.class, user.getId());
+    }
 }

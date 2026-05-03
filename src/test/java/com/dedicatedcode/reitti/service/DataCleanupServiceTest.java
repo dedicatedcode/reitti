@@ -79,7 +79,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Trips involving removed places should be deleted
@@ -102,7 +102,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Visits for removed places should be deleted
@@ -130,7 +130,7 @@ class DataCleanupServiceTest {
         // When - only remove placeToRemove1
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Only visit for removed place should be deleted
@@ -152,7 +152,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Specified places should be deleted
@@ -194,7 +194,7 @@ class DataCleanupServiceTest {
         // When - cleanup with day1 and day2 as affected days
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(day1, day2);
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Points on affected days should be marked as unprocessed
@@ -218,7 +218,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(); // Empty list
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Visit should be removed

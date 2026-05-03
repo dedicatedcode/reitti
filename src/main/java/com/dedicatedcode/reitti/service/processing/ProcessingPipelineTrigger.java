@@ -47,10 +47,10 @@ public class ProcessingPipelineTrigger {
         this.locationProcessTask = locationProcessTask;
     }
 
-    public void execute(UUID jobId, TriggerProcessingEvent event) {
+    public void execute(TriggerProcessingEvent event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
+            handleDataForUser(event.getJobId(), byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
@@ -59,6 +59,7 @@ public class ProcessingPipelineTrigger {
     private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId) {
         int totalProcessed = 0;
 
+        long maxPoints = this.rawLocationPointJdbcService.countUnprocessedByUser(user);
         while (true) {
             stateHolder.importStarted();
             try {
@@ -70,11 +71,10 @@ public class ProcessingPipelineTrigger {
                 }
 
                 if (currentBatch.isEmpty()) {
-                    jobMetadataRepository.updateProgress(jobId, totalProcessed, totalProcessed, "Done");
+                    jobMetadataRepository.updateProgress(jobId, totalProcessed, maxPoints, "Done");
                     break;
                 }
 
-                jobMetadataRepository.updateProgress(jobId,totalProcessed + currentBatch.size(), totalProcessed, "Processing...");
                 Instant earliest = currentBatch.getFirst().getTimestamp();
                 Instant latest = currentBatch.getLast().getTimestamp();
                 log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
@@ -87,6 +87,7 @@ public class ProcessingPipelineTrigger {
                 LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
                 locationProcessTask.processLocationEvent(data);
                 totalProcessed += currentBatch.size();
+                jobMetadataRepository.updateProgress(jobId,totalProcessed, maxPoints, "Processing...");
             } catch (Exception e) {
                 log.error("Error processing batch for user [{}]", user.getId(), e);
             }
