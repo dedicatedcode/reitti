@@ -47,10 +47,10 @@ public class ProcessingPipelineTrigger {
         this.locationProcessTask = locationProcessTask;
     }
 
-    public void execute(UUID jobId, TriggerProcessingEvent event) {
+    public void execute(TriggerProcessingEvent event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            handleDataForUser(jobId, byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
+            handleDataForUser(event.getJobId(), byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }

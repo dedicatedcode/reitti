@@ -40,9 +40,7 @@ public class TaskConfig {
     public Task<TriggerProcessingEvent> processingPipelineTask(ProcessingPipelineTrigger handler) {
         return Tasks.oneTime("processing-pipeline-task", TriggerProcessingEvent.class)
                 .execute((instance, context) -> {
-                    TriggerProcessingEvent data = instance.getData();
-                    UUID jobId = UUID.fromString(instance.getId());
-                    handler.execute(jobId, data);
+                    handler.execute(instance.getData());
                 });
     }
 
