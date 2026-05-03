@@ -123,7 +123,7 @@ class MapRenderer {
         this.highlightLayer = null;
         this._initialLoadPromise = new Promise(resolve => {
             this.map.once('style.load', async () => {
-                console.log('Initial style loaded!'); // For debugging
+                console.log('Initial style loaded!');
                 await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
                 await this._switchTerrainLayer(this.viewState.renderTerrain);
                 await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
@@ -1123,9 +1123,7 @@ class MapRenderer {
             popup.remove();
         }, { capture: true });
 
-
-
-        // Store the marker by user ID for updates
+        marker.setPopup(popup);
         this.avatarMarkers.set(userId, marker);
     }
 
