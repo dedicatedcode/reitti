@@ -571,17 +571,16 @@
             currentTime: timelineControl.getValue(),
             animating: !timelineControl.isIdle(),
             highlightTimes: highlightTimes,
-            showPhotos: true
+            showPhotos: window.userSettings.photoMode === 'ENABLED',
         };
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
-            // Restore timeline and datepicker state on page load
             settingsMenu.restoreState();
         } else {
             document.body.classList.add('datepicker-hidden')
-            document.body.classList.add('timeline-hidden')
+            timelineControl.hide();
         }
 
         function calculateUserConfigs() {
@@ -884,7 +883,7 @@
         document.getElementById('toggle-time-control-btn').addEventListener('click', function () {
             toggleTimeControls();
         });
-        restoreTimelineControlsState();
+        restoreTimelineControlsState(window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY');
     })
 
     function toggleTimeControls() {
@@ -915,13 +914,14 @@
         }
     }
 
-    function restoreTimelineControlsState() {
+    function restoreTimelineControlsState(defaultHidden) {
         const timelineControls = document.getElementById('timeline-controls');
         const toggleBtn = document.getElementById('toggle-time-control-btn');
 
         if (!timelineControls || !toggleBtn) return;
 
-        const isHidden = localStorage.getItem('timelineControlsHidden') === 'true';
+        const storedValue = localStorage.getItem('timelineControlsHidden');
+        const isHidden = storedValue === null ? defaultHidden : storedValue === 'true';
 
         if (isHidden) {
             timelineControls.classList.add('hidden');

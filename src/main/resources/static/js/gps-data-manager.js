@@ -258,6 +258,9 @@ class GpsDataManager {
     }
 
     async _streamPoints(onProgress, signal) {
+        if (this.config.map.streamUrl === undefined) {
+            return
+        }
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
         let leftover = null;
