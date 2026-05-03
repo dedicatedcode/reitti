@@ -34,7 +34,7 @@ public record JobInfo(
         if (totalChildren > 0) {
             return (int) ((completedChildren * 100) / totalChildren);
         } else {
-            return (int)(progressPercentValue * 100);
+            return (int) (progressPercentValue);
         }
     }
 

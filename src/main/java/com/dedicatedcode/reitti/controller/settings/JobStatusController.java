@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings")
@@ -35,131 +36,137 @@ public class JobStatusController {
         model.addAttribute("activeSection", "job-status");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-
         return "settings/job-status";
     }
 
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(Model model) {
-        // Get pending/running jobs
-        List<JobMetadataRepository.JobMetadata> pendingJobMetadata = jobMetadataRepository.findByStates(
-            List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
-        ).stream().filter(j -> j.getJobType() != JobType.SSE_EVENT).toList();
+        // Fetch all non-SSE jobs in active states
+        List<JobMetadataRepository.JobMetadata> activeJobs = filterNonSSE(
+                jobMetadataRepository.findByStates(
+                        List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
+                )
+        );
+        // Fetch all non-SSE jobs in terminal states (completed/failed)
+        List<JobMetadataRepository.JobMetadata> terminalJobs = filterNonSSE(
+                jobMetadataRepository.findByStates(
+                        List.of(JobState.COMPLETED, JobState.FAILED)
+                )
+        );
 
-        // Also get completed/failed jobs to include completed children in parent job info
-        List<JobMetadataRepository.JobMetadata> pastJobMetadata = jobMetadataRepository.findByStates(
-            List.of(JobState.COMPLETED, JobState.FAILED)
-        ).stream().filter(j -> j.getJobType() != JobType.SSE_EVENT).toList();
+        // Combine to get full picture of parents and children
+        List<JobMetadataRepository.JobMetadata> allJobs = new ArrayList<>(activeJobs);
+        allJobs.addAll(terminalJobs);
 
-        // Combine all job metadata for building parent job info with children
-        List<JobMetadataRepository.JobMetadata> allJobMetadata = new ArrayList<>(pendingJobMetadata);
-        allJobMetadata.addAll(pastJobMetadata);
+        // Separate parent and child jobs
+        Map<Boolean, List<JobMetadataRepository.JobMetadata>> partitioned = allJobs.stream()
+                .collect(Collectors.partitioningBy(job -> job.getParentJobId() == null));
+        List<JobMetadataRepository.JobMetadata> parentJobs = partitioned.get(true);
+        List<JobMetadataRepository.JobMetadata> childJobs = partitioned.get(false);
 
-        // Separate parent jobs from child jobs
-        List<JobMetadataRepository.JobMetadata> parentJobs = new ArrayList<>();
-        List<JobMetadataRepository.JobMetadata> childJobs = new ArrayList<>();
+        // Group children by parent ID
+        Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent = childJobs.stream()
+                .collect(Collectors.groupingBy(JobMetadataRepository.JobMetadata::getParentJobId));
 
-        for (JobMetadataRepository.JobMetadata metadata : allJobMetadata) {
-            if (metadata.getParentJobId() == null) {
-                parentJobs.add(metadata);
-            } else {
-                childJobs.add(metadata);
-            }
-        }
+        // Separate parent jobs into pending and fully complete (past)
+        List<JobMetadataRepository.JobMetadata> pendingParents = new ArrayList<>();
+        List<JobMetadataRepository.JobMetadata> pastParents = new ArrayList<>();
 
-        // Group children by parent
-        Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent = new HashMap<>();
-        for (JobMetadataRepository.JobMetadata child : childJobs) {
-            UUID parentId = child.getParentJobId();
-            childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(child);
-        }
-
-        // Calculate average runtime by job type
-        Map<JobType, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastJobMetadata);
-
-        // Build parent job info with children
-        List<JobInfo> pendingJobs = new ArrayList<>();
         for (JobMetadataRepository.JobMetadata parent : parentJobs) {
-            if (parent.getState() != JobState.COMPLETED && parent.getState() != JobState.FAILED) {
-                JobInfo jobInfo = mapToJobInfo(parent);
-                List<JobMetadataRepository.JobMetadata> childrenMetadata = childrenByParent.getOrDefault(parent.getId(), List.of());
-                List<JobInfo> children = childrenMetadata.stream()
-                        .map(this::mapToJobInfo)
-                        .toList();
+            List<JobMetadataRepository.JobMetadata> children = childrenByParent.getOrDefault(parent.getId(), List.of());
+            boolean hasActiveChildren = children.stream()
+                    .anyMatch(child -> !isTerminal(child.getState()));
 
-                long completedChildren = children.stream()
-                        .filter(j -> j.state() == JobState.COMPLETED || j.state() == JobState.FAILED)
-                        .count();
-
-                // Get estimated duration based on job type
-                JobType jobType = parent.getJobType();
-                AverageRuntime avgRuntime = averageRuntimes.get(jobType);
-                Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
-
-                pendingJobs.add(new JobInfo(
-                        jobInfo.id(),
-                        jobInfo.name(),
-                        jobInfo.description(),
-                        jobInfo.state(),
-                        jobInfo.enqueuedAt(),
-                        jobInfo.scheduledAt(),
-                        jobInfo.processingAt(),
-                        jobInfo.finishedAt(),
-                        jobInfo.canCancel(),
-                        children,
-                        completedChildren,
-                        children.size(),
-                        estimatedDuration,
-                        0,
-                        null
-                ));
+            if (!isTerminal(parent.getState()) || hasActiveChildren) {
+                pendingParents.add(parent);
+            } else {
+                pastParents.add(parent);
             }
         }
 
-        // Filter to only top-level parent jobs for past jobs
-        List<JobMetadataRepository.JobMetadata> pastParentJobs = pastJobMetadata.stream()
-            .filter(job -> job.getParentJobId() == null)
-            .toList();
+        // Build pending job info (with children details)
+        Map<JobType, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastParents);
+        List<JobInfo> pendingJobs = pendingParents.stream()
+                .map(parent -> buildPendingJobInfo(parent, childrenByParent, averageRuntimes))
+                .collect(Collectors.toList());
 
-        // Build past job info with duration
-        List<JobInfo> pastJobs = new ArrayList<>();
-        for (JobMetadataRepository.JobMetadata metadata : pastParentJobs) {
-            pastJobs.add(mapToJobInfoWithDuration(metadata));
-        }
+        // Build past job info (with duration)
+        List<JobInfo> pastJobs = pastParents.stream()
+                .map(this::mapToJobInfoWithDuration)
+                .sorted(Comparator.comparing(JobInfo::finishedAt).reversed())
+                .collect(Collectors.toList());
 
-        // Sort past jobs by finishedAt descending (most recent first)
-        pastJobs.sort((a, b) -> {
-            Instant aTime = a.finishedAt() != null ? a.finishedAt() : Instant.EPOCH;
-            Instant bTime = b.finishedAt() != null ? b.finishedAt() : Instant.EPOCH;
-            return bTime.compareTo(aTime);
-        });
         model.addAttribute("pendingJobs", pendingJobs);
         model.addAttribute("pastJobs", pastJobs);
-
         return "settings/job-status :: queue-stats-content";
     }
 
-    private Map<JobType, AverageRuntime> calculateAverageRuntimes(List<JobMetadataRepository.JobMetadata> jobs) {
-        Map<JobType, List<Long>> durationsByType = new HashMap<>();
+    private boolean isTerminal(JobState state) {
+        return state == JobState.COMPLETED || state == JobState.FAILED;
+    }
 
-        for (JobMetadataRepository.JobMetadata job : jobs) {
-            // Only include top-level parent jobs in average calculation
-            if (job.getParentJobId() == null && job.getFinishedAt() != null && job.getEnqueuedAt() != null) {
+    private List<JobMetadataRepository.JobMetadata> filterNonSSE(List<JobMetadataRepository.JobMetadata> jobs) {
+        return jobs.stream()
+                .filter(job -> job.getJobType() != JobType.SSE_EVENT)
+                .toList();
+    }
+
+    private JobInfo buildPendingJobInfo(JobMetadataRepository.JobMetadata parent,
+                                        Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent,
+                                        Map<JobType, AverageRuntime> averageRuntimes) {
+        List<JobMetadataRepository.JobMetadata> childrenMeta = childrenByParent.getOrDefault(parent.getId(), List.of());
+        List<JobInfo> children = childrenMeta.stream()
+                .map(this::mapToJobInfo)
+                .toList();
+        long completedChildren = children.stream()
+                .filter(j -> isTerminal(j.state()))
+                .count();
+        long totalChildren = children.size();
+
+        // Basic info from the parent itself
+        JobInfo base = mapToJobInfo(parent);
+
+        // Average runtime estimate
+        AverageRuntime avgRuntime = averageRuntimes.get(parent.getJobType());
+        Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
+
+        return new JobInfo(
+                base.id(),
+                base.name(),
+                base.description(),
+                base.state(),
+                base.enqueuedAt(),
+                base.scheduledAt(),
+                base.processingAt(),
+                base.finishedAt(),
+                base.canCancel(),
+                children,
+                completedChildren,
+                totalChildren,
+                estimatedDuration,
+                0,  // no progress for parent grouping
+                null
+        );
+    }
+
+    private Map<JobType, AverageRuntime> calculateAverageRuntimes(List<JobMetadataRepository.JobMetadata> fullyCompleteParents) {
+        Map<JobType, List<Long>> durationsByType = new HashMap<>();
+        for (JobMetadataRepository.JobMetadata job : fullyCompleteParents) {
+            if (job.getFinishedAt() != null && job.getEnqueuedAt() != null) {
                 long durationSeconds = Duration.between(job.getEnqueuedAt(), job.getFinishedAt()).getSeconds();
                 if (durationSeconds > 0) {
                     durationsByType.computeIfAbsent(job.getJobType(), k -> new ArrayList<>()).add(durationSeconds);
                 }
             }
         }
-
         Map<JobType, AverageRuntime> result = new HashMap<>();
         for (Map.Entry<JobType, List<Long>> entry : durationsByType.entrySet()) {
             List<Long> durations = entry.getValue();
-            long sum = durations.stream().mapToLong(Long::longValue).sum();
-            long average = sum / durations.size();
-            result.put(entry.getKey(), new AverageRuntime(average, durations.size()));
+            if (!durations.isEmpty()) {
+                long average = durations.stream().mapToLong(Long::longValue).sum() / durations.size();
+                result.put(entry.getKey(), new AverageRuntime(average, durations.size()));
+            }
         }
-
         return result;
     }
 
@@ -167,7 +174,6 @@ public class JobStatusController {
         JobState state = metadata.getState();
         String jobName = metadata.getFriendlyName();
         String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
-
         boolean canCancel = state == JobState.AWAITING;
 
         return new JobInfo(
@@ -184,26 +190,21 @@ public class JobStatusController {
                 0,
                 0,
                 null,
-                ((float) metadata.getMaxProgress() / metadata.getCurrentProgress()) * 100f,
+                progressPercent(metadata),
                 metadata.getProgressMessage()
         );
     }
 
     private JobInfo mapToJobInfoWithDuration(JobMetadataRepository.JobMetadata metadata) {
-        JobState state = metadata.getState();
-        String jobName = metadata.getFriendlyName();
-        String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
-
         long durationSeconds = 0;
         if (metadata.getFinishedAt() != null && metadata.getEnqueuedAt() != null) {
             durationSeconds = Duration.between(metadata.getEnqueuedAt(), metadata.getFinishedAt()).getSeconds();
         }
-
         return new JobInfo(
                 metadata.getId(),
-                jobName,
-                jobDescription,
-                state,
+                metadata.getFriendlyName(),
+                String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType()),
+                metadata.getState(),
                 metadata.getEnqueuedAt(),
                 metadata.getScheduledAt(),
                 metadata.getProcessingAt(),
@@ -213,10 +214,14 @@ public class JobStatusController {
                 0,
                 0,
                 durationSeconds > 0 ? durationSeconds : null,
-                ((float) metadata.getMaxProgress() / metadata.getCurrentProgress()) * 100f,
+                progressPercent(metadata),
                 metadata.getProgressMessage()
         );
+    }
 
+    private float progressPercent(JobMetadataRepository.JobMetadata metadata) {
+        if (metadata.getMaxProgress() == null || metadata.getCurrentProgress() == null || metadata.getMaxProgress() == 0) return 0f;
+        return ((float) metadata.getCurrentProgress() / metadata.getMaxProgress()) * 100f;
     }
 
     public record AverageRuntime(long averageSeconds, int sampleCount) {
@@ -224,7 +229,6 @@ public class JobStatusController {
             long hours = averageSeconds / 3600;
             long minutes = (averageSeconds % 3600) / 60;
             long seconds = averageSeconds % 60;
-
             if (hours > 0) {
                 return String.format("%dh %dm %ds", hours, minutes, seconds);
             } else if (minutes > 0) {
@@ -235,7 +239,6 @@ public class JobStatusController {
         }
 
         public long getEstimatedSeconds() {
-            // Add 20% buffer to the average
             return (long) (averageSeconds * 1.2);
         }
 
@@ -243,7 +246,6 @@ public class JobStatusController {
             long estimated = getEstimatedSeconds();
             long hours = estimated / 3600;
             long minutes = (estimated % 3600) / 60;
-
             if (hours > 0) {
                 return String.format("%dh %dm", hours, minutes);
             } else {

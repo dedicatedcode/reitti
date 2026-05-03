@@ -17,7 +17,7 @@ import java.util.UUID;
 @Repository
 public class JobMetadataRepository {
     private final JdbcTemplate jdbcTemplate;
-    private final RowMapper<JobMetadata> jobMetadataRowMapper = (rs, rowNum) -> {
+    private final RowMapper<JobMetadata> jobMetadataRowMapper = (rs, ignored) -> {
         JobMetadata metadata = new JobMetadata();
         metadata.setId(UUID.fromString(rs.getString("id")));
         metadata.setUserId(rs.getLong("user_id"));
@@ -28,7 +28,9 @@ public class JobMetadataRepository {
         metadata.setScheduledAt(toInstant(rs.getTimestamp("scheduled_at")));
         metadata.setProcessingAt(toInstant(rs.getTimestamp("processing_at")));
         metadata.setFinishedAt(toInstant(rs.getTimestamp("finished_at")));
-
+        metadata.setProgressMessage(rs.getString("progress_message"));
+        metadata.setCurrentProgress((Long) rs.getObject("current_progress"));
+        metadata.setMaxProgress((Long) rs.getObject("max_progress"));
         String parentJobIdStr = rs.getString("parent_job_id");
         if (parentJobIdStr != null) {
             metadata.setParentJobId(UUID.fromString(parentJobIdStr));
@@ -108,13 +110,13 @@ public class JobMetadataRepository {
             return List.of();
         }
         String inClause = String.join(",", Collections.nCopies(states.size(), "?"));
-        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id " +
+        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
                 "FROM import_jobs WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
         return jdbcTemplate.query(sql, jobMetadataRowMapper, states.stream().map(Enum::name).toArray());
     }
 
     public List<JobMetadata> findByParentJobId(UUID parentId) {
-        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id " +
+        String sql = "SELECT id, user_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
                 "FROM import_jobs WHERE parent_job_id = ?";
         return jdbcTemplate.query(sql, jobMetadataRowMapper, parentId);
     }
@@ -164,8 +166,8 @@ public class JobMetadataRepository {
         private Instant processingAt;
         private Instant finishedAt;
         private String progressMessage;
-        private long currentProgress;
-        private long maxProgress;
+        private Long currentProgress;
+        private Long maxProgress;
 
         public UUID getId() { return id; }
         public void setId(UUID id) { this.id = id; }
@@ -195,9 +197,9 @@ public class JobMetadataRepository {
         public void setFinishedAt(Instant finishedAt) { this.finishedAt = finishedAt; }
         public String getProgressMessage() { return progressMessage; }
         public void setProgressMessage(String progressMessage) { this.progressMessage = progressMessage; }
-        public long getCurrentProgress() { return currentProgress; }
-        public void setCurrentProgress(long currentProgress) { this.currentProgress = currentProgress; }
-        public long getMaxProgress() { return maxProgress; }
-        public void setMaxProgress(long maxProgress) { this.maxProgress = maxProgress; }
+        public Long getCurrentProgress() { return currentProgress; }
+        public void setCurrentProgress(Long currentProgress) { this.currentProgress = currentProgress; }
+        public Long getMaxProgress() { return maxProgress; }
+        public void setMaxProgress(Long maxProgress) { this.maxProgress = maxProgress; }
     }
 }
