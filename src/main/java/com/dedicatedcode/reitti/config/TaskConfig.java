@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.UserSseEmitterService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
@@ -66,6 +67,15 @@ public class TaskConfig {
                             data.getParentJobId(),
                             data.isManual()
                     );
+                });
+    }
+
+    @Bean
+    public Task<DataCleanupService.TaskData> polygonUpdateTask(DataCleanupService handler) {
+        return Tasks.oneTime("polygon-update-task", DataCleanupService.TaskData.class)
+                .execute((instance, context) -> {
+                    DataCleanupService.TaskData data = instance.getData();
+                    handler.execute(data);
                 });
     }
 

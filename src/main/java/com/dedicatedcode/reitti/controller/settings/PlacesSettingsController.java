@@ -12,7 +12,6 @@ import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.service.DataCleanupService;
@@ -21,8 +20,11 @@ import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import com.dedicatedcode.reitti.service.PlaceService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -38,7 +40,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,39 +51,38 @@ public class PlacesSettingsController {
     private static final Logger log = LoggerFactory.getLogger(PlacesSettingsController.class);
     private final PlaceService placeService;
     private final SignificantPlaceJdbcService placeJdbcService;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
     private final GeocodeServiceManager geocodeServiceManager;
     private final GeometryFactory geometryFactory;
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
-    private final DataCleanupService dataCleanupService;
+    private final JobSchedulingService jobSchedulingService;
+    private final Task<DataCleanupService.TaskData> cleanupTask;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
 
     public PlacesSettingsController(PlaceService placeService,
                                     SignificantPlaceJdbcService placeJdbcService,
-                                    ProcessedVisitJdbcService processedVisitJdbcService,
                                     SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                     GeocodingResponseJdbcService geocodingResponseJdbcService,
                                     GeocodeServiceManager geocodeServiceManager,
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
-                                    PlaceChangeDetectionService placeChangeDetectionService,
-                                    DataCleanupService dataCleanupService,
+                                    PlaceChangeDetectionService placeChangeDetectionService, JobSchedulingService jobSchedulingService,
+                                    Task<DataCleanupService.TaskData> cleanupTask,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
-        this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.geocodeServiceManager = geocodeServiceManager;
         this.geometryFactory = geometryFactory;
         this.i18nService = i18nService;
         this.placeChangeDetectionService = placeChangeDetectionService;
-        this.dataCleanupService = dataCleanupService;
+        this.jobSchedulingService = jobSchedulingService;
+        this.cleanupTask = cleanupTask;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
     }
@@ -202,11 +202,13 @@ public class PlacesSettingsController {
                     placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
 
-                    List<SignificantPlace> placesToRemove = placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, updatedPlace.getPolygon());
-                    List<SignificantPlace> placesToCheck = new  ArrayList<>(placesToRemove);
-                    placesToCheck.add(updatedPlace);
-                    List<LocalDate> affectedDays = this.processedVisitJdbcService.getAffectedDays(placesToCheck);
-                    this.dataCleanupService.cleanupForGeometryChange(user, placesToRemove, affectedDays);
+                    this.jobSchedulingService.enqueueTask(cleanupTask, new DataCleanupService.TaskData(user, updatedPlace),
+                                                          JobSchedulingService.Metadata.builder()
+                                                                  .user(user)
+                                                                  .friendlyName("Update Polygon of " + significantPlace.getName())
+                                                                  .jobType(JobType.DATA_RECALCULATION)
+                                                                  .build());
+
                 } else {
                     placeJdbcService.update(updatedPlace);
                 }
