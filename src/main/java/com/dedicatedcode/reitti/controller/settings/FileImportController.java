@@ -2,16 +2,16 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.importer.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -27,20 +27,29 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final I18nService i18n;
     private final boolean dataManagementEnabled;
+    private final int maxFileSupported;
+    private final String maxFileSize;
 
     public FileImportController(GpxImporter gpxImporter,
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter,
                                 GeoJsonImporter geoJsonImporter,
-                                @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+                                I18nService i18n,
+                                @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                @Value("${server.tomcat.max-part-count}") int maxFileSupported,
+                                @Value("${spring.servlet.multipart.max-file-size}") String maxFileSize) {
         this.gpxImporter = gpxImporter;
         this.googleRecordsImporter = googleRecordsImporter;
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.maxFileSupported = maxFileSupported;
+        this.maxFileSize = maxFileSize;
     }
 
 
@@ -256,6 +265,13 @@ public class FileImportController {
             model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
         }
 
+        return "settings/import-data :: file-upload-content";
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public String handleMaxUploadSizeExceededException(Model model) {
+        model.addAttribute("uploadErrorMessage", i18n.translate("upload.error.max_upload_size_exceeded", maxFileSupported, maxFileSize));
         return "settings/import-data :: file-upload-content";
     }
 }
