@@ -50,3 +50,19 @@
 .map-control-btn.active {
     background: var(--color-background-dark-light);
 }
+
+.auto-update-overlay .fab-btn:first-child {
+    border-top-left-radius: 50%;
+    border-bottom-left-radius: 50%;
+}
+
+.auto-update-overlay .fab-btn {
+    background: transparent;
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
