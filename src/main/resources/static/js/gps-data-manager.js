@@ -259,7 +259,15 @@ class GpsDataManager {
 
     async _streamPoints(onProgress, signal) {
         if (this.config.map.streamUrl === undefined) {
-            return
+            const midTimestamp = this.minTimestamp != null && this.maxTimestamp != null
+                ? Math.floor((this.minTimestamp + this.maxTimestamp) / 2)
+                : Math.floor(Date.now() / 1000);
+            const centerLng = this.lastLocation.longitude;
+            const centerLat = this.lastLocation.latitude;
+            this._addPoint(centerLng, centerLat, 0, midTimestamp, 0);
+
+            this.totalExpected = this.cursor;
+            return;
         }
         const response = await fetch(window.contextPath + this.config.map.streamUrl);
         const reader = response.body.getReader();
