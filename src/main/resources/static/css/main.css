@@ -447,7 +447,7 @@ header {
 }
 
 .custom-map-style-form {
-    border-top: 1px solid rgba(245, 222, 179, 0.25);
+    border-top: 1px solid var(--color-highlight-transparent);
     margin-top: 12px;
     padding-top: 12px;
     display: flex;
@@ -509,7 +509,7 @@ header {
 .custom-map-style-choice label {
     align-items: center;
     background: var(--color-background-dark);
-    border: 1px solid rgba(245, 222, 179, 0.35);
+    border: 1px solid var(--color-highlight-transparent);
     border-radius: 4px;
     color: var(--color-text-white);
     cursor: pointer;
@@ -539,7 +539,7 @@ header {
 }
 
 .custom-map-style-advanced {
-    border: 1px solid rgba(245, 222, 179, 0.35);
+    border: 1px solid var(--color-highlight-transparent);
     border-radius: 6px;
     padding: 14px 16px;
     margin: 0;
@@ -593,7 +593,7 @@ header {
 
 .custom-map-style-share-panel {
     align-items: center;
-    border-top: 1px solid rgba(245, 222, 179, 0.15);
+    border-top: 1px solid var(--color-highlight-transparent);
     display: flex;
     gap: 16px;
     justify-content: space-between;
