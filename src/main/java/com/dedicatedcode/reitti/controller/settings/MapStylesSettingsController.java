@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
+import com.dedicatedcode.reitti.service.UserMapStyleValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,13 +21,13 @@ import org.springframework.web.bind.annotation.*;
 public class MapStylesSettingsController {
     private final boolean dataManagementEnabled;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
-    private final com.dedicatedcode.reitti.service.UserMapStyleValidator userMapStyleValidator;
+    private final UserMapStyleValidator userMapStyleValidator;
     private final ContextPathHolder contextPathHolder;
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            com.dedicatedcode.reitti.service.UserMapStyleValidator userMapStyleValidator,
+            UserMapStyleValidator userMapStyleValidator,
             ContextPathHolder contextPathHolder) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.userMapStyleJdbcService = userMapStyleJdbcService;

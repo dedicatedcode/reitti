@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
+import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -254,7 +255,7 @@ public class MapStyleController {
     private JsonNode ensureRuntimeSources(JsonNode style, HttpServletRequest request) {
         ObjectNode mutableStyle = style.deepCopy();
         ObjectNode sources = ensureSourcesNode(mutableStyle);
-        String baseUrl = getBaseUrl(request);
+        String baseUrl = RequestHelper.getBaseUrl(request);
 
         if (!sources.has(RUNTIME_TERRAIN_SOURCE)) {
             String tileUrl = tileCacheEnabled ? baseUrl + "/api/v1/tiles/terrain/{z}/{x}/{y}.webp" : TERRAIN_TILE_URL;
@@ -332,7 +333,7 @@ public class MapStyleController {
 
     private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request, String styleId) {
         ObjectNode mutableStyle = style.deepCopy();
-        String baseUrl = getBaseUrl(request);
+        String baseUrl = RequestHelper.getBaseUrl(request);
         JsonNode sources = mutableStyle.get("sources");
         if (!(sources instanceof ObjectNode mutableSources)) {
             return mutableStyle;
@@ -459,15 +460,4 @@ public class MapStyleController {
         return style.dataSource() != null && style.dataSource().proxyTiles();
     }
 
-    private String getBaseUrl(HttpServletRequest request) {
-        String scheme = request.getScheme();
-        int serverPort = request.getServerPort();
-        StringBuilder url = new StringBuilder();
-        url.append(scheme).append("://").append(request.getServerName());
-        if (("http".equals(scheme) && serverPort != 80) || ("https".equals(scheme) && serverPort != 443)) {
-            url.append(":").append(serverPort);
-        }
-        url.append(request.getContextPath());
-        return url.toString();
-    }
 }

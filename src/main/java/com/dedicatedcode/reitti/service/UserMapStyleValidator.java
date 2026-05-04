@@ -13,6 +13,8 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 
+import static com.dedicatedcode.reitti.repository.UserMapStyleJdbcService.resolveCustomId;
+
 @Service
 public class UserMapStyleValidator {
 
@@ -88,7 +90,7 @@ public class UserMapStyleValidator {
             );
         }
 
-        Long parsedId = com.dedicatedcode.reitti.repository.UserMapStyleJdbcService.resolveCustomId(request.id()).orElse(null);
+        Long parsedId = resolveCustomId(request.id()).orElse(null);
 
         return new UserMapStyle(
                 parsedId,

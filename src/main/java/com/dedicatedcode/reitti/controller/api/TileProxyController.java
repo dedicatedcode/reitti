@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
+import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -281,28 +282,18 @@ public class TileProxyController {
         }
     }
 
-    private HttpResponse<byte[]> fetchRaw(String url, Map<String, String> headers) throws Exception {
+    private HttpResponse<byte[]> fetchRaw(String url, Map<String, String> extraHeaders) throws Exception {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate")
                 .GET();
-        headers.forEach(requestBuilder::header);
-
-        return httpClient.send(
-                requestBuilder.build(),
-                HttpResponse.BodyHandlers.ofByteArray()
-        );
+        extraHeaders.forEach(requestBuilder::header);
+        return httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
     }
 
     private HttpResponse<byte[]> fetchUrl(String url) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate")
-                .GET()
-                .build();
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        return fetchRaw(url, Map.of());
     }
 
     private byte[] responseBody(HttpResponse<byte[]> response) throws IOException {
@@ -503,7 +494,9 @@ public class TileProxyController {
     private JsonNode fetchAndParseStyleJson(UserMapStyle style) throws IOException, InterruptedException {
         String styleUrl = style.styleUrl();
         String cacheKey = "url:" + style.id() + ":" + style.version() + ":" + styleUrl;
-        
+
+        // Caffeine's cache loader cannot throw checked exceptions, so we wrap them
+        // in RuntimeException and unwrap on the way out.
         try {
             return styleJsonCache.get(cacheKey, k -> {
                 try {
@@ -513,23 +506,18 @@ public class TileProxyController {
                             .GET()
                             .build();
                     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
                     if (response.statusCode() < 200 || response.statusCode() >= 300) {
                         throw new IOException("Unable to fetch map style: " + response.statusCode());
                     }
-
                     return objectMapper.readTree(response.body());
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             });
         } catch (RuntimeException e) {
-            if (e.getCause() instanceof IOException ioEx) {
-                throw ioEx;
-            }
-            if (e.getCause() instanceof InterruptedException intEx) {
-                throw intEx;
-            }
+            Throwable cause = e.getCause();
+            if (cause instanceof IOException ioEx) throw ioEx;
+            if (cause instanceof InterruptedException intEx) throw intEx;
             throw e;
         }
     }
@@ -559,30 +547,12 @@ public class TileProxyController {
 
     private String styleSourceTileUrl(HttpServletRequest request, String styleId, String sourceId, int tileIndex, String tileUrl) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/sources/" + MapStylePathUtils.sourcePathId(sourceId)
+        return RequestHelper.getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/sources/" + MapStylePathUtils.sourcePathId(sourceId)
                 + "/tiles/" + tileIndex + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
     private String normalizeTileTemplateForProxy(String tileUrl) {
         return tileUrl.replace("{r}", "");
-    }
-
-    private String getBaseUrl(HttpServletRequest request) {
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-        String contextPath = request.getContextPath();
-
-        StringBuilder url = new StringBuilder();
-        url.append(scheme).append("://").append(serverName);
-
-        if ((scheme.equals("http") && serverPort != 80) ||
-            (scheme.equals("https") && serverPort != 443)) {
-            url.append(":").append(serverPort);
-        }
-
-        url.append(contextPath);
-        return url.toString();
     }
 
     private String contentTypeForExtension(String ext) {

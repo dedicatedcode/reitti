@@ -20,7 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class MemoryBlockGenerationService {
@@ -90,7 +89,7 @@ public class MemoryBlockGenerationService {
         log.info("Found {} visits after filtering (accommodation: {})", filteredVisits.size(), accommodation.map(a -> a.getPlace().getName()).orElse("none"));
         
         // Step 3: Scoring & Identifying "Interesting" Visits
-        List<ScoredVisit> scoredVisits = scoreVisits(filteredVisits, accommodation.orElse(null));
+        List<ScoredVisit> scoredVisits = new ArrayList<>(scoreVisits(filteredVisits, accommodation.orElse(null)));
         
         // Sort by score descending
         scoredVisits.sort(Comparator.comparingDouble(ScoredVisit::score).reversed());
@@ -352,7 +351,7 @@ public class MemoryBlockGenerationService {
 
                 return visit.getDurationSeconds() >= MIN_VISIT_DURATION_SECONDS;
             })
-            .collect(Collectors.toList());
+            .toList();
     }
     
     /**
@@ -372,11 +371,11 @@ public class MemoryBlockGenerationService {
         return visits.stream()
             .map(visit -> {
                 double score = 0.0;
-                
+
                 // Duration score (normalized 0-1)
                 double durationScore = (double) visit.getDurationSeconds() / maxDuration;
                 score += WEIGHT_DURATION * durationScore;
-                
+
                 // Distance from accommodation score
                 if (accommodation != null) {
                     double distance = GeoUtils.distanceInMeters(
@@ -389,19 +388,19 @@ public class MemoryBlockGenerationService {
                     double distanceScore = Math.min(distance / 50000.0, 1.0);
                     score += WEIGHT_DISTANCE * distanceScore;
                 }
-                
+
                 // Category score
                 double categoryScore = getCategoryWeight(visit.getPlace().getType());
                 score += WEIGHT_CATEGORY * categoryScore;
-                
+
                 // Novelty score (inverse of visit count, normalized)
                 long visitCount = visitCounts.get(visit.getPlace().getId());
                 double noveltyScore = 1.0 / visitCount;
                 score += WEIGHT_NOVELTY * noveltyScore;
-                
+
                 return new ScoredVisit(visit, score);
             })
-            .collect(Collectors.toList());
+            .toList();
     }
     
     /**
@@ -483,33 +482,33 @@ public class MemoryBlockGenerationService {
      */
     private static class VisitCluster {
         private final List<ScoredVisit> visits = new ArrayList<>();
-        
+
         public void addVisit(ScoredVisit visit) {
             visits.add(visit);
         }
-        
+
         public List<ScoredVisit> getVisits() {
             return visits;
         }
-        
+
         public ScoredVisit getHighestScoredVisit() {
             return visits.stream()
                     .max(Comparator.comparingDouble(ScoredVisit::score))
-                .orElse(null);
+                    .orElse(null);
         }
-        
+
         public Instant getStartTime() {
             return visits.stream()
                     .map(sv -> sv.visit().getStartTime())
-                .min(Instant::compareTo)
-                .orElse(null);
+                    .min(Instant::compareTo)
+                    .orElse(null);
         }
-        
+
         public Instant getEndTime() {
             return visits.stream()
                     .map(sv -> sv.visit().getEndTime())
-                .max(Instant::compareTo)
-                .orElse(null);
+                    .max(Instant::compareTo)
+                    .orElse(null);
         }
     }
 }
