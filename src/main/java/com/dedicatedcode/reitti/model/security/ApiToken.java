@@ -11,7 +11,7 @@ public class ApiToken {
     
     private final String token;
 
-    private final Long deviceId;
+    private final Device device;
 
     private final User user;
     
@@ -26,14 +26,14 @@ public class ApiToken {
     }
 
     public ApiToken(User user, String name, Device device) {
-        this(null, null, user, device != null ? device.id() : null, name, null, null);
+        this(null, null, user, device, name, null, null);
     }
 
-    public ApiToken(Long id, String token, User user, Long deviceId, String name, Instant createdAt, Instant lastUsedAt) {
+    public ApiToken(Long id, String token, User user, Device device, String name, Instant createdAt, Instant lastUsedAt) {
         this.id = id;
         this.token = token != null ? token : UUID.randomUUID().toString();
         this.user = user;
-        this.deviceId = deviceId;
+        this.device = device;
         this.name = name;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.lastUsedAt = lastUsedAt;
@@ -51,8 +51,8 @@ public class ApiToken {
         return user;
     }
 
-    public Long getDeviceId() {
-        return deviceId;
+    public Device getDevice() {
+        return device;
     }
 
     public String getName() {
@@ -69,6 +69,6 @@ public class ApiToken {
     
     // Wither method
     public ApiToken withLastUsedAt(Instant lastUsedAt) {
-        return new ApiToken(this.id, this.token, this.user, this.deviceId, this.name, this.createdAt, lastUsedAt);
+        return new ApiToken(this.id, this.token, this.user, this.device, this.name, this.createdAt, lastUsedAt);
     }
 }

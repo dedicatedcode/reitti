@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.ApiTokenUsage;
 import com.dedicatedcode.reitti.model.security.User;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,9 +48,11 @@ public class ApiTokenJdbcService {
     public List<ApiToken> findByUser(User user) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version,
+                   d.id as device_id, d.name as device_name, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
+            JOIN devices d ON at.device_id = d.id
             WHERE at.user_id = ?
             ORDER BY at.created_at DESC
             """;
@@ -59,9 +63,11 @@ public class ApiTokenJdbcService {
     public Optional<ApiToken> findById(Long id) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
-                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version,
+                   d.id as device_id, d.name as device_name, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
+            JOIN devices d ON at.device_id = d.id
             WHERE at.id = ?
             """;
         try {
@@ -86,13 +92,13 @@ public class ApiTokenJdbcService {
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
             apiToken.getToken(),
             apiToken.getUser().getId(),
-            apiToken.getDeviceId(),
+            apiToken.getDevice() != null ? apiToken.getDevice().id() : null,
             apiToken.getName(),
             Timestamp.from(apiToken.getCreatedAt()),
             apiToken.getLastUsedAt() != null ? Timestamp.from(apiToken.getLastUsedAt()) : null
         );
         
-        return new ApiToken(id, apiToken.getToken(), apiToken.getUser(), apiToken.getDeviceId(), apiToken.getName(),
+        return new ApiToken(id, apiToken.getToken(), apiToken.getUser(), apiToken.getDevice(), apiToken.getName(),
                            apiToken.getCreatedAt(), apiToken.getLastUsedAt());
     }
 
@@ -144,11 +150,25 @@ public class ApiTokenJdbcService {
             rs.getLong("user_version")
         );
 
+
+        Device device = null;
+        if (rs.getObject("device_id") != null) {
+            device = new Device(
+                    rs.getLong("device_id"),
+                    rs.getString("device_name"),
+                    rs.getBoolean("device_enabled"),
+                    rs.getBoolean("device_show_on_map"),
+                    rs.getString("device_color"),
+                    rs.getTimestamp("device_created_at").toInstant(),
+                    rs.getTimestamp("device_updated_at").toInstant(),
+                    rs.getLong("device_version"));
+        }
+
         return new ApiToken(
             rs.getLong("id"),
             rs.getString("token"),
             user,
-            rs.getString("device_id") != null ? rs.getLong("device_id") : null,
+            device,
             rs.getString("name"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("last_used_at") != null ? rs.getTimestamp("last_used_at").toInstant() : null
