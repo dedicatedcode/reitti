@@ -89,12 +89,13 @@ class MapStyleSettingsPage {
                     ? t('map.settings.dialog.map-styles.style-input.json')
                     : t('map.settings.dialog.map-styles.style-input.url'));
             const sharedLabel = style.shared ? ` · ${this.escapeHtml(t('map.settings.dialog.map-styles.shared-badge'))}` : '';
+            const proxyLabel = style.dataSource?.proxyTiles ? ` · ${this.escapeHtml(t('map.settings.dialog.map-styles.proxy-badge'))}` : '';
 
             return `
                 <div class="custom-map-style-item">
                     <div class="custom-map-style-item-main">
                         <div class="custom-map-style-item-name">${this.escapeHtml(style.label)}</div>
-                        <div class="custom-map-style-item-meta">${this.escapeHtml(typeLabel)} · ${this.escapeHtml(inputLabel)}${sharedLabel}</div>
+                        <div class="custom-map-style-item-meta">${this.escapeHtml(typeLabel)} · ${this.escapeHtml(inputLabel)}${sharedLabel}${proxyLabel}</div>
                     </div>
                     <div class="custom-map-style-item-actions">
                         <button type="button" class="btn settings-icon-btn" data-map-style-action="edit" data-map-style-id="${this.escapeHtml(style.id)}" title="${t('map.settings.dialog.map-styles.edit')}">
@@ -130,6 +131,10 @@ class MapStyleSettingsPage {
         const sharedInput = this.root.querySelector('#custom-map-style-shared');
         if (sharedInput) {
             sharedInput.checked = !!style?.shared;
+        }
+        const proxyTilesInput = this.root.querySelector('#custom-map-style-proxy-tiles');
+        if (proxyTilesInput) {
+            proxyTilesInput.checked = !!style?.dataSource?.proxyTiles;
         }
         this.root.querySelector('#custom-map-style-url').value = mapType === 'vector' && styleInputType === 'url' ? (style?.styleInput || style?.styleUrl || '') : '';
         this.root.querySelector('#custom-map-style-json').value = mapType === 'vector' && styleInputType === 'json' ? (style?.styleInput || '') : '';
@@ -231,7 +236,8 @@ class MapStyleSettingsPage {
                 minzoom: mapType === 'raster' ? this.optionalNumberValue('#custom-map-style-minzoom') : null,
                 maxzoom: mapType === 'raster' ? this.optionalNumberValue('#custom-map-style-maxzoom') : null,
                 tileSize: mapType === 'raster' ? this.optionalNumberValue('#custom-map-style-tile-size') : null,
-                scheme: mapType === 'raster' ? this.value('#custom-map-style-scheme') : ''
+                scheme: mapType === 'raster' ? this.value('#custom-map-style-scheme') : '',
+                proxyTiles: !!window.reittiIsAdmin && !!this.root.querySelector('#custom-map-style-proxy-tiles')?.checked
             },
             vectorOptions: {
                 attributionOverride: mapType === 'vector' ? this.value('#custom-map-style-attribution-override') : '',

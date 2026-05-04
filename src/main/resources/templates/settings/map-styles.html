@@ -203,6 +203,17 @@
                         </section>
                         <div class="custom-map-style-share-panel" th:if="${isAdmin}">
                             <div class="custom-map-style-share-copy">
+                                <label for="custom-map-style-proxy-tiles"
+                                    th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</label>
+                                <p th:text="#{map.settings.dialog.map-styles.proxy-tiles-info}">Fetches Tiles via Reitti, disable to use browser fetching.</p>
+                            </div>
+                            <label class="settings-toggle-switch">
+                                <input type="checkbox" id="custom-map-style-proxy-tiles">
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="custom-map-style-share-panel" th:if="${isAdmin}">
+                            <div class="custom-map-style-share-copy">
                                 <label for="custom-map-style-shared"
                                     th:text="#{map.settings.dialog.map-styles.shared}">Share with all users</label>
                                 <p th:text="#{map.settings.dialog.map-styles.shared-info}">Other users can select

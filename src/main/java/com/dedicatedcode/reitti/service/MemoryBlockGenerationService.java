@@ -298,7 +298,7 @@ public class MemoryBlockGenerationService {
         SignificantPlace accommodationPlace = accommodation.getPlace();
         String country;
         if (accommodationPlace.getCountryCode() != null) {
-            country = i18n.translateWithDefault("country." + accommodationPlace.getCountryCode() + ".label", accommodation.getPlace().getCountryCode().toLowerCase());
+            country = i18n.translate("country." + accommodationPlace.getCountryCode() + ".label");
         } else {
             country = i18n.translate("country.unknown.label");
         }

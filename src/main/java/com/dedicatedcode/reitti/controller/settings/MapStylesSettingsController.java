@@ -20,14 +20,17 @@ import org.springframework.web.bind.annotation.*;
 public class MapStylesSettingsController {
     private final boolean dataManagementEnabled;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
+    private final com.dedicatedcode.reitti.service.UserMapStyleValidator userMapStyleValidator;
     private final ContextPathHolder contextPathHolder;
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
             UserMapStyleJdbcService userMapStyleJdbcService,
+            com.dedicatedcode.reitti.service.UserMapStyleValidator userMapStyleValidator,
             ContextPathHolder contextPathHolder) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
+        this.userMapStyleValidator = userMapStyleValidator;
         this.contextPathHolder = contextPathHolder;
     }
 
@@ -48,7 +51,8 @@ public class MapStylesSettingsController {
     @PostMapping("/api")
     @ResponseBody
     public MapStyleSettingsDTO saveStyle(@AuthenticationPrincipal User user, @RequestBody SaveMapStyleRequest request) {
-        UserMapStyle style = userMapStyleJdbcService.save(user, request);
+        UserMapStyle validatedStyle = userMapStyleValidator.validateAndNormalize(user, request);
+        UserMapStyle style = userMapStyleJdbcService.save(user, validatedStyle);
         userMapStyleJdbcService.setActiveStyleId(user, style.frontendId());
         return userMapStyleJdbcService.getSettings(user, normalizedContextPath());
     }

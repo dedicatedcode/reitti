@@ -9,6 +9,7 @@ public record MapStyleDataSource(
         Integer minzoom,
         Integer maxzoom,
         Integer tileSize,
-        String scheme
+        String scheme,
+        boolean proxyTiles
 ) {
 }

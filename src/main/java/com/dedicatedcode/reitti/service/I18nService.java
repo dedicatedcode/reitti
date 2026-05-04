@@ -51,14 +51,6 @@ public class I18nService {
         return messageSource.getMessage(messageKey, null, LocaleContextHolder.getLocale());
     }
 
-    public String translateWithDefault(String messageKey, String defaultMessage) {
-        return messageSource.getMessage(messageKey, null, defaultMessage, LocaleContextHolder.getLocale());
-    }
-
-    public String translateWithDefault(String messageKey, String defaultMessage, Object... args) {
-        return messageSource.getMessage(messageKey, args, defaultMessage, LocaleContextHolder.getLocale());
-    }
-
     public String translate(String messageKey, Object... args) {
         return messageSource.getMessage(messageKey, args, LocaleContextHolder.getLocale());
     }
