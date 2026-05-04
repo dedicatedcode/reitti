@@ -13,12 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class ApiTokenJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -27,7 +25,6 @@ public class ApiTokenJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Transactional(readOnly = true)
     public Optional<ApiToken> findByToken(String token) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
@@ -44,7 +41,6 @@ public class ApiTokenJdbcService {
         }
     }
 
-    @Transactional(readOnly = true)
     public List<ApiToken> findByUser(User user) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
@@ -52,14 +48,13 @@ public class ApiTokenJdbcService {
                    d.id as device_id, d.name as device_name, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
-            JOIN devices d ON at.device_id = d.id
+            LEFT JOIN devices d ON at.device_id = d.id
             WHERE at.user_id = ?
             ORDER BY at.created_at DESC
             """;
         return jdbcTemplate.query(sql, this::mapRowToApiToken, user.getId());
     }
 
-    @Transactional(readOnly = true)
     public Optional<ApiToken> findById(Long id) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
@@ -67,7 +62,7 @@ public class ApiTokenJdbcService {
                    d.id as device_id, d.name as device_name, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
-            JOIN devices d ON at.device_id = d.id
+            LEFT JOIN devices d ON at.device_id = d.id
             WHERE at.id = ?
             """;
         try {

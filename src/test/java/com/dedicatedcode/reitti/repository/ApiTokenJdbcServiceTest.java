@@ -99,7 +99,7 @@ class ApiTokenJdbcServiceTest {
 
     @Test
     void findByUser_WithDevice_ShouldIncludeDeviceInfo() {
-        Device device = createTestDevice();
+        Device device = createTestDevice(testUser);
         ApiToken token = testingService.createApiToken(testUser, "Token with device", device);
 
         List<ApiToken> tokens = apiTokenJdbcService.findByUser(testUser);
@@ -107,7 +107,7 @@ class ApiTokenJdbcServiceTest {
         assertTrue(found.isPresent());
         ApiToken retrieved = found.get();
         assertNotNull(retrieved.getDevice());
-        assertEquals(device.getId(), retrieved.getDevice().id());
+        assertEquals(device.id(), retrieved.getDevice().id());
     }
 
     @Test
@@ -202,12 +202,12 @@ class ApiTokenJdbcServiceTest {
         assertEquals(2, usages.size());
     }
 
-    private Device createTestDevice() {
+    private Device createTestDevice(User user) {
         String name = "test-device-" + UUID.randomUUID();
         Instant now = Instant.now();
         jdbcTemplate.update(
-                "INSERT INTO devices (name, enabled, show_on_map, color, created_at, updated_at, version) VALUES (?,?,?,?,?,?,?)",
-                name, true, false, "#ffaa00", Timestamp.from(now), Timestamp.from(now), 0L
+                "INSERT INTO devices (name, user_id, enabled, show_on_map, color, created_at, updated_at, version) VALUES (?,?,?,?,?,?,?,?)",
+                name, user.getId(), true, false, "#ffaa00", Timestamp.from(now), Timestamp.from(now), 0L
         );
         Long id = jdbcTemplate.queryForObject("SELECT id FROM devices WHERE name = ?", Long.class, name);
         return new Device(id, name, true, false, "#ffaa00", now, now, 0L);
