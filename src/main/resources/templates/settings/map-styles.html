@@ -76,7 +76,6 @@
 
 
                         <section class="custom-map-style-mode-panel" data-map-style-panel="vector">
-                            <h4 th:text="#{map.settings.dialog.map-styles.vector-title}">Vector Style</h4>
                             <fieldset class="custom-map-style-choice">
                                 <legend th:text="#{map.settings.dialog.map-styles.style-input}">Style Input</legend>
                                 <label>
@@ -125,7 +124,6 @@
                         </section>
 
                         <section class="custom-map-style-mode-panel hidden" data-map-style-panel="raster">
-                            <h4 th:text="#{map.settings.dialog.map-styles.raster-title}">Raster Tiles</h4>
                             <fieldset class="custom-map-style-choice">
                                 <legend th:text="#{map.settings.dialog.map-styles.source-input}">Source Input</legend>
                                 <label>
@@ -226,11 +224,11 @@
                         </div>
                         <div class="custom-map-style-error" id="custom-map-style-error" role="alert"></div>
                         <div class="custom-map-style-actions">
-                            <button type="submit" class="btn settings-secondary-btn">
+                            <button type="submit" class="btn settings-primary-btn">
                                 <i class="lni lni-check"></i>
                                 <span th:text="#{map.settings.dialog.map-styles.save}">Save</span>
                             </button>
-                            <button type="button" class="btn settings-secondary-btn" id="cancel-map-style-btn">
+                            <button type="button" class="btn settings-ghost-btn" id="cancel-map-style-btn">
                                 <i class="lni lni-xmark"></i>
                                 <span th:text="#{map.settings.dialog.map-styles.cancel}">Cancel</span>
                             </button>
