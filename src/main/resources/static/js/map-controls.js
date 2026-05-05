@@ -46,6 +46,7 @@ class MapControls {
             </div>
         </div>
 `
+        this.rootElement = this.element.querySelector('.map-controls-section');
 
         this.toggle3dBtn = document.getElementById('toggle-3d-btn');
         this.toggleTerrainModeBtn = document.getElementById('toggle-terrain-btn');
@@ -57,6 +58,7 @@ class MapControls {
         this.refreshMapStyleOptions();
         this._setup();
     }
+
 
     _setup() {
         this.mapStyleSelect.addEventListener('change', () => {
@@ -148,6 +150,12 @@ class MapControls {
             this._enableGlobeProjection()
         } else {
             this._disableGlobeProjection();
+        }
+    }
+
+    mountTo(newContainer) {
+        if (newContainer && this.rootElement) {
+            newContainer.appendChild(this.rootElement);
         }
     }
 

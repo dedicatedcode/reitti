@@ -1635,9 +1635,7 @@ class MapRenderer {
             popup.remove();
         }, { capture: true });
 
-
-
-        // Store the marker by user ID for updates
+        marker.setPopup(popup);
         this.avatarMarkers.set(userId, marker);
     }
 

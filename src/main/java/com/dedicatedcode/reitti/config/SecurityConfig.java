@@ -59,6 +59,8 @@ public class SecurityConfig {
                                 "MAGIC_LINK_MEMORY_VIEW_ONLY",
                                 "MAGIC_LINK_MEMORY_EDIT_ACCESS")
                         .requestMatchers("/memories").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers("/api/v2/locations/stream/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS")
+                        .requestMatchers("/api/v1/visits/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS")
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
