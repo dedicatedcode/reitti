@@ -189,10 +189,10 @@ public class UserMapStyleValidator {
     }
 
     private String label(String key) {
-        return i18nService.translate("js.map.settings.dialog.map-styles." + key);
+        return i18nService.translate("map.settings.dialog.map-styles." + key);
     }
 
     private String message(String key, Object... args) {
-        return i18nService.translate("js.map.settings.dialog.map-styles." + key, args);
+        return i18nService.translate("map.settings.dialog.map-styles." + key, args);
     }
 }
