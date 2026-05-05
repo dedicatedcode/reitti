@@ -70,6 +70,14 @@ SELECT setval(
 -- 3. Re-apply the DDL (Primary Key, Indices, Owner)
 ALTER TABLE raw_location_points
     ADD PRIMARY KEY (id);
+ALTER TABLE public.raw_location_points
+    ALTER COLUMN invalid SET DEFAULT false,
+    ALTER COLUMN invalid SET NOT NULL,
+    ALTER COLUMN synthetic SET DEFAULT false,
+    ALTER COLUMN synthetic SET NOT NULL,
+    ALTER COLUMN ignored SET DEFAULT false,
+    ALTER COLUMN ignored SET NOT NULL;
+
 CREATE INDEX idx_raw_location_points_user_time_synthetic
     ON raw_location_points (user_id, timestamp, synthetic);
 
