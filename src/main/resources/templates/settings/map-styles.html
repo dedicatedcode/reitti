@@ -58,7 +58,8 @@
                         <div class="form-group">
                             <label for="custom-map-style-name"
                                 th:text="#{map.settings.dialog.map-styles.name}">Name</label>
-                            <input type="text" id="custom-map-style-name" autocomplete="off">
+                            <input type="text" id="custom-map-style-name" autocomplete="off"
+                                th:placeholder="#{map.settings.dialog.map-styles.name.placeholder}">
                         </div>
 
                         <fieldset class="custom-map-style-choice">
@@ -92,12 +93,14 @@
                             <div class="form-group">
                                 <label for="custom-map-style-url"
                                     th:text="#{map.settings.dialog.map-styles.style-json-url}">Style JSON URL</label>
-                                <input type="url" id="custom-map-style-url" autocomplete="off">
+                                <input type="url" id="custom-map-style-url" autocomplete="off"
+                                    placeholder="https://example.com/style.json">
                             </div>
                             <div class="form-group hidden" data-style-json-group>
                                 <label for="custom-map-style-json"
                                     th:text="#{map.settings.dialog.map-styles.style-json}">Style JSON</label>
-                                <textarea id="custom-map-style-json" rows="8" spellcheck="false"></textarea>
+                                <textarea id="custom-map-style-json" rows="8" spellcheck="false"
+                                    placeholder='{"version": 8, ...}'></textarea>
                             </div>
                             <details class="custom-map-style-advanced">
                                 <summary th:text="#{map.settings.dialog.map-styles.advanced-options}">Advanced Options
@@ -106,19 +109,22 @@
                                     <label for="custom-map-style-attribution-override"
                                         th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution
                                         Override</label>
-                                    <input type="text" id="custom-map-style-attribution-override" autocomplete="off">
+                                    <input type="text" id="custom-map-style-attribution-override" autocomplete="off"
+                                        placeholder="© OpenStreetMap contributors">
                                 </div>
                                 <div class="form-group">
                                     <label for="custom-map-style-glyphs-url"
                                         th:text="#{map.settings.dialog.map-styles.glyphs-url}">Glyphs URL
                                         Override</label>
-                                    <input type="text" id="custom-map-style-glyphs-url" autocomplete="off">
+                                    <input type="text" id="custom-map-style-glyphs-url" autocomplete="off"
+                                        placeholder="https://example.com/{fontstack}/{range}.pbf">
                                 </div>
                                 <div class="form-group">
                                     <label for="custom-map-style-sprite-url"
                                         th:text="#{map.settings.dialog.map-styles.sprite-url}">Sprite URL
                                         Override</label>
-                                    <input type="text" id="custom-map-style-sprite-url" autocomplete="off">
+                                    <input type="text" id="custom-map-style-sprite-url" autocomplete="off"
+                                        placeholder="https://example.com/sprite">
                                 </div>
                             </details>
                         </section>
@@ -141,23 +147,27 @@
                             <div class="form-group" data-raster-template-group>
                                 <label for="custom-map-style-tile-template"
                                     th:text="#{map.settings.dialog.map-styles.tile-template}">Tile URL Template</label>
-                                <input type="text" id="custom-map-style-tile-template" autocomplete="off">
+                                <input type="text" id="custom-map-style-tile-template" autocomplete="off"
+                                    placeholder="https://tile.example.com/{z}/{x}/{y}.png">
                             </div>
                             <div class="form-group" data-raster-template-group>
                                 <label for="custom-map-style-attribution"
                                     th:text="#{map.settings.dialog.map-styles.attribution}">Attribution</label>
-                                <input type="text" id="custom-map-style-attribution" autocomplete="off">
+                                <input type="text" id="custom-map-style-attribution" autocomplete="off"
+                                    placeholder="© OpenStreetMap contributors">
                             </div>
                             <div class="form-group hidden" data-raster-tilejson-group>
                                 <label for="custom-map-style-tilejson-url"
                                     th:text="#{map.settings.dialog.map-styles.tilejson-url}">TileJSON URL</label>
-                                <input type="url" id="custom-map-style-tilejson-url" autocomplete="off">
+                                <input type="url" id="custom-map-style-tilejson-url" autocomplete="off"
+                                    placeholder="https://example.com/tiles.json">
                             </div>
                             <div class="form-group hidden" data-raster-tilejson-group>
                                 <label for="custom-map-style-raster-attribution-override"
                                     th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution
                                     Override</label>
-                                <input type="text" id="custom-map-style-raster-attribution-override" autocomplete="off">
+                                <input type="text" id="custom-map-style-raster-attribution-override" autocomplete="off"
+                                    placeholder="© OpenStreetMap contributors">
                             </div>
                             <details class="custom-map-style-advanced" open>
                                 <summary th:text="#{map.settings.dialog.map-styles.tile-settings}">Tile Settings
