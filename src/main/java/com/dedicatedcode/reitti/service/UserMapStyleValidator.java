@@ -76,18 +76,7 @@ public class UserMapStyleValidator {
             );
         }
         if (source.proxyTiles() && user.getRole() != Role.ADMIN) {
-            source = new MapStyleDataSource(
-                    source.sourceId(),
-                    source.type(),
-                    source.tileJsonUrl(),
-                    source.tileUrlTemplate(),
-                    source.attribution(),
-                    source.minzoom(),
-                    source.maxzoom(),
-                    source.tileSize(),
-                    source.scheme(),
-                    false
-            );
+            source = source.withProxyTiles(false);
         }
 
         Long parsedId = resolveCustomId(request.id()).orElse(null);

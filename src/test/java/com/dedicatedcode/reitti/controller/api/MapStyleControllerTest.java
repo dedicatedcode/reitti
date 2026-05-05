@@ -70,7 +70,7 @@ class MapStyleControllerTest {
 
         JsonNode tiles = response.getBody().path("sources").path(JAWG_SOURCE_ID).path("tiles");
         assertThat(tiles.get(0).asText()).isEqualTo(
-                "http://localhost/api/v1/tiles/styles/custom-42/sources/" + MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID) + "/tiles/0/{z}/{x}/{y}.pbf"
+                "http://localhost/api/v1/tiles/styles/custom-42/" + MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID) + "/{z}/{x}/{y}.pbf"
         );
     }
 }

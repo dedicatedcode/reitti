@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -109,7 +110,7 @@ public class TileProxyController {
         return getTile("raster", z, x, y, "png", request);
     }
 
-    @GetMapping("/styles/{styleId}/sources/{sourceId}/tilejson.json")
+    @GetMapping("/styles/{styleId}/{sourceId}/tilejson.json")
     public ResponseEntity<JsonNode> getStyleSourceTileJson(
             @AuthenticationPrincipal User user,
             @PathVariable String styleId,
@@ -130,26 +131,23 @@ public class TileProxyController {
             }
             URI tileJsonUri = mapStyleUrlValidator.requireHttpUrl(tileJsonUrl, "Custom TileJSON URL");
 
-            HttpResponse<byte[]> response = fetchUrl(tileJsonUrl);
+            HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
             if (response.statusCode() != 200) {
                 log.debug("Failed to fetch custom TileJSON [{}]: HTTP {}", tileJsonUri, response.statusCode());
                 return ResponseEntity.notFound().build();
             }
 
             JsonNode tileJson = objectMapper.readTree(responseBody(response));
-            if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles) {
+            if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles && !tiles.isEmpty()) {
                 ArrayNode rewrittenTiles = objectMapper.createArrayNode();
-                for (int i = 0; i < tiles.size(); i++) {
-                    JsonNode tile = tiles.get(i);
-                    String tileUrl = tile.asText("");
-                    if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
-                        rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, i, tileUrl));
-                    } else if (!tileUrl.isBlank()) {
-                        String resolvedTileUrl = tileJsonUri.resolve(tileUrl).toString();
-                        rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, i, resolvedTileUrl));
-                    } else {
-                        rewrittenTiles.add(tileUrl);
-                    }
+                String firstTileUrl = tiles.get(0).asText("");
+                if (firstTileUrl.startsWith("http://") || firstTileUrl.startsWith("https://")) {
+                    rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, firstTileUrl));
+                } else if (!firstTileUrl.isBlank()) {
+                    String resolvedTileUrl = tileJsonUri.resolve(firstTileUrl).toString();
+                    rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, resolvedTileUrl));
+                } else {
+                    rewrittenTiles.add(firstTileUrl);
                 }
                 mutableTileJson.set("tiles", rewrittenTiles);
             }
@@ -163,12 +161,11 @@ public class TileProxyController {
         }
     }
 
-    @GetMapping("/styles/{styleId}/sources/{sourceId}/tiles/{tileIndex}/{z}/{x}/{y}.{ext}")
+    @GetMapping("/styles/{styleId}/{sourceId}/{z}/{x}/{y}.{ext}")
     public ResponseEntity<byte[]> getStyleSourceTile(
             @AuthenticationPrincipal User user,
             @PathVariable String styleId,
             @PathVariable String sourceId,
-            @PathVariable int tileIndex,
             @PathVariable int z,
             @PathVariable int x,
             @PathVariable int y,
@@ -179,7 +176,7 @@ public class TileProxyController {
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            String template = tileTemplate(source.get(), tileIndex);
+            String template = tileTemplate(source.get());
             if (!StringUtils.hasText(template)) {
                 return ResponseEntity.notFound().build();
             }
@@ -292,10 +289,6 @@ public class TileProxyController {
         return httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
     }
 
-    private HttpResponse<byte[]> fetchUrl(String url) throws Exception {
-        return fetchRaw(url, Map.of());
-    }
-
     private byte[] responseBody(HttpResponse<byte[]> response) throws IOException {
         String contentEncoding = response.headers().firstValue(HttpHeaders.CONTENT_ENCODING).orElse("");
         if (contentEncoding.equalsIgnoreCase("gzip")) {
@@ -352,18 +345,8 @@ public class TileProxyController {
     }
 
     private JsonNode parseUserStyleJson(UserMapStyle style) throws IOException {
-        String cacheKey = "local:" + style.id() + ":" + style.version();
-        try {
-            return styleJsonCache.get(cacheKey, k -> {
-                try {
-                    return objectMapper.readTree(style.styleJson());
-                } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
-                }
-            });
-        } catch (java.io.UncheckedIOException e) {
-            throw e.getCause();
-        }
+        return cachedJson("local:" + style.id() + ":" + style.version(),
+                k -> objectMapper.readTree(style.styleJson()));
     }
 
     private Optional<TileSource> sourceFromUserStyle(UserMapStyle style, String sourceId) throws IOException, InterruptedException {
@@ -411,10 +394,12 @@ public class TileProxyController {
         if (exactSource instanceof ObjectNode) {
             return exactSource;
         }
+        List<String> allSourceIds = new ArrayList<>();
+        sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
         var fields = sourcesObject.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
-            if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey())) {
+            if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey(), allSourceIds)) {
                 return entry.getValue();
             }
         }
@@ -447,9 +432,9 @@ public class TileProxyController {
         return null;
     }
 
-    private String tileTemplate(TileSource source, int tileIndex) throws Exception {
-        if (tileIndex >= 0 && tileIndex < source.tileUrlTemplates().size()) {
-            return source.tileUrlTemplates().get(tileIndex);
+    private String tileTemplate(TileSource source) throws Exception {
+        if (!source.tileUrlTemplates().isEmpty()) {
+            return source.tileUrlTemplates().get(0);
         }
 
         if (!StringUtils.hasText(source.tileJsonUrl())) {
@@ -459,29 +444,26 @@ public class TileProxyController {
         String tileJsonUrl = source.tileJsonUrl();
         URI tileJsonUri = mapStyleUrlValidator.requireHttpUrl(tileJsonUrl, "Custom TileJSON URL");
 
-        JsonNode tileJson;
-        try {
-            tileJson = styleJsonCache.get("tilejson:" + tileJsonUrl, k -> {
-                try {
-                    HttpResponse<byte[]> response = fetchUrl(tileJsonUrl);
-                    if (response.statusCode() != 200) {
-                        throw new IOException("Failed to fetch TileJSON: " + response.statusCode());
-                    }
-                    return objectMapper.readTree(responseBody(response));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+        JsonNode tileJson = cachedJson("tilejson:" + tileJsonUrl, k -> {
+            try {
+                HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
+                if (response.statusCode() != 200) {
+                    throw new IOException("Failed to fetch TileJSON: " + response.statusCode());
                 }
-            });
-        } catch (RuntimeException e) {
-            throw new Exception("Failed to fetch custom TileJSON", e.getCause());
-        }
+                return objectMapper.readTree(responseBody(response));
+            } catch (IOException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IOException("Failed to fetch custom TileJSON", e);
+            }
+        });
 
         JsonNode tiles = tileJson.get("tiles");
-        if (!(tiles instanceof ArrayNode tileArray) || tileIndex < 0 || tileIndex >= tileArray.size()) {
+        if (!(tiles instanceof ArrayNode tileArray) || tileArray.isEmpty()) {
             return null;
         }
 
-        String tileUrl = tileArray.get(tileIndex).asText("");
+        String tileUrl = tileArray.get(0).asText("");
         if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
             return normalizeTileTemplateForProxy(tileUrl);
         }
@@ -491,48 +473,49 @@ public class TileProxyController {
         return null;
     }
 
-    private JsonNode fetchAndParseStyleJson(UserMapStyle style) throws IOException, InterruptedException {
+    private JsonNode fetchAndParseStyleJson(UserMapStyle style) throws IOException {
         String styleUrl = style.styleUrl();
-        String cacheKey = "url:" + style.id() + ":" + style.version() + ":" + styleUrl;
-
-        // Caffeine's cache loader cannot throw checked exceptions, so we wrap them
-        // in RuntimeException and unwrap on the way out.
-        try {
-            return styleJsonCache.get(cacheKey, k -> {
-                try {
-                    HttpRequest request = HttpRequest.newBuilder(mapStyleUrlValidator.requireHttpUrl(styleUrl, "Vector style URL"))
-                            .timeout(Duration.ofSeconds(20))
-                            .header("Accept", "application/json")
-                            .GET()
-                            .build();
-                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-                    if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                        throw new IOException("Unable to fetch map style: " + response.statusCode());
-                    }
-                    return objectMapper.readTree(response.body());
-                } catch (IOException | InterruptedException e) {
-                    throw new RuntimeException(e);
+        return cachedJson("url:" + style.id() + ":" + style.version() + ":" + styleUrl, k -> {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(mapStyleUrlValidator.requireHttpUrl(styleUrl, "Vector style URL"))
+                        .timeout(Duration.ofSeconds(20))
+                        .header("Accept", "application/json")
+                        .GET()
+                        .build();
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    throw new IOException("Unable to fetch map style: " + response.statusCode());
                 }
-            });
-        } catch (RuntimeException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof IOException ioEx) throw ioEx;
-            if (cause instanceof InterruptedException intEx) throw intEx;
-            throw e;
-        }
+                return objectMapper.readTree(response.body());
+            } catch (IOException e) {
+                throw e;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException(e);
+            }
+        });
     }
 
     private JsonNode readClasspathStyle(String path) throws IOException {
-        String cacheKey = "classpath:" + path;
+        return cachedJson("classpath:" + path,
+                k -> objectMapper.readTree(new ClassPathResource(path).getInputStream()));
+    }
+
+    @FunctionalInterface
+    private interface JsonLoader {
+        JsonNode load(String key) throws IOException;
+    }
+
+    private JsonNode cachedJson(String cacheKey, JsonLoader loader) throws IOException {
         try {
             return styleJsonCache.get(cacheKey, k -> {
                 try {
-                    return objectMapper.readTree(new ClassPathResource(path).getInputStream());
+                    return loader.load(k);
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 }
             });
-        } catch (java.io.UncheckedIOException e) {
+        } catch (UncheckedIOException e) {
             throw e.getCause();
         }
     }
@@ -545,10 +528,10 @@ public class TileProxyController {
         return style.dataSource() != null && style.dataSource().proxyTiles();
     }
 
-    private String styleSourceTileUrl(HttpServletRequest request, String styleId, String sourceId, int tileIndex, String tileUrl) {
+    private String styleSourceTileUrl(HttpServletRequest request, String styleId, String sourceId, String tileUrl) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return RequestHelper.getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/sources/" + MapStylePathUtils.sourcePathId(sourceId)
-                + "/tiles/" + tileIndex + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
+        return RequestHelper.getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId)
+                + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
     private String normalizeTileTemplateForProxy(String tileUrl) {

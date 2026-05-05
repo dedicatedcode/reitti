@@ -12,4 +12,8 @@ public record MapStyleDataSource(
         String scheme,
         boolean proxyTiles
 ) {
+    public MapStyleDataSource withProxyTiles(boolean proxyTiles) {
+        return new MapStyleDataSource(sourceId, type, tileJsonUrl, tileUrlTemplate, attribution,
+                minzoom, maxzoom, tileSize, scheme, proxyTiles);
+    }
 }

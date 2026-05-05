@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.net.URI;
@@ -36,6 +36,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -48,6 +52,8 @@ public class MapStyleController {
     private static final String RUNTIME_TERRAIN_SOURCE = "reitti-terrain-source";
     private static final String RUNTIME_SATELLITE_SOURCE = "reitti-satellite-source";
     private static final String RUNTIME_BUILDING_SOURCE = "reitti-building-source";
+    private static final String TERRAIN_PROXY_PATH = "/api/v1/tiles/terrain/{z}/{x}/{y}.webp";
+    private static final String SATELLITE_PROXY_PATH = "/api/v1/tiles/satellite/{z}/{x}/{y}.jpg";
 
     private final ObjectMapper objectMapper;
     private final ContextPathHolder contextPathHolder;
@@ -124,9 +130,7 @@ public class MapStyleController {
         }
         JsonNode json = objectMapper.readTree(response.body());
         if (json instanceof ObjectNode objectNode) {
-            ObjectNode metadata = getOrCreateMetadata(objectNode);
-            metadata.put("reitti:style-url", style.styleUrl());
-            objectNode.set("metadata", metadata);
+            getOrCreateMetadata(objectNode).put("reitti:style-url", style.styleUrl());
         }
         return json;
     }
@@ -140,22 +144,16 @@ public class MapStyleController {
         source.put("tileSize", effectiveRasterTileSize(dataSource));
         source.put("scheme", StringUtils.hasText(dataSource.scheme()) ? dataSource.scheme() : "xyz");
 
-        ObjectNode sources = objectMapper.createObjectNode();
-        sources.set("custom-raster-source", source);
-
         ObjectNode rasterLayer = objectMapper.createObjectNode();
         rasterLayer.put("id", "custom-raster-layer");
         rasterLayer.put("type", "raster");
         rasterLayer.put("source", "custom-raster-source");
 
-        ArrayNode layers = objectMapper.createArrayNode();
-        layers.add(rasterLayer);
-
         ObjectNode styleJson = objectMapper.createObjectNode();
         styleJson.put("version", 8);
         styleJson.put("name", style.name());
-        styleJson.set("sources", sources);
-        styleJson.set("layers", layers);
+        styleJson.set("sources", objectMapper.createObjectNode().set("custom-raster-source", source));
+        styleJson.set("layers", objectMapper.createArrayNode().add(rasterLayer));
         return styleJson;
     }
 
@@ -209,12 +207,9 @@ public class MapStyleController {
     }
 
     private void applyAttributionOverride(ObjectNode mutableStyle, String attribution) {
-        ObjectNode metadata = getOrCreateMetadata(mutableStyle);
-        metadata.put("reitti:attribution-override", attribution);
-        mutableStyle.set("metadata", metadata);
+        getOrCreateMetadata(mutableStyle).put("reitti:attribution-override", attribution);
 
-        JsonNode sources = mutableStyle.get("sources");
-        if (sources instanceof ObjectNode sourcesObject) {
+        if (mutableStyle.get("sources") instanceof ObjectNode sourcesObject) {
             sourcesObject.fields().forEachRemaining(entry -> {
                 if (entry.getValue() instanceof ObjectNode source) {
                     source.put("attribution", attribution);
@@ -231,11 +226,10 @@ public class MapStyleController {
             return style;
         }
         ObjectNode mutableStyle = style.deepCopy();
-        ObjectNode sources = ensureSourcesNode(mutableStyle);
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", StringUtils.hasText(dataSource.type()) ? dataSource.type() : "vector");
         populateDataSourceFields(source, dataSource);
-        sources.set(dataSource.sourceId(), source);
+        ensureSourcesNode(mutableStyle).set(dataSource.sourceId(), source);
         return mutableStyle;
     }
 
@@ -258,12 +252,10 @@ public class MapStyleController {
         String baseUrl = RequestHelper.getBaseUrl(request);
 
         if (!sources.has(RUNTIME_TERRAIN_SOURCE)) {
-            String tileUrl = tileCacheEnabled ? baseUrl + "/api/v1/tiles/terrain/{z}/{x}/{y}.webp" : TERRAIN_TILE_URL;
-            sources.set(RUNTIME_TERRAIN_SOURCE, buildTerrainSource(tileUrl));
+            sources.set(RUNTIME_TERRAIN_SOURCE, buildTerrainSource(tileCacheEnabled ? baseUrl + TERRAIN_PROXY_PATH : TERRAIN_TILE_URL));
         }
         if (!sources.has(RUNTIME_SATELLITE_SOURCE)) {
-            String tileUrl = tileCacheEnabled ? baseUrl + "/api/v1/tiles/satellite/{z}/{x}/{y}.jpg" : SATELLITE_TILE_URL;
-            sources.set(RUNTIME_SATELLITE_SOURCE, buildSatelliteSource(tileUrl));
+            sources.set(RUNTIME_SATELLITE_SOURCE, buildSatelliteSource(tileCacheEnabled ? baseUrl + SATELLITE_PROXY_PATH : SATELLITE_TILE_URL));
         }
         if (!styleHasBuildingLayer(mutableStyle) && !sources.has(RUNTIME_BUILDING_SOURCE)) {
             sources.set(RUNTIME_BUILDING_SOURCE, buildBuildingSource());
@@ -304,8 +296,7 @@ public class MapStyleController {
     }
 
     private boolean styleHasBuildingLayer(ObjectNode style) {
-        JsonNode layers = style.get("layers");
-        if (!(layers instanceof ArrayNode layerArray)) {
+        if (!(style.get("layers") instanceof ArrayNode layerArray)) {
             return false;
         }
         for (JsonNode layer : layerArray) {
@@ -324,8 +315,7 @@ public class MapStyleController {
 
     private JsonNode rewriteResourceUrls(JsonNode style) {
         ObjectNode mutableStyle = style.deepCopy();
-        JsonNode glyphs = mutableStyle.get("glyphs");
-        if (glyphs instanceof TextNode glyphsText && glyphsText.asText().startsWith("/")) {
+        if (mutableStyle.get("glyphs") instanceof TextNode glyphsText && glyphsText.asText().startsWith("/")) {
             mutableStyle.set("glyphs", new TextNode(contextPathHolder.getContextPath() + glyphsText.asText()));
         }
         return mutableStyle;
@@ -333,25 +323,42 @@ public class MapStyleController {
 
     private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request, String styleId) {
         ObjectNode mutableStyle = style.deepCopy();
-        String baseUrl = RequestHelper.getBaseUrl(request);
-        JsonNode sources = mutableStyle.get("sources");
-        if (!(sources instanceof ObjectNode mutableSources)) {
+        if (!(mutableStyle.get("sources") instanceof ObjectNode mutableSources)) {
             return mutableStyle;
         }
+        String baseUrl = RequestHelper.getBaseUrl(request);
         URI styleBaseUri = getStyleBaseUri(mutableStyle).orElse(null);
+        List<String> sourceIds = new ArrayList<>();
+        mutableSources.fieldNames().forEachRemaining(sourceIds::add);
+
+        Map<String, String> reservedRasterTiles = reservedRasterTileUrls(baseUrl);
         mutableSources.fields().forEachRemaining(entry -> {
-            if (entry.getValue() instanceof ObjectNode source) {
-                rewriteTileSource(source, baseUrl, styleId, entry.getKey(), styleBaseUri);
+            if (!(entry.getValue() instanceof ObjectNode source)) {
+                return;
             }
+            String reservedTileUrl = reservedRasterTiles.get(entry.getKey());
+            if (reservedTileUrl != null) {
+                if (RUNTIME_SATELLITE_SOURCE.equals(entry.getKey()) || "satellite-source".equals(entry.getKey())) {
+                    source.put("type", "raster");
+                }
+                source.set("tiles", singleTileArray(reservedTileUrl));
+                return;
+            }
+            rewriteTileSource(source, baseUrl, styleId, entry.getKey(), sourceIds, styleBaseUri);
         });
-        rewriteRasterSource(mutableSources, "terrain-source", baseUrl + "/api/v1/tiles/terrain/{z}/{x}/{y}.webp");
-        rewriteRasterSource(mutableSources, "satellite-source", baseUrl + "/api/v1/tiles/satellite/{z}/{x}/{y}.jpg");
-        rewriteRasterSource(mutableSources, RUNTIME_TERRAIN_SOURCE, baseUrl + "/api/v1/tiles/terrain/{z}/{x}/{y}.webp");
-        rewriteRasterSource(mutableSources, RUNTIME_SATELLITE_SOURCE, baseUrl + "/api/v1/tiles/satellite/{z}/{x}/{y}.jpg");
         return mutableStyle;
     }
 
-    private void rewriteTileSource(ObjectNode source, String baseUrl, String styleId, String sourceId, URI styleBaseUri) {
+    private Map<String, String> reservedRasterTileUrls(String baseUrl) {
+        Map<String, String> reserved = new LinkedHashMap<>();
+        reserved.put("terrain-source", baseUrl + TERRAIN_PROXY_PATH);
+        reserved.put("satellite-source", baseUrl + SATELLITE_PROXY_PATH);
+        reserved.put(RUNTIME_TERRAIN_SOURCE, baseUrl + TERRAIN_PROXY_PATH);
+        reserved.put(RUNTIME_SATELLITE_SOURCE, baseUrl + SATELLITE_PROXY_PATH);
+        return reserved;
+    }
+
+    private void rewriteTileSource(ObjectNode source, String baseUrl, String styleId, String sourceId, List<String> allSourceIds, URI styleBaseUri) {
         String sourceUrl = source.path("url").asText("");
         String firstTileUrl = getFirstTileUrl(source);
 
@@ -360,50 +367,37 @@ public class MapStyleController {
             source.set("tiles", singleTileArray(baseUrl + "/api/v1/tiles/vector/{z}/{x}/{y}.pbf"));
             return;
         }
-        if (sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://")) {
-            source.set("url", new TextNode(styleSourceTileJsonUrl(baseUrl, styleId, sourceId)));
+        if (isHttpUrl(sourceUrl)) {
+            source.set("url", new TextNode(styleSourceTileJsonUrl(baseUrl, styleId, sourceId, allSourceIds)));
             return;
         }
-        rewriteTileTemplates(source, baseUrl, styleId, sourceId, styleBaseUri);
+        rewriteTileTemplates(source, baseUrl, styleId, sourceId, allSourceIds, styleBaseUri);
     }
 
-    private void rewriteTileTemplates(ObjectNode source, String baseUrl, String styleId, String sourceId, URI styleBaseUri) {
-        JsonNode tiles = source.get("tiles");
-        if (!(tiles instanceof ArrayNode tileArray) || tileArray.isEmpty()) {
+    private void rewriteTileTemplates(ObjectNode source, String baseUrl, String styleId, String sourceId, List<String> allSourceIds, URI styleBaseUri) {
+        if (!(source.get("tiles") instanceof ArrayNode tileArray) || tileArray.isEmpty()) {
             return;
         }
+        String firstTileUrl = tileArray.get(0).asText("");
         ArrayNode rewrittenTiles = objectMapper.createArrayNode();
-        for (int i = 0; i < tileArray.size(); i++) {
-            String tileUrl = tileArray.get(i).asText("");
-            if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
-                rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, i, tileUrl));
-            } else if (styleBaseUri != null && containsTilePlaceholders(tileUrl)) {
-                rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, i, styleBaseUri.resolve(tileUrl).toString()));
-            } else {
-                rewrittenTiles.add(tileUrl);
-            }
+        if (isHttpUrl(firstTileUrl)) {
+            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, allSourceIds, firstTileUrl));
+        } else if (styleBaseUri != null && containsTilePlaceholders(firstTileUrl)) {
+            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, allSourceIds, styleBaseUri.resolve(firstTileUrl).toString()));
+        } else {
+            rewrittenTiles.add(firstTileUrl);
         }
         source.set("tiles", rewrittenTiles);
     }
 
-    private void rewriteRasterSource(ObjectNode sources, String sourceName, String tileUrl) {
-        if (!(sources.get(sourceName) instanceof ObjectNode source)) {
-            return;
-        }
-        if ("satellite-source".equals(sourceName) || RUNTIME_SATELLITE_SOURCE.equals(sourceName)) {
-            source.put("type", "raster");
-        }
-        source.set("tiles", singleTileArray(tileUrl));
+    private String styleSourceTileJsonUrl(String baseUrl, String styleId, String sourceId, List<String> allSourceIds) {
+        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId, allSourceIds) + "/tilejson.json";
     }
 
-    private String styleSourceTileJsonUrl(String baseUrl, String styleId, String sourceId) {
-        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/sources/" + MapStylePathUtils.sourcePathId(sourceId) + "/tilejson.json";
-    }
-
-    private String styleSourceTileUrl(String baseUrl, String styleId, String sourceId, int tileIndex, String tileUrl) {
+    private String styleSourceTileUrl(String baseUrl, String styleId, String sourceId, List<String> allSourceIds, String tileUrl) {
         String normalizedTileUrl = tileUrl.replace("{r}", "");
-        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/sources/" + MapStylePathUtils.sourcePathId(sourceId)
-                + "/tiles/" + tileIndex + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
+        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId, allSourceIds)
+                + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
     private ArrayNode singleTileArray(String tileUrl) {
@@ -413,16 +407,14 @@ public class MapStyleController {
     }
 
     private String getFirstTileUrl(ObjectNode source) {
-        JsonNode tiles = source.get("tiles");
-        if (tiles instanceof ArrayNode tileArray && !tileArray.isEmpty()) {
+        if (source.get("tiles") instanceof ArrayNode tileArray && !tileArray.isEmpty()) {
             return tileArray.get(0).asText("");
         }
         return "";
     }
 
     private ObjectNode ensureSourcesNode(ObjectNode mutableStyle) {
-        JsonNode sources = mutableStyle.get("sources");
-        if (sources instanceof ObjectNode sourcesObject) {
+        if (mutableStyle.get("sources") instanceof ObjectNode sourcesObject) {
             return sourcesObject;
         }
         ObjectNode sourcesObject = objectMapper.createObjectNode();
@@ -431,14 +423,16 @@ public class MapStyleController {
     }
 
     private ObjectNode getOrCreateMetadata(ObjectNode node) {
-        return node.has("metadata") && node.get("metadata") instanceof ObjectNode existing
-                ? existing
-                : objectMapper.createObjectNode();
+        if (node.get("metadata") instanceof ObjectNode existing) {
+            return existing;
+        }
+        ObjectNode metadata = objectMapper.createObjectNode();
+        node.set("metadata", metadata);
+        return metadata;
     }
 
     private Optional<URI> getStyleBaseUri(ObjectNode style) {
-        JsonNode metadata = style.get("metadata");
-        if (!(metadata instanceof ObjectNode metadataObject)) {
+        if (!(style.get("metadata") instanceof ObjectNode metadataObject)) {
             return Optional.empty();
         }
         String styleUrl = metadataObject.path("reitti:style-url").asText("");
@@ -452,12 +446,15 @@ public class MapStyleController {
         }
     }
 
-    private boolean containsTilePlaceholders(String tileUrl) {
+    private static boolean isHttpUrl(String url) {
+        return url.startsWith("http://") || url.startsWith("https://");
+    }
+
+    private static boolean containsTilePlaceholders(String tileUrl) {
         return tileUrl.contains("{z}") && tileUrl.contains("{x}") && tileUrl.contains("{y}");
     }
 
-    private boolean shouldProxyTiles(UserMapStyle style) {
+    private static boolean shouldProxyTiles(UserMapStyle style) {
         return style.dataSource() != null && style.dataSource().proxyTiles();
     }
-
 }
