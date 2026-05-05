@@ -635,9 +635,9 @@ public class RawLocationPointJdbcService {
     public void updateFromDevices(User user, TimeRange timeRange) {
        this.jdbcTemplate.update("""
                 INSERT INTO raw_location_points
-                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, invalid, synthetic)
+                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, invalid, ignored, synthetic)
                 SELECT
-                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, FALSE
+                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, FALSE, FALSE
                 FROM v_source_stream
                 WHERE user_id = ? AND timestamp  >= ? AND timestamp < ?
                 """
