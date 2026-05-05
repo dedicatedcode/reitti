@@ -193,7 +193,7 @@ public class TileProxyController {
             log.trace("Fetching custom tile [{}/{}]: {}", styleId, sourceId, upstreamTileUri);
 
             if (this.tileCacheEnabled) {
-                String tileUrl = tileCacheUrl + "/custom-vector/";
+                String tileUrl = tileCacheUrl + "/custom/";
                 return fetchTile(tileUrl, contentTypeForExtension(ext), "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
             }
 

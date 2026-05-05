@@ -29,7 +29,7 @@ class TileProxyControllerTest {
     void resolvesReadableSourcePathIdBackToOriginalTileTemplate() throws Exception {
         HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicReference<String> upstreamHeader = new AtomicReference<>();
-        tileCache.createContext("/custom-vector/", exchange -> {
+        tileCache.createContext("/custom/", exchange -> {
             upstreamHeader.set(exchange.getRequestHeaders().getFirst("X-Reitti-Upstream-Url"));
             byte[] body = "tile".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
@@ -98,7 +98,7 @@ class TileProxyControllerTest {
     void doesNotProxyCustomStyleTileUrlsWhenDisabled() throws Exception {
         HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicReference<String> upstreamHeader = new AtomicReference<>();
-        tileCache.createContext("/custom-vector/", exchange -> {
+        tileCache.createContext("/custom/", exchange -> {
             upstreamHeader.set(exchange.getRequestHeaders().getFirst("X-Reitti-Upstream-Url"));
             byte[] body = "tile".getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
