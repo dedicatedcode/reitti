@@ -63,7 +63,7 @@ public class UserMapStyleValidator {
             Integer tileSize = source.tileSize();
             String tileUrlTemplate = "tile_template".equals(rasterSourceInputType) ? normalizeRasterTileTemplate(source.tileUrlTemplate()) : null;
             source = new MapStyleDataSource(
-                    "custom-raster-source",
+                    "raster",
                     "raster",
                     "tilejson".equals(rasterSourceInputType) ? clean(source.tileJsonUrl()) : null,
                     tileUrlTemplate,

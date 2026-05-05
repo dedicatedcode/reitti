@@ -144,15 +144,17 @@ public class MapStyleController {
         source.put("tileSize", effectiveRasterTileSize(dataSource));
         source.put("scheme", StringUtils.hasText(dataSource.scheme()) ? dataSource.scheme() : "xyz");
 
+        String rasterSourceId = StringUtils.hasText(dataSource.sourceId()) ? dataSource.sourceId() : "raster";
+
         ObjectNode rasterLayer = objectMapper.createObjectNode();
         rasterLayer.put("id", "custom-raster-layer");
         rasterLayer.put("type", "raster");
-        rasterLayer.put("source", "custom-raster-source");
+        rasterLayer.put("source", rasterSourceId);
 
         ObjectNode styleJson = objectMapper.createObjectNode();
         styleJson.put("version", 8);
         styleJson.put("name", style.name());
-        styleJson.set("sources", objectMapper.createObjectNode().set("custom-raster-source", source));
+        styleJson.set("sources", objectMapper.createObjectNode().set(rasterSourceId, source));
         styleJson.set("layers", objectMapper.createArrayNode().add(rasterLayer));
         return styleJson;
     }
@@ -229,6 +231,10 @@ public class MapStyleController {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", StringUtils.hasText(dataSource.type()) ? dataSource.type() : "vector");
         populateDataSourceFields(source, dataSource);
+        if ("raster".equals(dataSource.type())) {
+            source.put("tileSize", effectiveRasterTileSize(dataSource));
+            source.put("scheme", StringUtils.hasText(dataSource.scheme()) ? dataSource.scheme() : "xyz");
+        }
         ensureSourcesNode(mutableStyle).set(dataSource.sourceId(), source);
         return mutableStyle;
     }

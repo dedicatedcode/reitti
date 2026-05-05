@@ -73,4 +73,44 @@ class MapStyleControllerTest {
                 "http://localhost/api/v1/tiles/styles/custom-42/" + MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID) + "/{z}/{x}/{y}.pbf"
         );
     }
+
+    @Test
+    void buildsRasterStyleWithRasterSourceId() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        User user = new User(7L, "test", null, "Test", null, null, null, null);
+        UserMapStyle style = new UserMapStyle(
+                42L,
+                user.getId(),
+                "Raster Style",
+                "raster",
+                "json",
+                "tile_template",
+                null,
+                null,
+                new MapStyleDataSource("raster", "raster", null,
+                        "https://tiles.example.com/{z}/{x}/{y}.png", null,
+                        0, 14, 256, "xyz", false),
+                null,
+                false,
+                1L
+        );
+        UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
+        when(userMapStyleJdbcService.findById(user, 42L)).thenReturn(Optional.of(style));
+
+        MapStyleController controller = new MapStyleController(
+                objectMapper,
+                new ContextPathHolder(""),
+                mock(UserSettingsJdbcService.class),
+                userMapStyleJdbcService,
+                new MapStyleUrlValidator(mock(I18nService.class)),
+                ""
+        );
+
+        ResponseEntity<JsonNode> response = controller.getUserCustomStyle(user, 42L, new MockHttpServletRequest());
+        JsonNode body = response.getBody();
+
+        assertThat(body.path("sources").has("raster")).isTrue();
+        assertThat(body.path("layers").get(0).path("source").asText()).isEqualTo("raster");
+        assertThat(body.path("sources").path("raster").path("tiles").get(0).asText()).isEqualTo("https://tiles.example.com/{z}/{x}/{y}.png");
+    }
 }
