@@ -32,7 +32,7 @@ public class PromotionJobHandler {
         this.locationDataCleanupTask = locationDataCleanupTask;
     }
 
-    public void execute(UUID jobId, User user, Device device, String partitionKey, UUID parentJobId, boolean dropPartition) {
+    public void execute(UUID jobId, User user, Device device, String partitionKey, boolean dropPartition) {
         TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
         metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
         int promote = this.stagingService.promote(partitionKey);

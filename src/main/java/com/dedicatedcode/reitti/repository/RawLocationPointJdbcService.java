@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
@@ -603,7 +604,7 @@ public class RawLocationPointJdbcService {
                 WHERE user_id = ?
                   AND day >= ?::date AND day < ?::date
                 """;
-        MapMetadata result = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
                 rs.getLong("min_ts"),
                 rs.getLong("max_ts"),
                 rs.getLong("total_count"),
@@ -621,10 +622,25 @@ public class RawLocationPointJdbcService {
                     return locationPoint;
                 })
         ), user.getId(), Timestamp.from(start), Timestamp.from(end));
-        return result;
     }
 
     public long countUnprocessedByUser(User user) {
         return this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ? AND processed = false AND ignored = false", Long.class, user.getId());
+    }
+
+    public void dropForReSeeding(User user, TimeRange timeRange) {
+        this.jdbcTemplate.update("DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ?", user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
+    }
+
+    public void updateFromDevices(User user, TimeRange timeRange) {
+       this.jdbcTemplate.update("""
+                INSERT INTO raw_location_points
+                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, invalid, synthetic)
+                SELECT
+                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, FALSE
+                FROM v_source_stream
+                WHERE user_id = ? AND timestamp  >= ? AND timestamp < ?
+                """
+               ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
     }
 }

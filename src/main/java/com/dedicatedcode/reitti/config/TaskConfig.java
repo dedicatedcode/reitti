@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.service.processing.UpdateCuratedTimelineJob;
 import com.github.kagkarlsson.scheduler.task.Task;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import org.springframework.context.annotation.Bean;
@@ -33,6 +34,14 @@ public class TaskConfig {
                 .execute((instance, context) -> {
                     SignificantPlaceCreatedEvent data = instance.getData();
                     reverseGeocodingListener.handleSignificantPlaceCreated(data);
+                });
+    }
+
+    @Bean
+    public Task<UpdateCuratedTimelineJob.TaskData> updateCuratedTimelineTask(UpdateCuratedTimelineJob handler) {
+        return Tasks.oneTime("updating-curated-timeline-task", UpdateCuratedTimelineJob.TaskData.class)
+                .execute((instance, context) -> {
+                    handler.execute(instance.getData());
                 });
     }
 
@@ -62,7 +71,6 @@ public class TaskConfig {
                             data.getUser(),
                             data.getDevice(),
                             data.getPartitionKey(),
-                            data.getParentJobId(),
                             data.isManual()
                     );
                 });

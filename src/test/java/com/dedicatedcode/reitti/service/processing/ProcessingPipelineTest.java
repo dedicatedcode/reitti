@@ -82,12 +82,12 @@ public class ProcessingPipelineTest {
         List<ProcessedVisit> processedVisits = currentVisits();
         assertEquals(6, processedVisits.size());
 
-        assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z","2025-06-18T05:45:00.682Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-18T05:55:09.648Z","2025-06-18T06:02:05.400Z", ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z", MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:31Z"    , ST_THOMAS);
-        assertVisit(processedVisits.get(4), "2025-06-18T13:33:35.626Z","2025-06-18T15:50:40Z"    , GARTEN);
-        assertVisit(processedVisits.get(5), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
+        assertVisit(processedVisits.get(0), "2025-06-17T22:00:30Z","2025-06-18T05:44:58Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-18T05:55:55Z","2025-06-18T06:01:11Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-18T06:07:29Z","2025-06-18T13:00:18Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-18T13:05:33Z","2025-06-18T13:13:31Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-18T13:34:22Z","2025-06-18T15:50:04Z", GARTEN);
+        assertVisit(processedVisits.get(5), "2025-06-18T16:06:04Z","2025-06-18T21:57:24Z", MOLTKESTR);
 
         testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
 
@@ -115,12 +115,12 @@ public class ProcessingPipelineTest {
         List<ProcessedVisit> processedVisits = currentVisits();
         assertEquals(6, processedVisits.size());
 
-        assertVisit(processedVisits.get(0), "2025-06-17T22:00:15.843Z","2025-06-18T05:45:00.682Z" , MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-18T05:55:09.648Z","2025-06-18T06:02:05.400Z" , ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-18T06:06:43.274Z","2025-06-18T13:01:23.419Z" , MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-18T13:05:04.278Z","2025-06-18T13:13:31Z"     , ST_THOMAS);
-        assertVisit(processedVisits.get(4), "2025-06-18T13:33:35.626Z","2025-06-18T15:50:40Z"     , GARTEN);
-        assertVisit(processedVisits.get(5), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z" , MOLTKESTR);
+        assertVisit(processedVisits.get(0), "2025-06-17T22:00:30Z","2025-06-18T05:44:58Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-18T05:55:55Z","2025-06-18T06:01:11Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-18T06:07:29Z","2025-06-18T13:00:18Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-18T13:05:33Z","2025-06-18T13:13:31Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-18T13:34:22Z","2025-06-18T15:50:04Z", GARTEN);
+        assertVisit(processedVisits.get(5), "2025-06-18T16:06:04Z","2025-06-18T21:57:24Z", MOLTKESTR);
     }
 
     @Test

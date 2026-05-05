@@ -31,7 +31,6 @@ class GoogleRecordsImporterTest {
 
     @Test
     void shouldParseOldFormat() {
-
         Map<String, Object> result = googleRecordsImporter.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user, null, "Records.json");
 
         assertTrue(result.containsKey("success"));
