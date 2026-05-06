@@ -1,9 +1,8 @@
-package com.dedicatedcode.reitti.service.importer;
+package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +25,14 @@ public abstract class BaseGoogleTimelineImporter {
         this.stagingService = stagingService;
     }
 
-    protected int handleVisit(String jobId, User user, Device device, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
+    protected int handleVisit(String partitionKey, User user, Device device, ZonedDateTime startTime, ZonedDateTime endTime, LatLng latLng, List<LocationPoint> batch) {
         logger.info("Found visit at [{}] from start [{}] to end [{}].", latLng, startTime, endTime);
-        createAndScheduleLocationPoint(latLng, startTime, jobId,  user, device, batch);
-        createAndScheduleLocationPoint(latLng, endTime, jobId, user, device, batch);
+        createAndScheduleLocationPoint(latLng, startTime, partitionKey,  user, device, batch);
+        createAndScheduleLocationPoint(latLng, endTime, partitionKey, user, device, batch);
         return 2;
     }
 
-    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, String jobId, User user, Device device, List<LocationPoint> batch) {
+    protected void createAndScheduleLocationPoint(LatLng latLng, ZonedDateTime timestamp, String partitionKey, User user, Device device, List<LocationPoint> batch) {
         LocationPoint point = new LocationPoint();
         point.setLatitude(latLng.latitude);
         point.setLongitude(latLng.longitude);
@@ -40,7 +41,7 @@ public abstract class BaseGoogleTimelineImporter {
         batch.add(point);
         logger.trace("Created location point at [{}]", point);
         if (batch.size() >= stagingService.getBatchSize()) {
-            stagingService.insertBatch(jobId, user, device, batch);
+            stagingService.insertBatch(partitionKey, user, device, batch);
             batch.clear();
         }
     }

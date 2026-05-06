@@ -128,6 +128,10 @@ public class JobSchedulingService implements SchedulerListener {
 
     }
 
+    public void cancel(UUID jobId) {
+        this.jobMetadataRepository.delete(jobId);
+    }
+
 
     public record Metadata(User user, JobType jobType, String friendlyName) {
         public static class Builder {

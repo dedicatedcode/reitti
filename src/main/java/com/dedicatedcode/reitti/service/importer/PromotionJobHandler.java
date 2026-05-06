@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;

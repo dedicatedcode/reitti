@@ -12,9 +12,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,7 +43,7 @@ public class JobStatusController {
     }
 
     @GetMapping("/queue-stats-content")
-    public String getQueueStatsContent(Model model) {
+    public String getQueueStatsContent(@RequestParam(defaultValue = "UTC") ZoneId timezone, Model model) {
         // Fetch all non-SSE jobs in active states
         List<JobMetadataRepository.JobMetadata> activeJobs = filterNonSSE(
                 jobMetadataRepository.findByStates(
@@ -87,12 +90,12 @@ public class JobStatusController {
         // Build pending job info (with children details)
         Map<JobType, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastParents);
         List<JobInfo> pendingJobs = pendingParents.stream()
-                .map(parent -> buildPendingJobInfo(parent, childrenByParent, averageRuntimes))
+                .map(parent -> buildPendingJobInfo(timezone, parent, childrenByParent, averageRuntimes))
                 .collect(Collectors.toList());
 
         // Build past job info (with duration)
         List<JobInfo> pastJobs = pastParents.stream()
-                .map(this::mapToJobInfoWithDuration)
+                .map(j -> mapToJobInfo(timezone, j))
                 .sorted(Comparator.comparing(JobInfo::finishedAt).reversed())
                 .collect(Collectors.toList());
 
@@ -111,12 +114,12 @@ public class JobStatusController {
                 .toList();
     }
 
-    private JobInfo buildPendingJobInfo(JobMetadataRepository.JobMetadata parent,
+    private JobInfo buildPendingJobInfo(ZoneId timezone, JobMetadataRepository.JobMetadata parent,
                                         Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent,
                                         Map<JobType, AverageRuntime> averageRuntimes) {
         List<JobMetadataRepository.JobMetadata> childrenMeta = childrenByParent.getOrDefault(parent.getId(), List.of());
         List<JobInfo> children = childrenMeta.stream()
-                .map(this::mapToJobInfo)
+                .map(j -> mapToJobInfo(timezone, j))
                 .toList();
         long completedChildren = children.stream()
                 .filter(j -> isTerminal(j.state()))
@@ -124,7 +127,7 @@ public class JobStatusController {
         long totalChildren = children.size();
 
         // Basic info from the parent itself
-        JobInfo base = mapToJobInfo(parent);
+        JobInfo base = mapToJobInfo(timezone, parent);
 
         // Average runtime estimate
         AverageRuntime avgRuntime = averageRuntimes.get(parent.getJobType());
@@ -170,7 +173,7 @@ public class JobStatusController {
         return result;
     }
 
-    private JobInfo mapToJobInfo(JobMetadataRepository.JobMetadata metadata) {
+    private JobInfo mapToJobInfo(ZoneId timezone, JobMetadataRepository.JobMetadata metadata) {
         JobState state = metadata.getState();
         String jobName = metadata.getFriendlyName();
         String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
@@ -181,10 +184,10 @@ public class JobStatusController {
                 jobName,
                 jobDescription,
                 state,
-                metadata.getEnqueuedAt(),
-                metadata.getScheduledAt(),
-                metadata.getProcessingAt(),
-                metadata.getFinishedAt(),
+                toLocalDateTime(metadata.getEnqueuedAt(), timezone),
+                toLocalDateTime(metadata.getScheduledAt(), timezone),
+                toLocalDateTime(metadata.getProcessingAt(), timezone),
+                toLocalDateTime(metadata.getFinishedAt(), timezone),
                 canCancel,
                 List.of(),
                 0,
@@ -195,30 +198,13 @@ public class JobStatusController {
         );
     }
 
-    private JobInfo mapToJobInfoWithDuration(JobMetadataRepository.JobMetadata metadata) {
-        long durationSeconds = 0;
-        if (metadata.getFinishedAt() != null && metadata.getEnqueuedAt() != null) {
-            durationSeconds = Duration.between(metadata.getEnqueuedAt(), metadata.getFinishedAt()).getSeconds();
+    private LocalDateTime toLocalDateTime(Instant instant, ZoneId timezone) {
+        if (instant == null || timezone == null) {
+            return null;
+        } else {
+            return instant.atZone(timezone).toLocalDateTime();
         }
-        return new JobInfo(
-                metadata.getId(),
-                metadata.getFriendlyName(),
-                String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType()),
-                metadata.getState(),
-                metadata.getEnqueuedAt(),
-                metadata.getScheduledAt(),
-                metadata.getProcessingAt(),
-                metadata.getFinishedAt(),
-                false,
-                List.of(),
-                0,
-                0,
-                durationSeconds > 0 ? durationSeconds : null,
-                progressPercent(metadata),
-                metadata.getProgressMessage()
-        );
     }
-
     private float progressPercent(JobMetadataRepository.JobMetadata metadata) {
         if (metadata.getMaxProgress() == null || metadata.getCurrentProgress() == null || metadata.getMaxProgress() == 0) return 0f;
         return ((float) metadata.getCurrentProgress() / metadata.getMaxProgress()) * 100f;

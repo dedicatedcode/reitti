@@ -3,13 +3,13 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;

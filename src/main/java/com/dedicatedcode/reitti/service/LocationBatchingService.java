@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;

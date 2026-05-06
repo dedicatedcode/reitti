@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
 import com.dedicatedcode.reitti.service.importer.dto.Visit;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,11 +52,13 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     public Map<String, Object> importTimeline(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
-        
+        UUID parentJobId = null;
+        String partitionKey = null;
         try {
-            String partitionKey = UUID.randomUUID().toString();
+            partitionKey = UUID.randomUUID().toString();
+            String finalPartitionKey = partitionKey;
             this.stagingService.ensurePartitionExists(partitionKey);
-            UUID parentJobId = jobSchedulingService.createParentJob(
+            parentJobId = jobSchedulingService.createParentJob(
                     user,
                     JobType.GOOGLE_TIMELINE_IMPORT,
                     "Google Timeline Android Import - " + originalFilename
@@ -77,7 +80,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     Visit visit = semanticSegment.getVisit();
                     Optional<LatLng> latLng = parseLatLng(visit.getTopCandidate().getPlaceLocation().getLatLng());
                     if (latLng.isPresent()) {
-                        latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(partitionKey, user, device, start, end, lng, batch)));
+                        latLng.ifPresent(lng -> processedCount.addAndGet(handleVisit(finalPartitionKey, user, device, start, end, lng, batch)));
                     }
                 }
 
@@ -86,7 +89,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     logger.info("Found timeline path from start [{}] to end [{}]. Will insert [{}] geo locations based on timeline path.", semanticSegment.getStartTime(), semanticSegment.getEndTime(), timelinePath.size());
                     for (TimelinePathPoint timelinePathPoint : timelinePath) {
                         parseLatLng(timelinePathPoint.getPoint()).ifPresent(location -> {
-                            createAndScheduleLocationPoint(location, ZonedDateTime.parse(timelinePathPoint.getTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0), partitionKey, user, device, batch);
+                            createAndScheduleLocationPoint(location, ZonedDateTime.parse(timelinePathPoint.getTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).withNano(0), finalPartitionKey, user, device, batch);
                             processedCount.incrementAndGet();
                         });
                     }
@@ -119,6 +122,10 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
             
         } catch (IOException e) {
             logger.error("Error processing Google Timeline file", e);
+            if (parentJobId != null) {
+                this.jobSchedulingService.cancel(parentJobId);
+                this.stagingService.dropPartition(partitionKey);
+            }
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
         } finally {
             stateHolder.importFinished();

@@ -153,6 +153,10 @@ public class JobMetadataRepository {
         }
     }
 
+    public void delete(UUID jobId) {
+        this.jdbcTemplate.update("DELETE FROM import_jobs WHERE id = ?", jobId);
+    }
+
     public static class JobMetadata {
         private UUID id;
         private UUID parentJobId;

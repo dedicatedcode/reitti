@@ -145,6 +145,7 @@
                 <button class="btn"
                         hx-trigger="click, load, every 5s"
                         th:hx-get="@{/settings/queue-stats-content}"
+                        hx-vals="js:{'timezone': getUserTimezone()}"
                         hx-target="#job-status"
                         hx-swap="innerHTML"
                         th:text="#{jobs.refresh}">Refresh Status</button>
