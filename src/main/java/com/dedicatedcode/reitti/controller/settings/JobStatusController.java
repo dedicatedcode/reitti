@@ -105,7 +105,8 @@ public class JobStatusController {
         model.addAttribute("pastJobs", pastJobs);
         return "settings/job-status :: queue-stats-content";
     }
-    @DeleteMapping("/queue-stats/{id}")
+
+    @DeleteMapping("/job/{id}")
     public String cancelJob(@PathVariable UUID id,
                             @RequestParam(defaultValue = "UTC") ZoneId timezone,
                             Model model) {

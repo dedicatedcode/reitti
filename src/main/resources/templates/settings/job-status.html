@@ -61,7 +61,7 @@
                                 </span>
                                 <button th:if="${job.canCancel()}"
                                         class="btn btn-danger btn-sm"
-                                        th:attr="hx-delete=@{/api/v1/queue-stats/{id}(id=${job.id()})}"
+                                        th:attr="hx-delete=@{/settings/job/{id}(id=${job.id()})}"
                                         hx-target="#job-status"
                                         hx-swap="innerHTML"
                                         th:text="#{form.cancel}">Cancel</button>
