@@ -10,8 +10,12 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,17 +34,26 @@ public class UserSettingsControllerAdvice {
     public static final double DEFAULT_HOME_LONGITUDE = 24.9384;
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+    private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final ContextPathHolder contextPathHolder;
+    private final ObjectMapper objectMapper;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
+                                        UserMapStyleJdbcService userMapStyleJdbcService,
                                         TilesCustomizationProvider tilesCustomizationProvider,
-                                        RawLocationPointJdbcService rawLocationPointJdbcService) {
+                                        RawLocationPointJdbcService rawLocationPointJdbcService,
+                                        ContextPathHolder contextPathHolder,
+                                        ObjectMapper objectMapper) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
+        this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.contextPathHolder = contextPathHolder;
+        this.objectMapper = objectMapper;
     }
     
     @ModelAttribute("userSettings")
@@ -107,6 +120,37 @@ public class UserSettingsControllerAdvice {
                                    TimeMode.TWENTY_FOUR_HOUR,
                                    null,
                                    null);
+    }
+
+    @ModelAttribute("mapStylesJson")
+    public String getCurrentUserMapStylesJson() {
+        return getCurrentUser().map(user -> {
+            try {
+                return objectMapper.writeValueAsString(userMapStyleJdbcService.getSettings(user, normalizedContextPath()).customStyles());
+            } catch (JsonProcessingException e) {
+                return "[]";
+            }
+        }).orElse("[]");
+    }
+
+    @ModelAttribute("activeMapStyleId")
+    public String getCurrentUserActiveMapStyleId() {
+        return getCurrentUser()
+                .map(userMapStyleJdbcService::getActiveStyleId)
+                .orElse("reitti");
+    }
+
+    private Optional<User> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return Optional.empty();
+        }
+        return userJdbcService.findByUsername(authentication.getName());
+    }
+
+    private String normalizedContextPath() {
+        String contextPath = contextPathHolder.getContextPath();
+        return "/".equals(contextPath) ? "" : contextPath;
     }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {

@@ -148,6 +148,8 @@
 
 
     window.userSettings = /*[[${userSettings}]]*/ {}
+    window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+    window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ "reitti";
 
     let gpsDataManagers = [];
     let currentDateRange = null;
@@ -863,6 +865,10 @@
             const {setting, value} = event.detail;
 
             switch (setting) {
+                case 'mapStyleId':
+                    mapControls.setMapStyleId(value);
+                    mapRenderer.updateViewState(createViewState([]));
+                    break;
                 case 'viewMode':
                     mapRenderer.updateViewState(createViewState([]));
                     break;

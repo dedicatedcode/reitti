@@ -1,5 +1,111 @@
 class MapRenderer {
+    static getBundledMapStyles() {
+        const contextPath = window.contextPath || '';
+        return [
+            {
+                id: 'reitti',
+                label: 'Reitti',
+                styleUrl: `${contextPath}/map/reitti.json?ts=${Date.now()}`,
+                capabilities: {
+                    terrainSourceId: 'terrain-source',
+                    hillshadeLayerId: 'hillshading',
+                    satelliteLayerId: 'satellite-layer',
+                    building3dLayerIds: ['building-3d']
+                }
+            }
+        ];
+    }
+
+    static getCustomMapStyles() {
+        return Array.isArray(window.reittiCustomMapStyles)
+            ? window.reittiCustomMapStyles
+            : [];
+    }
+
+    static getMapStyles() {
+        const bundledStyles = MapRenderer.getBundledMapStyles();
+        const configuredStyles = Array.isArray(window.reittiMapStyles)
+            ? window.reittiMapStyles.filter(style => !bundledStyles.some(bundledStyle => bundledStyle.id === style.id))
+            : [];
+        return [
+            ...bundledStyles,
+            ...configuredStyles,
+            ...MapRenderer.getCustomMapStyles()
+        ];
+    }
+
+    static dispatchMapStylesChanged(activeStyleId = null) {
+        document.dispatchEvent(new CustomEvent('mapStylesChanged', {
+            detail: {
+                activeStyleId,
+                styles: MapRenderer.getMapStyles()
+            }
+        }));
+    }
+
+    static getMapStyleValue(mapStyle) {
+        if (mapStyle?.styleJson) {
+            return MapRenderer._cloneStaticStyleDefinition(mapStyle.styleJson);
+        }
+        return mapStyle?.styleUrl;
+    }
+
+
+
+
+
+
+    static _cloneStaticStyleDefinition(definition) {
+        return JSON.parse(JSON.stringify(definition));
+    }
+
+    static getActiveMapStyleId() {
+        const activeStyleId = window.reittiActiveMapStyleId || window.localStorage?.getItem('mapStyleId');
+        return MapRenderer.getMapStyles().some(style => style.id === activeStyleId)
+            ? activeStyleId
+            : MapRenderer.getDefaultMapStyleId();
+    }
+
+    static setActiveMapStyleId(mapStyleId) {
+        window.reittiActiveMapStyleId = mapStyleId;
+        window.localStorage?.setItem('mapStyleId', mapStyleId);
+        return fetch(`${window.contextPath || ''}/settings/map-styles/api/active`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({activeStyleId: mapStyleId})
+        }).catch(error => {
+            console.warn('Unable to persist active map style:', error);
+        });
+    }
+
+    static getMapStyle(styleId) {
+        const styles = MapRenderer.getMapStyles();
+        return styles.find(style => style.id === styleId) || styles[0];
+    }
+
+    static getDefaultMapStyleId() {
+        const styles = MapRenderer.getMapStyles();
+        return styles[0]?.id || 'reitti';
+    }
+
+    static ensureRTLTextPlugin() {
+        if (MapRenderer.rtlTextPluginConfigured || !window.maplibregl?.setRTLTextPlugin) return;
+
+        const pluginUrl = MapRenderer.getMapStyles().find(style => style.rtlTextPluginUrl)?.rtlTextPluginUrl;
+        if (!pluginUrl) return;
+
+        try {
+            maplibregl.setRTLTextPlugin(pluginUrl, null, true);
+        } catch (error) {
+            console.warn('Unable to configure RTL text plugin:', error);
+        } finally {
+            MapRenderer.rtlTextPluginConfigured = true;
+        }
+    }
+
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
+        MapRenderer.ensureRTLTextPlugin();
+
         this.userSettings = userSettings;
         this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
@@ -34,12 +140,15 @@ class MapRenderer {
         this.gpsDataManagers = []
 
         this.viewState = initialViewState;
+        this.viewState.mapStyleId = this.viewState.mapStyleId || MapRenderer.getActiveMapStyleId();
+        this.currentMapStyle = MapRenderer.getMapStyle(this.viewState.mapStyleId);
+        this.satelliteHiddenPaintProperties = new Map();
         this._pitchBearingAllowed = true;
 
         const mapOptions = {
             interleaved: true,
             container: element,
-            style: window.contextPath + '/map/reitti.json?ts=' + new Date().getTime(),
+            style: MapRenderer.getMapStyleValue(this.currentMapStyle),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
@@ -121,37 +230,74 @@ class MapRenderer {
         this.bounds = [];
 
         this.highlightLayer = null;
-        this._initialLoadPromise = new Promise(resolve => {
-            this.map.once('style.load', async () => {
-                console.log('Initial style loaded!');
-                await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
-                await this._switchTerrainLayer(this.viewState.renderTerrain);
-                await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
-                await this._switchProjection(this.viewState.renderGlobe);
-                this._syncPitchBearingState(false);
-                this.element.classList.remove('is-loading');
-                this.element.classList.add('is-loaded');
-                resolve();
-            });
-        });
+        this._initialLoadPromise = this._initializeInitialStyle();
 
         this._setup();
     }
 
+    async _initializeInitialStyle() {
+        let loaded = await this._waitForStyleLoad(this.currentMapStyle);
+        if (!loaded) {
+            loaded = await this._fallbackToDefaultStyle();
+        }
+
+        if (!loaded) {
+            this.element.classList.remove('is-loading');
+            console.warn('Map style failed to load and no fallback style was available.');
+            return;
+        }
+
+        this._ensureStyleCompatibilityLayers();
+        await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+        await this._switchTerrainLayer(this.viewState.renderTerrain);
+        await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+        await this._switchProjection(this.viewState.renderGlobe);
+        this._syncPitchBearingState(false);
+        this.element.classList.remove('is-loading');
+        this.element.classList.add('is-loaded');
+    }
+
     async updateViewState(next) {
-        this.transitionQueue = this.transitionQueue.then(() => this._updateViewStateInternal(next));
+        this.transitionQueue = this.transitionQueue
+            .catch(error => {
+                console.error('Previous map state transition failed:', error);
+            })
+            .then(() => this._updateViewStateInternal(next))
+            .catch(error => {
+                console.error('Map state transition failed:', error);
+            });
         return this.transitionQueue;
     }
 
     async _updateViewStateInternal(next) {
         await this._initialLoadPromise;
         const prev = { ...this.viewState };
+        next.mapStyleId = next.mapStyleId || prev.mapStyleId || MapRenderer.getDefaultMapStyleId();
         this.viewState = next;
 
+        const styleChanged = prev.mapStyleId !== next.mapStyleId;
         const projectionChanged = prev.renderGlobe !== next.renderGlobe;
         const satelliteChanged  = prev.renderSatelliteView !== next.renderSatelliteView;
         const terrainChanged    = prev.renderTerrain !== next.renderTerrain;
         const buildingsChanged  = (prev.renderBuildings !== next.renderBuildings) || (prev.is3d !== next.is3d);
+
+        if (styleChanged) {
+            const styleSwitched = await this._switchMapStyle(next.mapStyleId);
+            if (!styleSwitched) {
+                this.viewState = {
+                    ...next,
+                    mapStyleId: prev.mapStyleId
+                };
+            }
+            this._ensureStyleCompatibilityLayers();
+            await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+            await this._switchTerrainLayer(this.viewState.renderTerrain);
+            await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            await this._switchProjection(this.viewState.renderGlobe);
+            this._syncPitchBearingState(false);
+            this._rerenderOverlays();
+            return;
+        }
 
         // 1) If projection or satellite changes, temporarily turn off terrain to avoid render bugs.
         if (projectionChanged || satelliteChanged) {
@@ -198,6 +344,333 @@ class MapRenderer {
         // 4) Sync input constraints and refresh overlays
         this._syncPitchBearingState();
         this._rerenderOverlays();
+    }
+
+    _getStyleCapabilities() {
+        const explicitCapabilities = this.currentMapStyle?.capabilities || {};
+        if (Object.keys(explicitCapabilities).length) {
+            return explicitCapabilities;
+        }
+
+        return this._buildGenericStyleCapabilities();
+    }
+
+    _buildGenericStyleCapabilities() {
+        const terrainSourceId = 'reitti-terrain-source';
+        const satelliteSourceId = 'reitti-satellite-source';
+        const buildingSourceId = 'reitti-building-source';
+        const buildingCapabilities = this._detectBuildingCapabilities(buildingSourceId);
+
+        return {
+            terrainSourceId,
+            terrainSourceDefinition: {
+                type: 'raster-dem',
+                tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+                tileSize: 256,
+                encoding: 'terrarium',
+                maxzoom: 14,
+                attribution: "© <a href='https://mapterhorn.com' target='_blank'>Mapterhorn</a>"
+            },
+            hillshadeLayerId: 'reitti-terrain-hillshade',
+            hillshadeLayerDefinition: {
+                id: 'reitti-terrain-hillshade',
+                type: 'hillshade',
+                source: terrainSourceId,
+                layout: {
+                    visibility: 'none'
+                },
+                paint: {
+                    'hillshade-exaggeration': 0.35
+                }
+            },
+            satelliteSourceId,
+            satelliteSourceDefinition: {
+                type: 'raster',
+                tiles: [
+                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                ],
+                tileSize: 256,
+                maxzoom: 18,
+                attribution: "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
+            },
+            satelliteLayerId: 'reitti-satellite-layer',
+            satelliteLayerDefinition: {
+                id: 'reitti-satellite-layer',
+                type: 'raster',
+                source: satelliteSourceId,
+                paint: {
+                    'raster-opacity': 0
+                }
+            },
+            buildingSourceId,
+            buildingSourceDefinition: {
+                type: 'vector',
+                url: 'https://tiles.dedicatedcode.com/planet',
+                minzoom: 0,
+                maxzoom: 14,
+                attribution: "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>"
+            },
+            ...buildingCapabilities
+        };
+    }
+
+    _detectBuildingCapabilities(runtimeBuildingSourceId = '') {
+        const style = this.map?.getStyle?.();
+        const layers = style?.layers || [];
+        const sources = style?.sources || {};
+
+        const existingExtrusionIds = layers
+            .filter(layer => layer.type === 'fill-extrusion' && this._looksLikeBuildingLayer(layer))
+            .map(layer => layer.id);
+        if (existingExtrusionIds.length) {
+            return {
+                building3dLayerIds: existingExtrusionIds,
+                building3dLayerDefinitions: []
+            };
+        }
+
+        const buildingFillLayer = layers.find(layer => layer.type === 'fill' && this._looksLikeBuildingLayer(layer));
+        let sourceId = buildingFillLayer?.source;
+        let sourceLayer = buildingFillLayer?.['source-layer'];
+        if (!sourceId || !sourceLayer) {
+            sourceId = runtimeBuildingSourceId || this._getPreferredVectorSourceId(sources);
+            sourceLayer = this._getPreferredBuildingSourceLayer(sourceId, sources, runtimeBuildingSourceId);
+        }
+        if (!sourceId || !sourceLayer) {
+            return {
+                building3dLayerIds: [],
+                building3dLayerDefinitions: []
+            };
+        }
+
+        return {
+            building3dLayerIds: ['reitti-building-3d'],
+            building3dLayerDefinitions: [
+                {
+                    id: 'reitti-building-3d',
+                    type: 'fill-extrusion',
+                    source: sourceId,
+                    'source-layer': sourceLayer,
+                    minzoom: 15,
+                    layout: {
+                        visibility: 'none'
+                    },
+                    paint: {
+                        'fill-extrusion-color': '#d2dde2',
+                        'fill-extrusion-height': [
+                            'case',
+                            ['has', 'height'],
+                            ['to-number', ['get', 'height'], 8],
+                            ['has', 'render_height'],
+                            ['to-number', ['get', 'render_height'], 8],
+                            ['has', 'levels'],
+                            ['*', ['to-number', ['get', 'levels'], 3], 3],
+                            8
+                        ],
+                        'fill-extrusion-base': [
+                            'case',
+                            ['has', 'min_height'],
+                            ['to-number', ['get', 'min_height'], 0],
+                            ['has', 'render_min_height'],
+                            ['to-number', ['get', 'render_min_height'], 0],
+                            0
+                        ],
+                        'fill-extrusion-opacity': 0.75,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                }
+            ]
+        };
+    }
+
+    _looksLikeBuildingLayer(layer) {
+        const id = String(layer?.id || '').toLowerCase();
+        const sourceLayer = String(layer?.['source-layer'] || '').toLowerCase();
+        return id.includes('building') || sourceLayer.includes('building');
+    }
+
+    _getPreferredVectorSourceId(sources) {
+        const configuredSourceId = this.currentMapStyle?.dataSource?.sourceId;
+        if (configuredSourceId && sources[configuredSourceId]?.type === 'vector') {
+            return configuredSourceId;
+        }
+
+        const entry = Object.entries(sources).find(([, source]) => source?.type === 'vector');
+        return entry?.[0] || '';
+    }
+
+    _getPreferredBuildingSourceLayer(sourceId, sources, runtimeBuildingSourceId = '') {
+        if (!sourceId) return '';
+        if (sourceId === runtimeBuildingSourceId) return 'building';
+        if (sources[sourceId]?.type !== 'vector') return '';
+        return 'building';
+    }
+
+    _cloneStyleDefinition(definition) {
+        return JSON.parse(JSON.stringify(definition));
+    }
+
+    _getFirstSymbolLayerId() {
+        const layers = this.map.getStyle()?.layers || [];
+        return layers.find(layer => layer.type === 'symbol')?.id;
+    }
+
+    _ensureSource(sourceId, sourceDefinition) {
+        if (!sourceId || !sourceDefinition || this.map.getSource(sourceId)) return;
+        this.map.addSource(sourceId, this._cloneStyleDefinition(sourceDefinition));
+    }
+
+    _ensureLayer(layerDefinition, beforeLayerId = this._getFirstSymbolLayerId()) {
+        if (!layerDefinition || this.map.getLayer(layerDefinition.id)) return;
+
+        const layer = this._cloneStyleDefinition(layerDefinition);
+        const sourceId = layer.source;
+        if (sourceId && !this.map.getSource(sourceId)) {
+            console.warn(`Cannot add map layer ${layer.id}; source ${sourceId} is not available.`);
+            return;
+        }
+
+        if (beforeLayerId && this.map.getLayer(beforeLayerId)) {
+            this.map.addLayer(layer, beforeLayerId);
+        } else {
+            this.map.addLayer(layer);
+        }
+    }
+
+    _ensureStyleCompatibilityLayers() {
+        const capabilities = this._getStyleCapabilities();
+        const buildingLayerDefinitions = capabilities.building3dLayerDefinitions || [];
+        const needsBuildingSource = buildingLayerDefinitions.some(layerDefinition => layerDefinition.source === capabilities.buildingSourceId);
+
+        this._ensureSource(capabilities.terrainSourceId, capabilities.terrainSourceDefinition);
+        this._ensureSource(capabilities.satelliteSourceId, capabilities.satelliteSourceDefinition);
+        if (needsBuildingSource) {
+            this._ensureSource(capabilities.buildingSourceId, capabilities.buildingSourceDefinition);
+        }
+
+        this._ensureLayer(capabilities.satelliteLayerDefinition);
+        this._ensureLayer(capabilities.hillshadeLayerDefinition);
+        buildingLayerDefinitions.forEach(layerDefinition => this._ensureLayer(layerDefinition));
+    }
+
+    async _waitForStyleLoad(mapStyle, timeoutMs = 10000) {
+        if (this.map.isStyleLoaded()) {
+            return true;
+        }
+
+        return new Promise(resolve => {
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                console.warn(`Timed out waiting for map style ${mapStyle?.id || 'unknown'} to load.`);
+                resolve(false);
+            }, timeoutMs);
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                this.map.off('style.load', handleLoad);
+                this.map.off('error', handleError);
+            };
+            const handleLoad = () => {
+                cleanup();
+                resolve(true);
+            };
+            const handleError = (event) => {
+                console.warn(`Map style ${mapStyle?.id || 'unknown'} emitted an error while loading:`, event?.error || event);
+            };
+
+            this.map.once('style.load', handleLoad);
+            this.map.on('error', handleError);
+        });
+    }
+
+    async _setStyleAndWait(mapStyle, timeoutMs = 10000) {
+        return new Promise(resolve => {
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                console.warn(`Timed out waiting for map style ${mapStyle?.id || 'unknown'} to load.`);
+                resolve(false);
+            }, timeoutMs);
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                this.map.off('style.load', handleLoad);
+                this.map.off('error', handleError);
+            };
+            const handleLoad = () => {
+                cleanup();
+                resolve(true);
+            };
+            const handleError = (event) => {
+                console.warn(`Map style ${mapStyle?.id || 'unknown'} emitted an error while loading:`, event?.error || event);
+            };
+
+            this.map.once('style.load', handleLoad);
+            this.map.on('error', handleError);
+
+            try {
+                this.map.setStyle(MapRenderer.getMapStyleValue(mapStyle));
+            } catch (error) {
+                cleanup();
+                console.warn(`Unable to apply map style ${mapStyle?.id || 'unknown'}:`, error);
+                resolve(false);
+            }
+        });
+    }
+
+    async _fallbackToDefaultStyle() {
+        const fallbackStyle = MapRenderer.getMapStyle(MapRenderer.getDefaultMapStyleId());
+        if (!fallbackStyle || fallbackStyle.id === this.currentMapStyle?.id) {
+            return false;
+        }
+
+        console.warn(`Falling back to map style ${fallbackStyle.id}.`);
+        const loaded = await this._setStyleAndWait(fallbackStyle, 10000);
+        if (loaded) {
+            this.currentMapStyle = fallbackStyle;
+            this.viewState.mapStyleId = fallbackStyle.id;
+            this._persistMapStyleSelection(fallbackStyle.id);
+        }
+        return loaded;
+    }
+
+    _persistMapStyleSelection(mapStyleId) {
+        window.reittiActiveMapStyleId = mapStyleId;
+        window.localStorage?.setItem('mapStyleId', mapStyleId);
+        const styleSelect = document.getElementById('map-style-select');
+        if (styleSelect) {
+            styleSelect.value = mapStyleId;
+        }
+        const settingsStyleSelect = document.getElementById('settings-map-style-select');
+        if (settingsStyleSelect) {
+            settingsStyleSelect.value = mapStyleId;
+        }
+    }
+
+    async _switchMapStyle(mapStyleId) {
+        const nextStyle = MapRenderer.getMapStyle(mapStyleId);
+        if (!nextStyle || nextStyle.id === this.currentMapStyle?.id) return true;
+
+        const previousStyle = this.currentMapStyle;
+        this.terrainLayer = null;
+        this.satelliteHiddenPaintProperties.clear();
+        this.element.classList.add('is-loading');
+
+        let loaded = await this._setStyleAndWait(nextStyle);
+        if (loaded) {
+            this.currentMapStyle = nextStyle;
+            this.element.classList.remove('is-loading');
+            return true;
+        }
+
+        if (previousStyle) {
+            console.warn(`Restoring previous map style ${previousStyle.id}.`);
+            loaded = await this._setStyleAndWait(previousStyle, 10000);
+            if (loaded) {
+                this.currentMapStyle = previousStyle;
+                this._persistMapStyleSelection(previousStyle.id);
+            }
+        }
+
+        this.element.classList.remove('is-loading');
+        return false;
     }
 
     setGpsDataManagers(managers) {
@@ -820,6 +1293,7 @@ class MapRenderer {
     }
 
     async _switchSatelliteLayer(enable) {
+        this._ensureStyleCompatibilityLayers();
         this._applySatellitePaintProperties(enable);
         await this._waitForIdle();
     }
@@ -827,18 +1301,23 @@ class MapRenderer {
     _applySatellitePaintProperties(enable) {
         if (!this.map || !this.map.getStyle) return;
 
-        if (this.map.getLayer && this.map.getLayer('satellite-layer')) {
-            this.map.setPaintProperty('satellite-layer', 'raster-opacity', enable ? 1 : 0);
-        }
+        const satelliteLayerId = this._getStyleCapabilities().satelliteLayerId;
+        if (!satelliteLayerId || !this.map.getLayer || !this.map.getLayer(satelliteLayerId)) return;
+
+        this.map.setPaintProperty(satelliteLayerId, 'raster-opacity', enable ? 1 : 0);
 
         const style = this.map.getStyle();
         if (!style || !Array.isArray(style.layers)) return;
 
         const targetTypes = ['fill', 'background', 'fill-extrusion', 'line'];
-        const protectedLayers = ['satellite-layer', 'sky', 'building-3d'];
+        const protectedLayers = new Set([
+            satelliteLayerId,
+            'sky',
+            ...(this._getStyleCapabilities().building3dLayerIds || [])
+        ]);
 
         style.layers.forEach(layer => {
-            if (targetTypes.includes(layer.type) && !protectedLayers.includes(layer.id)) {
+            if (targetTypes.includes(layer.type) && !protectedLayers.has(layer.id)) {
                 let opacityProp = '';
                 if (layer.type === 'line') opacityProp = 'line-opacity';
                 if (layer.type === 'fill') opacityProp = 'fill-opacity';
@@ -846,7 +1325,16 @@ class MapRenderer {
                 if (layer.type === 'background') opacityProp = 'background-opacity';
 
                 try {
-                    this.map.setPaintProperty(layer.id, opacityProp, enable ? 0 : null);
+                    const cacheKey = `${layer.id}:${opacityProp}`;
+                    if (enable) {
+                        if (!this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                            this.satelliteHiddenPaintProperties.set(cacheKey, this.map.getPaintProperty(layer.id, opacityProp));
+                        }
+                        this.map.setPaintProperty(layer.id, opacityProp, 0);
+                    } else if (this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                        this.map.setPaintProperty(layer.id, opacityProp, this.satelliteHiddenPaintProperties.get(cacheKey));
+                        this.satelliteHiddenPaintProperties.delete(cacheKey);
+                    }
                 } catch (_) {
                     // Layer might not be present yet; ignore
                 }
@@ -854,18 +1342,32 @@ class MapRenderer {
         });
 
         // Buildings: keep a faint extrusion over satellite if desired
-        if (this.map.getLayer && this.map.getLayer('building-3d')) {
+        (this._getStyleCapabilities().building3dLayerIds || []).forEach(layerId => {
+            if (!this.map.getLayer || !this.map.getLayer(layerId)) return;
             try {
-                this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null);
+                const opacityProp = 'fill-extrusion-opacity';
+                const cacheKey = `${layerId}:${opacityProp}`;
+                if (enable) {
+                    if (!this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                        this.satelliteHiddenPaintProperties.set(cacheKey, this.map.getPaintProperty(layerId, opacityProp));
+                    }
+                    this.map.setPaintProperty(layerId, opacityProp, 0.6);
+                } else if (this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                    this.map.setPaintProperty(layerId, opacityProp, this.satelliteHiddenPaintProperties.get(cacheKey));
+                    this.satelliteHiddenPaintProperties.delete(cacheKey);
+                }
             } catch (_) {}
-        }
+        });
     }
 
     _extractTerrainUrl() {
+        const terrainSourceId = this._getStyleCapabilities().terrainSourceId;
+        if (!terrainSourceId) return null;
+
         // 1. Try reading directly from the loaded Style JSON (Instant, no waiting)
         const style = this.map.getStyle();
-        if (style && style.sources && style.sources['terrain-source']) {
-            const sourceDef = style.sources['terrain-source'];
+        if (style && style.sources && style.sources[terrainSourceId]) {
+            const sourceDef = style.sources[terrainSourceId];
             if (sourceDef.tiles && sourceDef.tiles.length > 0) {
                 return sourceDef.tiles[0];
             }
@@ -874,7 +1376,7 @@ class MapRenderer {
             }
         }
 
-        const source = this.map.getSource('terrain-source');
+        const source = this.map.getSource(terrainSourceId);
         if (source && source.tiles && source.tiles.length > 0) {
             return source.tiles[0];
         }
@@ -883,7 +1385,17 @@ class MapRenderer {
     }
 
     async _switchTerrainLayer(enable) {
-        const hasHillshading = !!this.map.getLayer && this.map.getLayer('hillshading');
+        this._ensureStyleCompatibilityLayers();
+        const capabilities = this._getStyleCapabilities();
+        const terrainSourceId = capabilities.terrainSourceId;
+        const hillshadeLayerId = capabilities.hillshadeLayerId;
+        const hasHillshading = !!hillshadeLayerId && !!this.map.getLayer && this.map.getLayer(hillshadeLayerId);
+
+        if (!terrainSourceId || !this.map.getSource(terrainSourceId)) {
+            this.terrainLayer = null;
+            this.map.setTerrain(null);
+            return;
+        }
 
         if (enable) {
             // Get URL safely
@@ -895,7 +1407,7 @@ class MapRenderer {
             }
 
             if (hasHillshading) {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+                this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'visible');
             }
 
             // Create DeckGL layer
@@ -917,25 +1429,25 @@ class MapRenderer {
 
             // Set MapLibre terrain
             this.map.setTerrain({
-                source: 'terrain-source',
+                source: terrainSourceId,
                 exaggeration: 1
             });
 
         } else {
             this.terrainLayer = null;
             if (hasHillshading) {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'none');
+                this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'none');
             }
             this.map.setTerrain(null);
         }
     }
 
     _switchMapBuildingLayer(is3d) {
-        if (is3d) {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
-        } else {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'none');
-        }
+        this._ensureStyleCompatibilityLayers();
+        (this._getStyleCapabilities().building3dLayerIds || []).forEach(layerId => {
+            if (!this.map.getLayer || !this.map.getLayer(layerId)) return;
+            this.map.setLayoutProperty(layerId, 'visibility', is3d ? 'visible' : 'none');
+        });
     }
 
     setHighlight({ managerId, startTime, endTime }) {
@@ -1277,3 +1789,5 @@ class MapRenderer {
 
 
 }
+
+MapRenderer.rtlTextPluginConfigured = false;

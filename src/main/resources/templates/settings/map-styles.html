@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/map-style-settings.js}"></script>
+</head>
+
+<body class="settings-page">
+    <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+
+    <div class="settings-container">
+        <div
+            th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}">
+        </div>
+        <div class="settings-content-area">
+            <div id="map-style-settings-page" class="settings-section active map-styles-settings-page">
+                <h2 th:text="#{settings.map.styles}">Map Styles</h2>
+                <p class="settings-description" th:text="#{settings.map.styles.description}">
+                    Manage custom MapLibre styles and optional data sources.
+                </p>
+
+                <div class="settings-card">
+                    <div class="form-group">
+                        <label for="settings-map-style-select" th:text="#{map.settings.dialog.map-styles.active}">Active
+                            Style</label>
+                        <select id="settings-map-style-select"></select>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h3 th:text="#{map.settings.dialog.map-styles.custom-title}">Custom Styles</h3>
+                        <button type="button" class="btn settings-secondary-btn" id="add-map-style-btn">
+                            <i class="lni lni-plus"></i>
+                            <span th:text="#{map.settings.dialog.map-styles.add}">Add Style</span>
+                        </button>
+                    </div>
+
+                    <div class="custom-map-style-list" id="custom-map-style-list"></div>
+
+                    <form id="custom-map-style-form" class="custom-map-style-form hidden">
+                        <div class="custom-map-style-form-header">
+                            <span id="custom-map-style-form-title"
+                                th:text="#{map.settings.dialog.map-styles.add-title}">Add Custom Style</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-name"
+                                th:text="#{map.settings.dialog.map-styles.name}">Name</label>
+                            <input type="text" id="custom-map-style-name" autocomplete="off"
+                                th:placeholder="#{map.settings.dialog.map-styles.name.placeholder}">
+                        </div>
+
+                        <fieldset class="custom-map-style-choice">
+                            <legend th:text="#{map.settings.dialog.map-styles.map-type}">Map Type</legend>
+                            <label>
+                                <input type="radio" name="custom-map-style-map-type" value="vector" checked>
+                                <span th:text="#{map.settings.dialog.map-styles.map-type.vector}">Vector Style</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="custom-map-style-map-type" value="raster">
+                                <span th:text="#{map.settings.dialog.map-styles.map-type.raster}">Raster Tiles</span>
+                            </label>
+                        </fieldset>
+
+
+
+                        <section class="custom-map-style-mode-panel" data-map-style-panel="vector">
+                            <fieldset class="custom-map-style-choice">
+                                <legend th:text="#{map.settings.dialog.map-styles.style-input}">Style Input</legend>
+                                <label>
+                                    <input type="radio" name="custom-map-style-style-input" value="url" checked>
+                                    <span th:text="#{map.settings.dialog.map-styles.style-input.url}">Style JSON
+                                        URL</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="custom-map-style-style-input" value="json">
+                                    <span th:text="#{map.settings.dialog.map-styles.style-input.json}">Paste Style
+                                        JSON</span>
+                                </label>
+                            </fieldset>
+                            <div class="form-group">
+                                <label for="custom-map-style-url"
+                                    th:text="#{map.settings.dialog.map-styles.style-json-url}">Style JSON URL</label>
+                                <input type="url" id="custom-map-style-url" autocomplete="off"
+                                    placeholder="https://example.com/style.json">
+                            </div>
+                            <div class="form-group hidden" data-style-json-group>
+                                <label for="custom-map-style-json"
+                                    th:text="#{map.settings.dialog.map-styles.style-json}">Style JSON</label>
+                                <textarea id="custom-map-style-json" rows="8" spellcheck="false"
+                                    placeholder='{"version": 8, ...}'></textarea>
+                            </div>
+                            <details class="custom-map-style-advanced">
+                                <summary th:text="#{map.settings.dialog.map-styles.advanced-options}">Advanced Options
+                                </summary>
+                                <div class="form-group">
+                                    <label for="custom-map-style-attribution-override"
+                                        th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution
+                                        Override</label>
+                                    <input type="text" id="custom-map-style-attribution-override" autocomplete="off"
+                                        placeholder="© OpenStreetMap contributors">
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom-map-style-glyphs-url"
+                                        th:text="#{map.settings.dialog.map-styles.glyphs-url}">Glyphs URL
+                                        Override</label>
+                                    <input type="text" id="custom-map-style-glyphs-url" autocomplete="off"
+                                        placeholder="https://example.com/{fontstack}/{range}.pbf">
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom-map-style-sprite-url"
+                                        th:text="#{map.settings.dialog.map-styles.sprite-url}">Sprite URL
+                                        Override</label>
+                                    <input type="text" id="custom-map-style-sprite-url" autocomplete="off"
+                                        placeholder="https://example.com/sprite">
+                                </div>
+                            </details>
+                        </section>
+
+                        <section class="custom-map-style-mode-panel hidden" data-map-style-panel="raster">
+                            <fieldset class="custom-map-style-choice">
+                                <legend th:text="#{map.settings.dialog.map-styles.source-input}">Source Input</legend>
+                                <label>
+                                    <input type="radio" name="custom-map-style-raster-input" value="tile_template"
+                                        checked>
+                                    <span th:text="#{map.settings.dialog.map-styles.source-input.tile-template}">Tile
+                                        URL Template</span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="custom-map-style-raster-input" value="tilejson">
+                                    <span th:text="#{map.settings.dialog.map-styles.source-input.tilejson}">TileJSON
+                                        URL</span>
+                                </label>
+                            </fieldset>
+                            <div class="form-group" data-raster-template-group>
+                                <label for="custom-map-style-tile-template"
+                                    th:text="#{map.settings.dialog.map-styles.tile-template}">Tile URL Template</label>
+                                <input type="text" id="custom-map-style-tile-template" autocomplete="off"
+                                    placeholder="https://tile.example.com/{z}/{x}/{y}.png">
+                            </div>
+                            <div class="form-group" data-raster-template-group>
+                                <label for="custom-map-style-attribution"
+                                    th:text="#{map.settings.dialog.map-styles.attribution}">Attribution</label>
+                                <input type="text" id="custom-map-style-attribution" autocomplete="off"
+                                    placeholder="© OpenStreetMap contributors">
+                            </div>
+                            <div class="form-group hidden" data-raster-tilejson-group>
+                                <label for="custom-map-style-tilejson-url"
+                                    th:text="#{map.settings.dialog.map-styles.tilejson-url}">TileJSON URL</label>
+                                <input type="url" id="custom-map-style-tilejson-url" autocomplete="off"
+                                    placeholder="https://example.com/tiles.json">
+                            </div>
+                            <div class="form-group hidden" data-raster-tilejson-group>
+                                <label for="custom-map-style-raster-attribution-override"
+                                    th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution
+                                    Override</label>
+                                <input type="text" id="custom-map-style-raster-attribution-override" autocomplete="off"
+                                    placeholder="© OpenStreetMap contributors">
+                            </div>
+                            <details class="custom-map-style-advanced" open>
+                                <summary th:text="#{map.settings.dialog.map-styles.tile-settings}">Tile Settings
+                                </summary>
+                                <div class="custom-map-style-grid">
+                                    <div class="form-group">
+                                        <label for="custom-map-style-minzoom"
+                                            th:text="#{map.settings.dialog.map-styles.minzoom}">Min Zoom</label>
+                                        <input type="number" id="custom-map-style-minzoom" min="0" max="24" step="1"
+                                            placeholder="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="custom-map-style-maxzoom"
+                                            th:text="#{map.settings.dialog.map-styles.maxzoom}">Max Zoom</label>
+                                        <input type="number" id="custom-map-style-maxzoom" min="0" max="24" step="1"
+                                            placeholder="19">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="custom-map-style-tile-size"
+                                            th:text="#{map.settings.dialog.map-styles.tile-size}">Tile Size</label>
+                                        <select id="custom-map-style-tile-size">
+                                            <option value="" th:text="#{map.settings.dialog.map-styles.default-256}">
+                                                Default (256)</option>
+                                            <option value="256">256</option>
+                                            <option value="512">512</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="custom-map-style-scheme"
+                                            th:text="#{map.settings.dialog.map-styles.scheme}">Scheme</label>
+                                        <select id="custom-map-style-scheme">
+                                            <option value="" th:text="#{map.settings.dialog.map-styles.default-xyz}">
+                                                Default (XYZ)</option>
+                                            <option value="xyz">XYZ</option>
+                                            <option value="tms">TMS</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </details>
+
+                        </section>
+                        <div class="custom-map-style-share-panel" th:if="${isAdmin}">
+                            <div class="custom-map-style-share-copy">
+                                <label for="custom-map-style-proxy-tiles"
+                                    th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</label>
+                                <p th:text="#{map.settings.dialog.map-styles.proxy-tiles-info}">Fetches Tiles via Reitti, disable to use browser fetching.</p>
+                            </div>
+                            <label class="settings-toggle-switch">
+                                <input type="checkbox" id="custom-map-style-proxy-tiles">
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="custom-map-style-share-panel" th:if="${isAdmin}">
+                            <div class="custom-map-style-share-copy">
+                                <label for="custom-map-style-shared"
+                                    th:text="#{map.settings.dialog.map-styles.shared}">Share with all users</label>
+                                <p th:text="#{map.settings.dialog.map-styles.shared-info}">Other users can select
+                                    this style, but only you can edit it.</p>
+                            </div>
+                            <label class="settings-toggle-switch">
+                                <input type="checkbox" id="custom-map-style-shared">
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="custom-map-style-error" id="custom-map-style-error" role="alert"></div>
+                        <div class="custom-map-style-actions">
+                            <button type="submit" class="btn settings-primary-btn">
+                                <i class="lni lni-check"></i>
+                                <span th:text="#{map.settings.dialog.map-styles.save}">Save</span>
+                            </button>
+                            <button type="button" class="btn settings-ghost-btn" id="cancel-map-style-btn">
+                                <i class="lni lni-xmark"></i>
+                                <span th:text="#{map.settings.dialog.map-styles.cancel}">Cancel</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        window.contextPath = /*[[@{/}]]*/ "/";
+        window.contextPath = window.contextPath.replace(/\/$/, '');
+        window.userSettings = /*[[${userSettings}]]*/ {}
+        window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/[];
+        window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ "reitti";
+        window.reittiIsAdmin = /*[[${isAdmin}]]*/ false;
+    </script>
+</body>
+
+</html>

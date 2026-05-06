@@ -342,6 +342,387 @@ header {
     margin-bottom: 8px;
 }
 
+.settings-secondary-btn,
+.settings-primary-btn,
+.settings-ghost-btn,
+.settings-icon-btn {
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+}
+
+.settings-secondary-btn,
+.settings-primary-btn,
+.settings-ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10px;
+}
+
+.settings-primary-btn,
+.btn.settings-primary-btn {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+}
+
+.settings-primary-btn i,
+.settings-primary-btn span,
+.btn.settings-primary-btn i,
+.btn.settings-primary-btn span {
+    color: var(--color-background-dark);
+}
+
+.settings-ghost-btn,
+.btn.settings-ghost-btn {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-text-gray);
+}
+
+.settings-ghost-btn:hover,
+.btn.settings-ghost-btn:hover {
+    color: var(--color-text-white);
+}
+
+.settings-icon-btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.settings-icon-btn.danger {
+    color: #ffb4ab;
+    border-color: #ffb4ab;
+}
+
+.custom-map-style-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.custom-map-style-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid var(--color-highlight);
+    border-radius: 6px;
+    padding: 8px;
+    background: var(--color-background-dark-light);
+}
+
+.custom-map-style-item-main {
+    min-width: 0;
+}
+
+.custom-map-style-item-name {
+    color: var(--color-text-white);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.custom-map-style-item-meta,
+.custom-map-style-empty {
+    color: var(--color-text-gray);
+    font-size: 0.85rem;
+}
+
+.custom-map-style-item-actions,
+.custom-map-style-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.custom-map-style-actions {
+    padding-top: 4px;
+}
+
+.custom-map-style-form {
+    border-top: 1px solid var(--color-highlight-transparent);
+    margin-top: 12px;
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.custom-map-style-form .form-group {
+    margin: 0;
+}
+
+.custom-map-style-form.hidden {
+    display: none;
+}
+
+.custom-map-style-mode-panel.hidden,
+.map-styles-settings-page .form-group.hidden {
+    display: none;
+}
+
+.custom-map-style-form-header {
+    color: var(--color-text-gray);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.custom-map-style-mode-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.custom-map-style-mode-panel h4 {
+    display: none;
+}
+
+.custom-map-style-choice {
+    border: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+
+.custom-map-style-choice legend {
+    color: var(--color-text-gray);
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    padding: 0;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    width: 100%;
+}
+
+.custom-map-style-choice label {
+    align-items: center;
+    background: var(--color-background-dark);
+    border: 1px solid var(--color-highlight-transparent);
+    border-radius: 4px;
+    color: var(--color-text-white);
+    cursor: pointer;
+    display: inline-flex;
+    gap: 6px;
+    padding: 5px 12px;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.custom-map-style-choice label:has(input:checked) {
+    border-color: var(--color-highlight);
+    color: var(--color-highlight);
+}
+
+.map-styles-settings-page .custom-map-style-choice input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.custom-map-style-advanced {
+    border: 1px solid var(--color-highlight-transparent);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 0;
+}
+
+.custom-map-style-advanced summary {
+    background: transparent;
+    border: none;
+    color: var(--color-highlight);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    list-style: none;
+    margin: -14px -16px;
+    padding: 14px 16px;
+    user-select: none;
+}
+
+.custom-map-style-advanced summary::-webkit-details-marker {
+    display: none;
+}
+
+.custom-map-style-advanced summary::before {
+    content: "▶";
+    display: inline-block;
+    font-size: 0.6rem;
+    margin-right: 5px;
+    transition: transform 0.15s ease;
+    vertical-align: middle;
+}
+
+.custom-map-style-advanced[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.custom-map-style-advanced[open] summary {
+    margin-bottom: 10px;
+}
+
+.custom-map-style-advanced > div,
+.custom-map-style-advanced .form-group {
+    border: none;
+    margin-bottom: 8px;
+    padding: 0;
+}
+
+.custom-map-style-advanced > div:last-child,
+.custom-map-style-advanced .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.custom-map-style-share-panel {
+    align-items: center;
+    border-top: 1px solid var(--color-highlight-transparent);
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 10px 0 0;
+}
+
+.custom-map-style-share-copy {
+    min-width: 0;
+}
+
+.custom-map-style-share-copy label {
+    color: var(--color-text-white);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.custom-map-style-share-copy p {
+    color: var(--color-text-gray);
+    font-size: 0.82rem;
+    margin: 2px 0 0;
+}
+
+.settings-toggle-switch {
+    display: inline-flex;
+    flex: 0 0 auto;
+    position: relative;
+}
+
+.settings-toggle-switch input {
+    opacity: 0;
+    position: absolute;
+}
+
+.settings-toggle-switch span {
+    background: var(--color-background-dark);
+    border: 1px solid var(--color-highlight);
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    transition: background 0.15s ease;
+    width: 44px;
+}
+
+.settings-toggle-switch span::before {
+    background: var(--color-text-gray);
+    border-radius: 50%;
+    content: "";
+    height: 18px;
+    left: 3px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.15s ease, background 0.15s ease;
+    width: 18px;
+}
+
+.settings-toggle-switch input:checked + span {
+    background: var(--color-highlight);
+}
+
+.settings-toggle-switch input:checked + span::before {
+    background: var(--color-background-dark);
+    transform: translateY(-50%) translateX(20px);
+}
+
+.custom-map-style-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.custom-map-style-grid .form-group {
+    margin: 0;
+}
+
+.custom-map-style-error {
+    display: none;
+    color: #ffb4ab;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.custom-map-style-error.visible {
+    display: block;
+}
+
+.map-styles-settings-page .settings-card {
+    max-width: 900px;
+}
+
+.map-styles-settings-page .settings-description {
+    color: var(--color-text-gray);
+    margin-top: -8px;
+    max-width: 900px;
+}
+
+.map-styles-settings-page .settings-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.map-styles-settings-page .settings-card-header h3 {
+    margin: 0;
+}
+
+.map-styles-settings-page select,
+.map-styles-settings-page input,
+.map-styles-settings-page textarea {
+    width: 100%;
+    color: var(--color-text-white);
+    background: var(--color-background-dark-light);
+    border: 1px solid var(--color-highlight);
+    border-radius: 4px;
+    padding: 8px;
+    font: inherit;
+}
+
+.map-styles-settings-page textarea {
+    resize: vertical;
+    min-height: 180px;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
 /* Responsive adjustments for settings menu */
 @media (max-width: 768px) {
     .settings-menu {
@@ -2223,5 +2604,3 @@ button:disabled {
 .timeband-item.selected:hover::before {
     opacity: 1;
 }
-
-
