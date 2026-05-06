@@ -4,15 +4,14 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.jobs.JobInfo;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -27,11 +26,14 @@ public class JobStatusController {
 
     private final boolean dataManagementEnabled;
     private final JobMetadataRepository jobMetadataRepository;
+    private final JobSchedulingService jobSchedulingService;
 
     public JobStatusController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                               JobMetadataRepository jobMetadataRepository) {
+                               JobMetadataRepository jobMetadataRepository,
+                               JobSchedulingService jobSchedulingService) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.jobMetadataRepository = jobMetadataRepository;
+        this.jobSchedulingService = jobSchedulingService;
     }
 
     @GetMapping("/job-status")
@@ -102,6 +104,14 @@ public class JobStatusController {
         model.addAttribute("pendingJobs", pendingJobs);
         model.addAttribute("pastJobs", pastJobs);
         return "settings/job-status :: queue-stats-content";
+    }
+    @DeleteMapping("/queue-stats/{id}")
+    public String cancelJob(@PathVariable UUID id,
+                            @RequestParam(defaultValue = "UTC") ZoneId timezone,
+                            Model model) {
+        jobSchedulingService.cancel(id);
+        // Re-fetch and render the current status
+        return getQueueStatsContent(timezone, model);
     }
 
     private boolean isTerminal(JobState state) {
