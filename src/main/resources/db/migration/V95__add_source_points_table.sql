@@ -163,4 +163,4 @@ WHERE rsp.device_id IS NULL  -- This is our "Main" device convention
     WHERE ov.user_id = rsp.user_id
       AND rsp.timestamp >= ov.start_time
       AND rsp.timestamp <= ov.end_time
-);;
+);
