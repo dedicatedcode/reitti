@@ -61,7 +61,15 @@ public class MapStylesSettingsController {
     @PostMapping("/api/active")
     @ResponseBody
     public MapStyleSettingsDTO setActiveStyle(@AuthenticationPrincipal User user, @RequestBody ActiveMapStyleRequest request) {
-        userMapStyleJdbcService.setActiveStyleId(user, request.activeStyleId());
+        String styleId = request.activeStyleId();
+        boolean valid = UserMapStyleJdbcService.DEFAULT_STYLE_ID.equals(styleId)
+                || UserMapStyleJdbcService.resolveCustomId(styleId)
+                        .flatMap(id -> userMapStyleJdbcService.findById(user, id))
+                        .isPresent();
+        if (!valid) {
+            throw new IllegalArgumentException("Unknown style id: " + styleId);
+        }
+        userMapStyleJdbcService.setActiveStyleId(user, styleId);
         return userMapStyleJdbcService.getSettings(user, normalizedContextPath());
     }
 

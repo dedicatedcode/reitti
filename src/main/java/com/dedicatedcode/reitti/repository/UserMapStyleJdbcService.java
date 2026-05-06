@@ -16,7 +16,7 @@ import java.util.Optional;
 
 @Service
 public class UserMapStyleJdbcService {
-    private static final String DEFAULT_STYLE_ID = "reitti";
+    public static final String DEFAULT_STYLE_ID = "reitti";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -88,31 +88,16 @@ public class UserMapStyleJdbcService {
                 String.class,
                 user.getId()
         );
-        if (results.isEmpty()) {
-            return DEFAULT_STYLE_ID;
-        }
-        String activeStyleId = results.getFirst();
-        if (isValidStyleId(user, activeStyleId)) {
-            return activeStyleId;
-        }
-        setActiveStyleId(user, DEFAULT_STYLE_ID);
-        return DEFAULT_STYLE_ID;
+        return results.isEmpty() ? DEFAULT_STYLE_ID : results.getFirst();
     }
 
     @Transactional
     public void setActiveStyleId(User user, String activeStyleId) {
-        String storedActiveStyleId = isValidStyleId(user, activeStyleId)
-                ? activeStyleId
-                : DEFAULT_STYLE_ID;
         jdbcTemplate.update("""
                 INSERT INTO user_map_style_settings (user_id, active_style_id)
                 VALUES (?, ?)
                 ON CONFLICT (user_id) DO UPDATE SET active_style_id = EXCLUDED.active_style_id, updated_at = CURRENT_TIMESTAMP
-                """, user.getId(), storedActiveStyleId);
-    }
-
-    private boolean isValidStyleId(User user, String styleId) {
-        return DEFAULT_STYLE_ID.equals(styleId) || resolveCustomId(styleId).flatMap(id -> findById(user, id)).isPresent();
+                """, user.getId(), activeStyleId);
     }
 
     @Transactional
