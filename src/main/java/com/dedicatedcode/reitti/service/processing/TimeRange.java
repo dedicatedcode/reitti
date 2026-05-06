@@ -13,6 +13,11 @@ public record TimeRange(Instant start, Instant end) implements Serializable {
     }
 
     public TimeRange extend(TimeRange other) {
+        if (this.equals(empty())) {
+            return other;
+        } else if (other.equals(empty())) {
+            return this;
+        }
         Instant start = this.start == null ? other.start : this.start.isBefore(other.start) ? this.start : other.start;
         Instant end = this.end == null ? other.end : this.end.isAfter(other.end) ? this.end : other.end;
         return new TimeRange(start, end);

@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import org.locationtech.jts.geom.Coordinate;
@@ -17,7 +16,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,17 +40,6 @@ public class SourceLocationPointJdbcService {
 
         this.pointReaderWriter = pointReaderWriter;
         this.geometryFactory = geometryFactory;
-    }
-
-    public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
-            User user, Device device, Instant startTime, Instant endTime) {
-        String sql = """
-                SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.invalid, rlp.ignored
-                FROM raw_source_points rlp
-                WHERE rlp.user_id = ? AND rlp.timestamp >= ? AND rlp.timestamp < ? AND rlp.invalid = false AND rlp.device_id IS NOT DISTINCT FROM ?
-                ORDER BY rlp.timestamp""";
-        return jdbcTemplate.query(sql, rawLocationPointRowMapper,
-                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), device != null ? device.id() : null);
     }
 
     public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid) {
@@ -85,28 +72,6 @@ public class SourceLocationPointJdbcService {
                 rawLocationPoint.isIgnored()
         );
         return rawLocationPoint.withId(id);
-    }
-
-    public SourceLocationPoint update(SourceLocationPoint rawLocationPoint) {
-        String sql = "UPDATE raw_source_points SET timestamp = ?, accuracy_meters = ?, elevation_meters = ?, geom = ST_GeomFromText(?, '4326'), invalid = ?, ignored = ? WHERE id = ? ";
-        jdbcTemplate.update(sql,
-                Timestamp.from(rawLocationPoint.getTimestamp()),
-                rawLocationPoint.getAccuracyMeters(),
-                rawLocationPoint.getElevationMeters(),
-                pointReaderWriter.write(rawLocationPoint.getGeom()),
-                rawLocationPoint.isInvalid(),
-                rawLocationPoint.isIgnored(),
-                rawLocationPoint.getId()
-        );
-        return rawLocationPoint;
-    }
-
-    public Optional<SourceLocationPoint> findById(Long id) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.invalid, rlp.ignored " +
-                "FROM raw_source_points rlp " +
-                "WHERE rlp.id = ?";
-        List<SourceLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public int bulkInsert(User user, Device device, List<LocationPoint> points) {
@@ -142,7 +107,7 @@ public class SourceLocationPointJdbcService {
             return;
         }
 
-        String sql = "UPDATE raw_source_points SET invalid = true, processed = true WHERE id = ?";
+        String sql = "UPDATE raw_source_points SET invalid = true WHERE id = ?";
 
         List<Object[]> batchArgs = points.stream()
                 .map(point -> new Object[]{point.getId()})
@@ -156,7 +121,7 @@ public class SourceLocationPointJdbcService {
             return;
         }
 
-        String sql = "UPDATE raw_source_points SET ignored = ?, processed = true WHERE id = ?";
+        String sql = "UPDATE raw_source_points SET ignored = ? WHERE id = ?";
 
         List<Object[]> batchArgs = pointIds.stream()
                 .map(pointId -> new Object[]{ignored, pointId})
@@ -165,8 +130,4 @@ public class SourceLocationPointJdbcService {
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 
-    public void deleteAll() {
-        String sql = "DELETE FROM raw_source_points";
-        jdbcTemplate.update(sql);
-    }
 }

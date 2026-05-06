@@ -4,8 +4,9 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ class ExcessDensityHandlerTest {
     private ExcessDensityHandler excessDensityHandler;
 
     @Autowired
-    private RawLocationPointJdbcService rawLocationPointService;
+    private SourceLocationPointJdbcService rawLocationPointService;
 
     @Autowired
     private TestingService testingService;
@@ -45,24 +46,23 @@ class ExcessDensityHandlerTest {
         createAndSaveRawPoint(base.plus(10, ChronoUnit.SECONDS), 50.0002, 8.0002);
 
         // When: handle excess
-        List<RawLocationPoint> points = rawLocationPointService
-                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, base.minus(1, ChronoUnit.MINUTES),
-                        base.plus(1, ChronoUnit.MINUTES));
+        List<SourceLocationPoint> points = rawLocationPointService
+                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, null, base.minus(1, ChronoUnit.MINUTES),
+                        base.plus(1, ChronoUnit.MINUTES), false, true);
         excessDensityHandler.handleExcess(testUser, null, TimeRange.of(base, base.plus(30, ChronoUnit.SECONDS)));
 
         // Then: some points should be marked as ignored
-        List<RawLocationPoint> after = rawLocationPointService
-                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, base.minus(1, ChronoUnit.MINUTES),
-                        base.plus(1, ChronoUnit.MINUTES));
-        long ignored = after.stream().filter(RawLocationPoint::isIgnored).count();
+        List<SourceLocationPoint> after = rawLocationPointService
+                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, null, base.minus(1, ChronoUnit.MINUTES),
+                        base.plus(1, ChronoUnit.MINUTES), false, true);
+        long ignored = after.stream().filter(SourceLocationPoint::isIgnored).count();
         assertEquals(1, ignored, "One point should be ignored (the middle one according to ordering)");
     }
 
-    private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
-        RawLocationPoint point = new RawLocationPoint(
-                null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, false, false, 1L
-        );
-        return rawLocationPointService.create(testUser, point);
+    private SourceLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
+        SourceLocationPoint point = new SourceLocationPoint(
+                null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false);
+        return rawLocationPointService.create(testUser, null, point);
     }
 
     // Sorter as used by the normalizer (stable ordering)

@@ -43,7 +43,7 @@ public class ExcessDensityHandler {
                 inputRange.start().minus(window),
                 inputRange.end().plus(window)
         );
-        List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, expandedRange.start(), expandedRange.end());
+        List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, expandedRange.start(), expandedRange.end(), false, true);
         if (points.size() < 2) {
             return TimeRange.empty();
         }
