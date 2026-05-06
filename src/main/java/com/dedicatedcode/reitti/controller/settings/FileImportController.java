@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.importer.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,7 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final DeviceJdbcService deviceJdbcService;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxFileSupported;
@@ -36,7 +38,7 @@ public class FileImportController {
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter,
-                                GeoJsonImporter geoJsonImporter,
+                                GeoJsonImporter geoJsonImporter, DeviceJdbcService deviceJdbcService,
                                 I18nService i18n,
                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${server.tomcat.max-part-count}") int maxFileSupported,
@@ -46,18 +48,19 @@ public class FileImportController {
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.deviceJdbcService = deviceJdbcService;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxFileSupported = maxFileSupported;
         this.maxFileSize = maxFileSize;
     }
 
-
     @GetMapping
     public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "file-upload");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
         return "settings/import-data";
     }
 
