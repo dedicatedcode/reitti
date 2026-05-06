@@ -21,6 +21,7 @@ CREATE TABLE user_map_styles
     glyphs_url_override TEXT,
     sprite_url_override TEXT,
     shared            BOOLEAN      NOT NULL DEFAULT FALSE,
+    proxy_tiles       BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version           BIGINT       NOT NULL DEFAULT 1,

@@ -1,2 +1,0 @@
-ALTER TABLE user_map_styles
-    ADD COLUMN proxy_tiles BOOLEAN NOT NULL DEFAULT FALSE;
