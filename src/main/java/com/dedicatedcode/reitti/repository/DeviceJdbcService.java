@@ -137,4 +137,13 @@ public class DeviceJdbcService {
         );
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
+
+    public Optional<Device> find(User user, Long deviceId) {
+        List<Device> results = jdbcTemplate.query(
+                "SELECT d.* FROM devices d " +
+                        "WHERE d.user_id = ? AND d.id = ?",
+                deviceRowMapper,
+                user.getId(), deviceId);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
 }

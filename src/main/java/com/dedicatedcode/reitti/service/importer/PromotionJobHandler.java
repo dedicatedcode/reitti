@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
@@ -32,14 +33,17 @@ public class PromotionJobHandler {
         this.locationDataCleanupTask = locationDataCleanupTask;
     }
 
-    public void execute(UUID jobId, User user, Device device, String partitionKey, UUID parentJobId, boolean dropPartition) {
+    public void execute(PromotionTaskData data) {
+        UUID jobId = data.getJobId();
+        User user = data.getUser();
+        String partitionKey = data.getPartitionKey();
         TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
         metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
         int promote = this.stagingService.promote(partitionKey);
         metadataRepository.updateProgress(jobId, 1, 3, "Dropping partition");
 
         log.debug("Promoted [{}] points into live table", promote);
-        if (dropPartition) {
+        if (data.isManual()) {
             this.stagingService.dropPartition(partitionKey);
         }
         metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
@@ -51,7 +55,7 @@ public class PromotionJobHandler {
                     .friendlyName("Location Data Cleanup")
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupJob.TaskData(user, device, timeRange.start(), timeRange.end()),
+                                                  new LocationDataCleanupJob.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
                                                   metadata);
         } else {
             log.debug("No points to promote, timerange was [{}]", timeRange);

@@ -3,9 +3,11 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -20,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AnomalyProcessingServiceTest {
 
     @Autowired
-    private RawLocationPointJdbcService rawLocationPointJdbcService;
+    private SourceLocationPointJdbcService rawLocationPointJdbcService;
 
     @Autowired
     private AnomalyProcessingService anomalyFilter;
@@ -47,13 +49,13 @@ class AnomalyProcessingServiceTest {
         points.add(createLocationPoint("2022-01-01T09:17:59Z", 53.56142, 9.98905, 10.0));
         points.add(createLocationPoint("2022-01-01T09:26:24Z", 51.68968, 5.28917, 10.0)); //shall be filtered out
 
-        assertEquals(14, this.rawLocationPointJdbcService.bulkInsert(user, points));
+        assertEquals(14, this.rawLocationPointJdbcService.bulkInsert(user, null, points));
 
-        this.anomalyFilter.processAndMarkAnomalies(user, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
 
-        List<RawLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true, true);
+        List<SourceLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
         assertEquals(14, storedPoints.size(), "Point should be stored");
-        List<RawLocationPoint> filteredPoints = storedPoints.stream().filter(RawLocationPoint::isInvalid).toList();
+        List<SourceLocationPoint> filteredPoints = storedPoints.stream().filter(SourceLocationPoint::isInvalid).toList();
         assertEquals(1, filteredPoints.size(), "One point should be marked as invalid");
         assertEquals("2022-01-01T09:26:24Z", filteredPoints.getFirst().getTimestamp().toString());
     }
@@ -79,13 +81,13 @@ class AnomalyProcessingServiceTest {
         points.add(createLocationPoint("2022-01-01T09:26:24Z", 51.68968, 5.28917, 10.0)); //shall be filtered out
         points.add(createLocationPoint("2022-01-01T09:26:48Z", 53.56212, 9.98635, 10.0));
 
-        assertEquals(15, this.rawLocationPointJdbcService.bulkInsert(user, points));
+        assertEquals(15, this.rawLocationPointJdbcService.bulkInsert(user, null, points));
 
-        this.anomalyFilter.processAndMarkAnomalies(user, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
 
-        List<RawLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true, true);
+        List<SourceLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
         assertEquals(15, storedPoints.size(), "Point should be stored");
-        List<RawLocationPoint> filteredPoints = storedPoints.stream().filter(RawLocationPoint::isInvalid).toList();
+        List<SourceLocationPoint> filteredPoints = storedPoints.stream().filter(SourceLocationPoint::isInvalid).toList();
         assertEquals(1, filteredPoints.size(), "One point should be marked as invalid");
         assertEquals("2022-01-01T09:26:24Z", filteredPoints.getFirst().getTimestamp().toString());
     }
@@ -96,11 +98,11 @@ class AnomalyProcessingServiceTest {
 
         //store a point which is totally off
         List<LocationPoint> points = List.of(createLocationPoint("2022-01-01T09:02:24Z", 51.68968, 5.28917, 10.0));
-        assertEquals(1, this.rawLocationPointJdbcService.bulkInsert(user, points));
-        this.anomalyFilter.processAndMarkAnomalies(user, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:26:24Z")); //shall not mark our single point as invalid
+        assertEquals(1, this.rawLocationPointJdbcService.bulkInsert(user, null, points));
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:26:24Z")); //shall not mark our single point as invalid
 
-        List<RawLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true, true);
-        assertTrue(storedPoints.stream().noneMatch(RawLocationPoint::isInvalid), "Point should not be marked as invalid");
+        List<SourceLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
+        assertTrue(storedPoints.stream().noneMatch(SourceLocationPoint::isInvalid), "Point should not be marked as invalid");
 
         points = new ArrayList<>();
         points.add(createLocationPoint("2022-01-01T09:03:03Z", 53.55150, 9.96642, 0.0));
@@ -118,12 +120,12 @@ class AnomalyProcessingServiceTest {
         points.add(createLocationPoint("2022-01-01T09:17:59Z", 53.56142, 9.98905, 10.0));
 
         //now store new points
-        this.rawLocationPointJdbcService.bulkInsert(user, points);
-        this.anomalyFilter.processAndMarkAnomalies(user, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:17:59Z"));
+        this.rawLocationPointJdbcService.bulkInsert(user, null, points);
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:17:59Z"));
 
-        storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true, true);
+        storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
 
-        List<RawLocationPoint> storedInvalidPoints = storedPoints.stream().filter(RawLocationPoint::isInvalid).toList();
+        List<SourceLocationPoint> storedInvalidPoints = storedPoints.stream().filter(SourceLocationPoint::isInvalid).toList();
         assertEquals(1, storedInvalidPoints.size(), "One point should be marked as invalid");
         assertEquals("2022-01-01T09:02:24Z", storedInvalidPoints.getFirst().getTimestamp().toString());
     }

@@ -2,13 +2,18 @@ package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.UserSseEmitterService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.service.processing.TimeRange;
+import com.dedicatedcode.reitti.service.processing.UpdateCuratedTimelineJob;
 import com.github.kagkarlsson.scheduler.task.Task;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import org.springframework.context.annotation.Bean;
@@ -37,6 +42,14 @@ public class TaskConfig {
     }
 
     @Bean
+    public Task<UpdateCuratedTimelineJob.TaskData> updateCuratedTimelineTask(UpdateCuratedTimelineJob handler) {
+        return Tasks.oneTime("updating-curated-timeline-task", UpdateCuratedTimelineJob.TaskData.class)
+                .execute((instance, context) -> {
+                    handler.execute(instance.getData());
+                });
+    }
+
+    @Bean
     public Task<TriggerProcessingEvent> processingPipelineTask(ProcessingPipelineTrigger handler) {
         return Tasks.oneTime("processing-pipeline-task", TriggerProcessingEvent.class)
                 .execute((instance, context) -> {
@@ -56,15 +69,7 @@ public class TaskConfig {
     public Task<PromotionJobHandler.PromotionTaskData> promotionTask(PromotionJobHandler handler) {
         return Tasks.oneTime("promotion-task", PromotionJobHandler.PromotionTaskData.class)
                 .execute((instance, context) -> {
-                    PromotionJobHandler.PromotionTaskData data = instance.getData();
-                    handler.execute(
-                            UUID.fromString(instance.getId()),
-                            data.getUser(),
-                            data.getDevice(),
-                            data.getPartitionKey(),
-                            data.getParentJobId(),
-                            data.isManual()
-                    );
+                    handler.execute(instance.getData());
                 });
     }
 

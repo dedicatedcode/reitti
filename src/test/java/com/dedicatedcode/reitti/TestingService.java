@@ -72,9 +72,10 @@ public class TestingService {
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 2;
+        final int requiredStableChecks = 5;
 
         Awaitility.await()
+                .logging()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")

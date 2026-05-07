@@ -39,7 +39,7 @@ public class JobSchedulingService implements SchedulerListener {
         Instant now = Instant.now();
 
         JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
-        jobMetadataRepository.insert(jobId, meta.user, meta.jobType, meta.friendlyName, state, now, scheduledAt, data.getParentJobId());
+        jobMetadataRepository.insert(jobId, meta.user, task.getTaskName(), meta.jobType, meta.friendlyName, state, now, scheduledAt, data.getParentJobId());
 
         T updatedData = data.withJobId(jobId);
         if (data.getParentJobId() != null) {
@@ -52,8 +52,13 @@ public class JobSchedulingService implements SchedulerListener {
         scheduleTask(task, data, Instant.now(), meta);
     }
 
-    public void cancel(String taskId, UUID jobId) {
-        jobScheduler.getObject().cancel(TaskInstanceId.of(taskId, jobId.toString()));
+    public void cancel(UUID jobId) {
+        Optional<JobMetadataRepository.JobMetadata> meta = jobMetadataRepository.findById(jobId);
+        if (meta.isPresent() && meta.get().getTaskId() != null) {
+            jobScheduler.getObject().cancel(
+                    TaskInstanceId.of(meta.get().getTaskId(), jobId.toString()));
+        }
+        jobMetadataRepository.delete(jobId);
     }
 
     public UUID createParentJob(User user, JobType jobType, String friendlyName) {
@@ -63,6 +68,7 @@ public class JobSchedulingService implements SchedulerListener {
         jobMetadataRepository.insert(
                 parentJobId,
                 user,
+                null,
                 jobType,
                 friendlyName,
                 JobState.AWAITING,
@@ -127,7 +133,6 @@ public class JobSchedulingService implements SchedulerListener {
     public void onCandidateEvent(CandidateEventType type) {
 
     }
-
 
     public record Metadata(User user, JobType jobType, String friendlyName) {
         public static class Builder {

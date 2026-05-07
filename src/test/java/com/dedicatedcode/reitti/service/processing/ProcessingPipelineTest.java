@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.dedicatedcode.reitti.TestConstants.Points.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,6 +92,11 @@ public class ProcessingPipelineTest {
         assertVisit(processedVisits.get(5), "2025-06-18T16:05:49.301Z","2025-06-18T21:59:29.055Z", MOLTKESTR);
 
         testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
+
+        Awaitility.await("waiting for import to be finished")
+                .logging()
+                .atMost(10, TimeUnit.SECONDS)
+                .until(() -> currentVisits().size() == 10);
 
         processedVisits = currentVisits();
 

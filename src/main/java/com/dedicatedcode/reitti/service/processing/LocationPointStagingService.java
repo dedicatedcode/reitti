@@ -1,9 +1,8 @@
-package com.dedicatedcode.reitti.service.importer;
+package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,7 +60,7 @@ public class LocationPointStagingService {
     public void insertBatch(String partitionKey, User user, Device device, List<LocationPoint> batch) {
         String sql = """
             INSERT INTO staging_location_points (
-                        partition_key,
+                partition_key,
                 timestamp,
                 user_id,
                 device_id,
@@ -103,16 +102,16 @@ public class LocationPointStagingService {
     @Transactional
     public int promote(String partitionKey) {
         String sql = """
-            INSERT INTO raw_location_points (
-                user_id, timestamp, accuracy_meters, elevation_meters,
-                geom, processed, synthetic, invalid, ignored
+            INSERT INTO raw_source_points (
+                user_id, device_id, timestamp, accuracy_meters, elevation_meters,
+                geom, invalid, ignored
             )
             SELECT
-                user_id, timestamp, accuracy_meters, elevation_meters,
-                geom, false, false, false, false
+                user_id, device_id, timestamp, accuracy_meters, elevation_meters,
+                geom, false, false
             FROM staging_location_points
                     WHERE partition_key = ? AND promoted = FALSE
-            ON CONFLICT (user_id, timestamp) DO NOTHING;
+            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING;
         """;
         int update = jdbcTemplate.update(sql, partitionKey);
         this.jdbcTemplate.update("UPDATE staging_location_points SET promoted = TRUE WHERE partition_key = ? AND promoted = FALSE", partitionKey);

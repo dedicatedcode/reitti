@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.jobs;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -9,10 +10,10 @@ public record JobInfo(
         String name,
         String description,
         JobState state,
-        Instant enqueuedAt,
-        Instant scheduledAt,
-        Instant processingAt,
-        Instant finishedAt,
+        LocalDateTime enqueuedAt,
+        LocalDateTime scheduledAt,
+        LocalDateTime processingAt,
+        LocalDateTime finishedAt,
         boolean canCancel,
         List<JobInfo> children,
         long completedChildren,

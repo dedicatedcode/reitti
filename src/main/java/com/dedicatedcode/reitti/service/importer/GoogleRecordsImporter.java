@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -55,19 +56,20 @@ public class GoogleRecordsImporter {
     
     public Map<String, Object> importGoogleRecords(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
-        
+        UUID parentJobId = null;
+        String partitionKey = null;
         try {
             stateHolder.importStarted();
             logger.info("Importing Google Records file for user {}", user.getUsername());
 
             JsonFactory factory = objectMapper.getFactory();
             JsonParser parser = factory.createParser(inputStream);
-            UUID parentJobId = jobSchedulingService.createParentJob(
+            parentJobId = jobSchedulingService.createParentJob(
                     user,
                     JobType.GOOGLE_TIMELINE_IMPORT,
                     "Google Records Import - " + originalFilename
             );
-            String partitionKey = UUID.randomUUID().toString();
+            partitionKey = UUID.randomUUID().toString();
             stagingService.ensurePartitionExists(partitionKey);
 
             List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
@@ -115,6 +117,10 @@ public class GoogleRecordsImporter {
             
         } catch (IOException e) {
             logger.error("Error processing Google Records file", e);
+            if (parentJobId != null) {
+                this.jobSchedulingService.cancel(parentJobId);
+                this.stagingService.dropPartition(partitionKey);
+            }
             return Map.of("success", false, "error", "Error processing Google Records file: " + e.getMessage());
         } finally {
             stateHolder.importFinished();

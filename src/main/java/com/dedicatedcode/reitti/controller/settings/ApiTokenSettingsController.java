@@ -43,7 +43,7 @@ public class ApiTokenSettingsController {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
                 .map(t -> new ApiTokenDto(t.getId(),
-                                          t.getDeviceId(),
+                                          t.getDevice() != null ? t.getDevice().id() : null,
                                           t.getToken(),
                                           t.getName(),
                                           adjustInstant(t.getCreatedAt(), timezone),

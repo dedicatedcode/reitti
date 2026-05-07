@@ -42,8 +42,18 @@
                               th:hx-post="@{/settings/import/gpx}"
                               hx-target="#file-upload"
                               hx-encoding="multipart/form-data">
+
                             <div class="form-group">
                                 <input type="file" name="files" accept=".gpx" multiple required>
+                            </div>
+                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                                <label for="gpx-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="gpx-device-select">
+                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn upload-btn" th:text="#{upload.button.gpx}">Upload GPX File</button>
                             <div class="spinner" style="display: none;">
@@ -67,8 +77,18 @@
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
+
                             <div class="form-group">
                                 <input type="file" name="files" accept=".geojson,.json" multiple required>
+                            </div>
+                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                                <label for="geojson-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="geojson-device-select">
+                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn upload-btn" th:text="#{upload.button.geojson}">Upload GeoJSON File</button>
                             <div class="spinner" style="display: none;">
@@ -90,8 +110,18 @@
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
+
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
+                            </div>
+                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                                <label for="timeline-android-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="timeline-android-device-select">
+                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.timeline.android}">Upload Android Timeline Data</button>
                             <div class="spinner" style="display: none;">
@@ -113,8 +143,18 @@
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
+
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
+                            </div>
+                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                                <label for="timeline-ios-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="timeline-ios-device-select">
+                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.timeline.ios}">Upload iOS Timeline Data</button>
                             <div class="spinner" style="display: none;">
@@ -135,8 +175,18 @@
                               hx-target="#file-upload"
                               hx-swap="innerHTML"
                               hx-encoding="multipart/form-data">
+
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
+                            </div>
+                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                                <label for="records-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="records-device-select">
+                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn upload-btn" th:text="#{upload.button.google.records}">Upload Records Data</button>
                             <div class="spinner" style="display: none;">

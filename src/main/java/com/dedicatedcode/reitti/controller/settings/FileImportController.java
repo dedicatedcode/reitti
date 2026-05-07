@@ -1,7 +1,9 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.importer.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,7 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final DeviceJdbcService deviceJdbcService;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxFileSupported;
@@ -36,7 +39,7 @@ public class FileImportController {
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter,
-                                GeoJsonImporter geoJsonImporter,
+                                GeoJsonImporter geoJsonImporter, DeviceJdbcService deviceJdbcService,
                                 I18nService i18n,
                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${server.tomcat.max-part-count}") int maxFileSupported,
@@ -46,27 +49,30 @@ public class FileImportController {
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.deviceJdbcService = deviceJdbcService;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxFileSupported = maxFileSupported;
         this.maxFileSize = maxFileSize;
     }
 
-
     @GetMapping
     public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "file-upload");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
         return "settings/import-data";
     }
 
     @PostMapping("/gpx")
     public String importGpx(@RequestParam("files") MultipartFile[] files,
+                            @RequestParam(required = false, name = "device") Long deviceId,
                             Authentication authentication,
                             Model model) {
         User user = (User) authentication.getPrincipal();
-
+        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
             return "settings/import-data :: file-upload-content";
@@ -88,7 +94,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user, null, file.getOriginalFilename());
+                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user, device, file.getOriginalFilename());
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");
@@ -118,9 +124,12 @@ public class FileImportController {
 
     @PostMapping("/google-records")
     public String importGoogleRecords(@RequestParam("file") MultipartFile file,
-                                     Authentication authentication,
+                                      @RequestParam(required = false, name = "device") Long deviceId,
+                                      Authentication authentication,
                                       Model model) {
         User user = (User) authentication.getPrincipal();
+        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
@@ -133,7 +142,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleRecordsImporter.importGoogleRecords(inputStream, user, null, file.getOriginalFilename());
+            Map<String, Object> result = this.googleRecordsImporter.importGoogleRecords(inputStream, user, device, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -150,9 +159,12 @@ public class FileImportController {
 
     @PostMapping("/google-timeline-android")
     public String importGoogleTimelineAndroid(@RequestParam("file") MultipartFile file,
-                                             Authentication authentication,
-                                             Model model) {
+                                              @RequestParam(required = false, name = "device") Long deviceId,
+                                              Authentication authentication,
+                                              Model model) {
         User user = (User) authentication.getPrincipal();
+        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
@@ -165,7 +177,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleAndroidTimelineImporter.importTimeline(inputStream, user, null, file.getOriginalFilename());
+            Map<String, Object> result = this.googleAndroidTimelineImporter.importTimeline(inputStream, user, device, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -182,9 +194,12 @@ public class FileImportController {
 
     @PostMapping("/google-timeline-ios")
     public String importGoogleTimelineIOS(@RequestParam("file") MultipartFile file,
-                                         Authentication authentication,
-                                         Model model) {
+                                          @RequestParam(required = false, name = "device") Long deviceId,
+                                          Authentication authentication,
+                                          Model model) {
         User user = (User) authentication.getPrincipal();
+        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
             model.addAttribute("uploadErrorMessage", "File is empty");
@@ -197,7 +212,7 @@ public class FileImportController {
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            Map<String, Object> result = this.googleTimelineIOSImporter.importTimeline(inputStream, user, null, file.getOriginalFilename());
+            Map<String, Object> result = this.googleTimelineIOSImporter.importTimeline(inputStream, user, device, file.getOriginalFilename());
 
             if ((Boolean) result.get("success")) {
                 model.addAttribute("uploadSuccessMessage", result.get("message"));
@@ -214,9 +229,12 @@ public class FileImportController {
 
     @PostMapping("/geojson")
     public String importGeoJson(@RequestParam("files") MultipartFile[] files,
+                                @RequestParam(required = false, name = "device") Long deviceId,
                                 Authentication authentication,
                                 Model model) {
         User user = (User) authentication.getPrincipal();
+        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
@@ -240,7 +258,7 @@ public class FileImportController {
             }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, null, filename);
+                Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, device, filename);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

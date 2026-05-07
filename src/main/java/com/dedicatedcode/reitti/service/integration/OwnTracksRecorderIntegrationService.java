@@ -8,7 +8,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
-import com.dedicatedcode.reitti.service.importer.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;

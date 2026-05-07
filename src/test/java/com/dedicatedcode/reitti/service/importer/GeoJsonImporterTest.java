@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.junit.jupiter.api.BeforeEach;
