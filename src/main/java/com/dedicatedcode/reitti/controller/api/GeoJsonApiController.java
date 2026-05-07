@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.GeoJsonExportService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import org.springframework.http.MediaType;
@@ -27,11 +29,13 @@ import java.util.Map;
 public class GeoJsonApiController {
 
     private final GeoJsonExportService geoJsonExportService;
+    private final DeviceJdbcService deviceJdbcService;
     private final GeoJsonImporter geoJsonImporter;
 
-    public GeoJsonApiController(GeoJsonExportService geoJsonExportService,
+    public GeoJsonApiController(GeoJsonExportService geoJsonExportService, DeviceJdbcService deviceJdbcService,
                                 GeoJsonImporter geoJsonImporter) {
         this.geoJsonExportService = geoJsonExportService;
+        this.deviceJdbcService = deviceJdbcService;
         this.geoJsonImporter = geoJsonImporter;
     }
 
@@ -76,12 +80,11 @@ public class GeoJsonApiController {
     public ResponseEntity<Map<String, Object>> importGeoJson(
             @AuthenticationPrincipal User user,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "device", required = false) Long deviceId,
-            @RequestParam(value = "start", required = false) Instant start,
-            @RequestParam(value = "end", required = false) Instant end) {
+            @RequestParam(value = "device", required = false) Long deviceId) {
 
         Map<String, Object> response = new HashMap<>();
 
+        Device device = this.deviceJdbcService.find(user, deviceId).orElse(null);
         try {
             if (file.isEmpty() || file.getOriginalFilename() == null) {
                 response.put("success", false);
@@ -98,7 +101,7 @@ public class GeoJsonApiController {
 
             try (InputStream inputStream = file.getInputStream()) {
                 Map<String, Object> result = geoJsonImporter.importGeoJson(
-                        inputStream, user, deviceId, filename, start, end);
+                        inputStream, user, device, filename);
 
                 if ((Boolean) result.get("success")) {
                     response.put("success", true);

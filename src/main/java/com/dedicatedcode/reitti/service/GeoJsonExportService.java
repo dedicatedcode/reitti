@@ -1,30 +1,30 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointRepository;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class GeoJsonExportService {
 
-    private final RawLocationPointRepository rawLocationPointRepository;
+    private final SourceLocationPointJdbcService rawLocationPointRepository;
+    private final DeviceJdbcService deviceJdbcService;
     private final ObjectMapper objectMapper;
 
-    public GeoJsonExportService(RawLocationPointRepository rawLocationPointRepository,
+    public GeoJsonExportService(SourceLocationPointJdbcService rawLocationPointRepository,
+                                DeviceJdbcService deviceJdbcService,
                                 ObjectMapper objectMapper) {
         this.rawLocationPointRepository = rawLocationPointRepository;
+        this.deviceJdbcService = deviceJdbcService;
         this.objectMapper = objectMapper;
     }
 
@@ -33,10 +33,10 @@ public class GeoJsonExportService {
                                                 Instant end,
                                                 Long deviceId,
                                                 Writer writer) throws IOException {
-        List<RawLocationPoint> points = fetchPoints(user.getId(), start, end, deviceId);
+        List<SourceLocationPoint> points = fetchPoints(user, start, end, deviceId);
 
         FeatureCollection collection = new FeatureCollection();
-        for (RawLocationPoint point : points) {
+        for (SourceLocationPoint point : points) {
             Feature feature = new Feature();
             feature.setGeometry(createPointGeometry(point));
             feature.setProperties(createProperties(point));
@@ -46,35 +46,26 @@ public class GeoJsonExportService {
         objectMapper.writeValue(writer, collection);
     }
 
-    private List<RawLocationPoint> fetchPoints(Long userId,
+    private List<SourceLocationPoint> fetchPoints(User user,
                                                Instant start,
                                                Instant end,
                                                Long deviceId) {
-        // Use UTC for conversion because raw timestamps are stored in UTC
-        ZonedDateTime startDateTime = start.atZone(ZoneId.of("UTC"));
-        ZonedDateTime endDateTime = end.atZone(ZoneId.of("UTC"));
-
-        if (deviceId != null) {
-            return rawLocationPointRepository.findByUserIdAndTimestampBetweenAndDevice(
-                    userId,
-                    startDateTime.toLocalDateTime(),
-                    endDateTime.toLocalDateTime(),
-                    deviceId);
-        } else {
-            return rawLocationPointRepository.findByUserIdAndTimestampBetween(
-                    userId,
-                    startDateTime.toLocalDateTime(),
-                    endDateTime.toLocalDateTime());
-        }
+        Optional<Device> device = this.deviceJdbcService.find(user, deviceId);
+            return rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(
+                    user,
+                    device.orElse(null),
+                    start,
+                    end,
+                    true, true);
     }
 
-    private Geometry createPointGeometry(RawLocationPoint point) {
+    private Geometry createPointGeometry(SourceLocationPoint point) {
         List<Double> coordinates = new ArrayList<>();
         // GeoJSON expects [longitude, latitude]
-        coordinates.add(point.getGeom().getLongitude());
-        coordinates.add(point.getGeom().getLatitude());
-        if (point.getGeom().getAltitude() != null) {
-            coordinates.add(point.getGeom().getAltitude());
+        coordinates.add(point.getGeom().longitude());
+        coordinates.add(point.getGeom().latitude());
+        if (point.getElevationMeters() != null) {
+            coordinates.add(point.getElevationMeters());
         }
         Geometry geometry = new Geometry();
         geometry.setType("Point");
@@ -82,7 +73,7 @@ public class GeoJsonExportService {
         return geometry;
     }
 
-    private Map<String, Object> createProperties(RawLocationPoint point) {
+    private Map<String, Object> createProperties(SourceLocationPoint point) {
         Map<String, Object> props = new LinkedHashMap<>();
         props.put("id", point.getId());
         props.put("timestamp", point.getTimestamp().toString());
@@ -90,8 +81,6 @@ public class GeoJsonExportService {
         props.put("elevation", point.getElevationMeters());
         return props;
     }
-
-    // ---- simple DTOs for serialisation ----
 
     static class FeatureCollection {
         private String type = "FeatureCollection";
