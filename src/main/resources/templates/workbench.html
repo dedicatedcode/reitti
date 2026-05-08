@@ -944,8 +944,7 @@
 <div class="floating legend">
     <h4>Legend</h4>
     <div class="legend-row"><span class="legend-line" style="background:var(--gold)"></span>Primary Path</div>
-    <div class="legend-row dashed"><span class="legend-line" style="border-color:var(--sky)"></span>Candidate Track
-    </div>
+    <div class="legend-row dashed"><span class="legend-line" style="border-color:var(--sky)"></span>Candidate Track</div>
     <div class="legend-row"><span class="legend-line" style="background:var(--violet)"></span>Third device</div>
     <div class="legend-row"><span class="legend-line"
                                   style="background:var(--gold-bright); box-shadow: 0 0 8px var(--gold-glow)"></span>Selected
@@ -989,9 +988,10 @@
         <div class="sep"></div>
 
         <select class="device-select" id="deviceSelect">
-            <option value="garmin" selected>Garmin Fenix 7</option>
-            <option value="gopro">GoPro Hero 12</option>
-            <option value="null">Phone</option>
+            <option value="default" selected th:data-color="${userSettings.timelineColor()}" th:text="#{workbench.device.default.label}">Default</option>
+            <option th:each="device : ${devices}" th:data-color="${device.color()}" th:value="${device.id()}" value="garmin" th:text="${device.name()}">Garmin Fenix 7</option>
+            <option value="gopro" th:remove="all">GoPro Hero 12</option>
+            <option value="null" th:remove="all">Phone</option>
         </select>
 
         <button class="head-btn" id="btnDelete" title="Delete selection" disabled>Delete</button>
@@ -1087,7 +1087,6 @@
     </div>
 </div>
 <script th:inline="javascript">
-
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}

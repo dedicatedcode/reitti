@@ -5,18 +5,14 @@
 let _idCounter = 0;
 const nextId = () => ++_idCounter;
 
-const T_TOTAL_BOUNDS = 365 * 24 * 3600 * 1000;
-const T_START_REAL = new Date('2026-05-07T00:00:00Z').getTime();
-const ORIGIN = {lat: 37.7694, lng: -122.4562};
-
-const DeviceSources = {
-    'null':   {key: null,     name: 'Phone',          color: '#b89adc'},
-    'garmin': {key: 'garmin', name: 'Garmin Fenix 7', color: '#8fc5e6'},
-    'gopro':  {key: 'gopro',  name: 'GoPro Hero 12',  color: '#b89adc'}
-};
-const GOLD = '#d9a441';
-const colorOf = (sid) => sid == null ? GOLD : (DeviceSources[sid]?.color || '#8fc5e6');
-const nameOf  = (sid) => DeviceSources[sid == null ? 'null' : sid]?.name || 'Phone';
+const DeviceSources = Object.fromEntries(
+    Array.from(document.querySelectorAll('#deviceSelect option')).map(o => {
+        const key = o.value;
+        return [String(key), { key, name: o.textContent.trim(), color: o.dataset.color }];
+    })
+);
+const colorOf = (sid) =>  DeviceSources[sid == null ? 'default' : sid]?.color;
+const nameOf  = (sid) => DeviceSources[sid == null ? 'default' : sid]?.name;
 
 // Normalized per-source cache: sourceId -> array of {id, sourceId, t, lat, lng, alt}
 const SourceData = new Map();
@@ -51,24 +47,21 @@ function goToDate(date, opts = {}) {
     const centerHour = opts.hour ?? 9;
     const centerRealMs = dayStartUtc + centerHour * 3600 * 1000;
 
-    // Convert real-world time to internal "ms since T_START_REAL"
-    const centerT = centerRealMs - T_START_REAL;
-
     // Choose viewport duration: keep current, or override
     if (opts.durationMs) {
-        viewportDuration = Math.max(60 * 1000, Math.min(T_TOTAL_BOUNDS, opts.durationMs));
+        viewportDuration = Math.max(60 * 1000, opts.durationMs);
     } else if (!opts.keepDuration) {
         viewportDuration = 45 * 60 * 1000; // default 45 min
     }
 
-    viewportStartT = centerT - viewportDuration / 2;
+    viewportStartT = centerRealMs - viewportDuration / 2;
     clampViewport();
 
     // Also recenter the patch selection on the new date so the user
     // has a meaningful copy-range to work with immediately
     const patchSpan = Math.min(5 * 60000, viewportDuration * 0.15);
-    W.patch.tStart = centerT - patchSpan / 2;
-    W.patch.tEnd   = centerT + patchSpan / 2;
+    W.patch.tStart = centerRealMs - patchSpan / 2;
+    W.patch.tEnd   = centerRealMs + patchSpan / 2;
 
     // Clear transient UI state; edits in EditStore are untouched
     W.selected.clear();
@@ -79,15 +72,6 @@ function goToDate(date, opts = {}) {
     triggerDebouncedDataLoad();
 }
 
-/**
- * Returns the date currently centered in the timeline viewport, as YYYY-MM-DD.
- * Useful for initializing the datepicker to the current view.
- */
-function getCurrentDate() {
-    const centerT = viewportStartT + viewportDuration / 2;
-    const d = new Date(T_START_REAL + centerT);
-    return d.toISOString().substring(0, 10);
-}
 
 /* ============================================================
    GeoJSON ADAPTERS
@@ -171,11 +155,11 @@ function patchOwnerAt(t) {
    VIEWPORT
    ============================================================ */
 let viewportDuration = 45 * 60 * 1000;
-let viewportStartT = T_TOTAL_BOUNDS / 2;
+let viewportStartT = viewportDuration / 2;
 
 const W = {
     tool: 'inspect',
-    selectedDevice: 'garmin',
+    selectedDevice: 'default',
     selected: new Set(),
     patch: {tStart: viewportStartT + 10 * 60000, tEnd: viewportStartT + 15 * 60000},
     hoverT: null,
@@ -186,63 +170,15 @@ const tToXf = (t, w) => ((t - viewportStartT) / viewportDuration) * w;
 const xToTf = (x, w) => viewportStartT + (x / w) * viewportDuration;
 
 function fmtClock(ms) {
-    return new Date(T_START_REAL + ms).toISOString().substring(11, 19);
+    return new Date(ms).toISOString().substring(11, 19);
 }
 function fmtClockShort(ms) {
-    return new Date(T_START_REAL + ms).toISOString().substring(11, 16);
+    return new Date(ms).toISOString().substring(11, 16);
 }
 function fmtDateCompact(ms) {
-    const d = new Date(T_START_REAL + ms);
+    const d = new Date(ms);
     return `${d.getMonth()+1}/${d.getDate()} ` + d.toISOString().substring(11, 16);
 }
-
-/* ============================================================
-   MOCK BACKEND — returns GeoJSON FeatureCollection
-   ============================================================ */
-const BackendMockAPI = {
-    async fetchDevicePoints(sourceId, startT, endT, resolutionMs) {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const features = [];
-                const posNoise = sourceId === 'garmin' ? 0.00009 : (sourceId === 'gopro' ? 0.00005 : 0.00025);
-                const altNoise = sourceId === 'garmin' ? 1.5 : (sourceId === 'gopro' ? 1 : 4);
-                const tStep = Math.max(1000, resolutionMs);
-                const _genStartT = Math.max(0, startT);
-                const _genEndT = Math.min(T_TOTAL_BOUNDS, endT);
-                const gridStart = Math.ceil(_genStartT / tStep) * tStep;
-
-                for (let t = gridStart; t <= _genEndT; t += tStep) {
-                    if (t % 18000000 < 9000000 && sourceId === 'null') continue;
-                    const tn = t / (30 * 60 * 1000);
-                    const theta = tn * Math.PI * 2.6;
-                    const lat = ORIGIN.lat + Math.sin(theta)*0.0085 + tn*0.0025 - 0.001;
-                    const lng = ORIGIN.lng + Math.cos(theta*0.75)*0.012 + Math.sin(theta*1.5)*0.003;
-                    const alt = 55 + 45*Math.sin(tn*Math.PI*2.2) + 8*Math.sin(tn*Math.PI*14);
-                    const r = Math.abs(Math.sin((t ^ (sourceId ? sourceId.length : 9))*10000));
-
-                    features.push({
-                        type: 'Feature',
-                        properties: {
-                            id: `${sourceId || 'phone'}_${t}`,
-                            sourceId: sourceId,
-                            t,
-                            alt: alt + (r - 0.5) * altNoise
-                        },
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [
-                                lng + (r - 0.5) * posNoise,
-                                lat + (r - 0.5) * posNoise,
-                                alt + (r - 0.5) * altNoise
-                            ]
-                        }
-                    });
-                }
-                resolve({type: 'FeatureCollection', features});
-            }, 350);
-        });
-    }
-};
 
 let fetchDebounceId = null;
 
@@ -323,13 +259,20 @@ async function loadViewportData() {
     if (zi && !zi.innerHTML.includes('Loading')) {
         zi.innerHTML += ` <span style="color:#d9a441">[Loading…]</span>`;
     }
+    console.log('[load] enter', {
+        viewportStartT, viewportDuration,
+        hydratedRanges: JSON.parse(JSON.stringify(hydratedRanges)),
+        finalCount: FinalTimeline.length
+    });
 
     const pad = viewportDuration * 0.5;
-    const startT = Math.max(0, viewportStartT - pad);
-    const endT = Math.min(T_TOTAL_BOUNDS, viewportStartT + viewportDuration + pad);
+    const startT = viewportStartT - pad;
+    const endT   = viewportStartT + viewportDuration + pad;
 
     const needed = subtractRanges(hydratedRanges, startT, endT);
+    console.log('[load] needed ranges', needed);
     if (!needed.length && FinalTimeline.length > 0) {
+        console.log('[load] early exit — already hydrated');
         W.isLoading = false;
         refreshAll();
         return;
@@ -339,28 +282,25 @@ async function loadViewportData() {
     if (viewportDuration > 24 * 3600 * 1000) resolutionMs = 5 * 60 * 1000;
     else if (viewportDuration > 4 * 3600 * 1000) resolutionMs = 60 * 1000;
 
+    const devices = Object.values(DeviceSources);
+
     try {
         const firstBoot = FinalTimeline.length === 0 && !histStartSnapshot;
 
         for (const range of needed) {
-            const [phoneFC, garminFC, goproFC] = await Promise.all([
-                BackendMockAPI.fetchDevicePoints(null,     range.tStart, range.tEnd, resolutionMs),
-                BackendMockAPI.fetchDevicePoints('garmin', range.tStart, range.tEnd, resolutionMs),
-                BackendMockAPI.fetchDevicePoints('gopro',  range.tStart, range.tEnd, Math.max(500, resolutionMs/2))
-            ]);
-            mergeSourceCacheFromGeoJSON(null,     phoneFC);
-            mergeSourceCacheFromGeoJSON('garmin', garminFC);
-            mergeSourceCacheFromGeoJSON('gopro',  goproFC);
+            const results = await Promise.all(
+                devices.map(d => fetchDevicePoints(d.key, range.tStart, range.tEnd, resolutionMs))
+            );
+
+            devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i]));
             rebuildFinalInRange(range.tStart, range.tEnd);
 
             if (firstBoot) {
                 histStartSnapshot = {
                     finalCount: FinalTimeline.length,
-                    sources: {
-                        phone:  phoneFC.features.length,
-                        garmin: garminFC.features.length,
-                        gopro:  goproFC.features.length
-                    }
+                    sources: Object.fromEntries(
+                        devices.map((d, i) => [d.key ?? 'null', results[i].features.length])
+                    )
                 };
             }
         }
@@ -372,6 +312,21 @@ async function loadViewportData() {
         W.isLoading = false;
         refreshAll();
     }
+}
+
+async function fetchDevicePoints(deviceId, tStart, tEnd, resolutionMs) {
+    const params = new URLSearchParams({
+        start: new Date(tStart).toISOString(),
+        end:   new Date(tEnd).toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
+    if (deviceId !== "default") params.set('device', deviceId);
+
+    const res = await fetch(window.contextPath + `/api/v2/locations/geojson?${params}`, {
+        headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Fetch failed for device ${deviceId}: ${res.status}`);
+    return res.json();
 }
 
 function triggerDebouncedDataLoad() {
@@ -660,10 +615,9 @@ function buildTimeLabelsFC() {
 }
 
 function buildCandidateFC() {
-    const devKey = W.selectedDevice === 'null' ? null : W.selectedDevice;
-    const arr = (SourceData.get(devKey) || [])
+    const arr = (SourceData.get(W.selectedDevice) || [])
         .filter(p => p.t >= viewportStartT - viewportDuration * 0.1 && p.t <= viewportStartT + viewportDuration * 1.1);
-    const color = DeviceSources[devKey == null ? 'null' : devKey].color;
+    const color = DeviceSources[W.selectedDevice == null ? 'default' : W.selectedDevice].color;
     if (arr.length < 2) return emptyFC();
     const segs = [];
     let seg = [[arr[0].lng, arr[0].lat]];
@@ -683,9 +637,8 @@ function buildCandidateFC() {
 }
 
 function buildCandidateActiveFC() {
-    const devKey = W.selectedDevice === 'null' ? null : W.selectedDevice;
-    const arr = (SourceData.get(devKey) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
-    const color = DeviceSources[devKey == null ? 'null' : devKey].color;
+    const arr = (SourceData.get(W.selectedDevice) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
+    const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return emptyFC();
     return {
         type: 'FeatureCollection', features: [{
@@ -865,17 +818,6 @@ function drawMainLane() {
         mctx.restore();
     }
 
-    const mapZeroX = tToXf(0, w);
-    if (mapZeroX > 0) {
-        mctx.fillStyle = 'rgba(224, 122, 107, 0.1)';
-        mctx.fillRect(0, 0, mapZeroX, h);
-    }
-    const mapEndX = tToXf(T_TOTAL_BOUNDS, w);
-    if (mapEndX < w) {
-        mctx.fillStyle = 'rgba(224, 122, 107, 0.1)';
-        mctx.fillRect(mapEndX, 0, w - mapEndX, h);
-    }
-
     // Render all points as dots when in select/boxselect tools
     if (W.tool === 'select' || W.tool === 'boxselect') {
         const dotY = blockY + blockH / 2;
@@ -940,12 +882,11 @@ function drawDeviceLane() {
     dctx.clearRect(0, 0, w, h);
     drawTimeGrid(dctx, w, h);
 
-    const devKey = W.selectedDevice === 'null' ? null : W.selectedDevice;
-    const arr = (SourceData.get(devKey) || []).filter(p =>
+    const arr = (SourceData.get(W.selectedDevice) || []).filter(p =>
         p.t >= viewportStartT - viewportDuration*0.2 &&
         p.t <= viewportStartT + viewportDuration*1.2
     );
-    const color = DeviceSources[devKey == null ? 'null' : devKey].color;
+    const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return;
 
     let aMin = Infinity, aMax = -Infinity;
@@ -1048,9 +989,7 @@ function syncPatchBox() {
    WHEEL ZOOM / PAN
    ============================================================ */
 function clampViewport() {
-    if (viewportStartT < 0) viewportStartT = 0;
-    if (viewportStartT + viewportDuration > T_TOTAL_BOUNDS)
-        viewportStartT = T_TOTAL_BOUNDS - viewportDuration;
+    viewportDuration = Math.max(60 * 1000, viewportDuration);
 }
 
 document.getElementById('drawer').addEventListener('wheel', (e) => {
@@ -1067,7 +1006,7 @@ document.getElementById('drawer').addEventListener('wheel', (e) => {
         const tMouse = xToTf(cursorX, w);
         const zoomRatio = e.deltaY > 0 ? 1.08 : 0.92;
         const proposedDuration = viewportDuration * zoomRatio;
-        viewportDuration = Math.max(60 * 1000, Math.min(T_TOTAL_BOUNDS, proposedDuration));
+        viewportDuration = Math.max(60 * 1000, proposedDuration);
         viewportStartT = tMouse - (cursorX / w) * viewportDuration;
     } else {
         e.preventDefault();
@@ -1101,17 +1040,19 @@ window.addEventListener('mousemove', (e) => {
     const cell = document.getElementById('deviceLaneCell');
     const w = cell.clientWidth;
     const dt = ((e.clientX - patchDrag.startX) / w) * viewportDuration;
-    let ns = patchDrag.origStart, ne = patchDrag.origEnd;
     const minSpan = 5000;
+    let ns = patchDrag.origStart, ne = patchDrag.origEnd;
+
     if (patchDrag.kind === 'move') {
         const span = ne - ns;
-        ns = Math.max(0, Math.min(T_TOTAL_BOUNDS - span, patchDrag.origStart + dt));
+        ns = patchDrag.origStart + dt;
         ne = ns + span;
     } else if (patchDrag.kind === 'left') {
-        ns = Math.max(0, Math.min(ne - minSpan, patchDrag.origStart + dt));
+        ns = Math.min(ne - minSpan, patchDrag.origStart + dt);
     } else if (patchDrag.kind === 'right') {
-        ne = Math.min(T_TOTAL_BOUNDS, Math.max(ns + minSpan, patchDrag.origEnd + dt));
+        ne = Math.max(ns + minSpan, patchDrag.origEnd + dt);
     }
+
     W.patch.tStart = ns;
     W.patch.tEnd = ne;
     syncPatchBox();
@@ -1195,14 +1136,12 @@ window.addEventListener('mouseup', () => {
         const span = W.patch.tEnd - W.patch.tStart;
         let ns = pan.clickT - span / 2;
         let ne = ns + span;
-        if (ns < 0) { ns = 0; ne = span; }
-        if (ne > T_TOTAL_BOUNDS) { ne = T_TOTAL_BOUNDS; ns = ne - span; }
         W.patch.tStart = ns;
         W.patch.tEnd = ne;
         syncPatchBox();
         map.getSource('cand-active')?.setData(buildCandidateActiveFC());
     }
-});;
+});
 
 /* ============================================================
    SCRUBBING + MAP FOLLOW
@@ -1254,7 +1193,7 @@ function syncPickerToHover(t) {
     const now = performance.now();
     if (now - _pickerSyncAt < 80) return;  // ~12 Hz, plenty smooth
     _pickerSyncAt = now;
-    dateSelection.setDateSilent(new Date(T_START_REAL + t));
+    dateSelection.setDateSilent(new Date(t));
 }
 function offScrub() {
     W.hoverT = null;
@@ -1263,7 +1202,7 @@ function offScrub() {
 
     if (dateSelection) {
         const centerT = viewportStartT + viewportDuration / 2;
-        dateSelection.setDateSilent(new Date(T_START_REAL + centerT));
+        dateSelection.setDateSilent(new Date(centerT));
     }
 
 }
@@ -1294,7 +1233,7 @@ function interpolateAtT(arr, t) {
    WEAVE OPS
    ============================================================ */
 function copyToFinal() {
-    const devKey = W.selectedDevice === 'null' ? null : W.selectedDevice;
+    const devKey = W.selectedDevice=== 'default' ? null : W.selectedDevice;
     const src = (SourceData.get(devKey) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
     if (!src.length) { toast('No points in patch range', true); return; }
 
@@ -1623,7 +1562,7 @@ document.querySelectorAll('.head-btn[data-tool]').forEach(b => {
 
 document.getElementById('deviceSelect').addEventListener('change', (e) => {
     W.selectedDevice = e.target.value;
-    const name = nameOf(W.selectedDevice === 'null' ? null : W.selectedDevice);
+    const name = nameOf(W.selectedDevice=== 'default' ? null : W.selectedDevice);
     document.getElementById('deviceSubLabel').textContent = `(${name})`;
     refreshAll();
 });
@@ -1642,20 +1581,16 @@ function openCommit() {
         return acc;
     }, {});
     const payload = {
-        schema: 'journey-weaver/commit@4',
-        journey: 'Alpine Crossing (Infinite Canvas bounds)',
-        user: 'explorer_ben',
-        clientTs: new Date().toISOString(),
         initialState: histStartSnapshot,
         editStore: {
             patches: EditStore.patches,
             deletedPoints: Array.from(EditStore.deletedPoints).map(k => {
                 const [sid, id] = k.split('|');
-                return {sourceId: sid === 'null' ? null : sid, id};
+                return {sourceId: sid=== 'default' ? null : sid, id};
             }),
             movedPoints: Array.from(EditStore.movedPoints.entries()).map(([k, v]) => {
                 const [sid, id] = k.split('|');
-                return {sourceId: sid === 'null' ? null : sid, id, lat: v.lat, lng: v.lng};
+                return {sourceId: sid=== 'default' ? null : sid, id, lat: v.lat, lng: v.lng};
             })
         },
         actions: active.map(a => ({seq: a.seq, type: a.type, at: a.at, ...a.payload})),
@@ -1664,7 +1599,6 @@ function openCommit() {
             pointCount: FinalTimeline.length, composition,
             tStart: FinalTimeline[0]?.t ?? 0,
             tEnd: FinalTimeline[FinalTimeline.length - 1]?.t ?? 0,
-            note: 'Cached window only — server should rebuild from editStore.'
         }
     };
     summary.textContent = `${active.length} action${active.length === 1 ? '' : 's'} · ${FinalTimeline.length} cached story points`;

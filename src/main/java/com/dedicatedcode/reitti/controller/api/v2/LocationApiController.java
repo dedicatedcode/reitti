@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.service.GeoJsonExportService;
 import com.dedicatedcode.reitti.service.StreamingRawLocationPointJdbcService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -13,7 +14,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -29,15 +35,17 @@ public class LocationApiController {
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final RawLocationPointJdbcService jdbcService;
+    private final GeoJsonExportService geoJsonExportService;
     private final StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService;
 
     public LocationApiController(UserJdbcService userJdbcService,
                                  UserSharingJdbcService userSharingJdbcService,
-                                 RawLocationPointJdbcService jdbcService,
+                                 RawLocationPointJdbcService jdbcService, GeoJsonExportService geoJsonExportService,
                                  StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService) {
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.jdbcService = jdbcService;
+        this.geoJsonExportService = geoJsonExportService;
         this.streamingRawLocationPointJdbcService = streamingRawLocationPointJdbcService;
     }
 
@@ -79,6 +87,42 @@ public class LocationApiController {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
                 .header(HttpHeaders.CONTENT_ENCODING, "identity")
                 .body(emitter);
+    }
+
+    @GetMapping(value = "/geojson", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StreamingResponseBody> loadAsGeoJson(@AuthenticationPrincipal User user,
+                                                               @RequestParam(name = "device", required = false) Long deviceId,
+                                                               @RequestParam String start,
+                                                               @RequestParam String end,
+                                                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        try {
+            StreamingResponseBody stream = outputStream -> {
+                try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                    geoJsonExportService.generateGeoJsonContentStreaming(
+                            user,
+                            parseInstant(start, timezone, false),
+                            parseInstant(end, timezone, true),
+                            deviceId,
+                            writer);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error generating GeoJSON file", e);
+                }
+            };
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(stream);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(outputStream -> {
+                        try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                            writer.write("Error generating GeoJSON Stream: " + e.getMessage());
+                        } catch (IOException ioException) {
+                            throw new RuntimeException(ioException);
+                        }
+                    });
+        }
     }
     private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
         if (user.getId().equals(userId)) {
