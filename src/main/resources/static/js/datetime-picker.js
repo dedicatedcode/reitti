@@ -538,6 +538,8 @@ class DateTimePicker {
         this.renderCalendar();
         this.renderYearList();
         if (!this.dateOnly) this.highlightSelectedTime();
+
+        this._emit('change');
     }
 
     /**
