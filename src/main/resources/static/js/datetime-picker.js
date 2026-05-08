@@ -1,7 +1,11 @@
 /**
  * DateTimePicker - A custom datetime picker component
- * Provides calendar, year selection, and time selection functionality
- * Updated to work with separate date and time inputs
+ * Provides calendar, year selection, and (optionally) time selection.
+ *
+ * Modes:
+ *   - Full mode:  container has both .date-input and .time-input
+ *   - Date-only:  container has only .date-input
+ *                 (time is always 00:00:00 in selectedDate and getValue)
  */
 class DateTimePicker {
     /**
@@ -27,6 +31,9 @@ class DateTimePicker {
         this.dateInput = element.querySelector('.date-input');
         this.timeInput = element.querySelector('.time-input');
         this.triggerButton = element.querySelector('.picker-trigger');
+
+        // Date-only mode when no time input exists
+        this.dateOnly = !this.timeInput;
 
         // Create popup structure if it doesn't exist
         if (!element.querySelector('.picker-popup')) {
@@ -54,6 +61,7 @@ class DateTimePicker {
 
         const pickerContainer = document.createElement('div');
         pickerContainer.className = 'picker-container';
+        if (this.dateOnly) pickerContainer.classList.add('date-only');
 
         // Calendar section
         const calendarSection = document.createElement('div');
@@ -105,18 +113,20 @@ class DateTimePicker {
 
         yearScroll.appendChild(yearList);
 
-        // Time scroll section
-        const timeScroll = document.createElement('div');
-        timeScroll.className = 'time-scroll';
-
-        const timeList = document.createElement('div');
-        timeList.className = 'time-list';
-
-        timeScroll.appendChild(timeList);
-
         pickerContainer.appendChild(calendarSection);
         pickerContainer.appendChild(yearScroll);
-        pickerContainer.appendChild(timeScroll);
+
+        // Time scroll section — only in full mode
+        if (!this.dateOnly) {
+            const timeScroll = document.createElement('div');
+            timeScroll.className = 'time-scroll';
+
+            const timeList = document.createElement('div');
+            timeList.className = 'time-list';
+
+            timeScroll.appendChild(timeList);
+            pickerContainer.appendChild(timeScroll);
+        }
 
         popup.appendChild(pickerContainer);
         this.element.appendChild(popup);
@@ -129,7 +139,7 @@ class DateTimePicker {
         this.setupEventListeners();
         this.renderCalendar();
         this.renderYearList();
-        this.renderTimeList();
+        if (!this.dateOnly) this.renderTimeList();
         this.updateFromInputs();
 
         // Preselect current date and closest time if no date is selected
@@ -157,12 +167,14 @@ class DateTimePicker {
             }
         });
 
-        this.timeInput.addEventListener('change', () => {
-            this.updateFromInputs();
-            if (this.options.onValidate) {
-                this.options.onValidate();
-            }
-        });
+        if (this.timeInput) {
+            this.timeInput.addEventListener('change', () => {
+                this.updateFromInputs();
+                if (this.options.onValidate) {
+                    this.options.onValidate();
+                }
+            });
+        }
 
         // Calendar navigation
         const prevMonthBtn = this.element.querySelector('.prev-month');
@@ -206,21 +218,26 @@ class DateTimePicker {
     }
 
     /**
-     * Select today's date and closest time
+     * Select today's date (and, in full mode, closest 15-min time).
+     * In date-only mode, time is pinned to 00:00:00.
      */
     selectToday() {
         const now = new Date();
         this.currentDate = new Date(now);
         this.selectedDate = new Date(now);
 
-        // Round to nearest 15 minutes
-        const minutes = Math.round(now.getMinutes() / 15) * 15;
-        this.selectedDate.setMinutes(minutes, 0, 0);
+        if (this.dateOnly) {
+            this.selectedDate.setHours(0, 0, 0, 0);
+        } else {
+            // Round to nearest 15 minutes
+            const minutes = Math.round(now.getMinutes() / 15) * 15;
+            this.selectedDate.setMinutes(minutes, 0, 0);
+        }
 
         this.updateInputs();
         this.renderCalendar();
         this.renderYearList();
-        this.highlightSelectedTime();
+        if (!this.dateOnly) this.highlightSelectedTime();
     }
 
     /**
@@ -254,7 +271,6 @@ class DateTimePicker {
         // Render days grid
         daysGrid.innerHTML = '';
         const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
         const startDate = new Date(firstDay);
         startDate.setDate(startDate.getDate() - firstDay.getDay());
 
@@ -326,31 +342,25 @@ class DateTimePicker {
      * @param {number} year - The year to change to
      */
     changeYear(year) {
-        // Store the current day of month
         const currentDay = this.selectedDate ? this.selectedDate.getDate() : 1;
         const currentMonth = this.selectedDate ? this.selectedDate.getMonth() : this.currentDate.getMonth();
 
-        // Update current date to the new year
         this.currentDate.setFullYear(year);
 
-        // Try to maintain the same month and day
         let newDate = new Date(year, currentMonth, currentDay);
 
-        // If the day is invalid for the new month/year, find the next valid day
         if (newDate.getMonth() !== currentMonth || this.isDateDisabled(newDate)) {
-            // Try the last day of the month if current day is invalid
             const lastDayOfMonth = new Date(year, currentMonth + 1, 0).getDate();
             newDate = new Date(year, currentMonth, Math.min(currentDay, lastDayOfMonth));
 
-            // If still disabled, find the next available day
             if (this.isDateDisabled(newDate)) {
                 newDate = this.findNextValidDate(newDate);
             }
         }
 
-        // Update selected date if we have one
         if (this.selectedDate) {
             this.selectedDate.setFullYear(year, currentMonth, newDate.getDate());
+            if (this.dateOnly) this.selectedDate.setHours(0, 0, 0, 0);
             this.updateInputs();
         }
 
@@ -360,12 +370,10 @@ class DateTimePicker {
 
     /**
      * Find the next valid date starting from a given date
-     * @param {Date} startDate - The date to start searching from
-     * @returns {Date} The next valid date
      */
     findNextValidDate(startDate) {
         let currentDate = new Date(startDate);
-        const maxAttempts = 31; // Don't search more than a month ahead
+        const maxAttempts = 31;
 
         for (let i = 0; i < maxAttempts; i++) {
             currentDate.setDate(currentDate.getDate() + 1);
@@ -374,15 +382,16 @@ class DateTimePicker {
             }
         }
 
-        // If no valid date found in the next month, return the first day of the month
         return new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     }
 
     /**
-     * Render the time selection list
+     * Render the time selection list (full mode only)
      */
     renderTimeList() {
+        if (this.dateOnly) return;
         const timeList = this.element.querySelector('.time-list');
+        if (!timeList) return;
         timeList.innerHTML = '';
 
         for (let hour = 0; hour < 24; hour++) {
@@ -408,9 +417,6 @@ class DateTimePicker {
 
     /**
      * Format time according to the specified format
-     * @param {number} hour - Hour value (0-23)
-     * @param {number} minute - Minute value (0-59)
-     * @returns {string} Formatted time string
      */
     formatTime(hour, minute) {
         if (this.options.timeFormat === '12h') {
@@ -423,24 +429,23 @@ class DateTimePicker {
     }
 
     /**
-     * Select a specific date
-     * @param {Date} date - The date to select
+     * Select a specific date. In date-only mode the time is pinned to 00:00:00.
      */
     selectDate(date) {
         if (!this.selectedDate) {
             this.selectedDate = new Date();
         }
         this.selectedDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+        if (this.dateOnly) this.selectedDate.setHours(0, 0, 0, 0);
         this.updateInputs();
         this.renderCalendar();
     }
 
     /**
-     * Select a specific time
-     * @param {number} hour - Hour value (0-23)
-     * @param {number} minute - Minute value (0-59)
+     * Select a specific time (no-op in date-only mode)
      */
     selectTime(hour, minute) {
+        if (this.dateOnly) return;
         if (!this.selectedDate) {
             this.selectedDate = new Date();
         }
@@ -450,9 +455,10 @@ class DateTimePicker {
     }
 
     /**
-     * Highlight the currently selected time in the time list
+     * Highlight the currently selected time in the time list (full mode only)
      */
     highlightSelectedTime() {
+        if (this.dateOnly) return;
         this.element.querySelectorAll('.time-item').forEach(item => {
             item.classList.remove('selected');
             if (this.selectedDate &&
@@ -464,23 +470,21 @@ class DateTimePicker {
     }
 
     /**
-     * Update the date and time inputs with the selected date/time
+     * Update the date (and optionally time) inputs with the selected date/time
      */
     updateInputs() {
-        if (this.selectedDate) {
-            // Format date as YYYY-MM-DD
-            const year = this.selectedDate.getFullYear();
-            const month = (this.selectedDate.getMonth() + 1).toString().padStart(2, '0');
-            const day = this.selectedDate.getDate().toString().padStart(2, '0');
-            this.dateInput.value = `${year}-${month}-${day}`;
+        if (!this.selectedDate) return;
 
-            // Format time as HH:MM
+        const year = this.selectedDate.getFullYear();
+        const month = (this.selectedDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = this.selectedDate.getDate().toString().padStart(2, '0');
+        this.dateInput.value = `${year}-${month}-${day}`;
+        this.dateInput.dispatchEvent(new Event('change'));
+
+        if (this.timeInput) {
             const hours = this.selectedDate.getHours().toString().padStart(2, '0');
             const minutes = this.selectedDate.getMinutes().toString().padStart(2, '0');
             this.timeInput.value = `${hours}:${minutes}`;
-
-            // Trigger change events
-            this.dateInput.dispatchEvent(new Event('change'));
             this.timeInput.dispatchEvent(new Event('change'));
         }
     }
@@ -489,14 +493,23 @@ class DateTimePicker {
      * Update the picker state from the input values
      */
     updateFromInputs() {
-        if (this.dateInput.value && this.timeInput.value) {
+        if (!this.dateInput.value) return;
+
+        if (this.dateOnly) {
+            // Parse YYYY-MM-DD as local midnight
+            const [y, m, d] = this.dateInput.value.split('-').map(Number);
+            this.selectedDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+        } else if (this.timeInput && this.timeInput.value) {
             const dateTimeString = `${this.dateInput.value}T${this.timeInput.value}`;
             this.selectedDate = new Date(dateTimeString);
-            this.currentDate = new Date(this.selectedDate);
-            this.renderCalendar();
-            this.renderYearList();
-            this.highlightSelectedTime();
+        } else {
+            return;
         }
+
+        this.currentDate = new Date(this.selectedDate);
+        this.renderCalendar();
+        this.renderYearList();
+        if (!this.dateOnly) this.highlightSelectedTime();
     }
 
     /**
@@ -518,7 +531,7 @@ class DateTimePicker {
         this.popup.style.display = 'block';
         if (this.selectedDate) {
             this.scrollToSelectedYear();
-            this.scrollToSelectedTime();
+            if (!this.dateOnly) this.scrollToSelectedTime();
         }
     }
 
@@ -540,9 +553,10 @@ class DateTimePicker {
     }
 
     /**
-     * Scroll to the selected time in the time list
+     * Scroll to the selected time in the time list (full mode only)
      */
     scrollToSelectedTime() {
+        if (this.dateOnly) return;
         const selectedTime = this.element.querySelector('.time-item.selected');
         if (selectedTime) {
             selectedTime.scrollIntoView({ block: 'center' });
@@ -551,20 +565,15 @@ class DateTimePicker {
 
     /**
      * Check if two dates are the same day
-     * @param {Date} date1 - First date
-     * @param {Date} date2 - Second date
-     * @returns {boolean} True if same day
      */
     isSameDay(date1, date2) {
         return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+            date1.getMonth() === date2.getMonth() &&
+            date1.getDate() === date2.getDate();
     }
 
     /**
      * Check if a date is disabled
-     * @param {Date} date - Date to check
-     * @returns {boolean} True if disabled
      */
     isDateDisabled(date) {
         if (this.options.minDate && date < this.options.minDate) {
@@ -577,26 +586,31 @@ class DateTimePicker {
     }
 
     /**
-     * Get the current value as ISO string
-     * @returns {string} Current datetime value
+     * Get the current value as ISO string.
+     * Date-only mode returns 'YYYY-MM-DDT00:00:00'.
      */
     getValue() {
-        if (this.dateInput.value && this.timeInput.value) {
+        if (!this.dateInput.value) return '';
+        if (this.dateOnly) {
+            return `${this.dateInput.value}T00:00:00`;
+        }
+        if (this.timeInput && this.timeInput.value) {
             return `${this.dateInput.value}T${this.timeInput.value}`;
         }
         return '';
     }
 
     /**
-     * Set the value from ISO string
-     * @param {string} value - ISO datetime string
+     * Set the value from ISO string. In date-only mode the time portion
+     * is ignored and the date is stored with time pinned to 00:00:00.
      */
     setValue(value) {
-        if (value) {
-            const date = new Date(value);
-            this.dateInput.value = value.split('T')[0];
-            this.timeInput.value = value.split('T')[1]?.substring(0, 5) || '';
-            this.updateFromInputs();
+        if (!value) return;
+        const [datePart, timePart] = value.split('T');
+        this.dateInput.value = datePart;
+        if (!this.dateOnly && this.timeInput) {
+            this.timeInput.value = timePart ? timePart.substring(0, 5) : '';
         }
+        this.updateFromInputs();
     }
 }

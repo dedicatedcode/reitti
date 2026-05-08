@@ -24,6 +24,72 @@ const SourceData = new Map();
 let FinalTimeline = [];
 
 /* ============================================================
+   DATE NAVIGATION
+   ============================================================
+   Jumps the timeline viewport to a given calendar date.
+   User edits (patches, deletes, moves) are preserved because
+   they live in EditStore, not in the point cache.
+   ============================================================ */
+
+/**
+ * Navigate the timeline to a specific date.
+ * @param {Date|string} date - A Date object or ISO date string ('YYYY-MM-DD')
+ * @param {Object} [opts]
+ * @param {number} [opts.hour=9]        - Hour of day to center on (0-23)
+ * @param {number} [opts.durationMs]    - Override viewport duration
+ * @param {boolean} [opts.keepDuration=true] - Keep current zoom level
+ */
+function goToDate(date, opts = {}) {
+    const d = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(d.getTime())) {
+        console.warn('[goToDate] Invalid date:', date);
+        return;
+    }
+
+    // Normalize to UTC midnight of the selected day, then add the center hour
+    const dayStartUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    const centerHour = opts.hour ?? 9;
+    const centerRealMs = dayStartUtc + centerHour * 3600 * 1000;
+
+    // Convert real-world time to internal "ms since T_START_REAL"
+    const centerT = centerRealMs - T_START_REAL;
+
+    // Choose viewport duration: keep current, or override
+    if (opts.durationMs) {
+        viewportDuration = Math.max(60 * 1000, Math.min(T_TOTAL_BOUNDS, opts.durationMs));
+    } else if (!opts.keepDuration) {
+        viewportDuration = 45 * 60 * 1000; // default 45 min
+    }
+
+    viewportStartT = centerT - viewportDuration / 2;
+    clampViewport();
+
+    // Also recenter the patch selection on the new date so the user
+    // has a meaningful copy-range to work with immediately
+    const patchSpan = Math.min(5 * 60000, viewportDuration * 0.15);
+    W.patch.tStart = centerT - patchSpan / 2;
+    W.patch.tEnd   = centerT + patchSpan / 2;
+
+    // Clear transient UI state; edits in EditStore are untouched
+    W.selected.clear();
+    W.hoverT = null;
+    playhead.style.display = 'none';
+
+    refreshAll();
+    triggerDebouncedDataLoad();
+}
+
+/**
+ * Returns the date currently centered in the timeline viewport, as YYYY-MM-DD.
+ * Useful for initializing the datepicker to the current view.
+ */
+function getCurrentDate() {
+    const centerT = viewportStartT + viewportDuration / 2;
+    const d = new Date(T_START_REAL + centerT);
+    return d.toISOString().substring(0, 10);
+}
+
+/* ============================================================
    GeoJSON ADAPTERS
    ============================================================ */
 function featureToPoint(feature) {
@@ -1062,11 +1128,15 @@ function beginTimelinePan(e, cellEl) {
     if (e.button !== 0) return false;
 
     const rect = cellEl.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
     timelinePan = {
         startX: e.clientX,
         startY: e.clientY,
         origViewportStart: viewportStartT,
         cellW: rect.width,
+        clickX,
+        clickT: xToTf(clickX, rect.width),
+        cellId: cellEl.id,
         moved: false,
         cell: cellEl
     };
@@ -1074,7 +1144,6 @@ function beginTimelinePan(e, cellEl) {
     document.body.style.userSelect = 'none';
     return true;
 }
-
 function attachPanHandler(cellId) {
     const el = document.getElementById(cellId);
     if (!el) return;
@@ -1103,12 +1172,29 @@ window.addEventListener('mousemove', (e) => {
 
 window.addEventListener('mouseup', () => {
     if (!timelinePan) return;
-    const wasMoved = timelinePan.moved;
+    const pan = timelinePan;
     timelinePan = null;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-    if (wasMoved) triggerDebouncedDataLoad();
-});
+
+    if (pan.moved) {
+        triggerDebouncedDataLoad();
+        return;
+    }
+
+    // Pure click (no drag) on the device lane → recenter patch selection on click
+    if (pan.cellId === 'deviceLaneCell') {
+        const span = W.patch.tEnd - W.patch.tStart;
+        let ns = pan.clickT - span / 2;
+        let ne = ns + span;
+        if (ns < 0) { ns = 0; ne = span; }
+        if (ne > T_TOTAL_BOUNDS) { ne = T_TOTAL_BOUNDS; ns = ne - span; }
+        W.patch.tStart = ns;
+        W.patch.tEnd = ne;
+        syncPatchBox();
+        map.getSource('cand-active')?.setData(buildCandidateActiveFC());
+    }
+});;
 
 /* ============================================================
    SCRUBBING + MAP FOLLOW
