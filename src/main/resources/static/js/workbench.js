@@ -421,7 +421,8 @@ function pushAction(action) {
 }
 
 function undoAction(actionId) {
-    const a = History.find(x => x.id === actionId);
+    const id = Number(actionId);
+    const a = History.find(x => x.id === id);
     if (!a || a.undone) return;
 
     if (a.type === 'copy' && a._inverse) {
@@ -454,9 +455,20 @@ function undoAction(actionId) {
 
 function clearHistory() {
     if (!History.length) return;
-    if (!confirm('Clear action history? (Won\'t revert changes — just clears the log.)')) return;
+    const active = History.filter(a => !a.undone);
+    const msg = active.length
+        ? `Revert all ${active.length} action${active.length > 1 ? 's' : ''} and clear the log?`
+        : 'Clear the action log?';
+    if (!confirm(msg)) return;
+
+    // Undo in reverse chronological order so dependent state unwinds correctly
+    for (let i = History.length - 1; i >= 0; i--) {
+        if (!History[i].undone) undoAction(History[i].id);
+    }
+
     History.length = 0;
     renderHistory();
+    refreshAll();
 }
 
 function renderHistory() {
@@ -711,7 +723,6 @@ function refreshAll() {
     drawMainLane();
     drawDeviceLane();
     syncPatchBox();
-    updateStats();
     updateButtons();
     updateWovenCount();
 }
@@ -1025,10 +1036,6 @@ function syncPatchBox() {
     connectorGuide.style.display = 'block';
     patchBox.style.left = x0 + 'px';
     patchBox.style.width = Math.max(2, (x1 - x0)) + 'px';
-    document.getElementById('patchStartLabel').textContent = fmtClock(W.patch.tStart);
-    document.getElementById('patchEndLabel').textContent = fmtClock(W.patch.tEnd);
-    document.getElementById('statPatch').textContent =
-        `${fmtClockShort(W.patch.tStart)}–${fmtClockShort(W.patch.tEnd)}`;
     const center = (x0 + x1) / 2;
     const btnW = btnCopy.offsetWidth || 150;
     const clamped = Math.max(btnW / 2 + 4, Math.min(w - btnW / 2 - 4, center));
@@ -1048,6 +1055,7 @@ function clampViewport() {
 
 document.getElementById('drawer').addEventListener('wheel', (e) => {
     if (e.target.closest('#historyPanel')) return;
+    if (e.target.closest('.picker-popup')) return;
     const cell = document.getElementById('deviceLaneCell');
     const w = cell.clientWidth;
     if(!w) return;
@@ -1217,7 +1225,6 @@ function onScrub(e) {
             type: 'FeatureCollection',
             features: [{type: 'Feature', properties: {}, geometry: {type: 'Point', coordinates: [p.lng, p.lat]}}]
         });
-        document.getElementById('statCursor').textContent = `${fmtClock(t)}`;
         document.getElementById('drawerClock').textContent = fmtClock(t);
 
         const now = performance.now();
@@ -1237,13 +1244,28 @@ function onScrub(e) {
             }
         }
     }
+    syncPickerToHover(t);
 }
 
+let _pickerSyncAt = 0;
+
+function syncPickerToHover(t) {
+    if (!dateSelection) return;
+    const now = performance.now();
+    if (now - _pickerSyncAt < 80) return;  // ~12 Hz, plenty smooth
+    _pickerSyncAt = now;
+    dateSelection.setDateSilent(new Date(T_START_REAL + t));
+}
 function offScrub() {
     W.hoverT = null;
     playhead.style.display = 'none';
     map.getSource('scrub-pt')?.setData(emptyFC());
-    document.getElementById('statCursor').textContent = '—';
+
+    if (dateSelection) {
+        const centerT = viewportStartT + viewportDuration / 2;
+        dateSelection.setDateSilent(new Date(T_START_REAL + centerT));
+    }
+
 }
 
 document.getElementById('deviceLaneCell').addEventListener('mousemove', onScrub);
@@ -1676,13 +1698,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('resize', () => { refreshAll(); });
-
-function updateStats() {
-    document.getElementById('statFinal').textContent = FinalTimeline.length;
-    const devKey = W.selectedDevice === 'null' ? null : W.selectedDevice;
-    document.getElementById('statDevice').textContent = (SourceData.get(devKey) || []).length;
-    document.getElementById('statSel').textContent = W.selected.size;
-}
 
 function updateButtons() {
     document.getElementById('btnDelete').disabled = W.selected.size === 0;

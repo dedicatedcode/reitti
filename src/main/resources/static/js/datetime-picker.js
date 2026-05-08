@@ -24,7 +24,8 @@ class DateTimePicker {
             minDate: options.minDate || null,
             maxDate: options.maxDate || null,
             onValidate: options.onValidate || null,
-            locale: options.locale || navigator.language
+            locale: options.locale || navigator.language,
+            popupPlacement: options.popupPlacement || 'auto'  // 'top' | 'bottom' | 'auto'
         };
 
         this.element = element;
@@ -44,7 +45,7 @@ class DateTimePicker {
         this.calendarSection = element.querySelector('.calendar-section');
         this.yearScroll = element.querySelector('.year-scroll');
         this.timeScroll = element.querySelector('.time-scroll');
-
+        this._listeners = { change: [] };
         this.currentDate = new Date();
         this.selectedDate = null;
 
@@ -427,7 +428,35 @@ class DateTimePicker {
             return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         }
     }
+    /**
+     * Update the picker's displayed date without firing the 'change' event.
+     * Useful for transient sync (e.g., hover tracking) that shouldn't be
+     * treated as a user selection.
+     * @param {Date} date
+     */
+    setDateSilent(date) {
+        if (!(date instanceof Date) || isNaN(date.getTime())) return;
 
+        this.selectedDate = new Date(date);
+        if (this.dateOnly) this.selectedDate.setHours(0, 0, 0, 0);
+        this.currentDate = new Date(this.selectedDate);
+
+        // Update inputs without triggering change on them either
+        const y = this.selectedDate.getFullYear();
+        const m = (this.selectedDate.getMonth() + 1).toString().padStart(2, '0');
+        const d = this.selectedDate.getDate().toString().padStart(2, '0');
+        this.dateInput.value = `${y}-${m}-${d}`;
+
+        if (this.timeInput) {
+            const hh = this.selectedDate.getHours().toString().padStart(2, '0');
+            const mm = this.selectedDate.getMinutes().toString().padStart(2, '0');
+            this.timeInput.value = `${hh}:${mm}`;
+        }
+
+        this.renderCalendar();
+        this.renderYearList();
+        if (!this.dateOnly) this.highlightSelectedTime();
+    }
     /**
      * Select a specific date. In date-only mode the time is pinned to 00:00:00.
      */
@@ -469,9 +498,6 @@ class DateTimePicker {
         });
     }
 
-    /**
-     * Update the date (and optionally time) inputs with the selected date/time
-     */
     updateInputs() {
         if (!this.selectedDate) return;
 
@@ -487,6 +513,8 @@ class DateTimePicker {
             this.timeInput.value = `${hours}:${minutes}`;
             this.timeInput.dispatchEvent(new Event('change'));
         }
+
+        this._emit('change');
     }
 
     /**
@@ -524,17 +552,40 @@ class DateTimePicker {
         }
     }
 
-    /**
-     * Open the popup
-     */
     openPopup() {
         this.popup.style.display = 'block';
+        this.applyPopupPlacement();
         if (this.selectedDate) {
             this.scrollToSelectedYear();
             if (!this.dateOnly) this.scrollToSelectedTime();
         }
     }
 
+    /**
+     * Decide whether the popup should render above or below the trigger.
+     * - 'top' / 'bottom': explicit, always used
+     * - 'auto': flip to top only if there isn't enough room below
+     */
+    applyPopupPlacement() {
+        const mode = this.options.popupPlacement;
+        let placeOnTop;
+
+        if (mode === 'top')    placeOnTop = true;
+        else if (mode === 'bottom') placeOnTop = false;
+        else {
+            // auto — measure available space
+            const triggerRect = this.triggerButton.getBoundingClientRect();
+            const popupHeight = this.popup.offsetHeight;
+            const viewportH = window.innerHeight;
+            const spaceBelow = viewportH - triggerRect.bottom;
+            const spaceAbove = triggerRect.top;
+            // Prefer bottom, but flip if it would clip and top has more room
+            placeOnTop = spaceBelow < popupHeight && spaceAbove > spaceBelow;
+        }
+
+        this.popup.classList.toggle('placement-top', placeOnTop);
+        this.popup.classList.toggle('placement-bottom', !placeOnTop);
+    }
     /**
      * Close the popup
      */
@@ -579,10 +630,8 @@ class DateTimePicker {
         if (this.options.minDate && date < this.options.minDate) {
             return true;
         }
-        if (this.options.maxDate && date > this.options.maxDate) {
-            return true;
-        }
-        return false;
+        return this.options.maxDate && date > this.options.maxDate;
+
     }
 
     /**
@@ -612,5 +661,41 @@ class DateTimePicker {
             this.timeInput.value = timePart ? timePart.substring(0, 5) : '';
         }
         this.updateFromInputs();
+    }
+
+    /**
+     * Subscribe to a picker event.
+     * @param {string} eventName - Currently supported: 'change'
+     * @param {Function} handler - Called with (value, selectedDate, picker)
+     * @returns {Function} Unsubscribe function
+     */
+    on(eventName, handler) {
+        if (!this._listeners[eventName]) this._listeners[eventName] = [];
+        this._listeners[eventName].push(handler);
+        return () => this.off(eventName, handler);
+    }
+
+    /**
+     * Unsubscribe a previously registered handler.
+     */
+    off(eventName, handler) {
+        const arr = this._listeners[eventName];
+        if (!arr) return;
+        const i = arr.indexOf(handler);
+        if (i >= 0) arr.splice(i, 1);
+    }
+
+    /**
+     * Internal: invoke all handlers for an event.
+     */
+    _emit(eventName) {
+        const arr = this._listeners[eventName];
+        if (!arr || !arr.length) return;
+        const value = this.getValue();
+        const selectedDate = this.selectedDate ? new Date(this.selectedDate) : null;
+        for (const h of arr) {
+            try { h(value, selectedDate, this); }
+            catch (err) { console.error(`[DateTimePicker] ${eventName} handler threw:`, err); }
+        }
     }
 }

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journey Weaver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../static/css/datetime-picker.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
+
+    <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/datetime-picker.js}"></script>
+
+    <style>
+        :root {
+            --bg: #0e1826;
+            --bg-deep: #0a1320;
+            --panel: rgba(22, 32, 48, 0.78);
+            --panel-solid: #162030;
+            --panel-line: rgba(212, 175, 108, 0.14);
+            --ink: #ece6d6;
+            --ink-dim: #a5a99f;
+            --ink-faint: #6b7285;
+            --gold: #d9a441;
+            --gold-bright: #f2c470;
+            --gold-deep: #b8862c;
+            --gold-glow: rgba(217, 164, 65, 0.55);
+            --sky: #8fc5e6;
+            --sky-dim: #5a8bb0;
+            --violet: #b89adc;
+            --slate: #7e8a9e;
+            --danger: #e07a6b;
+
+            --drawer-h: 320px;
+            --drawer-inset: 16px;
+            --drawer-top-edge: calc(var(--drawer-h) + var(--drawer-inset));
+            --connector-h: 36px;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+            font-size: 13px;
+        }
+
+        .serif {
+            font-family: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+            font-optical-sizing: auto;
+            letter-spacing: -0.01em;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .maplibregl-ctrl-attrib {
+            background: rgba(14, 24, 38, 0.7) !important;
+            color: var(--ink-faint) !important;
+            font-size: 10px !important;
+        }
+
+        .maplibregl-ctrl-attrib a {
+            color: var(--ink-faint) !important;
+        }
+
+        .maplibregl-canvas {
+            cursor: crosshair;
+        }
+
+        .maplibregl-ctrl-group {
+            background: var(--panel) !important;
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--panel-line) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
+            border-radius: 10px !important;
+            overflow: hidden;
+        }
+
+        .maplibregl-ctrl-group button {
+            background: transparent !important;
+        }
+
+        .maplibregl-ctrl-icon {
+            filter: invert(0.85) sepia(0.2) hue-rotate(-10deg);
+        }
+
+        .floating {
+            background: var(--panel);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--panel-line);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .legend {
+            position: absolute;
+            right: 18px;
+            bottom: calc(var(--drawer-top-edge) + 14px);
+            padding: 12px 14px;
+            z-index: 6;
+            min-width: 170px;
+            font-size: 11px;
+        }
+
+        .legend h4 {
+            margin: 0 0 7px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 4px 0;
+            color: var(--ink-dim);
+        }
+
+        .legend-line {
+            width: 24px;
+            height: 2.5px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .legend-row.dashed .legend-line {
+            border-top: 2px dashed;
+            background: transparent;
+            height: 0;
+        }
+
+        .stats {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            padding: 12px 14px;
+            z-index: 6;
+            min-width: 200px;
+            font-family: 'Inter';
+            font-size: 11px;
+        }
+
+        .stats h4 {
+            margin: 0 0 7px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            gap: 16px;
+        }
+
+        .stats-label {
+            color: var(--ink-faint);
+        }
+
+        .stats-value {
+            color: var(--ink);
+            font-family: ui-monospace, monospace;
+        }
+
+        .zoom-indicator {
+            position: absolute;
+            bottom: calc(var(--drawer-top-edge) + 14px);
+            left: 18px;
+            padding: 7px 12px;
+            font-size: 10.5px;
+            font-family: ui-monospace, monospace;
+            color: var(--ink-dim);
+            z-index: 6;
+        }
+
+        #historyPanel {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 290px;
+            max-height: calc(100vh - var(--drawer-top-edge) - 50px);
+            display: flex;
+            flex-direction: column;
+            z-index: 6;
+            overflow: hidden;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 15px 11px;
+            border-bottom: 1px solid var(--panel-line);
+        }
+
+        .history-header h4 {
+            margin: 0;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+
+        .history-count {
+            background: rgba(217, 164, 65, 0.15);
+            color: var(--gold-bright);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            font-family: ui-monospace, monospace;
+            border: 1px solid rgba(217, 164, 65, 0.2);
+        }
+
+        .history-clear {
+            font-size: 10px;
+            color: var(--ink-faint);
+            cursor: pointer;
+            padding: 3px 7px;
+            border-radius: 5px;
+            transition: all 0.15s;
+            letter-spacing: 0.04em;
+        }
+
+        .history-clear:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--ink);
+        }
+
+        .history-list {
+            overflow-y: auto;
+            padding: 5px 5px 8px;
+            flex: 1;
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+        }
+
+        .history-empty {
+            padding: 26px 16px;
+            text-align: center;
+            color: var(--ink-faint);
+            font-size: 12px;
+            font-style: italic;
+            line-height: 1.55;
+            font-family: 'Fraunces', serif;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 9px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            margin: 3px 0;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            animation: historyIn 0.28s ease-out;
+            transition: background 0.15s;
+            position: relative;
+        }
+
+        @keyframes historyIn {
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .history-item.undone {
+            opacity: 0.4;
+        }
+
+        .history-item.undone .history-desc {
+            text-decoration: line-through;
+            text-decoration-color: rgba(224, 122, 107, 0.6);
+        }
+
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            bottom: 10%;
+            width: 2px;
+            border-radius: 0 2px 2px 0;
+        }
+
+        .history-item.type-copy::before {
+            background: var(--sky);
+        }
+
+        .history-item.type-delete::before {
+            background: var(--danger);
+        }
+
+        .history-item.type-move::before {
+            background: var(--gold);
+        }
+
+        .history-icon {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.04);
+            margin-top: 1px;
+        }
+
+        .history-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .history-desc {
+            font-size: 11.5px;
+            color: var(--ink);
+            line-height: 1.4;
+        }
+
+        .history-meta {
+            font-size: 9.5px;
+            color: var(--ink-faint);
+            font-family: ui-monospace, monospace;
+            margin-top: 3px;
+            letter-spacing: 0.03em;
+        }
+
+        .history-undo {
+            flex-shrink: 0;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--ink-dim);
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 500;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            height: fit-content;
+        }
+
+        .history-undo:hover:not(:disabled) {
+            background: rgba(217, 164, 65, 0.15);
+            color: var(--gold-bright);
+            border-color: rgba(217, 164, 65, 0.3);
+        }
+
+        .history-undo:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        /* ============ BOTTOM DRAWER ============ */
+        #drawer {
+            position: fixed;
+            bottom: var(--drawer-inset);
+            left: var(--drawer-inset);
+            right: var(--drawer-inset);
+            height: var(--drawer-h);
+            background: linear-gradient(180deg, rgba(22, 32, 48, 0.88) 0%, rgba(14, 22, 36, 0.92) 100%);
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--panel-line);
+            border-radius: 14px;
+            z-index: 10;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        .drawer-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 11px 18px;
+            border-bottom: 1px solid var(--panel-line);
+            flex-shrink: 0;
+        }
+
+        .drawer-head .brand {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 17px;
+            color: var(--ink);
+            letter-spacing: -0.01em;
+        }
+
+        .drawer-head .time {
+            color: var(--gold-bright);
+            font-weight: 500;
+            font-size: 13px;
+            font-family: ui-monospace, monospace;
+            letter-spacing: 0.04em;
+        }
+
+        .drawer-head .sep {
+            width: 1px;
+            height: 20px;
+            background: var(--panel-line);
+            margin: 0 4px;
+        }
+
+        .head-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 11px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--ink-dim);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .head-btn:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--ink);
+        }
+
+        .head-btn.active {
+            background: rgba(217, 164, 65, 0.18);
+            color: var(--gold-bright);
+            border-color: rgba(217, 164, 65, 0.3);
+        }
+
+        .head-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .close-x {
+            color: var(--ink-faint);
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+
+        .close-x:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--ink);
+        }
+
+        /* 3-row body: main · connector · device */
+        .drawer-body {
+            display: grid;
+            grid-template-columns: 170px 1fr 200px;
+            grid-template-rows: 1fr var(--connector-h) 1fr;
+            gap: 6px 14px;
+            padding: 12px 18px 14px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .lane-label-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4px 0;
+            min-height: 0;
+        }
+
+        .lane-label-cell .title {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 15px;
+            color: var(--ink);
+            letter-spacing: -0.005em;
+        }
+
+        .lane-label-cell .sub {
+            font-size: 11px;
+            color: var(--ink-faint);
+            margin-top: 2px;
+            font-style: italic;
+            font-family: 'Fraunces', serif;
+        }
+
+        .lane-canvas-cell {
+            position: relative;
+            border-radius: 10px;
+            background: rgba(10, 17, 28, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            cursor: grab;
+        }
+
+        .lane-canvas-cell:active {
+            cursor: grabbing;
+        }
+
+        /* The canvas will be sized dynamically in JS based on zoom */
+        canvas {
+            display: block;
+            height: 100%;
+        }
+
+        .lane-canvas-cell canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Connector row: tracks the patch horizontally */
+        .connector-row {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            position: relative;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .connector-guide {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            border-left: 1.5px dashed rgba(242, 196, 112, 0.35);
+            pointer-events: none;
+        }
+
+        .weave-patch-btn {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, 0);
+            padding: 7px 14px 7px 12px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(242, 196, 112, 0.95) 0%, rgba(217, 164, 65, 0.9) 55%, rgba(184, 134, 44, 0.9) 100%);
+            color: #2a1f0f;
+            font-family: 'Fraunces', serif;
+            font-weight: 600;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            pointer-events: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+            box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.4),
+            0 6px 22px rgba(217, 164, 65, 0.45),
+            0 0 30px rgba(217, 164, 65, 0.25),
+            inset 0 1px 0 rgba(255, 245, 215, 0.6),
+            inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+            transition: box-shadow 0.2s, filter 0.15s;
+            z-index: 6;
+        }
+
+        .weave-patch-btn:hover {
+            filter: brightness(1.06);
+            box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.55),
+            0 8px 28px rgba(217, 164, 65, 0.6),
+            0 0 40px rgba(217, 164, 65, 0.4),
+            inset 0 1px 0 rgba(255, 245, 215, 0.7),
+            inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+        }
+
+        .weave-patch-btn:active {
+            transform: translate(-50%, 1px);
+        }
+
+        .weave-patch-btn svg {
+            flex-shrink: 0;
+        }
+
+        .weave-patch-btn.disabled {
+            opacity: 0.45;
+            filter: grayscale(0.3);
+            cursor: not-allowed;
+        }
+
+        /* Patch selector */
+        #patchBox {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            background: linear-gradient(180deg, rgba(242, 196, 112, 0.14), rgba(217, 164, 65, 0.08));
+            border: 1.5px solid var(--gold);
+            border-radius: 6px;
+            cursor: move;
+            box-sizing: border-box;
+            z-index: 4;
+            box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.15),
+            0 0 20px rgba(217, 164, 65, 0.35),
+            inset 0 1px 0 rgba(255, 235, 190, 0.3);
+        }
+
+        .patch-handle {
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            width: 6px;
+            background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep));
+            cursor: ew-resize;
+            box-shadow: 0 0 8px rgba(217, 164, 65, 0.5);
+        }
+
+        .patch-handle.left {
+            left: -3px;
+            border-radius: 3px 0 0 3px;
+        }
+
+        .patch-handle.right {
+            right: -3px;
+            border-radius: 0 3px 3px 0;
+        }
+
+        .patch-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1.5px;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 1px;
+        }
+
+        .patch-timestamps {
+            position: absolute;
+            bottom: 3px;
+            left: 6px;
+            right: 6px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            font-family: ui-monospace, monospace;
+            font-size: 9.5px;
+            color: var(--gold-bright);
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+        }
+
+        #playhead {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1.5px;
+            background: linear-gradient(180deg, var(--danger), rgba(224, 122, 107, 0.3));
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+            box-shadow: 0 0 10px rgba(224, 122, 107, 0.5);
+        }
+
+        #playhead::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -4px;
+            width: 9px;
+            height: 9px;
+            background: var(--danger);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(224, 122, 107, 0.6);
+        }
+
+        .right-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .woven-count {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 8px 14px;
+            border-radius: 10px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .woven-count .num {
+            font-family: 'Fraunces', serif;
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--gold-bright);
+            line-height: 1;
+        }
+
+        .woven-count .label {
+            font-size: 9.5px;
+            color: var(--ink-faint);
+            margin-top: 4px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .weave-btn {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 55%, var(--gold-deep) 100%);
+            color: #2a1f0f;
+            font-family: 'Fraunces', serif;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.4),
+            0 6px 20px rgba(217, 164, 65, 0.35),
+            inset 0 1px 0 rgba(255, 245, 215, 0.6),
+            inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+            transition: all 0.18s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weave-btn:hover {
+            filter: brightness(1.05);
+            box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5),
+            inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+        }
+
+        .weave-btn:active {
+            transform: translateY(1px);
+        }
+
+        .weave-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--danger);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 2px 7px;
+            min-width: 20px;
+            text-align: center;
+            border: 2px solid var(--panel-solid);
+            letter-spacing: 0;
+        }
+
+        .device-select {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--ink);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 28px 6px 11px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 500;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23a5a99f' d='M5 6L0 0h10z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        #boxSelectOverlay {
+            position: absolute;
+            border: 1.5px dashed var(--gold-bright);
+            background: rgba(242, 196, 112, 0.08);
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+            border-radius: 3px;
+            box-shadow: 0 0 20px rgba(217, 164, 65, 0.3);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: calc(var(--drawer-top-edge) + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, rgba(34, 48, 68, 0.95), rgba(22, 32, 48, 0.95));
+            backdrop-filter: blur(12px);
+            color: var(--ink);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            border: 1px solid rgba(217, 164, 65, 0.3);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(217, 164, 65, 0.15);
+            z-index: 100;
+            animation: toastIn 0.3s ease-out;
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 10px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        #commitModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 17, 28, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #commitModal.open {
+            display: flex;
+        }
+
+        .commit-dialog {
+            background: var(--panel-solid);
+            border: 1px solid var(--panel-line);
+            border-radius: 14px;
+            width: 680px;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        .commit-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--panel-line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .commit-header .title {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 18px;
+            color: var(--ink);
+        }
+
+        .commit-header .sub {
+            font-size: 12px;
+            color: var(--ink-faint);
+            margin-top: 3px;
+            font-family: 'Fraunces', serif;
+            font-style: italic;
+        }
+
+        .commit-body {
+            flex: 1;
+            overflow: auto;
+            padding: 18px 22px;
+        }
+
+        .commit-body pre {
+            background: rgba(10, 17, 28, 0.6);
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--ink-dim);
+            overflow: auto;
+            margin: 0;
+            font-family: ui-monospace, monospace;
+            line-height: 1.55;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .commit-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--panel-line);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-muted {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--ink-dim);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 9px 16px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'Inter';
+        }
+
+        .btn-muted:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--ink);
+        }
+    </style>
+</head>
+<body>
+<div id="map" class="is-loading"></div>
+
+<div class="floating legend">
+    <h4>Legend</h4>
+    <div class="legend-row"><span class="legend-line" style="background:var(--gold)"></span>Primary Path</div>
+    <div class="legend-row dashed"><span class="legend-line" style="border-color:var(--sky)"></span>Candidate Track
+    </div>
+    <div class="legend-row"><span class="legend-line" style="background:var(--violet)"></span>Third device</div>
+    <div class="legend-row"><span class="legend-line"
+                                  style="background:var(--gold-bright); box-shadow: 0 0 8px var(--gold-glow)"></span>Selected
+    </div>
+</div>
+
+<div class="floating zoom-indicator" id="zoomIndicator">Zoom: 13.7, 37.769, −122.456</div>
+
+<div class="floating" id="historyPanel">
+    <div class="history-header">
+        <div style="display:flex; align-items:center; gap:9px;">
+            <h4>Action History</h4>
+            <span class="history-count" id="histCount">0</span>
+        </div>
+        <span class="history-clear" id="histClear">CLEAR</span>
+    </div>
+    <div class="history-list" id="histList">
+        <div class="history-empty">No actions yet —<br>copy a patch or move a point<br>to begin weaving.</div>
+    </div>
+</div>
+
+<div id="boxSelectOverlay"></div>
+
+<div id="drawer">
+    <div class="drawer-head">
+        <label for="startDate">Date</label>
+        <div class="datetime-picker" id="startDatePicker">
+            <input type="date" id="startDate" name="startDate" required class="date-input form-control">
+            <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
+
+        </div>
+        <div class="brand serif"></div>
+        <div class="time" id="drawerClock">10:35:42</div>
+
+        <div class="sep"></div>
+
+        <button class="head-btn active" data-tool="inspect">Inspect</button>
+        <button class="head-btn" data-tool="select">Select</button>
+        <button class="head-btn" data-tool="boxselect">Box</button>
+
+        <div class="sep"></div>
+
+        <select class="device-select" id="deviceSelect">
+            <option value="garmin" selected>Garmin Fenix 7</option>
+            <option value="gopro">GoPro Hero 12</option>
+            <option value="null">Phone</option>
+        </select>
+
+        <button class="head-btn" id="btnDelete" title="Delete selection" disabled>Delete</button>
+
+        <div style="flex:1"></div>
+
+        <div class="close-x" title="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="drawer-body">
+        <!-- Row 1: Main Journey -->
+        <div class="lane-label-cell">
+            <div class="title">Main Journey</div>
+            <div class="sub">(The Story)</div>
+        </div>
+        <div class="lane-canvas-cell" id="mainLaneCell">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+        <div class="right-cell">
+            <div class="woven-count">
+                <div class="num" id="wovenCount">0</div>
+                <div class="label">Woven Segments</div>
+            </div>
+        </div>
+
+        <!-- Row 2: Connector -->
+        <div class="lane-label-cell">
+        </div>
+        <div class="lane-canvas-cell">
+            <div class="connector-row" id="connectorRow">
+                <div class="connector-guide" id="connectorGuide"></div>
+                <button class="weave-patch-btn" id="btnCopy" title="Weave this patch into the Main Journey">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19V5"/>
+                        <path d="M5 12l7-7 7 7"/>
+                    </svg>
+                    Insert
+                </button>
+            </div>
+        </div>
+        <div class="right-cell"></div>
+        <!-- Row 3: Device Source -->
+        <div class="lane-label-cell">
+            <div class="title">Device Source</div>
+            <div class="sub" id="deviceSubLabel">(Garmin Fenix 7)</div>
+        </div>
+        <div class="lane-canvas-cell" id="deviceLaneCell">
+            <canvas id="deviceCanvas"></canvas>
+            <div id="patchBox">
+                <div class="patch-handle left" data-edge="left"></div>
+                <div class="patch-handle right" data-edge="right"></div>
+                <div class="patch-timestamps">
+                    <span id="patchStartLabel">10:28:15</span>
+                    <span id="patchEndLabel">10:43:00</span>
+                </div>
+            </div>
+            <div id="playhead"></div>
+        </div>
+        <div class="right-cell">
+            <button class="weave-btn" id="btnCommit">
+                Save
+                <span class="weave-badge" id="commitBadge" style="display:none">0</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="commitModal">
+    <div class="commit-dialog">
+        <div class="commit-header">
+            <div>
+                <div class="title">Commit your Journey</div>
+                <div class="sub" id="commitSummary">—</div>
+            </div>
+            <div class="close-x" id="commitClose">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </div>
+        </div>
+        <div class="commit-body">
+            <pre id="commitPayload"></pre>
+        </div>
+        <div class="commit-footer">
+            <button class="btn-muted" id="commitCancel">Cancel</button>
+            <button class="weave-btn" style="width:auto; padding: 10px 22px;" id="commitConfirm">SEND TO SERVER</button>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    dateSelection = new DateTimePicker(document.getElementById('startDatePicker'), {
+        timeFormat: getBrowserTimeFormat(),
+        popupPlacement: 'top'
+    });
+
+    dateSelection.on('change', (value, date, instance) => {
+        if (date) {
+            goToDate(date);
+        }
+    });
+
+
+</script>
+<script th:src="@{js/workbench.js}" src="../static/js/workbench.js"></script>
+</body>
+</html>
