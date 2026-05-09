@@ -23,6 +23,7 @@ public class PreviewRawLocationPointJdbcService {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
+                null,
                 rs.getTimestamp("timestamp").toInstant(),
                 pointReaderWriter.read(rs.getString("geom")),
                 rs.getDouble("accuracy_meters"),

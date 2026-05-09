@@ -169,6 +169,7 @@ class RawLocationPointJdbcServiceTest {
     private RawLocationPoint createProcessedPoint(User user, Instant timestamp) {
         RawLocationPoint point = new RawLocationPoint(
             null,
+            null,
             timestamp,
             new GeoPoint(53.863149, 10.700927),
             10.0,
@@ -185,6 +186,7 @@ class RawLocationPointJdbcServiceTest {
         // Mark as processed
         RawLocationPoint processed = new RawLocationPoint(
             created.getId(),
+            created.getSourceId(),
             created.getTimestamp(),
             created.getGeom(),
             created.getAccuracyMeters(),
@@ -201,6 +203,7 @@ class RawLocationPointJdbcServiceTest {
 
     private RawLocationPoint createUnprocessedPoint(User user, Instant timestamp) {
         RawLocationPoint point = new RawLocationPoint(
+            null,
             null,
             timestamp,
             new GeoPoint(53.863149, 10.700927),

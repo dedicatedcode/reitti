@@ -89,7 +89,7 @@ public class LocationApiController {
                 .body(emitter);
     }
 
-    @GetMapping(value = "/geojson", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/geojson/source", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StreamingResponseBody> loadAsGeoJson(@AuthenticationPrincipal User user,
                                                                @RequestParam(name = "device", required = false) Long deviceId,
                                                                @RequestParam String start,
@@ -103,6 +103,40 @@ public class LocationApiController {
                             parseInstant(start, timezone, false),
                             parseInstant(end, timezone, true),
                             deviceId,
+                            writer);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error generating GeoJSON file", e);
+                }
+            };
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(stream);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(outputStream -> {
+                        try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                            writer.write("Error generating GeoJSON Stream: " + e.getMessage());
+                        } catch (IOException ioException) {
+                            throw new RuntimeException(ioException);
+                        }
+                    });
+        }
+    }
+
+    @GetMapping(value = "/geojson", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StreamingResponseBody> loadTimelineAsGeoJson(@AuthenticationPrincipal User user,
+                                                               @RequestParam String start,
+                                                               @RequestParam String end,
+                                                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        try {
+            StreamingResponseBody stream = outputStream -> {
+                try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                    geoJsonExportService.generateGeoJsonContentStreaming(
+                            user,
+                            parseInstant(start, timezone, false),
+                            parseInstant(end, timezone, true),
                             writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GeoJSON file", e);

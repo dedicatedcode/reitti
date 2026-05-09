@@ -3,6 +3,7 @@
    ============================================================ */
 
 let _idCounter = 0;
+let MainJourneyData = [];
 const nextId = () => ++_idCounter;
 
 const DeviceSources = Object.fromEntries(
@@ -11,12 +12,31 @@ const DeviceSources = Object.fromEntries(
         return [String(key), { key, name: o.textContent.trim(), color: o.dataset.color }];
     })
 );
-const colorOf = (sid) =>  DeviceSources[sid == null ? 'default' : sid]?.color;
+const MAIN_PAD_MS = 24 * 3600 * 1000;
+const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
+const KEEP_WINDOW_MAIN   = 7 * 24 * 3600 * 1000;    // keep a week of main journey
+const GAP_CONFIG = {
+    device: {
+        interpolateBelow: 60 * 1000,       // don't synthesize; 60s is normal
+        interpolateUpTo:  0,               // disables interpolation entirely
+        continuousUpTo:   5 * 60 * 1000    // 5 min of silence = real gap
+    },
+    main: {
+        interpolateBelow: Infinity,
+        interpolateUpTo:  0,
+        continuousUpTo:   15 * 60 * 1000   // 15 min for the decimated main journey
+    }
+};
+const mainHydratedRanges = [];           // separate from hydratedRanges (device cache)
+
+const mainColor = window.userSettings.timelineColor;
+const colorOf = (sid) =>  sid === '__main__' ? mainColor : DeviceSources[sid == null ? 'default' : sid]?.color;
 const nameOf  = (sid) => DeviceSources[sid == null ? 'default' : sid]?.name;
+const gapConfigFor = (sid) => sid === '__main__' ? GAP_CONFIG.main : GAP_CONFIG.device;
 
 // Normalized per-source cache: sourceId -> array of {id, sourceId, t, lat, lng, alt}
 const SourceData = new Map();
-// Final derived timeline: [{id, t, lat, lng, alt, sourceId, sourceRefId, interpolated?}]
+// Final derived timeline: [{id, t, lat, lng, alt, sourceId, sourceRefId}]
 let FinalTimeline = [];
 
 /* ============================================================
@@ -82,18 +102,10 @@ function featureToPoint(feature) {
     const [lng, lat, alt] = g.coordinates;
     return {
         id: p.id,
-        sourceId: p.sourceId ?? null,
-        t: p.t,
+        sourceId: p.device ?? null,
+        t: new Date(p.timestamp).getTime(),
         lat, lng,
-        alt: alt ?? p.alt ?? 0
-    };
-}
-
-function pointToFeature(p) {
-    return {
-        type: 'Feature',
-        properties: {id: p.id, sourceId: p.sourceId, t: p.t, alt: p.alt},
-        geometry: {type: 'Point', coordinates: [p.lng, p.lat, p.alt]}
+        alt: alt ?? p.elevation ?? 0
     };
 }
 
@@ -154,14 +166,42 @@ function patchOwnerAt(t) {
 /* ============================================================
    VIEWPORT
    ============================================================ */
+function getInitialCenterT() {
+    // Check URL: ?date=2026-03-02  or  ?t=1740931200000
+    const params = new URLSearchParams(location.search);
+
+    const tParam = params.get('t');
+    if (tParam) {
+        const n = Number(tParam);
+        if (Number.isFinite(n)) return n;
+    }
+
+    const dateParam = params.get('date');
+    if (dateParam) {
+        const d = new Date(dateParam);
+        if (!isNaN(d.getTime())) {
+            // Center on 9am on that day, in UTC (matches goToDate's convention)
+            const dayStartUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            return dayStartUtc + 9 * 3600 * 1000;
+        }
+    }
+
+    // Default: right now
+    return Date.now();
+}
+
 let viewportDuration = 45 * 60 * 1000;
-let viewportStartT = viewportDuration / 2;
+const _initialCenter = getInitialCenterT();
+let viewportStartT = _initialCenter - viewportDuration / 2;
 
 const W = {
     tool: 'inspect',
     selectedDevice: 'default',
     selected: new Set(),
-    patch: {tStart: viewportStartT + 10 * 60000, tEnd: viewportStartT + 15 * 60000},
+    patch: {
+        tStart: _initialCenter - 2.5 * 60000,
+        tEnd:   _initialCenter + 2.5 * 60000
+    },
     hoverT: null,
     isLoading: false
 };
@@ -186,7 +226,7 @@ function mergeSourceCacheFromGeoJSON(sourceId, featureCollection) {
     const existing = SourceData.get(sourceId) || [];
     const byId = new Map(existing.map(p => [p.id, p]));
     for (const f of featureCollection.features) {
-        const p = featureToPoint(f);
+        const p = featureToPoint(f, sourceId);   // ← pass sourceId
         const mv = EditStore.movedPoints.get(pointKey(sourceId, p.id));
         byId.set(p.id, mv ? {...p, lat: mv.lat, lng: mv.lng} : p);
     }
@@ -195,27 +235,68 @@ function mergeSourceCacheFromGeoJSON(sourceId, featureCollection) {
 }
 
 function rebuildFinalInRange(tStart, tEnd) {
+    // Drop everything in the range — we're going to rebuild it
     FinalTimeline = FinalTimeline.filter(p => p.t < tStart || p.t > tEnd);
 
-    for (const [sid, arr] of SourceData.entries()) {
-        for (const p of arr) {
-            if (p.t < tStart || p.t > tEnd) continue;
-            if (EditStore.deletedPoints.has(pointKey(sid, p.id))) continue;
+    // For each point-instant in the range, decide what goes into FinalTimeline:
+    //   - If a patch covers it, use that device's points
+    //   - Otherwise, use the main-journey points
+    //
+    // The simplest way: walk patches to cover patched sub-ranges from SourceData,
+    // and fill the remaining gaps from MainJourneyData.
 
-            const {owner, hasPatch} = patchOwnerAt(p.t);
-            const desiredOwner = hasPatch ? owner : null;
-            if (sid !== desiredOwner) continue;
+    const patchesInRange = EditStore.patches
+        .filter(p => p.tEnd >= tStart && p.tStart <= tEnd)
+        .sort((a, b) => a.seq - b.seq);  // later patches win by virtue of being applied last
+
+    // 1. Seed from main journey across the whole range
+    for (const p of MainJourneyData) {
+        if (p.t < tStart || p.t > tEnd) continue;
+        if (EditStore.deletedPoints.has(pointKey('__main__', p.id))) continue;
+        // skip if any patch covers this instant
+        if (patchesInRange.some(pp => p.t >= pp.tStart && p.t <= pp.tEnd)) continue;
+
+        FinalTimeline.push({
+            id: `main_${p.id}`,
+            t: p.t, lat: p.lat, lng: p.lng, alt: p.alt,
+            sourceId: '__main__', sourceRefId: p.id
+        });
+    }
+
+    // 2. For each patched sub-range, pull from that device's SourceData
+    //    (later patches overwrite earlier ones — patchOwnerAt handles that)
+    for (const patch of patchesInRange) {
+        const arr = SourceData.get(patch.sourceId) || [];
+        for (const p of arr) {
+            if (p.t < Math.max(tStart, patch.tStart)) continue;
+            if (p.t > Math.min(tEnd, patch.tEnd)) break;
+            if (EditStore.deletedPoints.has(pointKey(patch.sourceId, p.id))) continue;
+
+            const { owner } = patchOwnerAt(p.t);
+            if (owner !== patch.sourceId) continue;  // a later patch took over
 
             FinalTimeline.push({
-                id: `auto_${sid ?? 'null'}_${p.id}`,
+                id: `auto_${patch.sourceId}_${p.id}`,
                 t: p.t, lat: p.lat, lng: p.lng, alt: p.alt,
-                sourceId: sid, sourceRefId: p.id
+                sourceId: patch.sourceId, sourceRefId: p.id
             });
         }
     }
 
     FinalTimeline.sort((a, b) => a.t - b.t);
-    FinalTimeline = fillGaps(FinalTimeline, 6000);
+
+    // Apply per-source gap handling
+    const bySource = new Map();
+    for (const p of FinalTimeline) {
+        if (!bySource.has(p.sourceId)) bySource.set(p.sourceId, []);
+        bySource.get(p.sourceId).push(p);
+    }
+    const stitched = [];
+    for (const [sid, arr] of bySource) {
+        stitched.push(...fillGaps(arr, gapConfigFor(sid)));
+    }
+    stitched.sort((a, b) => a.t - b.t);
+    FinalTimeline = stitched;
     mergeIntoRanges(hydratedRanges, tStart, tEnd);
 }
 
@@ -223,34 +304,35 @@ function rebuildFinalInRange(tStart, tEnd) {
 const KEEP_WINDOW_MS = 24 * 3600 * 1000;
 
 function evictFarData() {
-    const keepStart = viewportStartT - KEEP_WINDOW_MS;
-    const keepEnd = viewportStartT + viewportDuration + KEEP_WINDOW_MS;
+    const devKeepStart  = viewportStartT - KEEP_WINDOW_DEVICE;
+    const devKeepEnd    = viewportStartT + viewportDuration + KEEP_WINDOW_DEVICE;
+    const mainKeepStart = viewportStartT - KEEP_WINDOW_MAIN;
+    const mainKeepEnd   = viewportStartT + viewportDuration + KEEP_WINDOW_MAIN;
 
     for (const [sid, arr] of SourceData.entries()) {
-        const filtered = arr.filter(p => p.t >= keepStart && p.t <= keepEnd);
+        const filtered = arr.filter(p => p.t >= devKeepStart && p.t <= devKeepEnd);
         if (filtered.length !== arr.length) SourceData.set(sid, filtered);
     }
+    MainJourneyData = MainJourneyData.filter(p => p.t >= mainKeepStart && p.t <= mainKeepEnd);
 
-    const before = FinalTimeline.length;
-    FinalTimeline = FinalTimeline.filter(p => p.t >= keepStart && p.t <= keepEnd);
+    // Trim hydrated-range trackers correspondingly
+    trimRangesTo(hydratedRanges,     devKeepStart,  devKeepEnd);
+    trimRangesTo(mainHydratedRanges, mainKeepStart, mainKeepEnd);
 
-    const trimmed = [];
-    for (const r of hydratedRanges) {
-        if (r.tEnd < keepStart || r.tStart > keepEnd) continue;
-        trimmed.push({
-            tStart: Math.max(keepStart, r.tStart),
-            tEnd: Math.min(keepEnd, r.tEnd)
-        });
-    }
-    hydratedRanges.length = 0;
-    hydratedRanges.push(...trimmed);
+    FinalTimeline = FinalTimeline.filter(p => p.t >= mainKeepStart && p.t <= mainKeepEnd);
 
     const liveIds = new Set(FinalTimeline.map(p => p.id));
     for (const id of W.selected) if (!liveIds.has(id)) W.selected.delete(id);
+}
 
-    if (before !== FinalTimeline.length) {
-        console.debug(`[evict] dropped ${before - FinalTimeline.length} points outside ±24h`);
+function trimRangesTo(ranges, keepStart, keepEnd) {
+    const trimmed = [];
+    for (const r of ranges) {
+        if (r.tEnd < keepStart || r.tStart > keepEnd) continue;
+        trimmed.push({ tStart: Math.max(keepStart, r.tStart), tEnd: Math.min(keepEnd, r.tEnd) });
     }
+    ranges.length = 0;
+    ranges.push(...trimmed);
 }
 
 async function loadViewportData() {
@@ -259,59 +341,82 @@ async function loadViewportData() {
     if (zi && !zi.innerHTML.includes('Loading')) {
         zi.innerHTML += ` <span style="color:#d9a441">[Loading…]</span>`;
     }
-    console.log('[load] enter', {
-        viewportStartT, viewportDuration,
-        hydratedRanges: JSON.parse(JSON.stringify(hydratedRanges)),
-        finalCount: FinalTimeline.length
-    });
 
     const pad = viewportDuration * 0.5;
-    const startT = viewportStartT - pad;
-    const endT   = viewportStartT + viewportDuration + pad;
-
-    const needed = subtractRanges(hydratedRanges, startT, endT);
-    console.log('[load] needed ranges', needed);
-    if (!needed.length && FinalTimeline.length > 0) {
-        console.log('[load] early exit — already hydrated');
-        W.isLoading = false;
-        refreshAll();
-        return;
-    }
-
-    let resolutionMs = 1500;
-    if (viewportDuration > 24 * 3600 * 1000) resolutionMs = 5 * 60 * 1000;
-    else if (viewportDuration > 4 * 3600 * 1000) resolutionMs = 60 * 1000;
-
-    const devices = Object.values(DeviceSources);
+    const devStartT = viewportStartT - pad;
+    const devEndT   = viewportStartT + viewportDuration + pad;
+    const deviceNeeded = subtractRanges(hydratedRanges, devStartT, devEndT);
 
     try {
-        const firstBoot = FinalTimeline.length === 0 && !histStartSnapshot;
+        // Main journey: always make sure the wide window is covered
+        await ensureMainJourneyLoaded();
 
-        for (const range of needed) {
-            const results = await Promise.all(
-                devices.map(d => fetchDevicePoints(d.key, range.tStart, range.tEnd, resolutionMs))
-            );
+        // Device data: narrow viewport-scoped fetch (unchanged)
+        if (deviceNeeded.length) {
+            const devices = Object.values(DeviceSources);
+            let resolutionMs = 1500;
+            if (viewportDuration > 24 * 3600 * 1000) resolutionMs = 5 * 60 * 1000;
+            else if (viewportDuration > 4 * 3600 * 1000) resolutionMs = 60 * 1000;
 
-            devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i]));
-            rebuildFinalInRange(range.tStart, range.tEnd);
-
-            if (firstBoot) {
-                histStartSnapshot = {
-                    finalCount: FinalTimeline.length,
-                    sources: Object.fromEntries(
-                        devices.map((d, i) => [d.key ?? 'null', results[i].features.length])
-                    )
-                };
+            for (const range of deviceNeeded) {
+                const results = await Promise.all(
+                    devices.map(d => fetchDevicePoints(d.key, range.tStart, range.tEnd, resolutionMs))
+                );
+                devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i]));
             }
         }
 
+        // Rebuild the *wide* range so main journey is visible beyond the viewport
+        rebuildFinalInRange(
+            viewportStartT - MAIN_PAD_MS,
+            viewportStartT + viewportDuration + MAIN_PAD_MS
+        );
+
         evictFarData();
     } catch (err) {
-        console.error("Data load failed", err);
+        console.error('Data load failed', err);
     } finally {
         W.isLoading = false;
         refreshAll();
     }
+
+}
+async function ensureMainJourneyLoaded() {
+    const startT = viewportStartT - MAIN_PAD_MS;
+    const endT   = viewportStartT + viewportDuration + MAIN_PAD_MS;
+
+    const needed = subtractRanges(mainHydratedRanges, startT, endT);
+    if (!needed.length) return;
+
+    for (const range of needed) {
+        const fc = await fetchMainJourney(range.tStart, range.tEnd);
+        mergeMainJourneyFromGeoJSON(fc);
+        mergeIntoRanges(mainHydratedRanges, range.tStart, range.tEnd);
+    }
+}
+
+async function fetchMainJourney(tStart, tEnd) {
+    const params = new URLSearchParams({
+        start: new Date(tStart).toISOString(),
+        end:   new Date(tEnd).toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
+    const res = await fetch(window.contextPath + `/api/v2/locations/geojson?${params}`, {
+        headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Main journey fetch failed: ${res.status}`);
+    return res.json();
+}
+
+function mergeMainJourneyFromGeoJSON(featureCollection) {
+    const byId = new Map(MainJourneyData.map(p => [p.id, p]));
+    for (const f of featureCollection.features) {
+        const pt = featureToPoint(f);   // pt.sourceId will be null from properties; we don't care
+        const key = pointKey('__main__', pt.id);
+        const mv = EditStore.movedPoints.get(key);
+        byId.set(pt.id, mv ? { ...pt, lat: mv.lat, lng: mv.lng } : pt);
+    }
+    MainJourneyData = Array.from(byId.values()).sort((a, b) => a.t - b.t);
 }
 
 async function fetchDevicePoints(deviceId, tStart, tEnd, resolutionMs) {
@@ -322,7 +427,7 @@ async function fetchDevicePoints(deviceId, tStart, tEnd, resolutionMs) {
     });
     if (deviceId !== "default") params.set('device', deviceId);
 
-    const res = await fetch(window.contextPath + `/api/v2/locations/geojson?${params}`, {
+    const res = await fetch(window.contextPath + `/api/v2/locations/geojson/source?${params}`, {
         headers: { 'Accept': 'application/json' }
     });
     if (!res.ok) throw new Error(`Fetch failed for device ${deviceId}: ${res.status}`);
@@ -334,32 +439,38 @@ function triggerDebouncedDataLoad() {
     fetchDebounceId = setTimeout(() => { loadViewportData(); }, 250);
 }
 
-function fillGaps(points, threshold) {
+function fillGaps(points, config) {
+    if (config.interpolateUpTo <= config.interpolateBelow) {
+        // Interpolation disabled — return as-is (still sorted for safety)
+        return [...points].sort((a, b) => a.t - b.t);
+    }
+
     const out = [];
     const sorted = [...points].sort((a, b) => a.t - b.t);
     for (let i = 0; i < sorted.length; i++) {
         out.push(sorted[i]);
-        if (i < sorted.length - 1) {
-            const a = sorted[i], b = sorted[i + 1];
-            const dt = b.t - a.t;
-            if (dt > threshold && dt < threshold * 20) {
-                const n = Math.ceil(dt / threshold) - 1;
-                for (let j = 1; j <= n; j++) {
-                    const f = j / (n + 1);
-                    out.push({
-                        id: `interp_${nextId()}`, t: a.t + dt * f,
-                        lat: a.lat + (b.lat - a.lat) * f,
-                        lng: a.lng + (b.lng - a.lng) * f,
-                        alt: a.alt + (b.alt - a.alt) * f,
-                        sourceId: a.sourceId, interpolated: true
-                    });
-                }
+        if (i >= sorted.length - 1) continue;
+
+        const a = sorted[i], b = sorted[i + 1];
+        const dt = b.t - a.t;
+        if (dt > config.interpolateBelow && dt < config.interpolateUpTo) {
+            const step = config.interpolateBelow;
+            const n = Math.ceil(dt / step) - 1;
+            for (let j = 1; j <= n; j++) {
+                const f = j / (n + 1);
+                out.push({
+                    id: `interp_${nextId()}`,
+                    t: a.t + dt * f,
+                    lat: a.lat + (b.lat - a.lat) * f,
+                    lng: a.lng + (b.lng - a.lng) * f,
+                    alt: a.alt + (b.alt - a.alt) * f,
+                    sourceId: a.sourceId
+                });
             }
         }
     }
     return out;
 }
-
 /* ============================================================
    HISTORY (client-side undo; server uses EditStore directly)
    ============================================================ */
@@ -577,28 +688,35 @@ function emptyFC() { return {type: 'FeatureCollection', features: []}; }
 function buildFinalLineFC() {
     const features = [];
     if (FinalTimeline.length < 2) return emptyFC();
+
     let coords = [[FinalTimeline[0].lng, FinalTimeline[0].lat]];
     let currentSid = FinalTimeline[0].sourceId;
+
+    const flush = () => {
+        if (coords.length > 1) features.push({
+            type: 'Feature',
+            properties: { color: colorOf(currentSid) },
+            geometry: { type: 'LineString', coordinates: coords }
+        });
+    };
+
     for (let i = 1; i < FinalTimeline.length; i++) {
         const p = FinalTimeline[i];
-        if (p.sourceId !== currentSid) {
-            coords.push([p.lng, p.lat]);
-            features.push({
-                type: 'Feature', properties: {color: colorOf(currentSid)},
-                geometry: {type: 'LineString', coordinates: coords}
-            });
+        const prev = FinalTimeline[i - 1];
+        const gap = (p.t - prev.t) > gapConfigFor(p.sourceId).continuousUpTo;
+
+        if (p.sourceId !== currentSid || gap) {
+            flush();
             coords = [[p.lng, p.lat]];
             currentSid = p.sourceId;
-        } else coords.push([p.lng, p.lat]);
+        } else {
+            coords.push([p.lng, p.lat]);
+        }
     }
-    if (coords.length > 1) features.push({
-        type: 'Feature',
-        properties: {color: colorOf(currentSid)},
-        geometry: {type: 'LineString', coordinates: coords}
-    });
-    return {type: 'FeatureCollection', features};
-}
+    flush();
 
+    return { type: 'FeatureCollection', features };
+}
 function buildTimeLabelsFC() {
     if (FinalTimeline.length < 2) return emptyFC();
     const features = [];
@@ -752,18 +870,26 @@ function drawMainLane() {
         p.t >= viewportStartT - viewportDuration*0.1 &&
         p.t <= viewportStartT + viewportDuration*1.1
     );
-    if (visiblePoints.length < 2) return;
+    if (!visiblePoints.length) return;
 
     const runs = [];
     let cur = {
-        tStart: visiblePoints[0].t, tEnd: visiblePoints[0].t,
-        sid: visiblePoints[0].sourceId, interp: !!visiblePoints[0].interpolated
+        tStart: visiblePoints[0].t,
+        tEnd:   visiblePoints[0].t,
+        sourceId: visiblePoints[0].sourceId
     };
+
     for (let i = 1; i < visiblePoints.length; i++) {
         const p = visiblePoints[i];
-        const interp = !!p.interpolated;
-        if (p.sourceId === cur.sid && interp === cur.interp) cur.tEnd = p.t;
-        else { runs.push(cur); cur = {tStart: p.t, tEnd: p.t, sid: p.sourceId, interp}; }
+        const prev = visiblePoints[i - 1];
+        const gap = (p.t - prev.t) > gapConfigFor(p.sourceId).continuousUpTo;
+
+        if (!gap && p.sourceId === cur.sourceId) {
+            cur.tEnd = p.t;
+        } else {
+            runs.push(cur);
+            cur = { tStart: p.t, tEnd: p.t, sourceId: p.sourceId };
+        }
     }
     runs.push(cur);
 
@@ -782,21 +908,6 @@ function drawMainLane() {
         roundRect(mctx, x0, blockY, rectW, blockH, 5);
         mctx.fill();
 
-        if (r.interp) {
-            mctx.save();
-            mctx.beginPath();
-            roundRect(mctx, x0, blockY, rectW, blockH, 5);
-            mctx.clip();
-            mctx.strokeStyle = hexAlpha(color, 0.45);
-            mctx.lineWidth = 1;
-            for (let d = -blockH; d < rectW + blockH; d += 7) {
-                mctx.beginPath();
-                mctx.moveTo(x0 + d, blockY);
-                mctx.lineTo(x0 + d + blockH, blockY + blockH);
-                mctx.stroke();
-            }
-            mctx.restore();
-        }
         mctx.lineWidth = 1.2;
         mctx.strokeStyle = hexAlpha(color, 0.85);
         roundRect(mctx, x0 + 0.5, blockY + 0.5, rectW - 1, blockH - 1, 5);
@@ -1282,22 +1393,6 @@ function deleteSelected() {
                 seenKeys.add(k);
                 deletedKeys.push({key: k, sourceId: p.sourceId, refId: p.sourceRefId});
             }
-        } else if (p.interpolated) {
-            const idx = FinalTimeline.indexOf(p);
-            let neighbor = null;
-            for (let d = 1; d < 5; d++) {
-                const r = FinalTimeline[idx + d];
-                const l = FinalTimeline[idx - d];
-                if (r && r.sourceRefId != null) { neighbor = r; break; }
-                if (l && l.sourceRefId != null) { neighbor = l; break; }
-            }
-            if (neighbor) {
-                const k = pointKey(neighbor.sourceId, neighbor.sourceRefId);
-                if (!seenKeys.has(k)) {
-                    seenKeys.add(k);
-                    deletedKeys.push({key: k, sourceId: neighbor.sourceId, refId: neighbor.sourceRefId});
-                }
-            }
         }
     }
 
@@ -1586,7 +1681,9 @@ function openCommit() {
             patches: EditStore.patches,
             deletedPoints: Array.from(EditStore.deletedPoints).map(k => {
                 const [sid, id] = k.split('|');
-                return {sourceId: sid=== 'default' ? null : sid, id};
+                if (sid === '__main__')        return { source: 'main', id };
+                if (sid === 'default')         return { device: null,   id };
+                return { device: sid, id };
             }),
             movedPoints: Array.from(EditStore.movedPoints.entries()).map(([k, v]) => {
                 const [sid, id] = k.split('|');
@@ -1640,7 +1737,7 @@ function updateButtons() {
 function updateWovenCount() {
     let n = 0, last = null;
     for (const p of FinalTimeline) {
-        if (p.sourceId != null && p.sourceId !== last) n++;
+        if (p.sourceId !== '__main__' && p.sourceId !== last) n++;
         last = p.sourceId;
     }
     document.getElementById('wovenCount').textContent = n;

@@ -1,9 +1,12 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -11,18 +14,23 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class GeoJsonExportService {
 
-    private final SourceLocationPointJdbcService rawLocationPointRepository;
+    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointRepository;
     private final DeviceJdbcService deviceJdbcService;
     private final ObjectMapper objectMapper;
 
-    public GeoJsonExportService(SourceLocationPointJdbcService rawLocationPointRepository,
+    public GeoJsonExportService(SourceLocationPointJdbcService sourceLocationPointJdbcService, RawLocationPointJdbcService rawLocationPointRepository,
                                 DeviceJdbcService deviceJdbcService,
                                 ObjectMapper objectMapper) {
+        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.rawLocationPointRepository = rawLocationPointRepository;
         this.deviceJdbcService = deviceJdbcService;
         this.objectMapper = objectMapper;
@@ -31,40 +39,54 @@ public class GeoJsonExportService {
     public void generateGeoJsonContentStreaming(User user,
                                                 Instant start,
                                                 Instant end,
-                                                Long deviceId,
                                                 Writer writer) throws IOException {
-        List<SourceLocationPoint> points = fetchPoints(user, start, end, deviceId);
+        List<RawLocationPoint> points = rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(
+                user,
+                start,
+                end,
+                true, true, true);
 
         FeatureCollection collection = new FeatureCollection();
-        for (SourceLocationPoint point : points) {
+        for (RawLocationPoint point : points) {
             Feature feature = new Feature();
-            feature.setGeometry(createPointGeometry(point));
-            feature.setProperties(createProperties(point));
+            feature.setGeometry(createPointGeometry(point.getGeom(), point.getElevationMeters()));
+            feature.setProperties(createProperties(point.getId(), point.getTimestamp(), point.getAccuracyMeters(), point.getElevationMeters(), null, point.getSourceId()));
             collection.getFeatures().add(feature);
         }
 
         objectMapper.writeValue(writer, collection);
     }
 
-    private List<SourceLocationPoint> fetchPoints(User user,
-                                                  Instant start,
-                                                  Instant end,
-                                                  Long deviceId) {
-        Optional<Device> device = this.deviceJdbcService.find(user, deviceId);
-        return rawLocationPointRepository.findByUserAndTimestampBetweenOrderByTimestampAsc(
+    public void generateGeoJsonContentStreaming(User user,
+                                                Instant start,
+                                                Instant end,
+                                                Long deviceId,
+                                                Writer writer) throws IOException {
+        Device device = this.deviceJdbcService.find(user, deviceId).orElse(null);
+        List<SourceLocationPoint> points = sourceLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
                 user,
-                device.orElse(null),
+                device,
                 start,
                 end,
                 true, true);
+
+        FeatureCollection collection = new FeatureCollection();
+        for (SourceLocationPoint point : points) {
+            Feature feature = new Feature();
+            feature.setGeometry(createPointGeometry(point.getGeom(), point.getElevationMeters()));
+            feature.setProperties(createProperties(point.getId(), point.getTimestamp(), point.getAccuracyMeters(), point.getElevationMeters(), device != null ? device.id() : null, null));
+            collection.getFeatures().add(feature);
+        }
+
+        objectMapper.writeValue(writer, collection);
     }
 
-    private Geometry createPointGeometry(SourceLocationPoint point) {
+    private Geometry createPointGeometry(GeoPoint point, Double elevationMeters) {
         List<Double> coordinates = new ArrayList<>();
-        coordinates.add(point.getGeom().longitude());
-        coordinates.add(point.getGeom().latitude());
-        if (point.getElevationMeters() != null) {
-            coordinates.add(point.getElevationMeters());
+        coordinates.add(point.longitude());
+        coordinates.add(point.latitude());
+        if (elevationMeters != null) {
+            coordinates.add(elevationMeters);
         }
         Geometry geometry = new Geometry();
         geometry.setType("Point");
@@ -72,12 +94,18 @@ public class GeoJsonExportService {
         return geometry;
     }
 
-    private Map<String, Object> createProperties(SourceLocationPoint point) {
+    private Map<String, Object> createProperties(Long id, Instant timestamp, Double accuracyMeters, Double elevationMeters, Long deviceId, Long sourceId) {
         Map<String, Object> props = new LinkedHashMap<>();
-        props.put("id", point.getId());
-        props.put("timestamp", point.getTimestamp().toString());
-        props.put("accuracy", point.getAccuracyMeters());
-        props.put("elevation", point.getElevationMeters());
+        props.put("id", id);
+        props.put("timestamp", timestamp.toString());
+        props.put("accuracy", accuracyMeters);
+        props.put("elevation", elevationMeters);
+        if (deviceId != null) {
+            props.put("device", deviceId);
+        }
+        if (sourceId != null) {
+            props.put("sourceId", deviceId);
+        }
         return props;
     }
 
