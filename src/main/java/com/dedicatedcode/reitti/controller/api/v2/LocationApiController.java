@@ -175,22 +175,18 @@ public class LocationApiController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
     private Instant parseInstant(String input, ZoneId timezone, boolean end) {
-        LocalDateTime dateTime = null;
         try {
-            dateTime = LocalDateTime.parse(input);
-        } catch (Exception ignored) {}
-
-        if (dateTime == null) {
-            try {
-                dateTime = LocalDateTime.parse(input + (end ? "T23:59:59" : "T00:00:00"));
-                return dateTime.atZone(timezone).toInstant();
-            } catch (Exception ignored) {}
+            return LocalDateTime.parse(input).atZone(timezone).toInstant();
+        } catch (Exception ignored) {
         }
-        if (dateTime == null) {
-            try {
-                dateTime = ZonedDateTime.parse(input).toLocalDateTime();
-                return dateTime.atZone(timezone).toInstant();
-            } catch (Exception ignored) {}
+
+        try {
+            return LocalDateTime.parse(input + (end ? "T23:59:59" : "T00:00:00")).atZone(timezone).toInstant();
+        } catch (Exception ignored) {
+        }
+        try {
+            return ZonedDateTime.parse(input).toInstant();
+        } catch (Exception ignored) {
         }
         throw new IllegalArgumentException("Invalid date format");
     }

@@ -13,6 +13,7 @@ const DeviceSources = Object.fromEntries(
     })
 );
 const MAIN_PAD_MS = 24 * 3600 * 1000;
+const DEVICE_PAD_MS = 2 * 3600 * 1000;
 const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
 const KEEP_WINDOW_MAIN   = 7 * 24 * 3600 * 1000;    // keep a week of main journey
 const GAP_CONFIG = {
@@ -62,10 +63,11 @@ function goToDate(date, opts = {}) {
         return;
     }
 
-    // Normalize to UTC midnight of the selected day, then add the center hour
-    const dayStartUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     const centerHour = opts.hour ?? 9;
-    const centerRealMs = dayStartUtc + centerHour * 3600 * 1000;
+    const centerRealMs = dateTimeInUserTZ(
+        d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
+        centerHour, 0
+    );
 
     // Choose viewport duration: keep current, or override
     if (opts.durationMs) {
@@ -96,19 +98,18 @@ function goToDate(date, opts = {}) {
 /* ============================================================
    GeoJSON ADAPTERS
    ============================================================ */
-function featureToPoint(feature) {
+function featureToPoint(feature, sourceId) {
     const g = feature.geometry;
     const p = feature.properties || {};
     const [lng, lat, alt] = g.coordinates;
     return {
         id: p.id,
-        sourceId: p.device ?? null,
+        sourceId: sourceId !== undefined ? sourceId : (p.device ?? null),
         t: new Date(p.timestamp).getTime(),
         lat, lng,
         alt: alt ?? p.elevation ?? 0
     };
 }
-
 /* ============================================================
    EDIT STORE — persistent changeset (authoritative for server)
    ============================================================
@@ -167,7 +168,6 @@ function patchOwnerAt(t) {
    VIEWPORT
    ============================================================ */
 function getInitialCenterT() {
-    // Check URL: ?date=2026-03-02  or  ?t=1740931200000
     const params = new URLSearchParams(location.search);
 
     const tParam = params.get('t');
@@ -180,13 +180,13 @@ function getInitialCenterT() {
     if (dateParam) {
         const d = new Date(dateParam);
         if (!isNaN(d.getTime())) {
-            // Center on 9am on that day, in UTC (matches goToDate's convention)
-            const dayStartUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-            return dayStartUtc + 9 * 3600 * 1000;
+            return dateTimeInUserTZ(
+                d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
+                9, 0
+            );
         }
     }
 
-    // Default: right now
     return Date.now();
 }
 
@@ -209,17 +209,39 @@ const W = {
 const tToXf = (t, w) => ((t - viewportStartT) / viewportDuration) * w;
 const xToTf = (x, w) => viewportStartT + (x / w) * viewportDuration;
 
-function fmtClock(ms) {
-    return new Date(ms).toISOString().substring(11, 19);
-}
-function fmtClockShort(ms) {
-    return new Date(ms).toISOString().substring(11, 16);
-}
-function fmtDateCompact(ms) {
-    const d = new Date(ms);
-    return `${d.getMonth()+1}/${d.getDate()} ` + d.toISOString().substring(11, 16);
-}
+const USER_TZ = getUserTimezone();
 
+const _fmtTimeHMS = new Intl.DateTimeFormat('en-GB', {
+    timeZone: USER_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+});
+const _fmtTimeHM = new Intl.DateTimeFormat('en-GB', {
+    timeZone: USER_TZ, hour: '2-digit', minute: '2-digit', hour12: false
+});
+const _fmtDateCompact = new Intl.DateTimeFormat('en-GB', {
+    timeZone: USER_TZ, month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+});
+const _fmtDateFull = new Intl.DateTimeFormat(undefined, {
+    timeZone: USER_TZ, year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+});
+
+function fmtClock(ms)        { return _fmtTimeHMS.format(ms); }
+function fmtClockShort(ms)   { return _fmtTimeHM.format(ms); }
+function fmtDateCompact(ms)  { return _fmtDateCompact.format(ms); }
+function fmtDateFull(ms)     { return _fmtDateFull.format(ms); }
+function dateTimeInUserTZ(yyyy, mm, dd, hh = 0, mi = 0) {
+    // Build an ISO-like string and let Date parse it as UTC, then shift by the TZ offset
+    // for that specific instant (handles DST correctly).
+    const utcMs = Date.UTC(yyyy, mm, dd, hh, mi);
+
+    // Find what that UTC instant *looks like* in the user's TZ, compute the difference,
+    // and reverse it.
+    const asUserTZ = new Date(utcMs).toLocaleString('en-US', { timeZone: USER_TZ });
+    const asUTC    = new Date(utcMs).toLocaleString('en-US', { timeZone: 'UTC' });
+    const offsetMs = new Date(asUTC).getTime() - new Date(asUserTZ).getTime();
+    return utcMs + offsetMs;
+}
 let fetchDebounceId = null;
 
 function mergeSourceCacheFromGeoJSON(sourceId, featureCollection) {
@@ -297,7 +319,6 @@ function rebuildFinalInRange(tStart, tEnd) {
     }
     stitched.sort((a, b) => a.t - b.t);
     FinalTimeline = stitched;
-    mergeIntoRanges(hydratedRanges, tStart, tEnd);
 }
 
 // Keep ±24h around viewport in memory
@@ -342,9 +363,8 @@ async function loadViewportData() {
         zi.innerHTML += ` <span style="color:#d9a441">[Loading…]</span>`;
     }
 
-    const pad = viewportDuration * 0.5;
-    const devStartT = viewportStartT - pad;
-    const devEndT   = viewportStartT + viewportDuration + pad;
+    const devStartT = viewportStartT - DEVICE_PAD_MS;
+    const devEndT   = viewportStartT + viewportDuration + DEVICE_PAD_MS;
     const deviceNeeded = subtractRanges(hydratedRanges, devStartT, devEndT);
 
     try {
@@ -363,6 +383,7 @@ async function loadViewportData() {
                     devices.map(d => fetchDevicePoints(d.key, range.tStart, range.tEnd, resolutionMs))
                 );
                 devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i]));
+                mergeIntoRanges(hydratedRanges, range.tStart, range.tEnd);
             }
         }
 
@@ -411,7 +432,7 @@ async function fetchMainJourney(tStart, tEnd) {
 function mergeMainJourneyFromGeoJSON(featureCollection) {
     const byId = new Map(MainJourneyData.map(p => [p.id, p]));
     for (const f of featureCollection.features) {
-        const pt = featureToPoint(f);   // pt.sourceId will be null from properties; we don't care
+        const pt = featureToPoint(f, '__main__');
         const key = pointKey('__main__', pt.id);
         const mv = EditStore.movedPoints.get(key);
         byId.set(pt.id, mv ? { ...pt, lat: mv.lat, lng: mv.lng } : pt);
@@ -435,10 +456,18 @@ async function fetchDevicePoints(deviceId, tStart, tEnd, resolutionMs) {
 }
 
 function triggerDebouncedDataLoad() {
+    const visibleGap = subtractRanges(hydratedRanges, viewportStartT, viewportStartT + viewportDuration);
+    const mainVisibleGap = subtractRanges(mainHydratedRanges, viewportStartT, viewportStartT + viewportDuration);
+
+    if (visibleGap.length || mainVisibleGap.length) {
+        if (fetchDebounceId) clearTimeout(fetchDebounceId);
+        loadViewportData();
+        return;
+    }
+
     if (fetchDebounceId) clearTimeout(fetchDebounceId);
     fetchDebounceId = setTimeout(() => { loadViewportData(); }, 250);
 }
-
 function fillGaps(points, config) {
     if (config.interpolateUpTo <= config.interpolateBelow) {
         // Interpolation disabled — return as-is (still sorted for safety)
@@ -612,12 +641,12 @@ map.on('load', () => {
     map.addSource('final-line', {type: 'geojson', data: emptyFC()});
     map.addLayer({
         id: 'final-line-casing', type: 'line', source: 'final-line',
-        paint: {'line-color': '#0a1320', 'line-width': 8, 'line-opacity': 0.75},
+        paint: {'line-color': '#0a1320', 'line-width': 3, 'line-opacity': 0.75},
         layout: {'line-cap': 'round', 'line-join': 'round'}
     });
     map.addLayer({
         id: 'final-line', type: 'line', source: 'final-line',
-        paint: {'line-color': ['get', 'color'], 'line-width': 4.5, 'line-opacity': 0.98},
+        paint: {'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': 0.98},
         layout: {'line-cap': 'round', 'line-join': 'round'}
     });
 
@@ -732,28 +761,42 @@ function buildTimeLabelsFC() {
     return {type: 'FeatureCollection', features};
 }
 
+function selectableRange() {
+    return {
+        tStart: viewportStartT - MAIN_PAD_MS,
+        tEnd:   viewportStartT + viewportDuration + MAIN_PAD_MS
+    };
+}
+
 function buildCandidateFC() {
     const arr = (SourceData.get(W.selectedDevice) || [])
-        .filter(p => p.t >= viewportStartT - viewportDuration * 0.1 && p.t <= viewportStartT + viewportDuration * 1.1);
+        .filter(p => p.t >= viewportStartT - viewportDuration * 0.1
+            && p.t <= viewportStartT + viewportDuration * 1.1);
     const color = DeviceSources[W.selectedDevice == null ? 'default' : W.selectedDevice].color;
     if (arr.length < 2) return emptyFC();
+
+    const gapMs = GAP_CONFIG.device.continuousUpTo;
+
     const segs = [];
     let seg = [[arr[0].lng, arr[0].lat]];
     for (let i = 1; i < arr.length; i++) {
-        if (arr[i].t - arr[i - 1].t > 15000) {
+        if (arr[i].t - arr[i - 1].t > gapMs) {
             if (seg.length > 1) segs.push(seg);
             seg = [];
         }
         seg.push([arr[i].lng, arr[i].lat]);
     }
     if (seg.length > 1) segs.push(seg);
+
     return {
-        type: 'FeatureCollection', features: segs.map(s => ({
-            type: 'Feature', properties: {color}, geometry: {type: 'LineString', coordinates: s}
+        type: 'FeatureCollection',
+        features: segs.map(s => ({
+            type: 'Feature',
+            properties: { color },
+            geometry: { type: 'LineString', coordinates: s }
         }))
     };
 }
-
 function buildCandidateActiveFC() {
     const arr = (SourceData.get(W.selectedDevice) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
     const color = DeviceSources[W.selectedDevice].color;
@@ -768,16 +811,19 @@ function buildCandidateActiveFC() {
 
 function buildFinalPointsFC() {
     if (W.tool !== 'select' && W.tool !== 'boxselect') return emptyFC();
-    const viewPoints = FinalTimeline.filter(p =>
-        p.t >= viewportStartT && p.t <= viewportStartT + viewportDuration
-    );
-    return {
-        type: 'FeatureCollection', features: viewPoints.map(p => ({
+    const { tStart, tEnd } = selectableRange();
+
+    const features = [];
+    for (const p of FinalTimeline) {
+        if (p.t < tStart || p.t > tEnd) continue;
+        if (!p.sourceRefId) continue;                  // skip unmovable synthetics (issue 2)
+        features.push({
             type: 'Feature',
-            properties: {id: p.id, color: colorOf(p.sourceId), selected: W.selected.has(p.id)},
-            geometry: {type: 'Point', coordinates: [p.lng, p.lat]}
-        }))
-    };
+            properties: { id: p.id, color: colorOf(p.sourceId), selected: W.selected.has(p.id) },
+            geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
+        });
+    }
+    return { type: 'FeatureCollection', features };
 }
 
 function refreshMap() {
@@ -865,11 +911,9 @@ function drawMainLane() {
     drawTimeGrid(mctx, w, h);
 
     if (FinalTimeline.length < 2) return;
+    const { tStart, tEnd } = selectableRange();
+    const visiblePoints = FinalTimeline.filter(p => p.t >= tStart && p.t <= tEnd);
 
-    const visiblePoints = FinalTimeline.filter(p =>
-        p.t >= viewportStartT - viewportDuration*0.1 &&
-        p.t <= viewportStartT + viewportDuration*1.1
-    );
     if (!visiblePoints.length) return;
 
     const runs = [];
@@ -1000,6 +1044,8 @@ function drawDeviceLane() {
     const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return;
 
+    const gapMs = GAP_CONFIG.device.continuousUpTo;
+
     let aMin = Infinity, aMax = -Infinity;
     for (const p of arr) {
         if (p.alt < aMin) aMin = p.alt;
@@ -1015,7 +1061,7 @@ function drawDeviceLane() {
     const segments = [];
     let seg = [arr[0]];
     for (let i = 1; i < arr.length; i++) {
-        if (arr[i].t - arr[i - 1].t > 15000) {
+        if (arr[i].t - arr[i - 1].t > gapMs) {
             if (seg.length > 1) segments.push(seg);
             seg = [];
         }
@@ -1023,6 +1069,7 @@ function drawDeviceLane() {
     }
     if (seg.length > 1) segments.push(seg);
 
+    // glow pass
     dctx.save();
     dctx.shadowColor = hexAlpha(color, 0.55);
     dctx.shadowBlur = 6;
@@ -1040,6 +1087,7 @@ function drawDeviceLane() {
     }
     dctx.restore();
 
+    // sharp pass
     dctx.strokeStyle = color;
     dctx.lineWidth = 1.3;
     for (const s of segments) {
@@ -1051,11 +1099,12 @@ function drawDeviceLane() {
         dctx.stroke();
     }
 
+    // gap shading
     for (let i = 1; i < arr.length; i++) {
         const dt = arr[i].t - arr[i - 1].t;
-        if (dt > 15000) {
+        if (dt > gapMs) {
             const x0 = tToXf(arr[i - 1].t, w), x1 = tToXf(arr[i].t, w);
-            if(x1 < 0 || x0 > w) continue;
+            if (x1 < 0 || x0 > w) continue;
             dctx.fillStyle = 'rgba(224, 122, 107, 0.08)';
             dctx.fillRect(x0, 4, x1 - x0, h - 8);
             if (x1 - x0 > 30) {
@@ -1069,9 +1118,7 @@ function drawDeviceLane() {
             }
         }
     }
-}
-
-function syncPatchBox() {
+}function syncPatchBox() {
     const cell = document.getElementById('deviceLaneCell');
     const w = cell.clientWidth;
     if (!w) return;
@@ -1626,11 +1673,10 @@ function setupMapInteractions() {
 
 function nearestFinalPoint(screenPt, thresholdPx) {
     let best = null, bestD = thresholdPx * thresholdPx;
-    const searchTarget = FinalTimeline.filter(p =>
-        p.t >= viewportStartT - viewportDuration*0.5 &&
-        p.t <= viewportStartT + viewportDuration*1.5
-    );
-    for (const p of searchTarget) {
+    const { tStart, tEnd } = selectableRange();
+    for (const p of FinalTimeline) {
+        if (p.t < tStart || p.t > tEnd) continue;
+        if (!p.sourceRefId) continue;                  // can't drag synthetics
         const proj = map.project([p.lng, p.lat]);
         const dx = proj.x - screenPt.x, dy = proj.y - screenPt.y;
         const d = dx * dx + dy * dy;
