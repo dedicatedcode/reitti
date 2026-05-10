@@ -104,46 +104,6 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
 
-        .legend {
-            position: absolute;
-            right: 18px;
-            bottom: calc(var(--drawer-top-edge) + 14px);
-            padding: 12px 14px;
-            z-index: 6;
-            min-width: 170px;
-            font-size: 11px;
-        }
-
-        .legend h4 {
-            margin: 0 0 7px;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--ink-faint);
-        }
-
-        .legend-row {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            margin: 4px 0;
-            color: var(--ink-dim);
-        }
-
-        .legend-line {
-            width: 24px;
-            height: 2.5px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-
-        .legend-row.dashed .legend-line {
-            border-top: 2px dashed;
-            background: transparent;
-            height: 0;
-        }
-
         .stats {
             position: absolute;
             top: 18px;
@@ -388,7 +348,138 @@
             opacity: 0.35;
             cursor: not-allowed;
         }
+        .help-panel {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .help-panel.open {
+            display: flex;
+        }
 
+        .help-panel-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 19, 32, 0.55);
+            backdrop-filter: blur(3px);
+        }
+
+        .help-panel-card {
+            position: relative;
+            width: min(540px, calc(100vw - 32px));
+            max-height: calc(100vh - 64px);
+            background: #131c2b;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            color: #ece6d6;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .help-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .help-panel-head h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: #f2c470;
+        }
+        .help-panel-close {
+            background: transparent;
+            border: none;
+            color: rgba(236, 230, 214, 0.6);
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 6px;
+            border-radius: 4px;
+        }
+        .help-panel-close:hover {
+            color: #ece6d6;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .help-panel-body {
+            padding: 14px 18px 18px;
+            overflow-y: auto;
+        }
+
+        .help-section {
+            margin-bottom: 18px;
+        }
+        .help-section:last-of-type {
+            margin-bottom: 0;
+        }
+        .help-section h3 {
+            margin: 0 0 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: rgba(165, 169, 159, 0.85);
+        }
+
+        .help-section dl {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 6px 18px;
+            margin: 0;
+        }
+        .help-section dt {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            font-size: 12px;
+        }
+        .help-section dd {
+            margin: 0;
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: rgba(236, 230, 214, 0.92);
+            align-self: center;
+        }
+
+        .help-section kbd {
+            display: inline-block;
+            min-width: 22px;
+            padding: 2px 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            text-align: center;
+            color: #ece6d6;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-bottom-width: 2px;
+            border-radius: 4px;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .help-footnote {
+            margin: 14px 0 0;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 11.5px;
+            color: rgba(165, 169, 159, 0.75);
+            line-height: 1.5;
+        }
+        .help-footnote kbd {
+            font-size: 10.5px;
+            padding: 1px 5px;
+        }
         /* ============ BOTTOM DRAWER ============ */
         #drawer {
             position: fixed;
@@ -684,7 +775,7 @@
 
         #playhead {
             position: absolute;
-            top: 0;
+            top: 8px;
             bottom: 0;
             width: 1.5px;
             background: linear-gradient(180deg, var(--danger), rgba(224, 122, 107, 0.3));
@@ -936,19 +1027,150 @@
             background: rgba(255, 255, 255, 0.08);
             color: var(--ink);
         }
+
+        .selection-info {
+            position: absolute;
+            bottom: 342px;
+            right: 18px;
+            z-index: 10;
+            min-width: 240px;
+            max-width: 320px;
+            background: rgba(10, 19, 32, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #ece6d6;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+        }
+
+        .sel-info-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sel-info-title {
+            font-weight: 600;
+            font-size: 11.5px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            color: #f2c470;
+        }
+
+        .sel-info-close {
+            background: transparent;
+            border: none;
+            color: rgba(236, 230, 214, 0.6);
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+        .sel-info-close:hover {
+            color: #ece6d6;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .sel-info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 3px 0;
+            line-height: 1.45;
+        }
+        .sel-info-row .k {
+            color: rgba(165, 169, 159, 0.85);
+            flex-shrink: 0;
+        }
+        .sel-info-row .v {
+            color: #ece6d6;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            word-break: break-all;
+        }
+        .sel-info-row .v.mono {
+            font-family: ui-monospace, monospace;
+            font-size: 11px;
+        }
+
+        .sel-info-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 10.5px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+        .sel-info-tag .swatch {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+        }
+        .sel-info-tag.synthetic {
+            background: rgba(224, 122, 107, 0.15);
+            color: #e07a6b;
+            border: 1px solid rgba(224, 122, 107, 0.3);
+        }
+        .sel-info-tag.moved {
+            background: rgba(217, 164, 65, 0.15);
+            color: #d9a441;
+            border: 1px solid rgba(217, 164, 65, 0.3);
+        }
+        .sel-info-tag.patched {
+            background: rgba(143, 197, 230, 0.15);
+            color: #8fc5e6;
+            border: 1px solid rgba(143, 197, 230, 0.3);
+        }
+
+        .sel-info-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .sel-info-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .sel-info-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ece6d6;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .sel-info-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body>
 <div id="map" class="is-loading"></div>
-
-<div class="floating legend">
-    <h4>Legend</h4>
-    <div class="legend-row"><span class="legend-line" style="background:var(--gold)"></span>Primary Path</div>
-    <div class="legend-row dashed"><span class="legend-line" style="border-color:var(--sky)"></span>Candidate Track</div>
-    <div class="legend-row"><span class="legend-line" style="background:var(--violet)"></span>Third device</div>
-    <div class="legend-row"><span class="legend-line"
-                                  style="background:var(--gold-bright); box-shadow: 0 0 8px var(--gold-glow)"></span>Selected
+<div id="selectionInfo" class="selection-info" style="display:none">
+    <div class="sel-info-head">
+        <span class="sel-info-title"></span>
+        <button class="sel-info-close" title="Clear selection" aria-label="Clear selection">×</button>
     </div>
+    <div class="sel-info-body"></div>
 </div>
 
 <div class="floating zoom-indicator" id="zoomIndicator">Zoom: 13.7, 37.769, −122.456</div>
@@ -967,7 +1189,60 @@
 </div>
 
 <div id="boxSelectOverlay"></div>
+<div id="helpPanel" class="help-panel" role="dialog" aria-labelledby="helpPanelTitle" aria-hidden="true">
+    <div class="help-panel-backdrop"></div>
+    <div class="help-panel-card">
+        <div class="help-panel-head">
+            <h2 id="helpPanelTitle">Keyboard shortcuts</h2>
+            <button class="help-panel-close" aria-label="Close">×</button>
+        </div>
 
+        <div class="help-panel-body">
+            <section class="help-section">
+                <h3>Tools</h3>
+                <dl>
+                    <dt><kbd>1</kbd></dt><dd>Inspect</dd>
+                    <dt><kbd>2</kbd></dt><dd>Select</dd>
+                    <dt><kbd>3</kbd></dt><dd>Box select</dd>
+                </dl>
+            </section>
+
+            <section class="help-section">
+                <h3>Selection</h3>
+                <dl>
+                    <dt><kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd></dt>
+                    <dd>Previous / next point</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> / <kbd>→</kbd></dt>
+                    <dd>Extend selection by one point</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>End</kbd></dt>
+                    <dd>Jump to first / last point in window</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Home</kbd> / <kbd>End</kbd></dt>
+                    <dd>Extend selection to start / end</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>A</kbd></dt>
+                    <dd>Select all points in editable window</dd>
+
+                    <dt><kbd>Esc</kbd></dt>
+                    <dd>Clear selection</dd>
+                </dl>
+            </section>
+
+            <section class="help-section">
+                <h3>Editing</h3>
+                <dl>
+                    <dt><kbd>Delete</kbd></dt><dd>Remove selected points</dd>
+                </dl>
+            </section>
+
+            <p class="help-footnote">
+                On macOS, <kbd>Cmd</kbd> works in place of <kbd>Ctrl</kbd>.
+            </p>
+        </div>
+    </div>
+</div>
 <div id="drawer">
     <div class="drawer-head">
         <label for="startDate">Date</label>
@@ -984,7 +1259,13 @@
         <button class="head-btn active" data-tool="inspect">Inspect</button>
         <button class="head-btn" data-tool="select">Select</button>
         <button class="head-btn" data-tool="boxselect">Box</button>
-
+        <button id="btnHelp" class="head-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </button>
         <div class="sep"></div>
 
         <select class="device-select" id="deviceSelect">

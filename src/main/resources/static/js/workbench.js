@@ -9,53 +9,41 @@ const nextId = () => ++_idCounter;
 const DeviceSources = Object.fromEntries(
     Array.from(document.querySelectorAll('#deviceSelect option')).map(o => {
         const key = o.value;
-        return [String(key), { key, name: o.textContent.trim(), color: o.dataset.color }];
+        return [String(key), {key, name: o.textContent.trim(), color: o.dataset.color}];
     })
 );
 const MAIN_PAD_MS = 24 * 3600 * 1000;
 const DEVICE_PAD_MS = 2 * 3600 * 1000;
 const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
-const KEEP_WINDOW_MAIN   = 7 * 24 * 3600 * 1000;    // keep a week of main journey
+const KEEP_WINDOW_MAIN = 7 * 24 * 3600 * 1000;    // keep a week of main journey
 const GAP_CONFIG = {
     device: {
         interpolateBelow: 60 * 1000,       // don't synthesize; 60s is normal
-        interpolateUpTo:  0,               // disables interpolation entirely
-        continuousUpTo:   5 * 60 * 1000    // 5 min of silence = real gap
+        interpolateUpTo: 0,               // disables interpolation entirely
+        continuousUpTo: 5 * 60 * 1000    // 5 min of silence = real gap
     },
     main: {
         interpolateBelow: Infinity,
-        interpolateUpTo:  0,
-        continuousUpTo:   15 * 60 * 1000   // 15 min for the decimated main journey
+        interpolateUpTo: 0,
+        continuousUpTo: 15 * 60 * 1000   // 15 min for the decimated main journey
     }
 };
 const mainHydratedRanges = [];           // separate from hydratedRanges (device cache)
 
 const mainColor = window.userSettings.timelineColor;
-const colorOf = (sid) =>  sid === '__main__' ? mainColor : DeviceSources[sid == null ? 'default' : sid]?.color;
-const nameOf  = (sid) => DeviceSources[sid == null ? 'default' : sid]?.name;
+const colorOf = (sid) => sid === '__main__' ? mainColor : DeviceSources[sid ?? 'default']?.color;
+const nameOf = (sid) => DeviceSources[sid ?? 'default']?.name;
 const gapConfigFor = (sid) => sid === '__main__' ? GAP_CONFIG.main : GAP_CONFIG.device;
 
-// Normalized per-source cache: sourceId -> array of {id, sourceId, t, lat, lng, alt}
+// Normalized per-stream cache: streamId -> array of {sourceId, streamId, t, lat, lng, alt}
 const SourceData = new Map();
-// Final derived timeline: [{id, t, lat, lng, alt, sourceId, sourceRefId}]
+// Final derived timeline: [{id, t, lat, lng, alt, streamId, sourceId}]
 let FinalTimeline = [];
 
 /* ============================================================
    DATE NAVIGATION
-   ============================================================
-   Jumps the timeline viewport to a given calendar date.
-   User edits (patches, deletes, moves) are preserved because
-   they live in EditStore, not in the point cache.
    ============================================================ */
 
-/**
- * Navigate the timeline to a specific date.
- * @param {Date|string} date - A Date object or ISO date string ('YYYY-MM-DD')
- * @param {Object} [opts]
- * @param {number} [opts.hour=9]        - Hour of day to center on (0-23)
- * @param {number} [opts.durationMs]    - Override viewport duration
- * @param {boolean} [opts.keepDuration=true] - Keep current zoom level
- */
 function goToDate(date, opts = {}) {
     const d = (date instanceof Date) ? date : new Date(date);
     if (isNaN(d.getTime())) {
@@ -69,24 +57,20 @@ function goToDate(date, opts = {}) {
         centerHour, 0
     );
 
-    // Choose viewport duration: keep current, or override
     if (opts.durationMs) {
         viewportDuration = Math.max(60 * 1000, opts.durationMs);
     } else if (!opts.keepDuration) {
-        viewportDuration = 45 * 60 * 1000; // default 45 min
+        viewportDuration = 45 * 60 * 1000;
     }
 
     viewportStartT = centerRealMs - viewportDuration / 2;
     clampViewport();
 
-    // Also recenter the patch selection on the new date so the user
-    // has a meaningful copy-range to work with immediately
     const patchSpan = Math.min(5 * 60000, viewportDuration * 0.15);
     W.patch.tStart = centerRealMs - patchSpan / 2;
-    W.patch.tEnd   = centerRealMs + patchSpan / 2;
+    W.patch.tEnd = centerRealMs + patchSpan / 2;
 
-    // Clear transient UI state; edits in EditStore are untouched
-    W.selected.clear();
+    clearSelection();
     W.hoverT = null;
     playhead.style.display = 'none';
 
@@ -98,34 +82,55 @@ function goToDate(date, opts = {}) {
 /* ============================================================
    GeoJSON ADAPTERS
    ============================================================ */
-function featureToPoint(feature, sourceId) {
+function featureToPoint(feature, streamId) {
     const g = feature.geometry;
     const p = feature.properties || {};
     const [lng, lat, alt] = g.coordinates;
+
+    const sourceId = p.sourceId ?? null;
+
     return {
-        id: p.id,
-        sourceId: sourceId !== undefined ? sourceId : (p.device ?? null),
+        sourceId,
+        streamId,
         t: new Date(p.timestamp).getTime(),
         lat, lng,
         alt: alt ?? p.elevation ?? 0
     };
 }
+
+function mergeSourceCacheFromGeoJSON(streamId, featureCollection) {
+    const existing = SourceData.get(streamId) || [];
+    const byKey = new Map(existing.map(p => [p.sourceId, p]));
+    for (const f of featureCollection.features) {
+        const pt = featureToPoint(f, streamId);
+        if (pt.sourceId == null) continue;
+        const mv = EditStore.movedPoints.get(pt.sourceId);
+        byKey.set(pt.sourceId, mv ? {...pt, lat: mv.lat, lng: mv.lng} : pt);
+    }
+    const merged = Array.from(byKey.values()).sort((a, b) => a.t - b.t);
+    SourceData.set(streamId, merged);
+}
+
+function mergeMainJourneyFromGeoJSON(featureCollection) {
+    const byKey = new Map(MainJourneyData.map(p => [p.sourceId ?? `gen_${p.t}`, p]));
+    for (const f of featureCollection.features) {
+        const pt = featureToPoint(f, '__main__');
+        const key = pt.sourceId ?? `gen_${pt.t}`;
+        const mv = pt.sourceId != null ? EditStore.movedPoints.get(pt.sourceId) : null;
+        byKey.set(key, mv ? {...pt, lat: mv.lat, lng: mv.lng} : pt);
+    }
+    MainJourneyData = Array.from(byKey.values()).sort((a, b) => a.t - b.t);
+}
+
 /* ============================================================
-   EDIT STORE — persistent changeset (authoritative for server)
-   ============================================================
-   - patches:        copy ops — [{tStart, tEnd, sourceId, seq}]
-   - deletedPoints:  Set<"sourceId|id"> — deleted backend points
-   - movedPoints:    Map<"sourceId|id" -> {lat, lng}>
-   - hydratedRanges: cache-only, ranges currently loaded
+   EDIT STORE
    ============================================================ */
 const EditStore = {
-    patches: [],
-    deletedPoints: new Set(),
-    movedPoints: new Map()
+    patches: [],            // [{tStart, tEnd, streamId, seq}]
+    deletedPoints: new Set(),   // Set<sourceId>
+    movedPoints: new Map()      // Map<sourceId, {lat, lng}>
 };
 const hydratedRanges = [];
-
-const pointKey = (sourceId, id) => `${sourceId ?? 'null'}|${id}`;
 
 function mergeIntoRanges(ranges, tStart, tEnd) {
     if (tEnd < tStart) [tStart, tEnd] = [tEnd, tStart];
@@ -157,7 +162,7 @@ function patchOwnerAt(t) {
     let owner = null, bestSeq = -1;
     for (const p of EditStore.patches) {
         if (t >= p.tStart && t <= p.tEnd && p.seq > bestSeq) {
-            owner = p.sourceId;
+            owner = p.streamId;
             bestSeq = p.seq;
         }
     }
@@ -198,9 +203,10 @@ const W = {
     tool: 'inspect',
     selectedDevice: 'default',
     selected: new Set(),
+    selectionAnchorId: null,
     patch: {
         tStart: _initialCenter - 2.5 * 60000,
-        tEnd:   _initialCenter + 2.5 * 60000
+        tEnd: _initialCenter + 2.5 * 60000
     },
     hoverT: null,
     isLoading: false
@@ -226,109 +232,81 @@ const _fmtDateFull = new Intl.DateTimeFormat(undefined, {
     hour: '2-digit', minute: '2-digit', hour12: false
 });
 
-function fmtClock(ms)        { return _fmtTimeHMS.format(ms); }
-function fmtClockShort(ms)   { return _fmtTimeHM.format(ms); }
-function fmtDateCompact(ms)  { return _fmtDateCompact.format(ms); }
-function fmtDateFull(ms)     { return _fmtDateFull.format(ms); }
-function dateTimeInUserTZ(yyyy, mm, dd, hh = 0, mi = 0) {
-    // Build an ISO-like string and let Date parse it as UTC, then shift by the TZ offset
-    // for that specific instant (handles DST correctly).
-    const utcMs = Date.UTC(yyyy, mm, dd, hh, mi);
+function fmtClock(ms) {
+    return _fmtTimeHMS.format(ms);
+}
 
-    // Find what that UTC instant *looks like* in the user's TZ, compute the difference,
-    // and reverse it.
-    const asUserTZ = new Date(utcMs).toLocaleString('en-US', { timeZone: USER_TZ });
-    const asUTC    = new Date(utcMs).toLocaleString('en-US', { timeZone: 'UTC' });
+function fmtClockShort(ms) {
+    return _fmtTimeHM.format(ms);
+}
+
+function fmtDateCompact(ms) {
+    return _fmtDateCompact.format(ms);
+}
+
+function fmtDateFull(ms) {
+    return _fmtDateFull.format(ms);
+}
+
+function dateTimeInUserTZ(yyyy, mm, dd, hh = 0, mi = 0) {
+    const utcMs = Date.UTC(yyyy, mm, dd, hh, mi);
+    const asUserTZ = new Date(utcMs).toLocaleString('en-US', {timeZone: USER_TZ});
+    const asUTC = new Date(utcMs).toLocaleString('en-US', {timeZone: 'UTC'});
     const offsetMs = new Date(asUTC).getTime() - new Date(asUserTZ).getTime();
     return utcMs + offsetMs;
 }
+
 let fetchDebounceId = null;
 
-function mergeSourceCacheFromGeoJSON(sourceId, featureCollection) {
-    const existing = SourceData.get(sourceId) || [];
-    const byId = new Map(existing.map(p => [p.id, p]));
-    for (const f of featureCollection.features) {
-        const p = featureToPoint(f, sourceId);   // ← pass sourceId
-        const mv = EditStore.movedPoints.get(pointKey(sourceId, p.id));
-        byId.set(p.id, mv ? {...p, lat: mv.lat, lng: mv.lng} : p);
-    }
-    const merged = Array.from(byId.values()).sort((a, b) => a.t - b.t);
-    SourceData.set(sourceId, merged);
-}
-
 function rebuildFinalInRange(tStart, tEnd) {
-    // Drop everything in the range — we're going to rebuild it
     FinalTimeline = FinalTimeline.filter(p => p.t < tStart || p.t > tEnd);
-
-    // For each point-instant in the range, decide what goes into FinalTimeline:
-    //   - If a patch covers it, use that device's points
-    //   - Otherwise, use the main-journey points
-    //
-    // The simplest way: walk patches to cover patched sub-ranges from SourceData,
-    // and fill the remaining gaps from MainJourneyData.
 
     const patchesInRange = EditStore.patches
         .filter(p => p.tEnd >= tStart && p.tStart <= tEnd)
-        .sort((a, b) => a.seq - b.seq);  // later patches win by virtue of being applied last
+        .sort((a, b) => a.seq - b.seq);
 
-    // 1. Seed from main journey across the whole range
+    // 1. Seed from main journey
     for (const p of MainJourneyData) {
         if (p.t < tStart || p.t > tEnd) continue;
-        if (EditStore.deletedPoints.has(pointKey('__main__', p.id))) continue;
-        // skip if any patch covers this instant
+        if (p.sourceId != null && EditStore.deletedPoints.has(p.sourceId)) continue;
         if (patchesInRange.some(pp => p.t >= pp.tStart && p.t <= pp.tEnd)) continue;
 
         FinalTimeline.push({
-            id: `main_${p.id}`,
+            id: `main_${p.sourceId ?? `gen_${p.t}`}`,
             t: p.t, lat: p.lat, lng: p.lng, alt: p.alt,
-            sourceId: '__main__', sourceRefId: p.id
+            streamId: '__main__',
+            sourceId: p.sourceId
         });
     }
 
-    // 2. For each patched sub-range, pull from that device's SourceData
-    //    (later patches overwrite earlier ones — patchOwnerAt handles that)
+    // 2. Patched sub-ranges
     for (const patch of patchesInRange) {
-        const arr = SourceData.get(patch.sourceId) || [];
+        const arr = SourceData.get(patch.streamId) || [];
         for (const p of arr) {
             if (p.t < Math.max(tStart, patch.tStart)) continue;
             if (p.t > Math.min(tEnd, patch.tEnd)) break;
-            if (EditStore.deletedPoints.has(pointKey(patch.sourceId, p.id))) continue;
+            if (p.sourceId != null && EditStore.deletedPoints.has(p.sourceId)) continue;
 
-            const { owner } = patchOwnerAt(p.t);
-            if (owner !== patch.sourceId) continue;  // a later patch took over
+            const {owner} = patchOwnerAt(p.t);
+            if (owner !== patch.streamId) continue;
 
             FinalTimeline.push({
-                id: `auto_${patch.sourceId}_${p.id}`,
+                id: `auto_${patch.streamId}_${p.sourceId}`,
                 t: p.t, lat: p.lat, lng: p.lng, alt: p.alt,
-                sourceId: patch.sourceId, sourceRefId: p.id
+                streamId: patch.streamId,
+                sourceId: p.sourceId
             });
         }
     }
 
     FinalTimeline.sort((a, b) => a.t - b.t);
-
-    // Apply per-source gap handling
-    const bySource = new Map();
-    for (const p of FinalTimeline) {
-        if (!bySource.has(p.sourceId)) bySource.set(p.sourceId, []);
-        bySource.get(p.sourceId).push(p);
-    }
-    const stitched = [];
-    for (const [sid, arr] of bySource) {
-        stitched.push(...fillGaps(arr, gapConfigFor(sid)));
-    }
-    stitched.sort((a, b) => a.t - b.t);
-    FinalTimeline = stitched;
 }
 
-// Keep ±24h around viewport in memory
-const KEEP_WINDOW_MS = 24 * 3600 * 1000;
-
 function evictFarData() {
-    const devKeepStart  = viewportStartT - KEEP_WINDOW_DEVICE;
-    const devKeepEnd    = viewportStartT + viewportDuration + KEEP_WINDOW_DEVICE;
+    const devKeepStart = viewportStartT - KEEP_WINDOW_DEVICE;
+    const devKeepEnd = viewportStartT + viewportDuration + KEEP_WINDOW_DEVICE;
     const mainKeepStart = viewportStartT - KEEP_WINDOW_MAIN;
-    const mainKeepEnd   = viewportStartT + viewportDuration + KEEP_WINDOW_MAIN;
+    const mainKeepEnd = viewportStartT + viewportDuration + KEEP_WINDOW_MAIN;
 
     for (const [sid, arr] of SourceData.entries()) {
         const filtered = arr.filter(p => p.t >= devKeepStart && p.t <= devKeepEnd);
@@ -336,8 +314,7 @@ function evictFarData() {
     }
     MainJourneyData = MainJourneyData.filter(p => p.t >= mainKeepStart && p.t <= mainKeepEnd);
 
-    // Trim hydrated-range trackers correspondingly
-    trimRangesTo(hydratedRanges,     devKeepStart,  devKeepEnd);
+    trimRangesTo(hydratedRanges, devKeepStart, devKeepEnd);
     trimRangesTo(mainHydratedRanges, mainKeepStart, mainKeepEnd);
 
     FinalTimeline = FinalTimeline.filter(p => p.t >= mainKeepStart && p.t <= mainKeepEnd);
@@ -350,7 +327,7 @@ function trimRangesTo(ranges, keepStart, keepEnd) {
     const trimmed = [];
     for (const r of ranges) {
         if (r.tEnd < keepStart || r.tStart > keepEnd) continue;
-        trimmed.push({ tStart: Math.max(keepStart, r.tStart), tEnd: Math.min(keepEnd, r.tEnd) });
+        trimmed.push({tStart: Math.max(keepStart, r.tStart), tEnd: Math.min(keepEnd, r.tEnd)});
     }
     ranges.length = 0;
     ranges.push(...trimmed);
@@ -364,14 +341,12 @@ async function loadViewportData() {
     }
 
     const devStartT = viewportStartT - DEVICE_PAD_MS;
-    const devEndT   = viewportStartT + viewportDuration + DEVICE_PAD_MS;
+    const devEndT = viewportStartT + viewportDuration + DEVICE_PAD_MS;
     const deviceNeeded = subtractRanges(hydratedRanges, devStartT, devEndT);
 
     try {
-        // Main journey: always make sure the wide window is covered
         await ensureMainJourneyLoaded();
 
-        // Device data: narrow viewport-scoped fetch (unchanged)
         if (deviceNeeded.length) {
             const devices = Object.values(DeviceSources);
             let resolutionMs = 1500;
@@ -387,7 +362,6 @@ async function loadViewportData() {
             }
         }
 
-        // Rebuild the *wide* range so main journey is visible beyond the viewport
         rebuildFinalInRange(
             viewportStartT - MAIN_PAD_MS,
             viewportStartT + viewportDuration + MAIN_PAD_MS
@@ -402,9 +376,10 @@ async function loadViewportData() {
     }
 
 }
+
 async function ensureMainJourneyLoaded() {
     const startT = viewportStartT - MAIN_PAD_MS;
-    const endT   = viewportStartT + viewportDuration + MAIN_PAD_MS;
+    const endT = viewportStartT + viewportDuration + MAIN_PAD_MS;
 
     const needed = subtractRanges(mainHydratedRanges, startT, endT);
     if (!needed.length) return;
@@ -419,37 +394,26 @@ async function ensureMainJourneyLoaded() {
 async function fetchMainJourney(tStart, tEnd) {
     const params = new URLSearchParams({
         start: new Date(tStart).toISOString(),
-        end:   new Date(tEnd).toISOString(),
+        end: new Date(tEnd).toISOString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     });
     const res = await fetch(window.contextPath + `/api/v2/locations/geojson?${params}`, {
-        headers: { 'Accept': 'application/json' }
+        headers: {'Accept': 'application/json'}
     });
     if (!res.ok) throw new Error(`Main journey fetch failed: ${res.status}`);
     return res.json();
 }
 
-function mergeMainJourneyFromGeoJSON(featureCollection) {
-    const byId = new Map(MainJourneyData.map(p => [p.id, p]));
-    for (const f of featureCollection.features) {
-        const pt = featureToPoint(f, '__main__');
-        const key = pointKey('__main__', pt.id);
-        const mv = EditStore.movedPoints.get(key);
-        byId.set(pt.id, mv ? { ...pt, lat: mv.lat, lng: mv.lng } : pt);
-    }
-    MainJourneyData = Array.from(byId.values()).sort((a, b) => a.t - b.t);
-}
-
 async function fetchDevicePoints(deviceId, tStart, tEnd, resolutionMs) {
     const params = new URLSearchParams({
         start: new Date(tStart).toISOString(),
-        end:   new Date(tEnd).toISOString(),
+        end: new Date(tEnd).toISOString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     });
     if (deviceId !== "default") params.set('device', deviceId);
 
     const res = await fetch(window.contextPath + `/api/v2/locations/geojson/source?${params}`, {
-        headers: { 'Accept': 'application/json' }
+        headers: {'Accept': 'application/json'}
     });
     if (!res.ok) throw new Error(`Fetch failed for device ${deviceId}: ${res.status}`);
     return res.json();
@@ -466,42 +430,13 @@ function triggerDebouncedDataLoad() {
     }
 
     if (fetchDebounceId) clearTimeout(fetchDebounceId);
-    fetchDebounceId = setTimeout(() => { loadViewportData(); }, 250);
+    fetchDebounceId = setTimeout(() => {
+        loadViewportData();
+    }, 250);
 }
-function fillGaps(points, config) {
-    if (config.interpolateUpTo <= config.interpolateBelow) {
-        // Interpolation disabled — return as-is (still sorted for safety)
-        return [...points].sort((a, b) => a.t - b.t);
-    }
 
-    const out = [];
-    const sorted = [...points].sort((a, b) => a.t - b.t);
-    for (let i = 0; i < sorted.length; i++) {
-        out.push(sorted[i]);
-        if (i >= sorted.length - 1) continue;
-
-        const a = sorted[i], b = sorted[i + 1];
-        const dt = b.t - a.t;
-        if (dt > config.interpolateBelow && dt < config.interpolateUpTo) {
-            const step = config.interpolateBelow;
-            const n = Math.ceil(dt / step) - 1;
-            for (let j = 1; j <= n; j++) {
-                const f = j / (n + 1);
-                out.push({
-                    id: `interp_${nextId()}`,
-                    t: a.t + dt * f,
-                    lat: a.lat + (b.lat - a.lat) * f,
-                    lng: a.lng + (b.lng - a.lng) * f,
-                    alt: a.alt + (b.alt - a.alt) * f,
-                    sourceId: a.sourceId
-                });
-            }
-        }
-    }
-    return out;
-}
 /* ============================================================
-   HISTORY (client-side undo; server uses EditStore directly)
+   HISTORY
    ============================================================ */
 const History = [];
 let histStartSnapshot = null;
@@ -510,39 +445,45 @@ function pushAction(action) {
     action.id = nextId();
     action.at = new Date().toISOString();
     action.seq = History.length + 1;
-    action.undone = false;
     History.push(action);
     renderHistory();
 }
 
 function undoAction(actionId) {
     const id = Number(actionId);
-    const a = History.find(x => x.id === id);
-    if (!a || a.undone) return;
+    const idx = History.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    const a = History[idx];
 
     if (a.type === 'copy' && a._inverse) {
-        const idx = EditStore.patches.indexOf(a._inverse.patchRecord);
-        if (idx >= 0) EditStore.patches.splice(idx, 1);
+        const pIdx = EditStore.patches.indexOf(a._inverse.patchRecord);
+        if (pIdx >= 0) EditStore.patches.splice(pIdx, 1);
         rebuildFinalInRange(a._inverse.patchRecord.tStart, a._inverse.patchRecord.tEnd);
     } else if (a.type === 'delete' && a._inverse) {
-        for (const key of a._inverse.deletedKeys || []) {
-            EditStore.deletedPoints.delete(key);
+        for (const sid of a._inverse.sourceIds) {
+            EditStore.deletedPoints.delete(sid);
         }
         rebuildFinalInRange(a._inverse.tStart, a._inverse.tEnd);
     } else if (a.type === 'move' && a._inverse) {
         for (const g of a._inverse.group) {
             const fp = FinalTimeline.find(p => p.id === g.pointId);
-            if (fp) { fp.lat = g.from.lat; fp.lng = g.from.lng; }
-            if (g.sourceRefId != null && g.sourceId != null && g.sourceFrom) {
-                const s = SourceData.get(g.sourceId)?.find(pp => pp.id === g.sourceRefId);
-                if (s) { s.lat = g.sourceFrom.lat; s.lng = g.sourceFrom.lng; }
-                EditStore.movedPoints.delete(pointKey(g.sourceId, g.sourceRefId));
+            if (fp) {
+                fp.lat = g.from.lat;
+                fp.lng = g.from.lng;
             }
+            if (g.cachedFrom) {
+                const s = findCachedPoint(g.streamId, g.sourceId);
+                if (s) {
+                    s.lat = g.cachedFrom.lat;
+                    s.lng = g.cachedFrom.lng;
+                }
+            }
+            EditStore.movedPoints.delete(g.sourceId);
         }
     }
 
-    a.undone = true;
-    W.selected.clear();
+    History.splice(idx, 1);
+    clearSelection();
     toast(`Reverted: ${a.shortDesc}`);
     renderHistory();
     refreshAll();
@@ -550,18 +491,14 @@ function undoAction(actionId) {
 
 function clearHistory() {
     if (!History.length) return;
-    const active = History.filter(a => !a.undone);
-    const msg = active.length
-        ? `Revert all ${active.length} action${active.length > 1 ? 's' : ''} and clear the log?`
-        : 'Clear the action log?';
+    const msg = `Revert all ${History.length} action${History.length > 1 ? 's' : ''} and clear the log?`;
     if (!confirm(msg)) return;
 
-    // Undo in reverse chronological order so dependent state unwinds correctly
-    for (let i = History.length - 1; i >= 0; i--) {
-        if (!History[i].undone) undoAction(History[i].id);
+    // Undo in reverse so dependent state unwinds correctly
+    while (History.length) {
+        undoAction(History[History.length - 1].id);
     }
 
-    History.length = 0;
     renderHistory();
     refreshAll();
 }
@@ -570,10 +507,9 @@ function renderHistory() {
     const list = document.getElementById('histList');
     const badge = document.getElementById('commitBadge');
     const count = document.getElementById('histCount');
-    const active = History.filter(a => !a.undone).length;
-    count.textContent = active;
-    badge.textContent = active;
-    badge.style.display = active ? '' : 'none';
+    count.textContent = History.length;
+    badge.textContent = History.length;
+    badge.style.display = History.length ? '' : 'none';
 
     if (!History.length) {
         list.innerHTML = `<div class="history-empty">No actions yet.<br>Copy a patch or move points to begin.</div>`;
@@ -587,13 +523,13 @@ function renderHistory() {
     })[t] || '';
 
     list.innerHTML = History.slice().reverse().map(a => `
-    <div class="history-item type-${a.type} ${a.undone ? 'undone' : ''}">
+    <div class="history-item type-${a.type}">
       <div class="history-icon">${iconFor(a.type)}</div>
       <div class="history-body">
         <div class="history-desc">${a.desc}</div>
-        <div class="history-meta">#${String(a.seq).padStart(3, '0')} · ${fmtAgo(a.at)}${a.undone ? ' · reverted' : ''}</div>
+        <div class="history-meta">#${String(a.seq).padStart(3, '0')} · ${fmtAgo(a.at)}</div>
       </div>
-      <button class="history-undo" data-undo-id="${a.id}" ${a.undone ? 'disabled' : ''} title="Undo">
+      <button class="history-undo" data-undo-id="${a.id}" title="Undo">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
       </button>
     </div>`).join('');
@@ -610,7 +546,19 @@ function fmtAgo(iso) {
     return Math.floor(ms / 60000) + 'm ago';
 }
 
-setInterval(() => { if (History.length) renderHistory(); }, 15000);
+setInterval(() => {
+    if (!History.length) return;
+    const list = document.getElementById('histList');
+    if (!list) return;
+
+    const metas = list.querySelectorAll('.history-meta');
+    const reversed = History.slice().reverse();
+    metas.forEach((el, i) => {
+        const a = reversed[i];
+        if (!a) return;
+        el.textContent = `#${String(a.seq).padStart(3, '0')} · ${fmtAgo(a.at)}`;
+    });
+}, 15000);;
 document.getElementById('histClear').addEventListener('click', clearHistory);
 
 /* ============================================================
@@ -640,14 +588,62 @@ map.on('load', () => {
 
     map.addSource('final-line', {type: 'geojson', data: emptyFC()});
     map.addLayer({
+        id: 'final-line-bridge', type: 'line', source: 'final-line',
+        filter: ['==', ['get', 'bridge'], true],
+        paint: {
+            'line-color': '#8a93a7',
+            'line-width': 1.8,
+            'line-dasharray': [2, 2],
+            'line-opacity': [
+                'case',
+                ['get', 'inWindow'], 0.85,
+                0.35
+            ]
+        },
+        layout: { 'line-cap': 'round', 'line-join': 'round' }
+    });
+    map.addLayer({
         id: 'final-line-casing', type: 'line', source: 'final-line',
-        paint: {'line-color': '#0a1320', 'line-width': 3, 'line-opacity': 0.75},
+        filter: ['!=', ['get', 'bridge'], true],
+        paint: {
+            'line-color': '#0a1320',
+            'line-width': 3,
+            'line-opacity': [
+                'case',
+                ['get', 'inWindow'], 0.75,
+                0.25
+            ]
+        },
         layout: {'line-cap': 'round', 'line-join': 'round'}
     });
     map.addLayer({
         id: 'final-line', type: 'line', source: 'final-line',
-        paint: {'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': 0.98},
+        paint: {
+            'line-color': ['get', 'color'],
+            'line-width': [
+                'case',
+                ['get', 'inWindow'], 2.5,
+                1.8
+            ],
+            'line-opacity': [
+                'case',
+                ['get', 'inWindow'], 0.98,
+                0.35
+            ]
+        },
         layout: {'line-cap': 'round', 'line-join': 'round'}
+    });
+
+    map.addSource('edit-boundary', {type: 'geojson', data: emptyFC()});
+    map.addLayer({
+        id: 'edit-boundary', type: 'circle', source: 'edit-boundary',
+        paint: {
+            'circle-radius': 6,
+            'circle-color': '#f2c470',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#0a1320',
+            'circle-opacity': 0.85
+        }
     });
 
     map.addSource('time-labels', {type: 'geojson', data: emptyFC()});
@@ -669,7 +665,7 @@ map.on('load', () => {
         id: 'final-pts', type: 'circle', source: 'final-pts',
         paint: {
             'circle-radius': ['case', ['get', 'selected'], 8, 5],
-            'circle-color':  ['case', ['get', 'selected'], '#f2c470', ['get', 'color']],
+            'circle-color': ['case', ['get', 'selected'], '#f2c470', ['get', 'color']],
             'circle-stroke-width': 2,
             'circle-stroke-color': ['case', ['get', 'selected'], '#fff5d6', '#0a1320'],
             'circle-blur': ['case', ['get', 'selected'], 0.08, 0]
@@ -686,6 +682,16 @@ map.on('load', () => {
     });
 
     map.addSource('cand-active', {type: 'geojson', data: emptyFC()});
+    map.addLayer({
+        id: 'cand-active-casing', type: 'line', source: 'cand-active',
+        paint: {
+            'line-color': '#0a1320',
+            'line-width': 7,
+            'line-opacity': 0.8
+        },
+        layout: { 'line-cap': 'round', 'line-join': 'round' }
+    });
+
     map.addLayer({
         id: 'cand-active', type: 'line', source: 'cand-active',
         paint: {'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 1}
@@ -712,33 +718,104 @@ map.on('load', () => {
     setupMapInteractions();
 });
 
-function emptyFC() { return {type: 'FeatureCollection', features: []}; }
+function buildEditBoundaryFC() {
+    if (FinalTimeline.length < 2) return emptyFC();
+    const { tStart, tEnd } = selectableRange();
+
+    const features = [];
+    for (const t of [tStart, tEnd]) {
+        const p = interpolateAtT(FinalTimeline, t);
+        if (!p) continue;
+        // Don't draw if the boundary is outside the timeline's span
+        const first = FinalTimeline[0].t, last = FinalTimeline[FinalTimeline.length - 1].t;
+        if (t < first || t > last) continue;
+        features.push({
+            type: 'Feature',
+            properties: { which: t === tStart ? 'start' : 'end' },
+            geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
+        });
+    }
+    return { type: 'FeatureCollection', features };
+}
+
+function emptyFC() {
+    return {type: 'FeatureCollection', features: []};
+}
 
 function buildFinalLineFC() {
-    const features = [];
-    if (FinalTimeline.length < 2) return emptyFC();
+    if (FinalTimeline.length < 2) return { type: 'FeatureCollection', features: [] };
+    const { tStart: editStart, tEnd: editEnd } = selectableRange();
 
-    let coords = [[FinalTimeline[0].lng, FinalTimeline[0].lat]];
-    let currentSid = FinalTimeline[0].sourceId;
+    const features = [];
+    let coords = [];
+    let currentSid = null;
+    let currentInWindow = null;
 
     const flush = () => {
-        if (coords.length > 1) features.push({
-            type: 'Feature',
-            properties: { color: colorOf(currentSid) },
-            geometry: { type: 'LineString', coordinates: coords }
-        });
+        if (coords.length > 1) {
+            features.push({
+                type: 'Feature',
+                properties: { color: colorOf(currentSid), inWindow: currentInWindow, bridge: false },
+                geometry: { type: 'LineString', coordinates: coords }
+            });
+        }
+        coords = [];
     };
 
-    for (let i = 1; i < FinalTimeline.length; i++) {
-        const p = FinalTimeline[i];
-        const prev = FinalTimeline[i - 1];
-        const gap = (p.t - prev.t) > gapConfigFor(p.sourceId).continuousUpTo;
+    const isInWindow = t => t >= editStart && t <= editEnd;
 
-        if (p.sourceId !== currentSid || gap) {
+    for (let i = 0; i < FinalTimeline.length; i++) {
+        const p = FinalTimeline[i];
+        const inWindow = isInWindow(p.t);
+
+        if (i === 0) {
+            currentSid = p.streamId;
+            currentInWindow = inWindow;
+            coords.push([p.lng, p.lat]);
+            continue;
+        }
+
+        const prev = FinalTimeline[i - 1];
+        const dt = p.t - prev.t;
+        const sameStream = p.streamId === prev.streamId;
+        const cfg = gapConfigFor(p.streamId);
+
+        const continuous   = sameStream && dt <= cfg.continuousUpTo;
+        const sameStrBridge = sameStream && !continuous && dt <= cfg.interpolateUpTo;
+        const crossBridge  = !sameStream && dt <= CROSS_STREAM_BRIDGE_MS;
+
+        if (continuous && inWindow === currentInWindow) {
+            coords.push([p.lng, p.lat]);
+        } else if (continuous) {
+            // window-edge transition — flush with shared vertex, then start new run
+            coords.push([p.lng, p.lat]);
             flush();
-            coords = [[p.lng, p.lat]];
-            currentSid = p.sourceId;
+            currentSid = p.streamId;
+            currentInWindow = inWindow;
+            coords.push([p.lng, p.lat]);
+        } else if (sameStrBridge || crossBridge) {
+            // emit current run, then a separate bridge feature, then start fresh
+            flush();
+            features.push({
+                type: 'Feature',
+                properties: {
+                    color: colorOf(p.streamId),
+                    inWindow: isInWindow(prev.t) && inWindow,
+                    bridge: true
+                },
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [[prev.lng, prev.lat], [p.lng, p.lat]]
+                }
+            });
+            currentSid = p.streamId;
+            currentInWindow = inWindow;
+            coords.push([p.lng, p.lat]);
         } else {
+            // hard gap
+            flush();
+            currentSid = p.streamId;
+            currentInWindow = inWindow;
             coords.push([p.lng, p.lat]);
         }
     }
@@ -746,6 +823,7 @@ function buildFinalLineFC() {
 
     return { type: 'FeatureCollection', features };
 }
+
 function buildTimeLabelsFC() {
     if (FinalTimeline.length < 2) return emptyFC();
     const features = [];
@@ -764,7 +842,7 @@ function buildTimeLabelsFC() {
 function selectableRange() {
     return {
         tStart: viewportStartT - MAIN_PAD_MS,
-        tEnd:   viewportStartT + viewportDuration + MAIN_PAD_MS
+        tEnd: viewportStartT + viewportDuration + MAIN_PAD_MS
     };
 }
 
@@ -792,11 +870,12 @@ function buildCandidateFC() {
         type: 'FeatureCollection',
         features: segs.map(s => ({
             type: 'Feature',
-            properties: { color },
-            geometry: { type: 'LineString', coordinates: s }
+            properties: {color},
+            geometry: {type: 'LineString', coordinates: s}
         }))
     };
 }
+
 function buildCandidateActiveFC() {
     const arr = (SourceData.get(W.selectedDevice) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
     const color = DeviceSources[W.selectedDevice].color;
@@ -811,19 +890,19 @@ function buildCandidateActiveFC() {
 
 function buildFinalPointsFC() {
     if (W.tool !== 'select' && W.tool !== 'boxselect') return emptyFC();
-    const { tStart, tEnd } = selectableRange();
+    const {tStart, tEnd} = selectableRange();
 
     const features = [];
     for (const p of FinalTimeline) {
         if (p.t < tStart || p.t > tEnd) continue;
-        if (!p.sourceRefId) continue;                  // skip unmovable synthetics (issue 2)
+        if (p.sourceId == null) continue;
         features.push({
             type: 'Feature',
-            properties: { id: p.id, color: colorOf(p.sourceId), selected: W.selected.has(p.id) },
-            geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
+            properties: {id: p.id, color: colorOf(p.streamId), selected: W.selected.has(p.id)},
+            geometry: {type: 'Point', coordinates: [p.lng, p.lat]}
         });
     }
-    return { type: 'FeatureCollection', features };
+    return {type: 'FeatureCollection', features};
 }
 
 function refreshMap() {
@@ -832,6 +911,7 @@ function refreshMap() {
     map.getSource('time-labels').setData(buildTimeLabelsFC());
     map.getSource('cand-line').setData(buildCandidateFC());
     map.getSource('cand-active').setData(buildCandidateActiveFC());
+    map.getSource('edit-boundary').setData(buildEditBoundaryFC());
     map.getSource('final-pts').setData(buildFinalPointsFC());
 }
 
@@ -842,6 +922,7 @@ function refreshAll() {
     syncPatchBox();
     updateButtons();
     updateWovenCount();
+    renderSelectionInfo();
 }
 
 /* ============================================================
@@ -898,7 +979,7 @@ function drawTimeGrid(ctx, w, h) {
         ctx.lineTo(x + 0.5, h);
         ctx.stroke();
         if (ctx === mctx && x > 15 && x < w - 15) {
-            const label = viewportDuration > 3*24*3600*1000 ? fmtDateCompact(t) : fmtClockShort(t);
+            const label = viewportDuration > 3 * 24 * 3600 * 1000 ? fmtDateCompact(t) : fmtClockShort(t);
             ctx.fillText(label, x, h - 14);
         }
     }
@@ -911,7 +992,7 @@ function drawMainLane() {
     drawTimeGrid(mctx, w, h);
 
     if (FinalTimeline.length < 2) return;
-    const { tStart, tEnd } = selectableRange();
+    const {tStart, tEnd} = selectableRange();
     const visiblePoints = FinalTimeline.filter(p => p.t >= tStart && p.t <= tEnd);
 
     if (!visiblePoints.length) return;
@@ -919,20 +1000,19 @@ function drawMainLane() {
     const runs = [];
     let cur = {
         tStart: visiblePoints[0].t,
-        tEnd:   visiblePoints[0].t,
-        sourceId: visiblePoints[0].sourceId
+        tEnd: visiblePoints[0].t,
+        streamId: visiblePoints[0].streamId
     };
 
     for (let i = 1; i < visiblePoints.length; i++) {
         const p = visiblePoints[i];
         const prev = visiblePoints[i - 1];
-        const gap = (p.t - prev.t) > gapConfigFor(p.sourceId).continuousUpTo;
 
-        if (!gap && p.sourceId === cur.sourceId) {
+        if (p.streamId === cur.streamId) {
             cur.tEnd = p.t;
         } else {
             runs.push(cur);
-            cur = { tStart: p.t, tEnd: p.t, sourceId: p.sourceId };
+            cur = {tStart: p.t, tEnd: p.t, streamId: p.streamId};
         }
     }
     runs.push(cur);
@@ -944,10 +1024,10 @@ function drawMainLane() {
         const x0 = tToXf(r.tStart, w), x1 = tToXf(r.tEnd, w);
         if (x1 < 0 || x0 > w) continue;
         const rectW = Math.max(2, x1 - x0);
-        const color = colorOf(r.sid);
+        const color = colorOf(r.streamId);
         const grad = mctx.createLinearGradient(0, blockY, 0, blockY + blockH);
-        grad.addColorStop(0, hexAlpha(color, r.interp ? 0.22 : 0.55));
-        grad.addColorStop(1, hexAlpha(color, r.interp ? 0.10 : 0.3));
+        grad.addColorStop(0, hexAlpha(color, 0.55));
+        grad.addColorStop(1, hexAlpha(color, 0.3));
         mctx.fillStyle = grad;
         roundRect(mctx, x0, blockY, rectW, blockH, 5);
         mctx.fill();
@@ -973,7 +1053,6 @@ function drawMainLane() {
         mctx.restore();
     }
 
-    // Render all points as dots when in select/boxselect tools
     if (W.tool === 'select' || W.tool === 'boxselect') {
         const dotY = blockY + blockH / 2;
         const minSpacingPx = 3;
@@ -986,7 +1065,7 @@ function drawMainLane() {
             lastX = x;
 
             const selected = W.selected.has(p.id);
-            const color = colorOf(p.sourceId);
+            const color = colorOf(p.streamId);
 
             mctx.fillStyle = '#0a1320';
             mctx.beginPath();
@@ -1000,7 +1079,6 @@ function drawMainLane() {
         }
     }
 
-    // Selection glow (kept on top)
     for (const p of visiblePoints) {
         if (!W.selected.has(p.id)) continue;
         const x = tToXf(p.t, w);
@@ -1038,8 +1116,8 @@ function drawDeviceLane() {
     drawTimeGrid(dctx, w, h);
 
     const arr = (SourceData.get(W.selectedDevice) || []).filter(p =>
-        p.t >= viewportStartT - viewportDuration*0.2 &&
-        p.t <= viewportStartT + viewportDuration*1.2
+        p.t >= viewportStartT - viewportDuration * 0.2 &&
+        p.t <= viewportStartT + viewportDuration * 1.2
     );
     const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return;
@@ -1052,7 +1130,8 @@ function drawDeviceLane() {
         if (p.alt > aMax) aMax = p.alt;
     }
     const pad = (aMax - aMin) * 0.18 + 1;
-    aMin -= pad; aMax += pad;
+    aMin -= pad;
+    aMax += pad;
 
     const midY = h / 2;
     const ampH = h * 0.38;
@@ -1069,7 +1148,6 @@ function drawDeviceLane() {
     }
     if (seg.length > 1) segments.push(seg);
 
-    // glow pass
     dctx.save();
     dctx.shadowColor = hexAlpha(color, 0.55);
     dctx.shadowBlur = 6;
@@ -1087,7 +1165,6 @@ function drawDeviceLane() {
     }
     dctx.restore();
 
-    // sharp pass
     dctx.strokeStyle = color;
     dctx.lineWidth = 1.3;
     for (const s of segments) {
@@ -1099,7 +1176,6 @@ function drawDeviceLane() {
         dctx.stroke();
     }
 
-    // gap shading
     for (let i = 1; i < arr.length; i++) {
         const dt = arr[i].t - arr[i - 1].t;
         if (dt > gapMs) {
@@ -1118,7 +1194,9 @@ function drawDeviceLane() {
             }
         }
     }
-}function syncPatchBox() {
+}
+
+function syncPatchBox() {
     const cell = document.getElementById('deviceLaneCell');
     const w = cell.clientWidth;
     if (!w) return;
@@ -1155,7 +1233,7 @@ document.getElementById('drawer').addEventListener('wheel', (e) => {
     if (e.target.closest('.picker-popup')) return;
     const cell = document.getElementById('deviceLaneCell');
     const w = cell.clientWidth;
-    if(!w) return;
+    if (!w) return;
 
     if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
@@ -1176,7 +1254,7 @@ document.getElementById('drawer').addEventListener('wheel', (e) => {
     clampViewport();
     triggerDebouncedDataLoad();
     refreshAll();
-}, { passive: false });
+}, {passive: false});
 
 /* ============================================================
    PATCH-BOX DRAG
@@ -1251,6 +1329,7 @@ function beginTimelinePan(e, cellEl) {
     document.body.style.userSelect = 'none';
     return true;
 }
+
 function attachPanHandler(cellId) {
     const el = document.getElementById(cellId);
     if (!el) return;
@@ -1289,7 +1368,6 @@ window.addEventListener('mouseup', () => {
         return;
     }
 
-    // Pure click (no drag) on the device lane → recenter patch selection on click
     if (pan.cellId === 'deviceLaneCell') {
         const span = W.patch.tEnd - W.patch.tStart;
         let ns = pan.clickT - span / 2;
@@ -1349,10 +1427,11 @@ let _pickerSyncAt = 0;
 function syncPickerToHover(t) {
     if (!dateSelection) return;
     const now = performance.now();
-    if (now - _pickerSyncAt < 80) return;  // ~12 Hz, plenty smooth
+    if (now - _pickerSyncAt < 80) return;
     _pickerSyncAt = now;
     dateSelection.setDateSilent(new Date(t));
 }
+
 function offScrub() {
     W.hoverT = null;
     playhead.style.display = 'none';
@@ -1391,30 +1470,34 @@ function interpolateAtT(arr, t) {
    WEAVE OPS
    ============================================================ */
 function copyToFinal() {
-    const devKey = W.selectedDevice=== 'default' ? null : W.selectedDevice;
-    const src = (SourceData.get(devKey) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
-    if (!src.length) { toast('No points in patch range', true); return; }
+    const streamId = W.selectedDevice;
+    const src = (SourceData.get(streamId) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
+    if (!src.length) {
+        toast('No points in patch range', true);
+        return;
+    }
 
     const patchSeq = (EditStore.patches.at(-1)?.seq ?? 0) + 1;
     const patchRecord = {
         tStart: W.patch.tStart, tEnd: W.patch.tEnd,
-        sourceId: devKey, seq: patchSeq
+        streamId, seq: patchSeq
     };
     EditStore.patches.push(patchRecord);
+
 
     const priorCount = FinalTimeline.filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd).length;
     rebuildFinalInRange(W.patch.tStart, W.patch.tEnd);
     const injected = FinalTimeline.filter(p =>
-        p.t >= W.patch.tStart && p.t <= W.patch.tEnd && p.sourceId === devKey
+        p.t >= W.patch.tStart && p.t <= W.patch.tEnd && p.streamId === streamId
     ).length;
 
-    const niceName = nameOf(devKey);
+    const niceName = nameOf(streamId);
     pushAction({
         type: 'copy',
         shortDesc: `${niceName} patch`,
-        desc: `Wove in <b style="color:${DeviceSources[devKey == null ? 'null': devKey].color}">${niceName}</b> from ${fmtClockShort(W.patch.tStart)} to ${fmtClockShort(W.patch.tEnd)} <span style="color:var(--ink-faint)">· +${injected} / −${priorCount}</span>`,
+        desc: `Wove in <b style="color:${DeviceSources[streamId == null ? 'default' : streamId].color}">${niceName}</b> from ${fmtClockShort(W.patch.tStart)} to ${fmtClockShort(W.patch.tEnd)} <span style="color:var(--ink-faint)">· +${injected} / −${priorCount}</span>`,
         payload: {
-            device: devKey, tStart: W.patch.tStart, tEnd: W.patch.tEnd,
+            device: streamId, tStart: W.patch.tStart, tEnd: W.patch.tEnd,
             pointsInjected: injected, pointsRemoved: priorCount
         },
         _inverse: {patchRecord}
@@ -1427,35 +1510,21 @@ function copyToFinal() {
 function deleteSelected() {
     if (!W.selected.size) return;
 
-    const sel = FinalTimeline.filter(p => W.selected.has(p.id));
-    if (!sel.length) return;
-
-    const deletedKeys = [];
-    const seenKeys = new Set();
-
-    for (const p of sel) {
-        if (p.sourceRefId != null) {
-            const k = pointKey(p.sourceId, p.sourceRefId);
-            if (!seenKeys.has(k)) {
-                seenKeys.add(k);
-                deletedKeys.push({key: k, sourceId: p.sourceId, refId: p.sourceRefId});
-            }
-        }
-    }
-
-    if (!deletedKeys.length) {
-        toast('Nothing to delete (selection was all interpolated with no neighbors)', true);
+    const sel = FinalTimeline.filter(p => W.selected.has(p.id) && p.sourceId != null);
+    if (!sel.length) {
+        toast('Nothing to delete (no movable points selected)', true);
         return;
     }
 
-    for (const d of deletedKeys) EditStore.deletedPoints.add(d.key);
+    const dedupedIds = [...new Set(sel.map(p => p.sourceId))];
+    for (const sid of dedupedIds) EditStore.deletedPoints.add(sid);
 
     const tMin = Math.min(...sel.map(p => p.t));
     const tMax = Math.max(...sel.map(p => p.t));
     rebuildFinalInRange(tMin - 1, tMax + 1);
-    W.selected.clear();
+    clearSelection();
 
-    const n = deletedKeys.length;
+    const n = dedupedIds.length;
     pushAction({
         type: 'delete',
         shortDesc: `${n} point${n > 1 ? 's' : ''}`,
@@ -1463,9 +1532,9 @@ function deleteSelected() {
         payload: {
             count: n,
             tStart: tMin, tEnd: tMax,
-            points: deletedKeys.map(d => ({sourceId: d.sourceId, id: d.refId}))
+            sourceIds: dedupedIds
         },
-        _inverse: {deletedKeys: deletedKeys.map(d => d.key), tStart: tMin - 1, tEnd: tMax + 1}
+        _inverse: {sourceIds: dedupedIds, tStart: tMin - 1, tEnd: tMax + 1}
     });
 
     toast(`Removed ${n} point${n > 1 ? 's' : ''}`);
@@ -1480,18 +1549,25 @@ function snapshotDragGroup(pointIds) {
     for (const id of pointIds) {
         const fp = FinalTimeline.find(p => p.id === id);
         if (!fp) continue;
-        const entry = {
-            pointId: fp.id, originLat: fp.lat, originLng: fp.lng,
-            sourceId: fp.sourceId, sourceRefId: fp.sourceRefId ?? null,
-            sourceOriginLat: null, sourceOriginLng: null
-        };
-        if (fp.sourceRefId != null && fp.sourceId != null) {
-            const s = SourceData.get(fp.sourceId)?.find(pp => pp.id === fp.sourceRefId);
-            if (s) { entry.sourceOriginLat = s.lat; entry.sourceOriginLng = s.lng; }
-        }
-        group.push(entry);
+        if (fp.sourceId == null) continue;
+        const cached = findCachedPoint(fp.streamId, fp.sourceId);
+        group.push({
+            pointId: fp.id,
+            sourceId: fp.sourceId,
+            streamId: fp.streamId,
+            originLat: fp.lat, originLng: fp.lng,
+            cachedOriginLat: cached?.lat ?? null,
+            cachedOriginLng: cached?.lng ?? null
+        });
     }
     return group;
+}
+
+function findCachedPoint(streamId, sourceId) {
+    if (streamId === '__main__') {
+        return MainJourneyData.find(p => p.sourceId === sourceId);
+    }
+    return SourceData.get(streamId)?.find(p => p.sourceId === sourceId);
 }
 
 function setupMapInteractions() {
@@ -1502,7 +1578,9 @@ function setupMapInteractions() {
     map.on('mousemove', 'final-pts', () => {
         if (W.tool === 'select' || W.tool === 'boxselect') mapEl.style.cursor = 'grab';
     });
-    map.on('mouseleave', 'final-pts', () => { mapEl.style.cursor = ''; });
+    map.on('mouseleave', 'final-pts', () => {
+        mapEl.style.cursor = '';
+    });
 
     map.on('mousedown', (e) => {
         if (W.tool === 'inspect') return;
@@ -1546,15 +1624,14 @@ function setupMapInteractions() {
             const dLng = e.lngLat.lng - anchorOrigin.lng;
             for (const g of dragGroup) {
                 const fp = FinalTimeline.find(p => p.id === g.pointId);
-                if (fp) {
-                    fp.lat = g.originLat + dLat;
-                    fp.lng = g.originLng + dLng;
-                    if (g.sourceRefId != null && g.sourceId != null && g.sourceOriginLat != null) {
-                        const s = SourceData.get(g.sourceId)?.find(pp => pp.id === g.sourceRefId);
-                        if (s) {
-                            s.lat = g.sourceOriginLat + dLat;
-                            s.lng = g.sourceOriginLng + dLng;
-                        }
+                if (!fp) continue;
+                fp.lat = g.originLat + dLat;
+                fp.lng = g.originLng + dLng;
+                if (g.cachedOriginLat != null) {
+                    const s = findCachedPoint(g.streamId, g.sourceId);
+                    if (s) {
+                        s.lat = g.cachedOriginLat + dLat;
+                        s.lng = g.cachedOriginLng + dLng;
                     }
                 }
             }
@@ -1588,30 +1665,23 @@ function setupMapInteractions() {
                 const movedEntries = [];
                 for (const g of dragGroup) {
                     const fp = FinalTimeline.find(p => p.id === g.pointId);
-                    if (fp && g.sourceRefId != null) {
-                        EditStore.movedPoints.set(
-                            pointKey(g.sourceId, g.sourceRefId),
-                            {lat: fp.lat, lng: fp.lng}
-                        );
-                        movedEntries.push({
-                            sourceId: g.sourceId, id: g.sourceRefId,
-                            lat: fp.lat, lng: fp.lng
-                        });
-                    }
+                    if (!fp) continue;
+                    EditStore.movedPoints.set(g.sourceId, {lat: fp.lat, lng: fp.lng});
+                    movedEntries.push({sourceId: g.sourceId, lat: fp.lat, lng: fp.lng});
                 }
 
                 const inverseGroup = dragGroup.map(g => ({
                     pointId: g.pointId,
+                    sourceId: g.sourceId,
+                    streamId: g.streamId,
                     from: {lat: g.originLat, lng: g.originLng},
-                    sourceId: g.sourceId, sourceRefId: g.sourceRefId,
-                    sourceFrom: g.sourceOriginLat != null
-                        ? {lat: g.sourceOriginLat, lng: g.sourceOriginLng} : null
+                    cachedFrom: g.cachedOriginLat != null ? {lat: g.cachedOriginLat, lng: g.cachedOriginLng} : null
                 }));
 
                 if (n === 1) {
                     const g = dragGroup[0];
-                    const linked = g.sourceRefId != null && g.sourceId != null;
-                    const srcName = linked ? nameOf(g.sourceId) : 'primary';
+                    const linked = g.sourceId != null;
+                    const srcName = linked ? nameOf(g.streamId) : 'primary';
                     pushAction({
                         type: 'move',
                         shortDesc: `move @ ${fmtClockShort(anchor.t)}`,
@@ -1631,9 +1701,12 @@ function setupMapInteractions() {
                 drawMainLane();
                 drawDeviceLane();
             } else {
-                if (!e.shiftKey && !e.metaKey && !e.ctrlKey) W.selected.clear();
+                if (!e.shiftKey && !e.metaKey && !e.ctrlKey) clearSelection();
                 if (W.selected.has(draggingAnchor.id)) W.selected.delete(draggingAnchor.id);
-                else W.selected.add(draggingAnchor.id);
+                else {
+                    W.selected.add(draggingAnchor.id);
+                    W.selectionAnchorId = draggingAnchor.id;
+                }
                 refreshAll();
             }
             draggingAnchor = null;
@@ -1654,14 +1727,21 @@ function setupMapInteractions() {
             const c2 = map.unproject([Math.max(x1, x2), Math.max(y1, y2)]);
             const minLng = Math.min(c1.lng, c2.lng), maxLng = Math.max(c1.lng, c2.lng);
             const minLat = Math.min(c1.lat, c2.lat), maxLat = Math.max(c1.lat, c2.lat);
-            if (!e.shiftKey) W.selected.clear();
+            if (!e.shiftKey) clearSelection();
+
             let added = 0;
+            let latestT = -Infinity;
+            let latestId = null;
+
             for (const p of FinalTimeline) {
+                if (p.sourceId == null) continue;
                 if (p.lat >= minLat && p.lat <= maxLat && p.lng >= minLng && p.lng <= maxLng) {
                     W.selected.add(p.id);
                     added++;
+                    if (p.t > latestT) { latestT = p.t; latestId = p.id; }
                 }
             }
+            if (latestId) W.selectionAnchorId = latestId;
             if (added > 0) {
                 toast(`Selected ${added} vertices · drag any to move them all`);
                 activateTool('select');
@@ -1671,16 +1751,24 @@ function setupMapInteractions() {
     });
 }
 
+function clearSelection() {
+    W.selected.clear();
+    W.selectionAnchorId = null;
+}
+
 function nearestFinalPoint(screenPt, thresholdPx) {
     let best = null, bestD = thresholdPx * thresholdPx;
-    const { tStart, tEnd } = selectableRange();
+    const {tStart, tEnd} = selectableRange();
     for (const p of FinalTimeline) {
         if (p.t < tStart || p.t > tEnd) continue;
-        if (!p.sourceRefId) continue;                  // can't drag synthetics
+        if (p.sourceId == null) continue;
         const proj = map.project([p.lng, p.lat]);
         const dx = proj.x - screenPt.x, dy = proj.y - screenPt.y;
         const d = dx * dx + dy * dy;
-        if (d < bestD) { bestD = d; best = p; }
+        if (d < bestD) {
+            bestD = d;
+            best = p;
+        }
     }
     return best;
 }
@@ -1703,7 +1791,7 @@ document.querySelectorAll('.head-btn[data-tool]').forEach(b => {
 
 document.getElementById('deviceSelect').addEventListener('change', (e) => {
     W.selectedDevice = e.target.value;
-    const name = nameOf(W.selectedDevice=== 'default' ? null : W.selectedDevice);
+    const name = nameOf(W.selectedDevice === 'default' ? null : W.selectedDevice);
     document.getElementById('deviceSubLabel').textContent = `(${name})`;
     refreshAll();
 });
@@ -1711,70 +1799,124 @@ document.getElementById('deviceSelect').addEventListener('change', (e) => {
 btnCopy.addEventListener('click', copyToFinal);
 document.getElementById('btnDelete').addEventListener('click', deleteSelected);
 
+function streamIdToWire(streamId) {
+    if (streamId === '__main__') return undefined;
+    if (streamId === 'default') return null;
+    return streamId;
+}
+
+
 function openCommit() {
     const modal = document.getElementById('commitModal');
     const pre = document.getElementById('commitPayload');
     const summary = document.getElementById('commitSummary');
     const active = History.filter(a => !a.undone);
     const composition = FinalTimeline.reduce((acc, p) => {
-        const k = p.sourceId === null ? 'primary' : p.sourceId;
+        const k = p.streamId === '__main__' ? 'primary' : (p.streamId ?? 'unknown');
         acc[k] = (acc[k] || 0) + 1;
         return acc;
     }, {});
     const payload = {
         initialState: histStartSnapshot,
         editStore: {
-            patches: EditStore.patches,
-            deletedPoints: Array.from(EditStore.deletedPoints).map(k => {
-                const [sid, id] = k.split('|');
-                if (sid === '__main__')        return { source: 'main', id };
-                if (sid === 'default')         return { device: null,   id };
-                return { device: sid, id };
-            }),
-            movedPoints: Array.from(EditStore.movedPoints.entries()).map(([k, v]) => {
-                const [sid, id] = k.split('|');
-                return {sourceId: sid=== 'default' ? null : sid, id, lat: v.lat, lng: v.lng};
-            })
+            patches: EditStore.patches.map(p => ({
+                seq: p.seq,
+                tStart: p.tStart,
+                tEnd: p.tEnd,
+                deviceId: streamIdToWire(p.streamId)
+            })),
+            deletedPoints: Array.from(EditStore.deletedPoints).map(sourceId => ({sourceId})),
+            movedPoints: Array.from(EditStore.movedPoints.entries()).map(
+                ([sourceId, v]) => ({sourceId, lat: v.lat, lng: v.lng})
+            )
         },
         actions: active.map(a => ({seq: a.seq, type: a.type, at: a.at, ...a.payload})),
-        undoneActions: History.filter(a => a.undone).map(a => ({seq: a.seq, type: a.type})),
         finalState: {
             pointCount: FinalTimeline.length, composition,
             tStart: FinalTimeline[0]?.t ?? 0,
             tEnd: FinalTimeline[FinalTimeline.length - 1]?.t ?? 0,
         }
     };
-    summary.textContent = `${active.length} action${active.length === 1 ? '' : 's'} · ${FinalTimeline.length} cached story points`;
+    summary.textContent = `${History.length} action${History.length === 1 ? '' : 's'} · ${FinalTimeline.length} cached story points`;
     pre.textContent = JSON.stringify(payload, null, 2);
     modal.classList.add('open');
 }
 
-function closeCommit() { document.getElementById('commitModal').classList.remove('open'); }
+function closeCommit() {
+    document.getElementById('commitModal').classList.remove('open');
+}
 
 document.getElementById('btnCommit').addEventListener('click', openCommit);
 document.getElementById('commitClose').addEventListener('click', closeCommit);
 document.getElementById('commitCancel').addEventListener('click', closeCommit);
 document.getElementById('commitConfirm').addEventListener('click', () => {
     const payload = JSON.parse(document.getElementById('commitPayload').textContent);
-    console.log('[Journey Weaver] POST /commit', payload);
     toast(`Your journey was sent to the server ✓`);
     closeCommit();
 });
 
 document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (W.selected.size) { e.preventDefault(); deleteSelected(); }
-    } else if (e.key === 'Escape') {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.isContentEditable) return;
+
+    if (e.key === '?') {
+        e.preventDefault();
+        openHelp();
+        return;
+    }
+
+    // Esc closes help first if open, then falls through to existing handlers
+    if (e.key === 'Escape' && helpPanel.classList.contains('open')) {
+        closeHelp();
+        return;
+    }
+
+
+    // Always-available
+    if (e.key === 'Escape') {
         closeCommit();
-        W.selected.clear();
+        clearSelection();
         refreshAll();
-    } else if (e.key === '1') activateTool('inspect');
-    else if (e.key === '2') activateTool('select');
-    else if (e.key === '3') activateTool('boxselect');
+        return;
+    }
+    if (e.key === '1') { activateTool('inspect');   return; }
+    if (e.key === '2') { activateTool('select');    return; }
+    if (e.key === '3') { activateTool('boxselect'); return; }
+
+    // Delete / Backspace on a non-empty selection
+    if ((e.key === 'Delete' || e.key === 'Backspace') && W.selected.size) {
+        e.preventDefault();
+        deleteSelected();
+        return;
+    }
+
+    // Selection navigation with Ctrl
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const dir = e.key === 'ArrowLeft' ? -1 : 1;
+        if (e.shiftKey) extendSelection(dir);
+        else moveSelection(dir);
+        return;
+    }
+    if (ctrl && (e.key === 'Home' || e.key === 'End')) {
+        e.preventDefault();
+        const toEnd = e.key === 'End';
+        if (e.shiftKey) extendSelectionToEdge(toEnd);
+        else moveSelectionToEdge(toEnd);
+        return;
+    }
+    if (ctrl && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        selectAllInWindow();
+        return;
+    }
+
 });
 
-window.addEventListener('resize', () => { refreshAll(); });
+window.addEventListener('resize', () => {
+    refreshAll();
+});
 
 function updateButtons() {
     document.getElementById('btnDelete').disabled = W.selected.size === 0;
@@ -1783,10 +1925,147 @@ function updateButtons() {
 function updateWovenCount() {
     let n = 0, last = null;
     for (const p of FinalTimeline) {
-        if (p.sourceId !== '__main__' && p.sourceId !== last) n++;
-        last = p.sourceId;
+        if (p.streamId !== '__main__' && p.streamId !== last) n++;
+        last = p.streamId;
     }
     document.getElementById('wovenCount').textContent = n;
+}
+
+
+function selectableTimelinePoints() {
+    const { tStart, tEnd } = selectableRange();
+    return FinalTimeline.filter(p => p.t >= tStart && p.t <= tEnd && p.sourceId != null);
+}
+
+function getAnchorPoint() {
+    if (W.selectionAnchorId) {
+        const p = FinalTimeline.find(x => x.id === W.selectionAnchorId);
+        if (p) return p;
+    }
+    // Fallback: closest-to-viewport-center if there's no anchor yet
+    const center = viewportStartT + viewportDuration / 2;
+    let best = null, bestDt = Infinity;
+    for (const p of selectableTimelinePoints()) {
+        const dt = Math.abs(p.t - center);
+        if (dt < bestDt) { bestDt = dt; best = p; }
+    }
+    return best;
+}
+
+function moveSelection(dir) {
+    const points = selectableTimelinePoints();
+    if (!points.length) return;
+
+    const anchor = getAnchorPoint();
+    let target;
+
+    if (!anchor) {
+        target = dir > 0 ? points[0] : points[points.length - 1];
+    } else {
+        // If multiple selected, collapse to the appropriate edge first
+        if (W.selected.size > 1) {
+            const selectedPoints = points.filter(p => W.selected.has(p.id));
+            target = dir > 0
+                ? selectedPoints[selectedPoints.length - 1]
+                : selectedPoints[0];
+        } else {
+            const idx = points.findIndex(p => p.id === anchor.id);
+            if (idx === -1) {
+                target = dir > 0 ? points[0] : points[points.length - 1];
+            } else {
+                const newIdx = Math.max(0, Math.min(points.length - 1, idx + dir));
+                target = points[newIdx];
+            }
+        }
+    }
+
+    if (!target) return;
+    W.selected.clear();
+    W.selected.add(target.id);
+    W.selectionAnchorId = target.id;
+    ensurePointVisible(target);
+    refreshAll();
+}
+
+function ensurePointVisible(p) {
+    // Timeline: pan viewport if the point is near or beyond the edge
+    const margin = viewportDuration * 0.1;
+    if (p.t < viewportStartT + margin || p.t > viewportStartT + viewportDuration - margin) {
+        viewportStartT = p.t - viewportDuration / 2;
+        clampViewport();
+        triggerDebouncedDataLoad();
+    }
+
+    // Map: only pan if the point is currently outside the visible bounds
+    const b = map.getBounds();
+    if (p.lat < b.getSouth() || p.lat > b.getNorth() ||
+        p.lng < b.getWest()  || p.lng > b.getEast()) {
+        map.easeTo({ center: [p.lng, p.lat], duration: 350 });
+    }
+}
+
+function extendSelection(dir) {
+    const points = selectableTimelinePoints();
+    if (!points.length) return;
+
+    const anchor = getAnchorPoint();
+    if (!anchor) { moveSelection(dir); return; }
+
+    const idx = points.findIndex(p => p.id === anchor.id);
+    if (idx === -1) { moveSelection(dir); return; }
+
+    const newIdx = Math.max(0, Math.min(points.length - 1, idx + dir));
+    if (newIdx === idx) return;
+    const target = points[newIdx];
+
+    // Toggle: if the target is already selected, this means we're shrinking
+    // back toward the anchor — deselect the *previous* anchor.
+    if (W.selected.has(target.id)) {
+        W.selected.delete(anchor.id);
+    } else {
+        W.selected.add(target.id);
+    }
+    W.selectionAnchorId = target.id;
+    ensurePointVisible(target);
+    refreshAll();
+}
+
+function moveSelectionToEdge(toEnd) {
+    const points = selectableTimelinePoints();
+    if (!points.length) return;
+    const target = toEnd ? points[points.length - 1] : points[0];
+    W.selected.clear();
+    W.selected.add(target.id);
+    W.selectionAnchorId = target.id;
+    ensurePointVisible(target);
+    refreshAll();
+}
+
+function extendSelectionToEdge(toEnd) {
+    const points = selectableTimelinePoints();
+    if (!points.length) return;
+
+    const anchor = getAnchorPoint();
+    if (!anchor) { moveSelectionToEdge(toEnd); return; }
+
+    const anchorIdx = points.findIndex(p => p.id === anchor.id);
+    if (anchorIdx === -1) { moveSelectionToEdge(toEnd); return; }
+
+    const startIdx = toEnd ? anchorIdx : 0;
+    const endIdx   = toEnd ? points.length - 1 : anchorIdx;
+    for (let i = startIdx; i <= endIdx; i++) W.selected.add(points[i].id);
+    const target = toEnd ? points[points.length - 1] : points[0];
+    W.selectionAnchorId = target.id;
+    ensurePointVisible(target);
+    refreshAll();
+}
+
+function selectAllInWindow() {
+    const points = selectableTimelinePoints();
+    if (!points.length) return;
+    for (const p of points) W.selected.add(p.id);
+    W.selectionAnchorId = points[points.length - 1].id;
+    refreshAll();
 }
 
 function toast(msg, warn) {
@@ -1801,5 +2080,176 @@ function toast(msg, warn) {
     }, 2400);
     setTimeout(() => el.remove(), 2800);
 }
+/* ============================================================
+   SELECTION INFO PANEL
+   ============================================================ */
+const selectionInfoEl = document.getElementById('selectionInfo');
+selectionInfoEl.querySelector('.sel-info-close').addEventListener('click', () => {
+    clearSelection();
+    refreshAll();
+});
 
-requestAnimationFrame(() => { refreshAll(); });
+function renderSelectionInfo() {
+    if (!selectionInfoEl) return;
+
+    if (W.selected.size === 0) {
+        selectionInfoEl.style.display = 'none';
+        return;
+    }
+
+    selectionInfoEl.style.display = 'block';
+
+    const titleEl = selectionInfoEl.querySelector('.sel-info-title');
+    const bodyEl  = selectionInfoEl.querySelector('.sel-info-body');
+
+    if (W.selected.size === 1) {
+        const id = [...W.selected][0];
+        const p = FinalTimeline.find(x => x.id === id);
+        if (!p) {
+            // Stale selection — shouldn't normally happen, but be safe
+            selectionInfoEl.style.display = 'none';
+            return;
+        }
+        titleEl.textContent = 'Point details';
+        bodyEl.innerHTML = renderSinglePointBody(p);
+        bindSinglePointActions(p);
+    } else {
+        titleEl.textContent = `${W.selected.size} points selected`;
+        bodyEl.innerHTML = renderMultiSelectionBody();
+    }
+}
+
+function renderSinglePointBody(p) {
+    const isSynthetic = p.sourceId == null;
+    const isInterp    = String(p.id).startsWith('interp_');
+    const isMain      = p.streamId === '__main__';
+    const isMoved     = p.sourceId != null && EditStore.movedPoints.has(p.sourceId);
+    const patchInfo   = patchOwnerAt(p.t);
+    const isPatched   = !isMain && patchInfo.hasPatch && patchInfo.owner === p.streamId;
+
+    const streamLabel = isMain
+        ? 'Main journey'
+        : (nameOf(p.streamId) ?? p.streamId);
+    const streamColor = colorOf(p.streamId) ?? '#888';
+
+    const tags = [];
+    if (isInterp) {
+        tags.push(`<span class="sel-info-tag synthetic">interpolated</span>`);
+    } else if (isSynthetic) {
+        tags.push(`<span class="sel-info-tag synthetic">generated</span>`);
+    }
+    if (isMoved)   tags.push(`<span class="sel-info-tag moved">moved</span>`);
+    if (isPatched) tags.push(`<span class="sel-info-tag patched">stitched in</span>`);
+
+    const rows = [
+        row('Stream', `<span class="sel-info-tag" style="background:${hexAlpha(streamColor, 0.15)};color:${streamColor};border:1px solid ${hexAlpha(streamColor, 0.4)}"><span class="swatch" style="background:${streamColor}"></span>${escapeHtml(streamLabel)}</span>`),
+        row('Time',   `<span class="v">${fmtDateFull(p.t)}</span>`),
+        row('Clock',  `<span class="v mono">${fmtClock(p.t)}</span>`),
+        row('Lat / Lng', `<span class="v mono">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>`),
+        row('Altitude', `<span class="v mono">${p.alt.toFixed(1)} m</span>`),
+        row('Source ID', `<span class="v mono">${p.sourceId ?? '—'}</span>`),
+        row('UI ID',     `<span class="v mono" style="font-size:10px">${escapeHtml(p.id)}</span>`)
+    ];
+
+    return rows.join('') +
+        (tags.length ? `<div class="sel-info-tags">${tags.join('')}</div>` : '') +
+        `<div class="sel-info-actions">
+            <button class="sel-info-btn" data-act="center">Center map</button>
+            ${isSynthetic ? '' : `<button class="sel-info-btn" data-act="delete">Delete</button>`}
+        </div>`;
+}
+
+function renderMultiSelectionBody() {
+    const points = FinalTimeline.filter(p => W.selected.has(p.id));
+    if (!points.length) return '<div style="color:rgba(165,169,159,0.7)">No matching points in current view</div>';
+
+    const byStream = new Map();
+    let synthetic = 0, moved = 0;
+    let tMin = Infinity, tMax = -Infinity;
+
+    for (const p of points) {
+        byStream.set(p.streamId, (byStream.get(p.streamId) || 0) + 1);
+        if (p.sourceId == null) synthetic++;
+        else if (EditStore.movedPoints.has(p.sourceId)) moved++;
+        if (p.t < tMin) tMin = p.t;
+        if (p.t > tMax) tMax = p.t;
+    }
+
+    const breakdown = [...byStream.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([sid, n]) => {
+            const label = sid === '__main__' ? 'Main' : (nameOf(sid) ?? sid);
+            const color = colorOf(sid) ?? '#888';
+            return `<span class="sel-info-tag" style="background:${hexAlpha(color, 0.15)};color:${color};border:1px solid ${hexAlpha(color, 0.4)}"><span class="swatch" style="background:${color}"></span>${escapeHtml(label)} · ${n}</span>`;
+        });
+
+    const sameDay = new Date(tMin).toDateString() === new Date(tMax).toDateString();
+    const timeRange = sameDay
+        ? `${fmtClockShort(tMin)} – ${fmtClockShort(tMax)} · ${fmtDateFull(tMin).split(',')[0]}`
+        : `${fmtDateFull(tMin)} – ${fmtDateFull(tMax)}`;
+
+    const rows = [
+        row('Range', `<span class="v">${escapeHtml(timeRange)}</span>`),
+        row('Span',  `<span class="v mono">${fmtDuration(tMax - tMin)}</span>`)
+    ];
+    if (synthetic) rows.push(row('Generated', `<span class="v">${synthetic}</span>`));
+    if (moved)     rows.push(row('Already moved', `<span class="v">${moved}</span>`));
+
+    return rows.join('') +
+        `<div class="sel-info-tags">${breakdown.join('')}</div>`;
+}
+
+function row(k, vHtml) {
+    return `<div class="sel-info-row"><span class="k">${escapeHtml(k)}</span>${vHtml}</div>`;
+}
+
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmtDuration(ms) {
+    if (ms < 1000)    return `${ms} ms`;
+    if (ms < 60000)   return `${(ms / 1000).toFixed(1)} s`;
+    if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}h ${m}m`;
+}
+
+function bindSinglePointActions(p) {
+    selectionInfoEl.querySelectorAll('.sel-info-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const act = btn.dataset.act;
+            if (act === 'center') {
+                map.easeTo({ center: [p.lng, p.lat], duration: 400 });
+            } else if (act === 'delete') {
+                deleteSelected();
+            }
+        });
+    });
+}
+
+/* ============================================================
+   HELP PANEL
+   ============================================================ */
+const helpPanel = document.getElementById('helpPanel');
+
+function openHelp() {
+    helpPanel.classList.add('open');
+    helpPanel.setAttribute('aria-hidden', 'false');
+}
+
+function closeHelp() {
+    helpPanel.classList.remove('open');
+    helpPanel.setAttribute('aria-hidden', 'true');
+}
+
+document.getElementById('btnHelp').addEventListener('click', openHelp);
+helpPanel.querySelector('.help-panel-close').addEventListener('click', closeHelp);
+helpPanel.querySelector('.help-panel-backdrop').addEventListener('click', closeHelp);
+
+requestAnimationFrame(() => {
+    refreshAll();
+});

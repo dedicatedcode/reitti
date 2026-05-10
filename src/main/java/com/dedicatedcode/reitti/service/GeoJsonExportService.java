@@ -44,7 +44,7 @@ public class GeoJsonExportService {
                 user,
                 start,
                 end,
-                true, true, true);
+                false, true, true);
 
         FeatureCollection collection = new FeatureCollection();
         for (RawLocationPoint point : points) {
@@ -74,7 +74,7 @@ public class GeoJsonExportService {
         for (SourceLocationPoint point : points) {
             Feature feature = new Feature();
             feature.setGeometry(createPointGeometry(point.getGeom(), point.getElevationMeters()));
-            feature.setProperties(createProperties(point.getId(), point.getTimestamp(), point.getAccuracyMeters(), point.getElevationMeters(), device != null ? device.id() : null, null));
+            feature.setProperties(createProperties(point.getId(), point.getTimestamp(), point.getAccuracyMeters(), point.getElevationMeters(), device != null ? device.id() : null, point.getId()));
             collection.getFeatures().add(feature);
         }
 
@@ -104,7 +104,7 @@ public class GeoJsonExportService {
             props.put("device", deviceId);
         }
         if (sourceId != null) {
-            props.put("sourceId", deviceId);
+            props.put("sourceId", sourceId);
         }
         return props;
     }
