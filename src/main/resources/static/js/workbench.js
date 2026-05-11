@@ -14,6 +14,7 @@ const DeviceSources = Object.fromEntries(
 );
 const MAIN_PAD_MS = 24 * 3600 * 1000;
 const DEVICE_PAD_MS = 2 * 3600 * 1000;
+const CROSS_STREAM_BRIDGE_MS = Infinity;
 const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
 const KEEP_WINDOW_MAIN = 7 * 24 * 3600 * 1000;    // keep a week of main journey
 const GAP_CONFIG = {
@@ -335,10 +336,8 @@ function trimRangesTo(ranges, keepStart, keepEnd) {
 
 async function loadViewportData() {
     W.isLoading = true;
-    const zi = document.getElementById('zoomIndicator');
-    if (zi && !zi.innerHTML.includes('Loading')) {
-        zi.innerHTML += ` <span style="color:#d9a441">[Loading…]</span>`;
-    }
+    const zi = document.getElementById('loadingIndicator');
+    zi.style.display = 'inline-block';
 
     const devStartT = viewportStartT - DEVICE_PAD_MS;
     const devEndT = viewportStartT + viewportDuration + DEVICE_PAD_MS;
@@ -372,6 +371,7 @@ async function loadViewportData() {
         console.error('Data load failed', err);
     } finally {
         W.isLoading = false;
+        zi.style.display = 'none';
         refreshAll();
     }
 
@@ -491,7 +491,7 @@ function undoAction(actionId) {
 
 function clearHistory() {
     if (!History.length) return;
-    const msg = `Revert all ${History.length} action${History.length > 1 ? 's' : ''} and clear the log?`;
+    const msg = t('workbench.history.clear', [History.length]);
     if (!confirm(msg)) return;
 
     // Undo in reverse so dependent state unwinds correctly
@@ -570,12 +570,6 @@ const map = new maplibregl.Map({
     center: [window.userSettings.homeLongitude, window.userSettings.homeLatitude], zoom: 13.7
 });
 map.addControl(new maplibregl.NavigationControl({showCompass: false}), 'top-left');
-
-map.on('move', () => {
-    const c = map.getCenter();
-    document.getElementById('zoomIndicator').textContent =
-        `Zoom: ${map.getZoom().toFixed(1)}, ${c.lat.toFixed(3)}, ${c.lng.toFixed(3)}`;
-});
 
 map.on('load', () => {
     if (map.getLayer('hillshading')) map.removeLayer('hillshading');
@@ -782,7 +776,7 @@ function buildFinalLineFC() {
 
         const continuous   = sameStream && dt <= cfg.continuousUpTo;
         const sameStrBridge = sameStream && !continuous && dt <= cfg.interpolateUpTo;
-        const crossBridge  = !sameStream && dt <= CROSS_STREAM_BRIDGE_MS;
+        const crossBridge  = !sameStream && dt <= cfg.continuousUpTo;
 
         if (continuous && inWindow === currentInWindow) {
             coords.push([p.lng, p.lat]);
@@ -1006,7 +1000,6 @@ function drawMainLane() {
 
     for (let i = 1; i < visiblePoints.length; i++) {
         const p = visiblePoints[i];
-        const prev = visiblePoints[i - 1];
 
         if (p.streamId === cur.streamId) {
             cur.tEnd = p.t;
@@ -1053,30 +1046,28 @@ function drawMainLane() {
         mctx.restore();
     }
 
-    if (W.tool === 'select' || W.tool === 'boxselect') {
-        const dotY = blockY + blockH / 2;
-        const minSpacingPx = 3;
-        let lastX = -Infinity;
+    const dotY = blockY + blockH / 2;
+    const minSpacingPx = 3;
+    let lastX = -Infinity;
 
-        for (const p of visiblePoints) {
-            const x = tToXf(p.t, w);
-            if (x < -4 || x > w + 4) continue;
-            if (x - lastX < minSpacingPx && !W.selected.has(p.id)) continue;
-            lastX = x;
+    for (const p of visiblePoints) {
+        const x = tToXf(p.t, w);
+        if (x < -4 || x > w + 4) continue;
+        if (x - lastX < minSpacingPx && !W.selected.has(p.id)) continue;
+        lastX = x;
 
-            const selected = W.selected.has(p.id);
-            const color = colorOf(p.streamId);
+        const selected = W.selected.has(p.id);
+        const color = colorOf(p.streamId);
 
-            mctx.fillStyle = '#0a1320';
-            mctx.beginPath();
-            mctx.arc(x, dotY, selected ? 5 : 3.2, 0, Math.PI * 2);
-            mctx.fill();
+        mctx.fillStyle = '#0a1320';
+        mctx.beginPath();
+        mctx.arc(x, dotY, selected ? 5 : 2.2, 0, Math.PI * 2);
+        mctx.fill();
 
-            mctx.fillStyle = selected ? '#f2c470' : color;
-            mctx.beginPath();
-            mctx.arc(x, dotY, selected ? 3.6 : 2, 0, Math.PI * 2);
-            mctx.fill();
-        }
+        mctx.fillStyle = selected ? '#f2c470' : color;
+        mctx.beginPath();
+        mctx.arc(x, dotY, selected ? 3.6 : 1.5, 0, Math.PI * 2);
+        mctx.fill();
     }
 
     for (const p of visiblePoints) {
@@ -1780,6 +1771,13 @@ function activateTool(tool) {
     W.tool = tool;
     document.querySelectorAll('.head-btn[data-tool]').forEach(x =>
         x.classList.toggle('active', x.dataset.tool === tool));
+    if (tool === 'inspect') {
+        document.getElementById('map').classList.add('inspect');
+        clearSelection();
+        renderSelectionInfo();
+    } else {
+        document.getElementById('map').classList.remove('inspect');
+    }
     refreshMap();
     drawMainLane();
     drawDeviceLane();
