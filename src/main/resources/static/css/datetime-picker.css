@@ -119,7 +119,7 @@
 }
 
 .calendar-header button:hover {
-    background: #f0f0f0;
+    background: #3b3b3b;
 }
 
 .month-year {
@@ -161,7 +161,6 @@
 }
 
 .day:hover {
-    background: #767676;
     color: var(--color-highlight);
 }
 
@@ -229,7 +228,9 @@
 }
 
 .year-item:hover, .time-item:hover {
-    background: #767676;
+    background: var(--color-background-dark-light);
+    filter: none;
+    box-shadow: none;
     color: var(--color-highlight);
 }
 

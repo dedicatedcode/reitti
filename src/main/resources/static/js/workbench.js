@@ -1681,11 +1681,11 @@ function setupMapInteractions() {
                 if (n === 1) {
                     const g = dragGroup[0];
                     const linked = g.sourceId != null;
-                    const srcName = linked ? nameOf(g.streamId) : 'primary';
+                    const srcName = nameOf(g.streamId) ?? 'default';
                     pushAction({
                         type: 'move',
                         shortDesc: `move @ ${fmtClockShort(anchor.t)}`,
-                        desc: `Nudged vertex at ${fmtClockShort(anchor.t)} by <b>${deltaM.toFixed(1)} m</b>${linked ? ` <span style="color:var(--ink-faint)">· linked to ${srcName}</span>` : ''}`,
+                        desc: `Nudged vertex at ${fmtClockShort(anchor.t)} by <b>${deltaM.toFixed(1)} m</b>${linked ? ` <span style="color:var(--color-background-dark-light)">· linked to ${srcName}</span>` : ''}`,
                         payload: {count: 1, points: movedEntries, deltaMeters: +deltaM.toFixed(2)},
                         _inverse: {group: inverseGroup}
                     });
@@ -1693,7 +1693,7 @@ function setupMapInteractions() {
                     pushAction({
                         type: 'move',
                         shortDesc: `move ${n} points`,
-                        desc: `Nudged <b>${n} points</b> by <b>${deltaM.toFixed(1)} m</b> <span style="color:var(--ink-faint)">· group</span>`,
+                        desc: `Nudged <b>${n} points</b> by <b>${deltaM.toFixed(1)} m</b> <span style="color:var(--color-background-dark-light)">· group</span>`,
                         payload: {count: n, points: movedEntries, deltaMeters: +deltaM.toFixed(2)},
                         _inverse: {group: inverseGroup}
                     });
@@ -2142,13 +2142,13 @@ function renderSinglePointBody(p) {
     if (isPatched) tags.push(`<span class="sel-info-tag patched">stitched in</span>`);
 
     const rows = [
-        row('Stream', `<span class="sel-info-tag" style="background:${hexAlpha(streamColor, 0.15)};color:${streamColor};border:1px solid ${hexAlpha(streamColor, 0.4)}"><span class="swatch" style="background:${streamColor}"></span>${escapeHtml(streamLabel)}</span>`),
+        row('Stream', `<span class="sel-info-tag" style="background:${hexAlpha(streamColor, 0.15)};border:1px solid ${hexAlpha(streamColor, 0.4)}"><span class="swatch" style="background:${streamColor}"></span>${escapeHtml(streamLabel)}</span>`),
         row('Time',   `<span class="v">${fmtDateFull(p.t)}</span>`),
         row('Clock',  `<span class="v mono">${fmtClock(p.t)}</span>`),
         row('Lat / Lng', `<span class="v mono">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>`),
         row('Altitude', `<span class="v mono">${p.alt.toFixed(1)} m</span>`),
         row('Source ID', `<span class="v mono">${p.sourceId ?? '—'}</span>`),
-        row('UI ID',     `<span class="v mono" style="font-size:10px">${escapeHtml(p.id)}</span>`)
+        row('UI ID',     `<span class="v mono">${escapeHtml(p.id)}</span>`)
     ];
 
     return rows.join('') +
@@ -2180,7 +2180,7 @@ function renderMultiSelectionBody() {
         .map(([sid, n]) => {
             const label = sid === '__main__' ? 'Main' : (nameOf(sid) ?? sid);
             const color = colorOf(sid) ?? '#888';
-            return `<span class="sel-info-tag" style="background:${hexAlpha(color, 0.15)};color:${color};border:1px solid ${hexAlpha(color, 0.4)}"><span class="swatch" style="background:${color}"></span>${escapeHtml(label)} · ${n}</span>`;
+            return `<span class="sel-info-tag" style="background:${hexAlpha(color, 0.15)};border:1px solid ${hexAlpha(color, 0.4)}"><span class="swatch" style="background:${color}"></span>${escapeHtml(label)} · ${n}</span>`;
         });
 
     const sameDay = new Date(tMin).toDateString() === new Date(tMax).toDateString();
