@@ -438,7 +438,6 @@ function triggerDebouncedDataLoad() {
    HISTORY
    ============================================================ */
 const History = [];
-let histStartSnapshot = null;
 
 function pushAction(action) {
     action.id = nextId();
@@ -1833,7 +1832,6 @@ function openCommit() {
     }, {});
 
     commitPayloadCache = {
-        initialState: histStartSnapshot,
         editStore: {
             patches: EditStore.patches.map(p => ({
                 seq: p.seq,
