@@ -1018,4 +1018,90 @@ canvas {
     justify-content: flex-end;
 }
 
+/* Commit summary */
+.commit-summary-detail {
+    margin-bottom: 22px;
+}
+
+.summary-section {
+    margin-bottom: 16px;
+}
+
+.summary-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--gold-bright);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.summary-section-title::before {
+    content: '▸';
+    font-size: 10px;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    margin-left: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.summary-item .swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.summary-item .desc {
+    flex: 1;
+}
+
+.summary-item .count {
+    font-family: ui-monospace, monospace;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.summary-footnote {
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-left: 14px;
+    padding: 5px 0;
+    font-style: italic;
+}
+
+/* Irreversible warning */
+.commit-irreversible-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--danger);
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: rgba(224, 122, 107, 0.08);
+    border: 1px solid rgba(224, 122, 107, 0.25);
+    border-radius: 8px;
+}
+
+.warning-icon {
+    font-size: 14px;
+    margin-top: 1px;
+}
+
 

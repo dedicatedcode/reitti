@@ -863,6 +863,10 @@ button:hover {
     box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
 }
 
+.btn-muted {
+    filter: brightness(0.7);
+}
+
 .upload-options progress {
     display: block;
     width: 100%;

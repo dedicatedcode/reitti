@@ -199,7 +199,7 @@
     <div class="commit-dialog">
         <div class="commit-header">
             <div>
-                <div class="title">Commit your Journey</div>
+                <div class="title" th:text="#{workbench.commit.title}">Save your changes</div>
                 <div class="sub" id="commitSummary">—</div>
             </div>
             <div class="close-x" id="commitClose">
@@ -209,14 +209,19 @@
             </div>
         </div>
         <div class="commit-body">
-            <pre id="commitPayload"></pre>
+            <div id="commitSummaryDetail" class="commit-summary-detail"></div>
+            <div class="commit-irreversible-warning">
+                <span class="warning-icon">⚠️</span>
+                <span th:text="#{workbench.commit.irreversible}">This action cannot be undone. All edits will be permanently stored.</span>
+            </div>
         </div>
         <div class="commit-footer">
-            <button class="btn-muted" id="commitCancel">Cancel</button>
-            <button class="weave-btn" style="width:auto; padding: 10px 22px;" id="commitConfirm">SEND TO SERVER</button>
+            <button class="btn btn-muted" id="commitCancel" th:text="#{common.actions.cancel}">Cancel</button>
+            <button class="btn" style="width:auto; padding: 10px 22px;" id="commitConfirm"
+                    th:text="#{workbench.commit.confirm}">Save changes</button>
         </div>
     </div>
-</div>
+</div>>
 <script th:inline="javascript">
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');

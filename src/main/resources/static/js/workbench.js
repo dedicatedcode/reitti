@@ -1817,17 +1817,22 @@ function streamIdToWire(streamId) {
 }
 
 
+let commitPayloadCache = null;
+
 function openCommit() {
     const modal = document.getElementById('commitModal');
-    const pre = document.getElementById('commitPayload');
-    const summary = document.getElementById('commitSummary');
+    const summaryEl = document.getElementById('commitSummaryDetail');
+    const topSummary = document.getElementById('commitSummary');
+
+    // Build payload (same as before)
     const active = History.filter(a => !a.undone);
     const composition = FinalTimeline.reduce((acc, p) => {
         const k = p.streamId === '__main__' ? 'primary' : (p.streamId ?? 'unknown');
-        acc[k] = (acc[k] || 0) + 1;
+        acc = (acc || 0) + 1;
         return acc;
     }, {});
-    const payload = {
+
+    commitPayloadCache = {
         initialState: histStartSnapshot,
         editStore: {
             patches: EditStore.patches.map(p => ({
@@ -1848,8 +1853,49 @@ function openCommit() {
             tEnd: FinalTimeline[FinalTimeline.length - 1]?.t ?? 0,
         }
     };
-    summary.textContent = `${History.length} action${History.length === 1 ? '' : 's'} · ${FinalTimeline.length} cached story points`;
-    pre.textContent = JSON.stringify(payload, null, 2);
+
+    // Build readable summary
+    let html = '';
+
+    if (EditStore.patches.length) {
+        html += `<div class="summary-section"><div class="summary-section-title">${t('workbench.commit.part.patches.title')}</div>`;
+        for (const p of EditStore.patches) {
+            const name = nameOf(p.streamId);
+            const color = DeviceSources?.color ?? '#888';
+            const pointsCount = FinalTimeline.filter(pt =>
+                pt.t >= p.tStart && pt.t <= p.tEnd && pt.streamId === p.streamId
+            ).length;
+            html += `<div class="summary-item">
+                <span class="swatch" style="background:${color}"></span>
+                <span class="desc">${escapeHtml(name)} · ${fmtDateCompact(p.tStart)} – ${fmtClockShort(p.tEnd)}</span>
+                <span class="count">${t('workbench.commit.part.patches.count', [pointsCount])}</span>
+            </div>`;
+        }
+        html += `</div>`;
+    }
+
+    if (EditStore.deletedPoints.size) {
+        html += `<div class="summary-section"><div class="summary-section-title">${t('workbench.commit.part.deleted.title')}</div>
+            <div class="summary-item">
+                <span class="desc"><span class="count">${EditStore.deletedPoints.size} points</span> removed</span>
+            </div>
+        </div>`;
+    }
+
+    if (EditStore.movedPoints.size) {
+        html += `<div class="summary-section"><div class="summary-section-title">${t('workbench.commit.part.moved.title')}</div>
+            <div class="summary-item"><span class="desc"><span class="count">${EditStore.movedPoints.size} points</span> shifted</span></div>
+        </div>`;
+    }
+
+    const spanMs = (commitPayloadCache.finalState.tEnd - commitPayloadCache.finalState.tStart);
+    html += `<div class="summary-section"><div class="summary-section-title">${t('workbench.commit.part.summary.title')}</div>
+        <div class="summary-footnote">${commitPayloadCache.finalState.pointCount} points · ${fmtDuration(spanMs)}</div>
+    </div>`;
+
+    summaryEl.innerHTML = html;
+    topSummary.textContent = `${History.length} action${History.length === 1 ? '' : 's'} · ${FinalTimeline.length} story points`;
+
     modal.classList.add('open');
 }
 
@@ -1860,10 +1906,23 @@ function closeCommit() {
 document.getElementById('btnCommit').addEventListener('click', openCommit);
 document.getElementById('commitClose').addEventListener('click', closeCommit);
 document.getElementById('commitCancel').addEventListener('click', closeCommit);
-document.getElementById('commitConfirm').addEventListener('click', () => {
-    const payload = JSON.parse(document.getElementById('commitPayload').textContent);
-    toast(`Your journey was sent to the server ✓`);
-    closeCommit();
+document.getElementById('commitConfirm').addEventListener('click', async () => {
+    if (!commitPayloadCache) return;
+    try {
+        const res = await fetch(window.contextPath + '/workbench/commit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(commitPayloadCache)
+        });
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        toast('✅ ' + t('workbench.toast.commit.success'));
+        closeCommit();
+        triggerDebouncedDataLoad();
+        closeCommit();
+    } catch (err) {
+        console.error(err);
+        toast('❌ ' + t('workbench.toast.commit.failure'), true);
+    }
 });
 
 document.addEventListener('keydown', (e) => {

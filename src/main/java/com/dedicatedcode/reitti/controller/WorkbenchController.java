@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
@@ -28,5 +29,10 @@ public class WorkbenchController {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
 
         return "workbench";
+    }
+
+    @PostMapping("/commit")
+    public String workbenchPost(@AuthenticationPrincipal User user, Model model) {
+        return "redirect:/workbench";
     }
 }
