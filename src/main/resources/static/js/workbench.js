@@ -14,7 +14,6 @@ const DeviceSources = Object.fromEntries(
 );
 const MAIN_PAD_MS = 24 * 3600 * 1000;
 const DEVICE_PAD_MS = 2 * 3600 * 1000;
-const CROSS_STREAM_BRIDGE_MS = Infinity;
 const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
 const KEEP_WINDOW_MAIN = 7 * 24 * 3600 * 1000;    // keep a week of main journey
 const GAP_CONFIG = {
@@ -484,7 +483,7 @@ function undoAction(actionId) {
 
     History.splice(idx, 1);
     clearSelection();
-    toast(`Reverted: ${a.shortDesc}`);
+    toast(t('workbench.toast.reverted', [a.shortDesc]));
     renderHistory();
     refreshAll();
 }
@@ -512,7 +511,7 @@ function renderHistory() {
     badge.style.display = History.length ? '' : 'none';
 
     if (!History.length) {
-        list.innerHTML = `<div class="history-empty">No actions yet.<br>Copy a patch or move points to begin.</div>`;
+        list.innerHTML = `<div class="history-empty">${t('workbench.history.empty')}</div>`;
         return;
     }
 
@@ -1464,7 +1463,7 @@ function copyToFinal() {
     const streamId = W.selectedDevice;
     const src = (SourceData.get(streamId) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
     if (!src.length) {
-        toast('No points in patch range', true);
+        toast(t('workbench.toast.patch.no_points'), true);
         return;
     }
 
@@ -1485,8 +1484,8 @@ function copyToFinal() {
     const niceName = nameOf(streamId);
     pushAction({
         type: 'copy',
-        shortDesc: `${niceName} patch`,
-        desc: `Wove in <b style="color:${DeviceSources[streamId == null ? 'default' : streamId].color}">${niceName}</b> from ${fmtClockShort(W.patch.tStart)} to ${fmtClockShort(W.patch.tEnd)} <span style="color:var(--ink-faint)">· +${injected} / −${priorCount}</span>`,
+        shortDesc: t('workbench.action.patch.short_description', [niceName]),
+        desc: t('workbench.action.patch.description', [DeviceSources[streamId == null ? 'default' : streamId].color, niceName, fmtClockShort(W.patch.tStart), fmtClockShort(W.patch.tEnd), injected, priorCount]),
         payload: {
             device: streamId, tStart: W.patch.tStart, tEnd: W.patch.tEnd,
             pointsInjected: injected, pointsRemoved: priorCount
@@ -1494,7 +1493,7 @@ function copyToFinal() {
         _inverse: {patchRecord}
     });
 
-    toast(`Wove ${injected} ${niceName} points into the story`);
+    toast(t('workbench.toast.patch.points', [injected, niceName]));
     refreshAll();
 }
 
@@ -1503,7 +1502,7 @@ function deleteSelected() {
 
     const sel = FinalTimeline.filter(p => W.selected.has(p.id) && p.sourceId != null);
     if (!sel.length) {
-        toast('Nothing to delete (no movable points selected)', true);
+        toast(t('workbench.toast.deleted_points.none'), true);
         return;
     }
 
@@ -1518,8 +1517,8 @@ function deleteSelected() {
     const n = dedupedIds.length;
     pushAction({
         type: 'delete',
-        shortDesc: `${n} point${n > 1 ? 's' : ''}`,
-        desc: `Removed <b>${n}</b> point${n > 1 ? 's' : ''} between ${fmtClockShort(tMin)} and ${fmtClockShort(tMax)}`,
+        shortDesc: t('workbench.action.delete.short_description', [n]),
+        desc: t('workbench.action.delete.description', [n, fmtClockShort(tMin), fmtClockShort(tMax)]),
         payload: {
             count: n,
             tStart: tMin, tEnd: tMax,
@@ -1528,7 +1527,7 @@ function deleteSelected() {
         _inverse: {sourceIds: dedupedIds, tStart: tMin - 1, tEnd: tMax + 1}
     });
 
-    toast(`Removed ${n} point${n > 1 ? 's' : ''}`);
+    toast(t('workbench.toast.deleted_points', [n]));
     refreshAll();
 }
 
@@ -1671,20 +1670,19 @@ function setupMapInteractions() {
 
                 if (n === 1) {
                     const g = dragGroup[0];
-                    const linked = g.sourceId != null;
                     const srcName = nameOf(g.streamId) ?? 'default';
                     pushAction({
                         type: 'move',
-                        shortDesc: `move @ ${fmtClockShort(anchor.t)}`,
-                        desc: `Nudged vertex at ${fmtClockShort(anchor.t)} by <b>${deltaM.toFixed(1)} m</b>${linked ? ` <span style="color:var(--color-background-dark-light)">· linked to ${srcName}</span>` : ''}`,
+                        shortDesc: t('workbench.action.move.single.short_description', [fmtClockShort(anchor.t)]),
+                        desc: t('workbench.action.move.single.description', [fmtClockShort(anchor.t), deltaM.toFixed(1), srcName]),
                         payload: {count: 1, points: movedEntries, deltaMeters: +deltaM.toFixed(2)},
                         _inverse: {group: inverseGroup}
                     });
                 } else {
                     pushAction({
                         type: 'move',
-                        shortDesc: `move ${n} points`,
-                        desc: `Nudged <b>${n} points</b> by <b>${deltaM.toFixed(1)} m</b> <span style="color:var(--color-background-dark-light)">· group</span>`,
+                        shortDesc: t('workbench.action.move.multi.short_description', [n]),
+                        desc: t('workbench.action.move.single.description', [n, deltaM.toFixed(1)]),
                         payload: {count: n, points: movedEntries, deltaMeters: +deltaM.toFixed(2)},
                         _inverse: {group: inverseGroup}
                     });
@@ -1698,6 +1696,7 @@ function setupMapInteractions() {
                     W.selected.add(draggingAnchor.id);
                     W.selectionAnchorId = draggingAnchor.id;
                 }
+                scrollTimelineToTime(draggingAnchor.t);
                 refreshAll();
             }
             draggingAnchor = null;
@@ -1732,9 +1731,12 @@ function setupMapInteractions() {
                     if (p.t > latestT) { latestT = p.t; latestId = p.id; }
                 }
             }
-            if (latestId) W.selectionAnchorId = latestId;
+            if (latestId) {
+                W.selectionAnchorId = latestId;
+                scrollTimelineToTime(latestT);
+            }
             if (added > 0) {
-                toast(`Selected ${added} vertices · drag any to move them all`);
+                toast(t('workbench.toast.selected_points', [added]));
                 activateTool('select');
             }
             refreshAll();
@@ -1745,6 +1747,17 @@ function setupMapInteractions() {
 function clearSelection() {
     W.selected.clear();
     W.selectionAnchorId = null;
+}
+
+function scrollTimelineToTime(t) {
+    if (!Number.isFinite(t)) return;
+    const margin = viewportDuration * 0.1;
+    const inView = t >= viewportStartT + margin &&
+        t <= viewportStartT + viewportDuration - margin;
+    if (inView) return;
+    viewportStartT = t - viewportDuration / 2;
+    clampViewport();
+    triggerDebouncedDataLoad();
 }
 
 function nearestFinalPoint(screenPt, thresholdPx) {
@@ -2108,52 +2121,48 @@ function renderSelectionInfo() {
             selectionInfoEl.style.display = 'none';
             return;
         }
-        titleEl.textContent = 'Point details';
+        titleEl.textContent = t('workbench.selection_info.single.headline');
         bodyEl.innerHTML = renderSinglePointBody(p);
         bindSinglePointActions(p);
     } else {
-        titleEl.textContent = `${W.selected.size} points selected`;
+        titleEl.textContent = t('workbench.selection_info.multi.headline', [W.selected.size]);
         bodyEl.innerHTML = renderMultiSelectionBody();
     }
 }
 
 function renderSinglePointBody(p) {
     const isSynthetic = p.sourceId == null;
-    const isInterp    = String(p.id).startsWith('interp_');
     const isMain      = p.streamId === '__main__';
     const isMoved     = p.sourceId != null && EditStore.movedPoints.has(p.sourceId);
     const patchInfo   = patchOwnerAt(p.t);
     const isPatched   = !isMain && patchInfo.hasPatch && patchInfo.owner === p.streamId;
 
-    const streamLabel = isMain
-        ? 'Main journey'
+    const streamLabel = isMain ? t('workbench.timeline.main.title')
         : (nameOf(p.streamId) ?? p.streamId);
     const streamColor = colorOf(p.streamId) ?? '#888';
 
     const tags = [];
-    if (isInterp) {
-        tags.push(`<span class="sel-info-tag synthetic">interpolated</span>`);
-    } else if (isSynthetic) {
-        tags.push(`<span class="sel-info-tag synthetic">generated</span>`);
+    if (isSynthetic) {
+        tags.push(`<span class="sel-info-tag synthetic">${t('workbench.selection_info.tags.generated')}</span>`);
     }
-    if (isMoved)   tags.push(`<span class="sel-info-tag moved">moved</span>`);
-    if (isPatched) tags.push(`<span class="sel-info-tag patched">stitched in</span>`);
+    if (isMoved) tags.push(`<span class="sel-info-tag moved">${t('workbench.selection_info.tags.moved')}</span>`);
+    if (isPatched) tags.push(`<span class="sel-info-tag patched">${t('workbench.selection_info.tags.patched')}</span>`);
 
     const rows = [
-        row('Stream', `<span class="sel-info-tag" style="background:${hexAlpha(streamColor, 0.15)};border:1px solid ${hexAlpha(streamColor, 0.4)}"><span class="swatch" style="background:${streamColor}"></span>${escapeHtml(streamLabel)}</span>`),
-        row('Time',   `<span class="v">${fmtDateFull(p.t)}</span>`),
-        row('Clock',  `<span class="v mono">${fmtClock(p.t)}</span>`),
-        row('Lat / Lng', `<span class="v mono">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>`),
-        row('Altitude', `<span class="v mono">${p.alt.toFixed(1)} m</span>`),
-        row('Source ID', `<span class="v mono">${p.sourceId ?? '—'}</span>`),
-        row('UI ID',     `<span class="v mono">${escapeHtml(p.id)}</span>`)
+        row(t('workbench.selection_info.keys.stream'), `<span class="sel-info-tag" style="background:${hexAlpha(streamColor, 0.15)};border:1px solid ${hexAlpha(streamColor, 0.4)}"><span class="swatch" style="background:${streamColor}"></span>${escapeHtml(streamLabel)}</span>`),
+        row(t('workbench.selection_info.keys.time'), `<span class="v">${fmtDateFull(p.t)}</span>`),
+        row(t('workbench.selection_info.keys.clock'), `<span class="v mono">${fmtClock(p.t)}</span>`),
+        row(t('workbench.selection_info.keys.lat_lng'), `<span class="v mono">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>`),
+        row(t('workbench.selection_info.keys.alt'), `<span class="v mono">${p.alt.toFixed(1)} m</span>`),
+        row(t('workbench.selection_info.keys.source_id'), `<span class="v mono">${p.sourceId ?? '—'}</span>`),
+        row(t('workbench.selection_info.keys.ui_id'), `<span class="v mono">${escapeHtml(p.id)}</span>`)
     ];
 
     return rows.join('') +
         (tags.length ? `<div class="sel-info-tags">${tags.join('')}</div>` : '') +
         `<div class="sel-info-actions">
-            <button class="sel-info-btn" data-act="center">Center map</button>
-            ${isSynthetic ? '' : `<button class="sel-info-btn" data-act="delete">Delete</button>`}
+            <button class="sel-info-btn" data-act="center">${t('workbench.action.center_map')}</button>
+            ${isSynthetic ? '' : `<button class="sel-info-btn" data-act="delete">${t('workbench.action.delete')}</button>`}
         </div>`;
 }
 
@@ -2176,7 +2185,7 @@ function renderMultiSelectionBody() {
     const breakdown = [...byStream.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([sid, n]) => {
-            const label = sid === '__main__' ? 'Main' : (nameOf(sid) ?? sid);
+            const label = sid === '__main__' ? t('workbench.timeline.main.title') : (nameOf(sid) ?? sid);
             const color = colorOf(sid) ?? '#888';
             return `<span class="sel-info-tag" style="background:${hexAlpha(color, 0.15)};border:1px solid ${hexAlpha(color, 0.4)}"><span class="swatch" style="background:${color}"></span>${escapeHtml(label)} · ${n}</span>`;
         });
@@ -2187,11 +2196,11 @@ function renderMultiSelectionBody() {
         : `${fmtDateFull(tMin)} – ${fmtDateFull(tMax)}`;
 
     const rows = [
-        row('Range', `<span class="v">${escapeHtml(timeRange)}</span>`),
-        row('Span',  `<span class="v mono">${fmtDuration(tMax - tMin)}</span>`)
+        row(t('workbench.selection_info.keys.range'), `<span class="v">${escapeHtml(timeRange)}</span>`),
+        row(t('workbench.selection_info.keys.span'),  `<span class="v mono">${fmtDuration(tMax - tMin)}</span>`)
     ];
-    if (synthetic) rows.push(row('Generated', `<span class="v">${synthetic}</span>`));
-    if (moved)     rows.push(row('Already moved', `<span class="v">${moved}</span>`));
+    if (synthetic) rows.push(row(t('workbench.selection_info.keys.generated'), `<span class="v">${synthetic}</span>`));
+    if (moved)     rows.push(row(t('workbench.selection_info.keys.moved'), `<span class="v">${moved}</span>`));
 
     return rows.join('') +
         `<div class="sel-info-tags">${breakdown.join('')}</div>`;
