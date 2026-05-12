@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.dto.workbench.WorkbenchCommitRequest;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
@@ -32,7 +34,9 @@ public class WorkbenchController {
     }
 
     @PostMapping("/commit")
-    public String workbenchPost(@AuthenticationPrincipal User user, Model model) {
+    public String workbenchPost(@AuthenticationPrincipal User user,
+                                @RequestBody WorkbenchCommitRequest request,
+                                Model model) {
         return "redirect:/workbench";
     }
 }

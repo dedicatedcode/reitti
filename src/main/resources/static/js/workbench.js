@@ -1825,11 +1825,6 @@ function openCommit() {
 
     // Build payload (same as before)
     const active = History.filter(a => !a.undone);
-    const composition = FinalTimeline.reduce((acc, p) => {
-        const k = p.streamId === '__main__' ? 'primary' : (p.streamId ?? 'unknown');
-        acc = (acc || 0) + 1;
-        return acc;
-    }, {});
 
     commitPayloadCache = {
         editStore: {
@@ -1846,7 +1841,6 @@ function openCommit() {
         },
         actions: active.map(a => ({seq: a.seq, type: a.type, at: a.at, ...a.payload})),
         finalState: {
-            pointCount: FinalTimeline.length, composition,
             tStart: FinalTimeline[0]?.t ?? 0,
             tEnd: FinalTimeline[FinalTimeline.length - 1]?.t ?? 0,
         }
@@ -1886,13 +1880,8 @@ function openCommit() {
         </div>`;
     }
 
-    const spanMs = (commitPayloadCache.finalState.tEnd - commitPayloadCache.finalState.tStart);
-    html += `<div class="summary-section"><div class="summary-section-title">${t('workbench.commit.part.summary.title')}</div>
-        <div class="summary-footnote">${commitPayloadCache.finalState.pointCount} points · ${fmtDuration(spanMs)}</div>
-    </div>`;
-
     summaryEl.innerHTML = html;
-    topSummary.textContent = `${History.length} action${History.length === 1 ? '' : 's'} · ${FinalTimeline.length} story points`;
+    topSummary.textContent = t('workbench.commit.part.actions.count', [History.length]);
 
     modal.classList.add('open');
 }
@@ -1907,19 +1896,20 @@ document.getElementById('commitCancel').addEventListener('click', closeCommit);
 document.getElementById('commitConfirm').addEventListener('click', async () => {
     if (!commitPayloadCache) return;
     try {
-        const res = await fetch(window.contextPath + '/workbench/commit', {
+        const res = await fetch(window.contextPath + '/api/v2/workbench/commit', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(commitPayloadCache)
         });
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        toast('✅ ' + t('workbench.toast.commit.success'));
-        closeCommit();
-        triggerDebouncedDataLoad();
-        closeCommit();
+        const data = await res.json();
+        toast(data.message, !data.success);
+        if (data.success) {
+            closeCommit();
+            triggerDebouncedDataLoad();
+        }
     } catch (err) {
         console.error(err);
-        toast('❌ ' + t('workbench.toast.commit.failure'), true);
+        toast(t('workbench.commit.failure.network'), true);
     }
 });
 
