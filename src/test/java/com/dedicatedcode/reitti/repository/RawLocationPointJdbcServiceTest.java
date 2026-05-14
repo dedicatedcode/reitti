@@ -176,8 +176,6 @@ class RawLocationPointJdbcServiceTest {
             null,
             false, // will be set to true after creation
             false,
-            false,
-            false,
             1L
         );
         
@@ -193,8 +191,6 @@ class RawLocationPointJdbcServiceTest {
             created.getElevationMeters(),
             true, // processed = true
             created.isSynthetic(),
-            created.isIgnored(),
-            created.isInvalid(),
             created.getVersion()
         );
         
@@ -210,8 +206,6 @@ class RawLocationPointJdbcServiceTest {
             10.0,
             null,
             false, // processed = false
-            false,
-            false,
             false,
             1L
         );

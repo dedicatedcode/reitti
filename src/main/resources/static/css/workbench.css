@@ -465,6 +465,9 @@
 #map:not(.inspect) .maplibregl-canvas {
     cursor: crosshair;
 }
+.maplibregl-ctrl-top-left {
+    top: 44px;
+}
 
 .maplibregl-ctrl-group {
     border-radius: 10px !important;
@@ -481,7 +484,7 @@
 
 #historyPanel {
     position: absolute;
-    top: 18px;
+    top: 54px;
     right: 18px;
     width: 290px;
     max-height: calc(100vh - var(--drawer-top-edge) - 50px);
@@ -515,7 +518,7 @@
     position: relative;
     width: min(540px, calc(100vw - 32px));
     max-height: calc(100vh - 64px);
-    background: #131c2b;
+    background: var(--color-background-dark);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -631,10 +634,10 @@
     left: var(--drawer-inset);
     right: var(--drawer-inset);
     height: var(--drawer-h);
-    background: linear-gradient(180deg, rgba(22, 32, 48, 0.88) 0%, rgba(14, 22, 36, 0.92) 100%);
+    background: var(--color-background-dark);
     backdrop-filter: blur(18px);
     border: 1px solid var(--panel-line);
-    border-radius: 14px;
+    border-radius: 8px;
     z-index: 10;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);

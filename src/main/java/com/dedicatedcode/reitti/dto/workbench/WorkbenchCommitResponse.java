@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class WorkbenchCommitResponse {
     private final boolean success;
-    private final String message;       // human‑readable, already translated if possible
-    private final String errorCode;     // optional, for programmatic use
+    private final String message;
+    private final String errorCode;
 
     public WorkbenchCommitResponse(boolean success, String message) {
         this(success, message, null);

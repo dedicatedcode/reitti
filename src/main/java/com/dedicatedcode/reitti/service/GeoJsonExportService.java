@@ -44,7 +44,7 @@ public class GeoJsonExportService {
                 user,
                 start,
                 end,
-                false, true, true);
+                false);
 
         FeatureCollection collection = new FeatureCollection();
         for (RawLocationPoint point : points) {

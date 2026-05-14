@@ -13,24 +13,22 @@ public class RawLocationPoint {
     private final GeoPoint geom;
     private final boolean processed;
     private final boolean synthetic;
-    private final boolean invalid;
-    private final boolean ignored;
 
     private final Long version;
 
     public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters) {
-        this(null, null, timestamp, geom, accuracyMeters, null, false, false, false, false, null);
+        this(null, null, timestamp, geom, accuracyMeters, null, false, false, null);
     }
     
     public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters) {
-        this(null, null, timestamp, geom, accuracyMeters, elevationMeters, false, false, false, false, null);
+        this(null, null, timestamp, geom, accuracyMeters, elevationMeters, false, false, null);
     }
     
     public RawLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
-        this(id, null, timestamp, geom, accuracyMeters, elevationMeters, processed, false, false, false, version);
+        this(id, null, timestamp, geom, accuracyMeters, elevationMeters, processed, false, version);
     }
     
-    public RawLocationPoint(Long id, Long sourceId, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, boolean synthetic, boolean ignored, boolean invalid, Long version) {
+    public RawLocationPoint(Long id, Long sourceId, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, boolean synthetic, Long version) {
         this.id = id;
         this.sourceId = sourceId;
         this.timestamp = timestamp;
@@ -39,8 +37,6 @@ public class RawLocationPoint {
         this.elevationMeters = elevationMeters;
         this.processed = processed;
         this.synthetic = synthetic;
-        this.invalid = invalid;
-        this.ignored = ignored;
         this.version = version;
     }
 
@@ -84,32 +80,16 @@ public class RawLocationPoint {
         return synthetic;
     }
 
-    public boolean isInvalid() {
-        return invalid;
-    }
-
-    public boolean isIgnored() {
-        return ignored;
-    }
-
     public RawLocationPoint markProcessed() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, true, synthetic, ignored, invalid, version);
+        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, true, synthetic, version);
     }
     
     public RawLocationPoint markAsSynthetic() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, true, ignored, invalid, version);
+        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, true, version);
     }
     
-    public RawLocationPoint markAsIgnored() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, synthetic, true, invalid, version);
-    }
-
-    public RawLocationPoint markAsInvalid() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, synthetic, true, invalid, version);
-    }
-
     public RawLocationPoint withId(Long id) {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, synthetic, ignored, invalid, version);
+        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, synthetic, version);
     }
 
     public Long getVersion() {

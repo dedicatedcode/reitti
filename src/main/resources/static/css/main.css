@@ -168,6 +168,19 @@ body {
 
 .navbar .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.2);
+    filter: none;
+    box-shadow: none;
+}
+
+.navigation-container.overlay {
+    width: 100%;
+}
+
+.navigation-container.overlay .navbar {
+    background: var(--color-background-dark);
+    width: 100%;
+    padding: 0 32px;
+    margin: 0;
 }
 
 @media (min-width: 800px) {

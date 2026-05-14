@@ -23,16 +23,15 @@ public class UpdateCuratedTimelineJob {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SyntheticPointInserter syntheticPointInserter;
     private final JobSchedulingService jobSchedulingService;
-    private final JobMetadataRepository metadataRepository;
     private final Task<TriggerProcessingEvent> processingEventTask;
 
-    public UpdateCuratedTimelineJob(RawLocationPointJdbcService rawLocationPointJdbcService, SyntheticPointInserter syntheticPointInserter, JobSchedulingService jobSchedulingService,
-                                    JobMetadataRepository metadataRepository,
+    public UpdateCuratedTimelineJob(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                    SyntheticPointInserter syntheticPointInserter,
+                                    JobSchedulingService jobSchedulingService,
                                     Task<TriggerProcessingEvent> processingEventTask) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.syntheticPointInserter = syntheticPointInserter;
         this.jobSchedulingService = jobSchedulingService;
-        this.metadataRepository = metadataRepository;
         this.processingEventTask = processingEventTask;
     }
 
@@ -41,7 +40,8 @@ public class UpdateCuratedTimelineJob {
         //1. clear main timeline
         this.rawLocationPointJdbcService.dropForReSeeding(data.user, data.timeRange);
         //2. update main timeline from view
-        this.rawLocationPointJdbcService.updateFromDevices(data.user, data.timeRange);
+        int updatedCount = this.rawLocationPointJdbcService.updateFromDevices(data.user, data.timeRange);
+        log.debug("Updated {} timeline points for user [{}] and device[{}] in timeRange [{}]", updatedCount, data.user, data.device, data.timeRange);
         //3. insert new possible synthetic points
         this.syntheticPointInserter.fillGaps(data.user, data.timeRange);
         //4. trigger new processing job

@@ -11,28 +11,28 @@ public class SourceLocationPoint {
     private final Double elevationMeters;
     private final GeoPoint geom;
     private final boolean invalid;
-    private final boolean ignored;
+    private final Status status;
 
     public SourceLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters) {
-        this(null, timestamp, geom, accuracyMeters, null, false, false);
+        this(null, timestamp, geom, accuracyMeters, null, Status.VALID, false);
     }
 
     public SourceLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters) {
-        this(null, timestamp, geom, accuracyMeters, elevationMeters, false, false);
+        this(null, timestamp, geom, accuracyMeters, elevationMeters, Status.VALID, false);
     }
 
     public SourceLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters) {
-        this(id, timestamp, geom, accuracyMeters, elevationMeters, false, false);
+        this(id, timestamp, geom, accuracyMeters, elevationMeters, Status.VALID, false);
     }
 
-    public SourceLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean ignored, boolean invalid) {
+    public SourceLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, Status status, boolean invalid) {
         this.id = id;
         this.timestamp = timestamp;
         this.geom = geom;
         this.accuracyMeters = accuracyMeters;
         this.elevationMeters = elevationMeters;
         this.invalid = invalid;
-        this.ignored = ignored;
+        this.status = status;
     }
 
     public Long getId() {
@@ -67,20 +67,20 @@ public class SourceLocationPoint {
         return invalid;
     }
 
-    public boolean isIgnored() {
-        return ignored;
+    public Status getStatus() {
+        return status;
     }
 
     public SourceLocationPoint markAsIgnored() {
-        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, true, invalid);
+        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, Status.IGNORED_BY_SYSTEM, invalid);
     }
 
     public SourceLocationPoint markAsInvalid() {
-        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, true, invalid);
+        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, status, true);
     }
 
     public SourceLocationPoint withId(Long id) {
-        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, ignored, invalid);
+        return new SourceLocationPoint(id, timestamp, geom, accuracyMeters, elevationMeters, status, invalid);
     }
 
     @Override
@@ -95,4 +95,28 @@ public class SourceLocationPoint {
         return Objects.hashCode(id);
     }
 
+    public enum Status {
+        VALID(0L),
+        IGNORED_BY_USER(1L),
+        IGNORED_BY_SYSTEM(2L);
+
+        private final long dbValue;
+
+        Status(long dbValue) {
+            this.dbValue = dbValue;
+        }
+
+        public static Status fromDbValue(long dbValue) {
+            for (Status status : Status.values()) {
+                if (status.dbValue == dbValue) {
+                    return status;
+                }
+            }
+            return null;
+        }
+
+        public long getDbValue() {
+            return dbValue;
+        }
+    }
 }

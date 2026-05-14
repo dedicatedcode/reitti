@@ -76,17 +76,19 @@ public class LocationDataCleanupJob {
         private final Device device;
         private final Instant start;
         private final Instant end;
+        private final boolean skipCuratedTimeline;
 
         public TaskData(User user, Device device, Instant start, Instant end) {
-            this(user, device, start, end, null, null);
+            this(user, device, start, end, false, null, null);
         }
 
-        public TaskData(User user, Device device, Instant start, Instant end, UUID jobId, UUID parentJobId) {
+        public TaskData(User user, Device device, Instant start, Instant end, boolean skipCuratedTimeline, UUID jobId, UUID parentJobId) {
             super(jobId, parentJobId);
             this.user = user;
             this.device = device;
             this.start = start;
             this.end = end;
+            this.skipCuratedTimeline = skipCuratedTimeline;
         }
 
         public User getUser() {
@@ -105,14 +107,18 @@ public class LocationDataCleanupJob {
             return end;
         }
 
+        public boolean isSkipCuratedTimeline() {
+            return skipCuratedTimeline;
+        }
+
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, device, start, end, jobId, parentJobId);
+            return new TaskData(user, device, start, end, skipCuratedTimeline, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, device, start, end, jobId, parentJobId);
+            return new TaskData(user, device, start, end, skipCuratedTimeline, jobId, parentJobId);
         }
 
         @Override

@@ -281,8 +281,6 @@ class DataCleanupServiceTest {
             null,
             false,
             false,
-            false,
-            false,
             1L
         );
         
@@ -298,8 +296,6 @@ class DataCleanupServiceTest {
             created.getElevationMeters(),
             true,
             created.isSynthetic(),
-            created.isIgnored(),
-            created.isInvalid(),
             created.getVersion()
         );
         

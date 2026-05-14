@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -141,7 +139,7 @@ class SyntheticPointInserterTest {
     // --------- helpers ----------
     private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
         RawLocationPoint point = new RawLocationPoint(
-                null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, false, false, 1L
+                null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, 1L
         );
         return rawLocationPointService.create(testUser, point);
     }

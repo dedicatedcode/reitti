@@ -79,9 +79,9 @@ public class ExportDataController {
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, true, page, size);
+        List<RawLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, page, size);
         
-        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, true, true);
+        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false);
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         List<DataLine> paginatedData = allPoints.stream()
