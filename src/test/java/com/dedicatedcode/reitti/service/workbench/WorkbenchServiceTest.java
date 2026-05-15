@@ -134,7 +134,7 @@ class WorkbenchServiceTest {
 
         //await recalculation
         this.testingService.awaitDataImport(100);
-
+        assertEquals(4, this.processedVisitJdbcService.findByUser(this.user).size());
         // now we removed the second visit from the main timeline, time to stich in the visit back from the new device
 
         WorkbenchCommitRequest stitchRequest = new WorkbenchCommitRequest();
