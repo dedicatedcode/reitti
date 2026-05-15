@@ -21,7 +21,7 @@ public class JobMetadataCleanupService {
     private final int maxAgeHours;
 
     public JobMetadataCleanupService(JobMetadataRepository jobMetadataRepository,
-                                     @Value("${reitti.jobs.cleanup.max-age-hours:72}") int maxAgeHours) {
+                                     @Value("${reitti.jobs.cleanup.max-age-hours:24}") int maxAgeHours) {
         this.jobMetadataRepository = jobMetadataRepository;
         this.maxAgeHours = maxAgeHours;
     }

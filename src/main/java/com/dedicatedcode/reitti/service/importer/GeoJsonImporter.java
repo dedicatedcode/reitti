@@ -126,7 +126,7 @@ public class GeoJsonImporter {
 
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
-                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
+                    .jobType(JobType.GEOJSON_IMPORT)
                     .friendlyName("GeoJson Data Promotion")
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,

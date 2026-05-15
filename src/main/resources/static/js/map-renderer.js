@@ -262,12 +262,18 @@ class MapRenderer {
         this.photosManager.setPhotos(photos);
     }
 
-    enableAvatars() {
+    enableAvatars(todayStart = null, todayEnd = null) {
         this.showAvatars = true;
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
-            
+
+            if (todayStart !== null && todayEnd !== null) {
+                if (!latestLocation || latestLocation.timestamp < todayStart || latestLocation.timestamp > todayEnd) {
+                    return;
+                }
+            }
+
             if (latestLocation && userConfig) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID
@@ -283,7 +289,6 @@ class MapRenderer {
             }
         });
     }
-
     disableAvatars() {
         this.showAvatars = false;
         this.removeAvatarMarkers();

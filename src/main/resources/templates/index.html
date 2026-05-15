@@ -178,13 +178,12 @@
                 window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
             }
             timelineControl.hide();
-            mapRenderer.enableAvatars();
         } else {
             timeline.classList.remove('hidden');
             datePicker.classList.remove('hidden');
             fabContainer.classList.remove('hidden');
-            mapRenderer.disableAvatars();
         }
+        updateAvatarsVisibility();
         handleAutoTodaySelectionTimer(autoUpdateMode)
     })
     const mapControls = new MapControls('map-controls-section');
@@ -217,7 +216,39 @@
             startAnimation();
         }
     };
+    function updateAvatarsVisibility() {
+        const isAutoUpdate = Boolean(liveModeController && liveModeController.isActive());
 
+        if (isAutoUpdate) {
+            mapRenderer.enableAvatars();
+            return;
+        }
+
+        const settingEnabled = localStorage.getItem('showAvatars') !== 'false';
+        if (!settingEnabled) {
+            mapRenderer.disableAvatars();
+            return;
+        }
+
+        // Normal mode: only show avatars if the selected date is today
+        const today = getCurrentLocalDate(); // e.g. "2023-06-01"
+        const selectedStart = currentDateRange?.startDate;
+        // Assume selected date is today if startDate equals today or if range includes today?
+        // Simpler: only when the selected date (single day) is today.
+        const isSingleToday = selectedStart === today && (!currentDateRange?.endDate || currentDateRange.endDate === today);
+
+        if (!isSingleToday) {
+            mapRenderer.disableAvatars();
+            return;
+        }
+
+        // Compute today's range in UTC seconds
+        const todayStart = Math.floor(new Date(today + 'T00:00:00').getTime() / 1000);
+        const todayEnd = todayStart + 86400; // 24 hours
+
+        // Only show avatars for managers with data inside today
+        mapRenderer.enableAvatars(todayStart, todayEnd);
+    }
     function startAnimation() {
         isPlaying = true;
         playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
@@ -653,7 +684,7 @@
                 }
                 window.timelineScrollIndicator = new TimelineScrollIndicator();
                 window.timelineScrollIndicator.init();
-
+                updateAvatarsVisibility();
                 updateEditPlaceLinks();
             }
         });
@@ -882,6 +913,9 @@
                     break;
                 case 'datepickerVisible':
                     document.body.classList.toggle('datepicker-hidden', !value);
+                    break;
+                case 'showAvatars':
+                    updateAvatarsVisibility();
                     break;
             }
         });
