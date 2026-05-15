@@ -262,12 +262,19 @@ class MapRenderer {
         this.photosManager.setPhotos(photos);
     }
 
-    enableAvatars() {
+    enableAvatars(todayStart = null, todayEnd = null) {
         this.showAvatars = true;
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
-            
+            if (todayStart !== null && todayEnd !== null) {
+                if (!latestLocation) return;
+                const locMs = new Date(latestLocation.timestamp).getTime();
+                if (locMs < todayStart || locMs > todayEnd) {
+                    return; // we skip the avatar marker since it is not today
+                }
+            }
+
             if (latestLocation && userConfig) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID

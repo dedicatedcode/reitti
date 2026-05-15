@@ -59,6 +59,7 @@
                                     <button class="btn btn-danger"
                                             th:attr="hx-post=@{/settings/api-tokens/{id}/delete(id=${token.id()})}, hx-confirm=#{tokens.delete.confirm}"
                                             hx-target="#api-tokens"
+                                            hx-vals='js:{"timezone": getUserTimezone()}'
                                             hx-swap="innerHTML"
                                             th:text="#{form.delete}">Delete
                                     </button>
@@ -70,7 +71,7 @@
                 </div>
 
                 <div class="settings-card">
-                    <form th:hx-post="@{/settings/api-tokens}" hx-target="#api-tokens" hx-swap="innerHTML" class="token-form"
+                    <form th:hx-post="@{/settings/api-tokens}" hx-target="#api-tokens" hx-swap="innerHTML" hx-vals='js:{"timezone": getUserTimezone()}' class="token-form"
                           style="margin-bottom: 20px;">
                         <div class="form-group">
                             <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>

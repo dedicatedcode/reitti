@@ -77,6 +77,10 @@ class LiveModeController {
     }
 
 
+    isActive() {
+        return this.autoUpdateMode;
+    }
+
     /** Events **/
     on(event, callback) {
         if (!this.eventListeners[event]) this.eventListeners[event] = [];

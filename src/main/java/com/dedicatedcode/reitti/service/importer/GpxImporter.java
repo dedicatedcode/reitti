@@ -159,7 +159,7 @@ public class GpxImporter {
             logger.info("Successfully imported and queued [{}] location points from GPX file for user [{}]", processedCount.get(), user.getUsername());
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
-                    .jobType(JobType.GOOGLE_TIMELINE_IMPORT)
+                    .jobType(JobType.GPX_IMPORT)
                     .friendlyName("GPS Data Promotion")
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
