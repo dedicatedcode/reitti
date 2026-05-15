@@ -369,6 +369,7 @@
       "id": "satellite-layer",
       "type": "raster",
       "source": "satellite-source",
+      "visibility": "none",
       "paint": {
         "raster-opacity": 0,
         "raster-opacity-transition": {
