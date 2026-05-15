@@ -37,4 +37,14 @@ public class PatchDto {
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
     }
+
+    @Override
+    public String toString() {
+        return "PatchDto{" +
+                "seq=" + seq +
+                ", tStart=" + tStart +
+                ", tEnd=" + tEnd +
+                ", deviceId='" + deviceId + '\'' +
+                '}';
+    }
 }

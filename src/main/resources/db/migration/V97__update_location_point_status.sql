@@ -5,7 +5,6 @@ CREATE OR REPLACE VIEW v_source_stream AS
 WITH current_overrides AS (
     SELECT user_id, device_id, start_time, end_time
     FROM timeline_overrides
-    WHERE active = true
 )
 -- PART A: Points from specific overridden devices
 SELECT

@@ -1,25 +1,24 @@
 package com.dedicatedcode.reitti.service.workbench;
 
-import com.dedicatedcode.reitti.dto.workbench.DeletedPointDto;
-import com.dedicatedcode.reitti.dto.workbench.EditStoreDto;
-import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
-import com.dedicatedcode.reitti.dto.workbench.WorkbenchCommitRequest;
+import com.dedicatedcode.reitti.dto.workbench.*;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
-import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
-import com.dedicatedcode.reitti.service.processing.TimeRange;
+import com.dedicatedcode.reitti.service.processing.PatchDeviceOntoTimelineJob;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,21 +29,26 @@ public class WorkbenchService {
     private final DeviceJdbcService deviceJdbcService;
     private final JobSchedulingService jobSchedulingService;
     private final Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask;
+    private final Task<PatchDeviceOntoTimelineJob.TaskData> patchDeviceOntoTimelineTask;
+    private final I18nService i18n;
 
     public WorkbenchService(SourceLocationPointJdbcService sourceLocationPointJdbcService,
                             DeviceJdbcService deviceJdbcService,
                             JobSchedulingService jobSchedulingService,
-                            Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask) {
+                            Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask,
+                            Task<PatchDeviceOntoTimelineJob.TaskData> patchDeviceOntoTimelineTask,
+                            I18nService i18n) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
         this.jobSchedulingService = jobSchedulingService;
         this.locationDataCleanupTask = locationDataCleanupTask;
+        this.patchDeviceOntoTimelineTask = patchDeviceOntoTimelineTask;
+        this.i18n = i18n;
     }
 
     public void applyCommit(User user, WorkbenchCommitRequest request) {
         log.debug("Applying commit {}", request);
         EditStoreDto editStore = request.getEditStore();
-
         UUID parentJob = this.jobSchedulingService.createParentJob(user, JobType.MANUAL_MODIFICATION, "Updating data for " + user.getUsername());
 
         if (editStore.getDeletedPoints() != null) {
@@ -53,6 +57,35 @@ public class WorkbenchService {
         if (editStore.getMovedPoints() != null) {
             handleMove(user, editStore, parentJob);
         }
+        if (editStore.getPatches() != null) {
+            handlePatches(user, editStore.getPatches(), parentJob);
+        }
+    }
+
+    private void handlePatches(User user, List<PatchDto> patches, UUID parentJob) {
+        log.debug("Handling patches for user [{}] and [{}] patches", user.getUsername(), patches.size());
+        patches.stream().sorted(Comparator.comparing(PatchDto::getSeq))
+                .forEachOrdered(patchDto -> {
+                    Device device = patchDto.getDeviceId() != null ? this.deviceJdbcService.find(user, Long.valueOf(patchDto.getDeviceId())).orElseThrow() : null;
+                    Instant start = Instant.ofEpochMilli(patchDto.gettStart());
+                    Instant end = Instant.ofEpochMilli(patchDto.gettEnd());
+                    JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                            .user(user)
+                            .jobType(JobType.TIMELINE_STITCHING)
+                            .friendlyName(i18n.translate("jobs.timeline_stitching.friendly_name", device == null ? "Default" : device.name(), start, end)).build();
+                    this.jobSchedulingService.enqueueTask(patchDeviceOntoTimelineTask,
+                                                          new PatchDeviceOntoTimelineJob.TaskData(user, device, start, end).withParentJobId(parentJob),
+                                                          metadata);
+                });
+    }
+
+    private void handleDeletion(User user, EditStoreDto editStore, UUID parentJob) {
+        log.debug("Handling deletion for user [{}] and [{}] points", user.getUsername(), editStore.getDeletedPoints().size());
+        List<DeletedPointDto> deletedPoints = editStore.getDeletedPoints();
+        List<Long> deletedPointIds = deletedPoints.stream().map(DeletedPointDto::getSourceId).toList();
+        List<DeviceTimeRange> affectedTimeRange = this.sourceLocationPointJdbcService.findAffectedTimeRange(user, deletedPointIds);
+        this.sourceLocationPointJdbcService.bulkUpdateManuallyIgnoredStatus(user, deletedPointIds);
+        scheduleUpdateJob(user, parentJob, affectedTimeRange);
     }
 
     private void handleMove(User user, EditStoreDto editStore, UUID parentJob) {
@@ -81,12 +114,4 @@ public class WorkbenchService {
         }
     }
 
-    private void handleDeletion(User user, EditStoreDto editStore, UUID parentJob) {
-        log.debug("Handling deletion for user [{}] and [{}] points", user.getUsername(), editStore.getDeletedPoints().size());
-        List<DeletedPointDto> deletedPoints = editStore.getDeletedPoints();
-        List<Long> deletedPointIds = deletedPoints.stream().map(DeletedPointDto::getSourceId).toList();
-        List<DeviceTimeRange> affectedTimeRange = this.sourceLocationPointJdbcService.findAffectedTimeRange(user, deletedPointIds);
-        this.sourceLocationPointJdbcService.bulkUpdateManuallyIgnoredStatus(user, deletedPointIds);
-        scheduleUpdateJob(user, parentJob, affectedTimeRange);
-    }
 }
