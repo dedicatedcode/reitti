@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class SourceLocationPointJdbcService {
+    private static final int NO_PAGING = -1;
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<SourceLocationPoint> rawLocationPointRowMapper;
     private final PointReaderWriter pointReaderWriter;
@@ -45,7 +46,7 @@ public class SourceLocationPointJdbcService {
         this.geometryFactory = geometryFactory;
     }
 
-    public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid) {
+    public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid, int page, int size) {
         StringBuilder sql = new StringBuilder()
                 .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.invalid, rlp.status ")
                 .append("FROM raw_source_points rlp ")
@@ -57,8 +58,31 @@ public class SourceLocationPointJdbcService {
             sql.append("AND rlp.invalid = false ");
         }
         sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ORDER BY rlp.timestamp");
+        if (page != NO_PAGING && size != NO_PAGING) {
+            sql.append(" OFFSET ").append(page * size).append(" LIMIT ").append(size);
+        }
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                                   user.getId(), device != null ? device.id() : null, Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public long countByUserAndTimestampBetween(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT count(*) ")
+                .append("FROM raw_source_points rlp ")
+                .append("WHERE rlp.user_id = ? AND rlp.device_id IS NOT DISTINCT FROM ? ");
+        if (!includeIgnored) {
+            sql.append("AND rlp.status = 0 ");
+        }
+        if (!includeInvalid) {
+            sql.append("AND rlp.invalid = false ");
+        }
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ?");
+        return jdbcTemplate.queryForObject(sql.toString(), Long.class,
+                                  user.getId(), device != null ? device.id() : null, Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+    public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid) {
+       return findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startTime, endTime, includeIgnored, includeInvalid, NO_PAGING, NO_PAGING);
     }
 
     public SourceLocationPoint create(User user, Device device, SourceLocationPoint rawLocationPoint) {
@@ -79,7 +103,7 @@ public class SourceLocationPointJdbcService {
 
     public int bulkInsert(User user, Device device, List<LocationPoint> points) {
         if (points.isEmpty()) {
-            return -1;
+            return NO_PAGING;
         }
         
         String sql = "INSERT INTO raw_source_points (user_id, device_id, timestamp, accuracy_meters, elevation_meters, geom, invalid, status) " +

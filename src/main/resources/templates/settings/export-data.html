@@ -36,6 +36,21 @@
 
                     <div style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
                         <div class="form-group" style="margin-bottom: 0;">
+                            <label for="deviceId" th:text="#{export.device.label}">Device</label>
+                            <select class="device-select" id="deviceId" name="deviceId" th:hx-get="@{/settings/export-data/data-content}"
+                                    hx-target="#data-content"
+                                    hx-swap="innerHTML"
+                                    hx-trigger="change"
+                                    hx-include="#startDate, #endDate, #pageSizeSelect"
+                                    hx-indicator="#loading-indicator"
+                                    hx-vals='js:{"timezone": getUserTimezone()}'>
+                                <option value="default" selected th:data-color="${userSettings.timelineColor()}" th:text="#{workbench.device.default.label}">Default</option>
+                                <option th:each="device : ${devices}" th:data-color="${device.color()}" th:value="${device.id()}" value="garmin" th:text="${device.name()}">Garmin Fenix 7</option>
+                                <option value="gopro" th:remove="all">GoPro Hero 12</option>
+                                <option value="null" th:remove="all">Phone</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label for="startDate" th:text="#{export.start.date}">Start Date</label>
                             <input type="date"
                                    id="startDate"
@@ -45,7 +60,7 @@
                                    hx-target="#data-content"
                                    hx-swap="innerHTML"
                                    hx-trigger="change"
-                                   hx-include="#endDate, #pageSizeSelect"
+                                   hx-include="#deviceId, #endDate, #pageSizeSelect"
                                    hx-indicator="#loading-indicator"
                                    hx-vals='js:{"timezone": getUserTimezone()}'
                                    required>
@@ -61,7 +76,7 @@
                                    hx-target="#data-content"
                                    hx-swap="innerHTML"
                                    hx-trigger="load, change"
-                                   hx-include="#startDate, #pageSizeSelect"
+                                   hx-include="#deviceId, #startDate, #pageSizeSelect"
                                    hx-indicator="#loading-indicator"
                                    hx-vals='js:{"timezone": getUserTimezone()}'
                                    required>
@@ -117,7 +132,7 @@
                                                 th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
-                                                hx-include="#startDate, #endDate"
+                                                hx-include="#deviceId, #startDate, #endDate"
                                                 hx-vals='js:{"timezone": getUserTimezone(), "page": 0}'
                                                 hx-trigger="change">
                                             <option value="100" th:selected="${pageSize == 100}">100</option>
@@ -134,7 +149,7 @@
                                                 th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
-                                                hx-include="#startDate, #endDate, #pageSizeSelect"
+                                                hx-include="#deviceId, #startDate, #endDate, #pageSizeSelect"
                                                 th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage - 1}}|"
                                                 hx-trigger="click"
                                                 th:text="#{export.raw.data.previous}">
@@ -151,7 +166,7 @@
                                                 th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
                                                 hx-swap="innerHTML"
-                                                hx-include="#startDate, #endDate, #pageSizeSelect"
+                                                hx-include="#deviceId, #startDate, #endDate, #pageSizeSelect"
                                                 th:hx-vals="|js:{'timezone': getUserTimezone(), 'page': ${currentPage + 1}}|"
                                                 hx-trigger="click"
                                                 th:text="#{export.raw.data.next}">
@@ -169,7 +184,6 @@
                                         <th th:text="#{export.raw.data.table.latitude}">Latitude</th>
                                         <th th:text="#{export.raw.data.table.longitude}">Longitude</th>
                                         <th th:text="#{export.raw.data.table.accuracy}">Accuracy (m)</th>
-                                        <th th:text="#{export.raw.data.table.processed}">Processed</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -178,10 +192,6 @@
                                         <td th:text="${#numbers.formatDecimal(point.latitude(), 1, 6)}">60.123456</td>
                                         <td th:text="${#numbers.formatDecimal(point.longitude(), 1, 6)}">24.123456</td>
                                         <td th:text="${point.accuracyMeters != null ? #numbers.formatDecimal(point.accuracyMeters(), 1, 1) : 'N/A'}">10.0</td>
-                                        <td>
-                                            <span th:if="${point.processed()}" style="color: #28a745;">✓</span>
-                                            <span th:unless="${point.processed()}" style="color: #ffc107;">○</span>
-                                        </td>
                                     </tr>
                                     </tbody>
                                 </table>
@@ -199,12 +209,13 @@
         window.userSettings = /*[[${userSettings}]]*/ {}
         
         function handleGpxDownload(buttonElement) {
+            const deviceId = document.getElementById('deviceId').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             const relevantDataCheckbox = document.getElementById('relevantDataOnly');
             const relevantDataOnly = relevantDataCheckbox ? relevantDataCheckbox.checked : false;
 
-            gpxDownloader.downloadGpx(startDate, endDate, buttonElement, relevantDataOnly);
+            gpxDownloader.downloadGpx(deviceId, startDate, endDate, buttonElement, relevantDataOnly);
         }
     </script>
 </div>

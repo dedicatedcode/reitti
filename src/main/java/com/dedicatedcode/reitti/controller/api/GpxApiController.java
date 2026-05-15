@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
 import org.springframework.http.MediaType;
@@ -24,27 +26,34 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/gpx")
 public class GpxApiController {
-    
+
+    private final DeviceJdbcService deviceJdbcService;
     private final GpxExportService gpxExportService;
     private final GpxImporter gpxImporter;
 
-    public GpxApiController(GpxExportService gpxExportService, GpxImporter gpxImporter) {
+    public GpxApiController(DeviceJdbcService deviceJdbcService,
+                            GpxExportService gpxExportService,
+                            GpxImporter gpxImporter) {
+        this.deviceJdbcService = deviceJdbcService;
         this.gpxExportService = gpxExportService;
         this.gpxImporter = gpxImporter;
     }
 
     @GetMapping("/export")
     public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
+                                                           @RequestParam(required = false) Long device,
                                                           @RequestParam LocalDate start,
                                                           @RequestParam LocalDate end) {
         try {
+            Device requestedDevice = device == null ? null : this.deviceJdbcService.find(user, device).orElseThrow(IllegalArgumentException::new);
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     gpxExportService.generateGpxContentStreaming(user,
-                            ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
-                            ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
-                            writer,
-                        false);
+                                                                 requestedDevice,
+                                                                 ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
+                                                                 ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
+                                                                 writer,
+                                                                 false);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }
@@ -67,6 +76,7 @@ public class GpxApiController {
     }
     @PostMapping("/import")
     public ResponseEntity<Map<String, Object>> importGpx(@AuthenticationPrincipal User user,
+                                                         @RequestParam(required = false) Long device,
                                                          @RequestParam("file") MultipartFile file) {
         Map<String, Object> response = new HashMap<>();
         
@@ -82,9 +92,20 @@ public class GpxApiController {
                 response.put("error", "Only GPX files are supported");
                 return ResponseEntity.badRequest().body(response);
             }
+            Device requestedDevice;
+            if (device == null) {
+                requestedDevice = null;
+            } else {
+                requestedDevice = this.deviceJdbcService.find(user, device).orElse(null);
+                if (requestedDevice == null) {
+                    response.put("success", false);
+                    response.put("error", "Requested device not found");
+                    return ResponseEntity.badRequest().body(response);
+                }
+            }
 
             try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = gpxImporter.importGpx(inputStream, user, null, file.getOriginalFilename());
+                Map<String, Object> result = gpxImporter.importGpx(inputStream, user, requestedDevice, file.getOriginalFilename());
                 
                 if ((Boolean) result.get("success")) {
                     response.put("success", true);
