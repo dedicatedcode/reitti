@@ -267,10 +267,11 @@ class MapRenderer {
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
-
             if (todayStart !== null && todayEnd !== null) {
-                if (!latestLocation || latestLocation.timestamp < todayStart || latestLocation.timestamp > todayEnd) {
-                    return;
+                if (!latestLocation) return;
+                const locMs = new Date(latestLocation.timestamp).getTime();
+                if (locMs < todayStart || locMs > todayEnd) {
+                    return; // we skip the avatar marker since it is not today
                 }
             }
 
@@ -289,6 +290,7 @@ class MapRenderer {
             }
         });
     }
+
     disableAvatars() {
         this.showAvatars = false;
         this.removeAvatarMarkers();

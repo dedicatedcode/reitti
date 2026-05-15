@@ -243,8 +243,8 @@
         }
 
         // Compute today's range in UTC seconds
-        const todayStart = Math.floor(new Date(today + 'T00:00:00').getTime() / 1000);
-        const todayEnd = todayStart + 86400; // 24 hours
+        const todayStart = Math.floor(new Date(today + 'T00:00:00').getTime());
+        const todayEnd = todayStart + 86400000; // 24 hours
 
         // Only show avatars for managers with data inside today
         mapRenderer.enableAvatars(todayStart, todayEnd);
