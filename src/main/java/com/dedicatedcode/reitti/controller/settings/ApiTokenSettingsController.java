@@ -38,18 +38,14 @@ public class ApiTokenSettingsController {
     public String getPage(@AuthenticationPrincipal User user,
                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                           Model model) {
+        addTokensToModel(user, timezone, model);
         model.addAttribute("activeSection", "api-tokens");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
-                .map(t -> new ApiTokenDto(t.getId(),
-                                          t.getDevice() != null ? t.getDevice().id() : null,
-                                          t.getToken(),
-                                          t.getName(),
-                                          adjustInstant(t.getCreatedAt(), timezone),
-                                          adjustInstant(t.getLastUsedAt(), timezone))).toList());
         return "settings/api-tokens";
     }
+
+
 
     @GetMapping("/usages")
     public String getTokenUsages(@AuthenticationPrincipal User user,
@@ -63,7 +59,10 @@ public class ApiTokenSettingsController {
         return "settings/api-tokens :: api-token-usages";
     }
     @PostMapping
-    public String createToken(@AuthenticationPrincipal User user, @RequestParam String name, Model model) {
+    public String createToken(@AuthenticationPrincipal User user,
+                              @RequestParam String name,
+                              @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                              Model model) {
         try {
             apiTokenService.createToken(user, name);
             model.addAttribute("successMessage", getMessage("message.success.token.created"));
@@ -71,9 +70,7 @@ public class ApiTokenSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.token.creation", e.getMessage()));
         }
 
-        // Get updated token list and add to model
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-        model.addAttribute("tokens", tokens);
+        addTokensToModel(user, timezone, model);
         model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
         model.addAttribute("maxUsagesToShow", 10);
 
@@ -82,7 +79,10 @@ public class ApiTokenSettingsController {
     }
 
     @PostMapping("/{tokenId}/delete")
-    public String deleteToken(@PathVariable Long tokenId, @AuthenticationPrincipal User user, Model model) {
+    public String deleteToken(@PathVariable Long tokenId,
+                              @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                              @AuthenticationPrincipal User user,
+                              Model model) {
 
         try {
             apiTokenService.deleteToken(tokenId);
@@ -91,9 +91,7 @@ public class ApiTokenSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));
         }
 
-        // Get updated token list and add to model
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(user);
-        model.addAttribute("tokens", tokens);
+        addTokensToModel(user, timezone, model);
         model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
         model.addAttribute("maxUsagesToShow", 10);
 
@@ -108,5 +106,14 @@ public class ApiTokenSettingsController {
 
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+    private void addTokensToModel(User user, ZoneId timezone, Model model) {
+        model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
+                .map(t -> new ApiTokenDto(t.getId(),
+                                          t.getDevice() != null ? t.getDevice().id() : null,
+                                          t.getToken(),
+                                          t.getName(),
+                                          adjustInstant(t.getCreatedAt(), timezone),
+                                          adjustInstant(t.getLastUsedAt(), timezone))).toList());
     }
 }
