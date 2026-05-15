@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -27,15 +28,18 @@ public class SyntheticPointInserter {
     private final RawLocationPointJdbcService rawLocationPointService;
     private final SyntheticLocationPointGenerator syntheticGenerator;
     private final VisitDetectionParametersService visitDetectionParametersService;
+    private final int maxBatchSize;
 
     public SyntheticPointInserter(LocationDensityConfig config,
                                   RawLocationPointJdbcService rawLocationPointService,
                                   SyntheticLocationPointGenerator syntheticGenerator,
-                                  VisitDetectionParametersService visitDetectionParametersService) {
+                                  VisitDetectionParametersService visitDetectionParametersService,
+                                  @Value("${reitti.import.batch-size:10000}") int maxBatchSize) {
         this.config = config;
         this.rawLocationPointService = rawLocationPointService;
         this.syntheticGenerator = syntheticGenerator;
         this.visitDetectionParametersService = visitDetectionParametersService;
+        this.maxBatchSize = maxBatchSize;
     }
 
     /**
@@ -62,23 +66,32 @@ public class SyntheticPointInserter {
         // 3. Delete all existing synthetic points in the expanded range
         rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start(), expandedRange.end());
 
-        // 4. Fetch all real points in the expanded range
-        List<RawLocationPoint> realPoints = rawLocationPointService
-                .findByUserAndTimestampBetweenOrderByTimestampAsc(
-                        user,
-                        expandedRange.start(),
-                        expandedRange.end()
-                );
+        Instant currentStart = expandedRange.start();
+        while (currentStart.isBefore(expandedRange.end())) {
+            // 4. Fetch all real points in the expanded range
+            List<RawLocationPoint> realPoints = rawLocationPointService
+                    .findByUserAndTimestampBetweenOrderByTimestampAsc(
+                            user,
+                            currentStart,
+                            expandedRange.end(),
+                            false,
+                            0,
+                            maxBatchSize
+                    );
 
-        // 5. Sort deterministically (same logic as original)
-        realPoints.sort(Comparator
-                .comparing(RawLocationPoint::getTimestamp)
-                .thenComparing(p -> p.getGeom().latitude())
-                .thenComparing(p -> p.getGeom().longitude())
-                .thenComparing(RawLocationPoint::isSynthetic));
+            // 5. Sort deterministically (same logic as original)
+            realPoints.sort(Comparator
+                                    .comparing(RawLocationPoint::getTimestamp)
+                                    .thenComparing(p -> p.getGeom().latitude())
+                                    .thenComparing(p -> p.getGeom().longitude())
+                                    .thenComparing(RawLocationPoint::isSynthetic));
 
-        // 6. Process gaps
-        processGaps(user, realPoints, densityConfig);
+            // 6. Process gaps
+            processGaps(user, realPoints, densityConfig);
+            if (realPoints.isEmpty()) break;
+            currentStart = realPoints.getLast().getTimestamp().plus(1, ChronoUnit.MILLIS);
+        }
+
     }
 
     private void processGaps(User user,
@@ -110,7 +123,7 @@ public class SyntheticPointInserter {
 
         if (!allSyntheticPoints.isEmpty()) {
             int inserted = rawLocationPointService.bulkInsertSynthetic(user, allSyntheticPoints);
-            logger.debug("Inserted {} synthetic points for user {}", inserted, user.getUsername());
+            logger.debug("Inserted {} synthetic points for user {} between {} and {}", inserted, user.getUsername(), sortedRealPoints.getFirst().getTimestamp(), sortedRealPoints.getLast().getTimestamp());
         }
     }
 }
