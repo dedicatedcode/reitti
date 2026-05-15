@@ -828,6 +828,7 @@ class MapRenderer {
         if (!this.map || !this.map.getStyle) return;
 
         if (this.map.getLayer && this.map.getLayer('satellite-layer')) {
+            this.map.setLayoutProperty('satellite-layer', 'visibility', enable ? 'visible' : 'none');
             this.map.setPaintProperty('satellite-layer', 'raster-opacity', enable ? 1 : 0);
         }
 
