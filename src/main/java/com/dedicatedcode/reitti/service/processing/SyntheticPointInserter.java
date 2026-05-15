@@ -95,9 +95,6 @@ public class SyntheticPointInserter {
             RawLocationPoint current = sortedRealPoints.get(i);
             RawLocationPoint next = sortedRealPoints.get(i + 1);
 
-            // Skip ignored or synthetic (shouldn't happen after deletion, but safe)
-            if (current.isIgnored() || next.isIgnored() || current.isSynthetic()) continue;
-
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
                 List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(

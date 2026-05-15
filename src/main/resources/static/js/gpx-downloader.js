@@ -3,7 +3,7 @@ class GpxDownloader {
         this.isDownloading = false;
     }
 
-    async downloadGpx(startDate, endDate, buttonElement, relevantData = false) {
+    async downloadGpx(deviceId, startDate, endDate, buttonElement, relevantData = false) {
         if (this.isDownloading) {
             return;
         }
@@ -14,6 +14,7 @@ class GpxDownloader {
         try {
             const timezone = getUserTimezone();
             const params = new URLSearchParams({
+                deviceId: deviceId,
                 startDate: startDate,
                 endDate: endDate,
                 timezone: timezone,

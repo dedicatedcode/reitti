@@ -61,8 +61,8 @@ public class VisitDetectionPreviewService {
 
         Timestamp start = Timestamp.from(date.minus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
         Timestamp end = Timestamp.from(date.plus(1, ChronoUnit.DAYS).plus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
-        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, elevation_meters, geom, processed, version, ignored, synthetic, preview_id, preview_created_at) " +
-                "SELECT accuracy_meters, timestamp, user_id, elevation_meters, geom, false, version, ignored, synthetic, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ? AND invalid = false",
+        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, elevation_meters, geom, processed, version, synthetic, preview_id, preview_created_at) " +
+                                         "SELECT accuracy_meters, timestamp, user_id, elevation_meters, geom, FALSE, version, synthetic, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ?",
                 previewId,
                 Timestamp.valueOf(now),
                 start,
@@ -71,7 +71,7 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         UUID parentJob = this.jobScheduler.createParentJob(user, VISIT_TRIP_DETECTION, previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
+        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString()).withParentJobId(parentJob);
         this.jobScheduler.enqueueTask(processingEventTask, triggerEvent,
                                   JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
                                           .friendlyName("Preview Visit Detection")

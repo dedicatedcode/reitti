@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -44,14 +45,19 @@ public class TestingService {
     @Autowired
     private ApiTokenJdbcService apiTokenJdbcService;
     @Autowired
+    private DeviceJdbcService deviceJdbcService;
+    @Autowired
     private Scheduler scheduler;
 
     public void importData(User user, String path) {
+        importData(user, null, path);
+    }
+    public void importData(User user, Device device, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
-            gpxImporter.importGpx(is, user, null, null);
+            gpxImporter.importGpx(is, user, device, null);
         } else if (path.endsWith(".geojson")) {
-            geoJsonImporter.importGeoJson(is, user, null, null);
+            geoJsonImporter.importGeoJson(is, user, device, null);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
@@ -119,6 +125,10 @@ public class TestingService {
         importData(user, path);
         awaitDataImport(100);
     }
+    public void importAndProcess(User user, Device device, String path) {
+        importData(user, device, path);
+        awaitDataImport(100);
+    }
 
     public SignificantPlace newSignificantPlace(User user) {
         return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
@@ -126,5 +136,23 @@ public class TestingService {
 
     public ApiToken createApiToken(User user, String name, Device device) {
         return this.apiTokenJdbcService.save(new ApiToken(user, name, device));
+    }
+
+    public Device createRandomDevice(User user) {
+        Instant now = Instant.now();
+        Device device = new Device(
+                null,
+                "test-device_" + UUID.randomUUID(),
+                true,
+                true,
+                "#3e3e3e",
+                now,
+                now,
+                1L
+        );
+        Device saved = deviceJdbcService.save(device, user);
+        ApiToken apiToken = new ApiToken(user, saved.name(), saved);
+        this.apiTokenJdbcService.save(apiToken);
+        return saved;
     }
 }

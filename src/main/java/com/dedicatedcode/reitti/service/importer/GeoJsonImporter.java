@@ -27,9 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class GeoJsonImporter {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(GeoJsonImporter.class);
-    
+
     private final ObjectMapper objectMapper;
     private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
@@ -50,7 +50,7 @@ public class GeoJsonImporter {
         this.jobSchedulingService = jobSchedulingService;
         this.graceTimeSeconds = graceTimeSeconds;
     }
-    
+
     public Map<String, Object> importGeoJson(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
         UUID parentJobId = null;
@@ -135,8 +135,8 @@ public class GeoJsonImporter {
                                               metadata);
             if (processedCount.get() == 0) {
                 return Map.of("success", false,
-                        "error", "No valid location points found in GeoJSON",
-                        "pointsReceived", 0);
+                              "error", "No valid location points found in GeoJSON",
+                              "pointsReceived", 0);
             } else {
                 return Map.of(
                         "success", true,
@@ -155,7 +155,7 @@ public class GeoJsonImporter {
             stateHolder.importFinished();
         }
     }
-    
+
     /**
      * Converts a GeoJSON Feature to our LocationPoint format
      */
@@ -237,7 +237,7 @@ public class GeoJsonImporter {
 
         // Try to extract elevation from coordinates (3rd element) or properties
         Double elevation = null;
-        
+
         // First try coordinates array (GeoJSON can have [lon, lat, elevation])
         if (coordinates.size() >= 3) {
             try {
@@ -246,7 +246,7 @@ public class GeoJsonImporter {
                 // Ignore invalid elevation in coordinates
             }
         }
-        
+
         // If not found in coordinates, try properties
         if (elevation == null) {
             String[] elevationFields = {"elevation", "ele", "altitude", "alt", "height"};
@@ -261,7 +261,7 @@ public class GeoJsonImporter {
                 }
             }
         }
-        
+
         point.setElevationMeters(elevation);
 
         return point;

@@ -103,7 +103,6 @@ public class UnifiedLocationProcessingService {
         long startTime = System.currentTimeMillis();
         String username = event.getUsername();
         String previewId = event.getPreviewId();
-        UUID parentJobId = event.getParentJobId();
 
         logger.info("Processing location data for user [{}], mode: {}", username, previewId == null ? "LIVE" : "PREVIEW");
 
@@ -256,15 +255,11 @@ public class UnifiedLocationProcessingService {
         List<RawLocationPoint> timeOrderedPoints;
         if (previewId == null) {
             timeOrderedPoints = rawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true, false, false);
+                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true);
         } else {
             timeOrderedPoints = previewRawLocationPointJdbcService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, windowStart, windowEnd);
         }
-
-        timeOrderedPoints = timeOrderedPoints.stream()
-                .filter(p -> !p.isIgnored() && !p.isInvalid())
-                .toList();
 
         logger.debug("Loaded {} valid points in [{}, {}]", timeOrderedPoints.size(), windowStart, windowEnd);
 

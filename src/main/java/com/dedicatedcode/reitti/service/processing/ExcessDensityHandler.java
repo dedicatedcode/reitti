@@ -2,11 +2,9 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.LocationDensityConfig;
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.slf4j.Logger;
@@ -58,7 +56,7 @@ public class ExcessDensityHandler {
 
             // Safety filters
             if (current.getId() == null || next.getId() == null) continue;
-            if (current.isIgnored() || next.isIgnored()) continue;
+            if (current.getStatus() != SourceLocationPoint.Status.VALID || next.getStatus() != SourceLocationPoint.Status.VALID) continue;
             if (alreadyConsidered.contains(current.getId()) || alreadyConsidered.contains(next.getId())) continue;
 
             long timeDiff = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
@@ -73,7 +71,7 @@ public class ExcessDensityHandler {
         }
 
         if (!pointsToIgnore.isEmpty()) {
-            rawLocationPointService.bulkUpdateIgnoredStatus(new ArrayList<>(pointsToIgnore), true);
+            rawLocationPointService.bulkUpdateIgnoredStatus(user, new ArrayList<>(pointsToIgnore));
             logger.debug("Marked {} points as ignored for user {}", pointsToIgnore.size(), user.getUsername());
         }
         return expandedRange;

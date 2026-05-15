@@ -23,7 +23,8 @@ public record UserSettingsDTO(
         TimeDisplayMode displayMode,
         TimeMode timeMode,
         ZoneId timezoneOverride,
-        String customCssUrl
+        String customCssUrl,
+        String timelineColor
 ) {
 
     public enum UIMode {

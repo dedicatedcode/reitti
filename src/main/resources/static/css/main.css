@@ -168,6 +168,19 @@ body {
 
 .navbar .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.2);
+    filter: none;
+    box-shadow: none;
+}
+
+.navigation-container.overlay {
+    width: 100%;
+}
+
+.navigation-container.overlay .navbar {
+    background: var(--color-background-dark);
+    width: 100%;
+    padding: 0 32px;
+    margin: 0;
 }
 
 @media (min-width: 800px) {
@@ -371,6 +384,7 @@ header {
 .btn {
     background-color: var(--color-background-dark);
     font-family: var(--sans-serif-font);
+    transition: all ease 0.2s;
 }
 
 a.btn-default,
@@ -429,6 +443,7 @@ label {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
+    color: var(--color-text-white);
 }
 
 .toggle-buttons {
@@ -856,7 +871,13 @@ button {
 
 a.btn:hover,
 button:hover {
-    background-color: #959595;
+    background-color: #525252;
+    filter: brightness(1.05);
+    box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+}
+
+.btn-muted {
+    filter: brightness(0.7);
 }
 
 .upload-options progress {

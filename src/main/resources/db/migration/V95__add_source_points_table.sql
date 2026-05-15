@@ -107,7 +107,6 @@ CREATE TABLE timeline_overrides
     device_id  bigint                      NOT NULL REFERENCES devices (id),
     start_time timestamp(6) with time zone NOT NULL,
     end_time   timestamp(6) with time zone NOT NULL,
-    active     boolean                  DEFAULT TRUE,
     created_at timestamp with time zone DEFAULT NOW(),
     CONSTRAINT no_timeline_overlap EXCLUDE USING gist (
         user_id WITH =,
@@ -115,18 +114,11 @@ CREATE TABLE timeline_overrides
         )
 );
 
--- Index for the View to lookup overrides quickly
-CREATE INDEX idx_timeline_overrides_active
-    ON timeline_overrides (user_id, start_time, end_time)
-    WHERE active = TRUE;
-
 
 CREATE OR REPLACE VIEW v_source_stream AS
 WITH current_overrides AS (
-    -- Get active overrides for the time of the query
     SELECT user_id, device_id, start_time, end_time
     FROM timeline_overrides
-    WHERE active = true
 )
 -- PART A: Points from specific overridden devices
 SELECT

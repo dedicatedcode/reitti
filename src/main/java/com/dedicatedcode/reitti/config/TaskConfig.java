@@ -10,10 +10,7 @@ import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
-import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.dedicatedcode.reitti.service.processing.TimeRange;
-import com.dedicatedcode.reitti.service.processing.UpdateCuratedTimelineJob;
+import com.dedicatedcode.reitti.service.processing.*;
 import com.github.kagkarlsson.scheduler.task.Task;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +20,16 @@ import java.util.UUID;
 
 @Configuration
 public class TaskConfig {
+
+    @Bean
+    public Task<PatchDeviceOntoTimelineJob.TaskData> patchDeviceOntoTimelineTask(PatchDeviceOntoTimelineJob handler) {
+        return Tasks.oneTime("patch-device-onto-timeline-task", PatchDeviceOntoTimelineJob.TaskData.class)
+                .execute((instance, context) -> {
+                    PatchDeviceOntoTimelineJob.TaskData data = instance.getData();
+                    handler.execute(data);
+                });
+    }
+
     @Bean
     public Task<UserSseEmitterService.TaskData> sseEmitterTask(UserSseEmitterService userSseEmitterService) {
         return Tasks.oneTime("sse-emitter-task", UserSseEmitterService.TaskData.class)

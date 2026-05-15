@@ -274,12 +274,11 @@ class DataCleanupServiceTest {
     private RawLocationPoint createProcessedPoint(User user, Instant timestamp) {
         RawLocationPoint point = new RawLocationPoint(
             null,
+            null,
             timestamp,
             new GeoPoint(53.863149, 10.700927),
             10.0,
             null,
-            false,
-            false,
             false,
             false,
             1L
@@ -290,14 +289,13 @@ class DataCleanupServiceTest {
         // Mark as processed
         RawLocationPoint processed = new RawLocationPoint(
             created.getId(),
+            created.getSourceId(),
             created.getTimestamp(),
             created.getGeom(),
             created.getAccuracyMeters(),
             created.getElevationMeters(),
             true,
             created.isSynthetic(),
-            created.isIgnored(),
-            created.isInvalid(),
             created.getVersion()
         );
         

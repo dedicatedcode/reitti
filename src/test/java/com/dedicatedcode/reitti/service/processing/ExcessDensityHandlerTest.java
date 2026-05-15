@@ -48,20 +48,20 @@ class ExcessDensityHandlerTest {
         // When: handle excess
         List<SourceLocationPoint> points = rawLocationPointService
                 .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, null, base.minus(1, ChronoUnit.MINUTES),
-                        base.plus(1, ChronoUnit.MINUTES), false, true);
+                        base.plus(1, ChronoUnit.MINUTES), true, true);
         excessDensityHandler.handleExcess(testUser, null, TimeRange.of(base, base.plus(30, ChronoUnit.SECONDS)));
 
         // Then: some points should be marked as ignored
         List<SourceLocationPoint> after = rawLocationPointService
                 .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, null, base.minus(1, ChronoUnit.MINUTES),
-                        base.plus(1, ChronoUnit.MINUTES), false, true);
-        long ignored = after.stream().filter(SourceLocationPoint::isIgnored).count();
+                        base.plus(1, ChronoUnit.MINUTES), true, true);
+        long ignored = after.stream().filter(sourceLocationPoint -> sourceLocationPoint.getStatus() != SourceLocationPoint.Status.VALID).count();
         assertEquals(1, ignored, "One point should be ignored (the middle one according to ordering)");
     }
 
     private SourceLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
         SourceLocationPoint point = new SourceLocationPoint(
-                null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false);
+                null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, SourceLocationPoint.Status.VALID, false);
         return rawLocationPointService.create(testUser, null, point);
     }
 

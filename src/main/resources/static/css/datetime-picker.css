@@ -65,7 +65,6 @@
 /* Popup container */
 .picker-popup {
     position: absolute;
-    top: 100%;
     left: -1px;
     z-index: 1000;
     background: var(--color-background-dark);
@@ -74,6 +73,18 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     margin-top: 4px;
     min-width: 600px;
+}
+
+.picker-popup.placement-bottom {
+    top: 100%;
+    bottom: auto;
+    margin-top: 4px;
+}
+
+.picker-popup.placement-top {
+    top: auto;
+    bottom: 100%;
+    margin-bottom: 4px;
 }
 
 .picker-container {
@@ -108,7 +119,7 @@
 }
 
 .calendar-header button:hover {
-    background: #f0f0f0;
+    background: #3b3b3b;
 }
 
 .month-year {
@@ -150,7 +161,6 @@
 }
 
 .day:hover {
-    background: #767676;
     color: var(--color-highlight);
 }
 
@@ -218,7 +228,9 @@
 }
 
 .year-item:hover, .time-item:hover {
-    background: #767676;
+    background: var(--color-background-dark-light);
+    filter: none;
+    box-shadow: none;
     color: var(--color-highlight);
 }
 
