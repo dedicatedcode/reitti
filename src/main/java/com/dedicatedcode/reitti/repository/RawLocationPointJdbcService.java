@@ -112,10 +112,12 @@ public class RawLocationPointJdbcService {
     }
 
     public List<Integer> findDistinctYearsByUser(User user) {
-        String sql = "SELECT DISTINCT EXTRACT(YEAR FROM timestamp) " +
-                "FROM raw_location_points " +
-                "WHERE user_id = ? " +
-                "ORDER BY EXTRACT(YEAR FROM timestamp) DESC";
+        String sql = """
+                SELECT DISTINCT EXTRACT(YEAR FROM day)
+                  FROM location_daily_summary
+                WHERE user_id = ?
+                ORDER BY EXTRACT(YEAR FROM day) DESC
+                """;
         return jdbcTemplate.queryForList(sql, Integer.class, user.getId());
     }
 

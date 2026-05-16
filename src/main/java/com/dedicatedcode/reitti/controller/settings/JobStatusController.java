@@ -99,6 +99,7 @@ public class JobStatusController {
         List<JobInfo> pastJobs = pastParents.stream()
                 .map(j -> mapToJobInfo(timezone, j))
                 .sorted(Comparator.comparing(JobInfo::finishedAt).reversed())
+                .limit(25)
                 .collect(Collectors.toList());
 
         model.addAttribute("pendingJobs", pendingJobs);
