@@ -33,23 +33,6 @@ public class StatisticsService {
         this.i18nService = i18nService;
     }
 
-    private TransportStatistic mapTransportStatistics(Object[] row) {
-        String transportMode = (String) row[0];
-        Double totalDistanceMeters = (Double) row[1];
-        Long durationInSeconds = (Long) row[2];
-        Long tripCount = (Long) row[3];
-
-        double totalDistanceKm = totalDistanceMeters / 1000.0;
-        double totalDurationHours = durationInSeconds / 3600.0;
-
-        return new TransportStatistic(
-                transportMode != null ? transportMode : i18nService.translate("timeline.transport.UNKNOWN.label"),
-                totalDistanceKm,
-                totalDurationHours,
-                tripCount.intValue()
-        );
-    }
-
     public List<Integer> getAvailableYears(User user) {
         return rawLocationPointJdbcService.findDistinctYearsByUser(user);
     }
@@ -261,5 +244,22 @@ public class StatisticsService {
         Instant startOfMonth = LocalDate.of(year, month, 1).atStartOfDay(ZoneId.systemDefault()).toInstant();
         Instant endOfMonth = LocalDate.of(year, month, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
         return getTransportStatistics(user, startOfMonth, endOfMonth);
+    }
+
+    private TransportStatistic mapTransportStatistics(Object[] row) {
+        String transportMode = (String) row[0];
+        Double totalDistanceMeters = (Double) row[1];
+        Long durationInSeconds = (Long) row[2];
+        Long tripCount = (Long) row[3];
+
+        double totalDistanceKm = totalDistanceMeters / 1000.0;
+        double totalDurationHours = durationInSeconds / 3600.0;
+
+        return new TransportStatistic(
+                transportMode != null ? transportMode : i18nService.translate("timeline.transport.UNKNOWN.label"),
+                totalDistanceKm,
+                totalDurationHours,
+                tripCount.intValue()
+        );
     }
 }
