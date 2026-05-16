@@ -1810,6 +1810,7 @@ button:disabled {
 }
 
 .user-header {
+    position: relative;
     pointer-events: all;
     color: white;
     font-family: var(--serif-font);
@@ -1824,7 +1825,29 @@ button:disabled {
     max-width: 80px;
     text-overflow: ellipsis;
 }
+.user-follow-badge {
+    opacity: 0;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    aspect-ratio: 1;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+    bottom: 24px;
+    border: 2px solid var(--color-background-dark-light);
+    background: #FFFBF3;
+    transition: opacity 0.3s ease-in-out;
+    color: var(--color-background-dark);
+    font-size: 1.2rem;
+    line-height: 1.9rem;
+    box-shadow: var(--box-shadow);
+    filter: brightness(1.1);
+}
 
+.user-follow-badge.active {
+    opacity: 1;
+}
 
 .user-header.active .avatar {
     border: 2px solid var(--color-highlight);

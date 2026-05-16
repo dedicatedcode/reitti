@@ -391,6 +391,23 @@
         }
     }
 
+    function followUser(userHeader) {
+        const badge = userHeader.querySelector('.user-follow-badge');
+        const wasSelected = badge.classList.contains('active');
+        document.querySelectorAll('.user-header .user-follow-badge').forEach(element => {
+            element.classList.remove('active');
+        });
+
+        if (!wasSelected) {
+            badge.classList.add('active');
+            mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+            localStorage.setItem('followedUser', userHeader.getAttribute('data-user-id'));
+        } else {
+            mapRenderer.setSelectedManager(null);
+            localStorage.removeItem('followedUser');
+        }
+    }
+
     function selectUser(userHeader) {
         // Remove active class from all user headers
         document.querySelectorAll('.user-header').forEach(header => {
@@ -613,6 +630,20 @@
         };
     }
 
+    function updateFollowedUser() {
+        if (localStorage.getItem('followedUser')) {
+            const followedUserId = localStorage.getItem('followedUser');
+            const followedBadge = document.querySelector(`.user-header[data-user-id="${followedUserId}"] .user-follow-badge`);
+            if (followedBadge) {
+                followedBadge.classList.add('active');
+                mapRenderer.setSelectedManager(followedUserId);
+            } else {
+                console.warn(`User with ID ${followedUserId} not found in the DOM. Will drop it from local storage.`);
+                localStorage.removeItem('followedUser');
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
             settingsMenu.restoreState();
@@ -647,7 +678,7 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
-
+                updateFollowedUser();
                 stopAnimation();
 
                 const params = getTimelineParams();

@@ -18,6 +18,7 @@ class MapRenderer {
             }
         }
 
+        this.selectedManager = null;
         this.viewConfig = {
             ...defaultViewConfig,
             ...viewConfig,
@@ -226,15 +227,7 @@ class MapRenderer {
         const performFit = async () => {
             try {
                 await this._initialLoadPromise;
-                this.bounds = [];
-                console.log('Attempting to fit bounds...');
-                this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
-                console.log('Bounds calculated:', this.bounds);
-                if (this.bounds.length === 0) {
-                    this._flyToHomeLocation();
-                } else {
-                    this.fitMapToBounds(this.bounds);
-                }
+                this._refitBounds();
                 this.element.classList.remove('is-loading');
                 this.element.classList.add('is-loaded');
             } catch (error) {
@@ -245,6 +238,19 @@ class MapRenderer {
         return performFit();
     }
 
+    _refitBounds() {
+        this.bounds = [];
+        console.log('Attempting to fit bounds...');
+        this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
+            .forEach(manager => this._extendBounds(manager.bounds));
+        console.log('Bounds calculated:', this.bounds);
+        if (this.bounds.length === 0) {
+            this._flyToHomeLocation();
+        } else {
+            this.fitMapToBounds(this.bounds);
+        }
+    }
     reset() {
         this.highlightLayer = null;
         this.deckOverlay.setProps([]);
@@ -1094,8 +1100,8 @@ class MapRenderer {
         };
 
         const popupContent = `
-        <div style="font-family: var(--sans-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+        <div style="font-family: var(--sans-serif-font); min-width: 200px;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-highlight);">
                 ${t('map.auto-update.latest-location')}
             </div>
             <div style="margin-bottom: 6px;">
@@ -1214,8 +1220,8 @@ class MapRenderer {
         };
 
         const popupContent = `
-        <div style="font-family: var(--sans-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
+        <div style="font-family: var(--sans-serif-font); min-width: 200px;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-highlight);">
                 ${t('map.auto-update.latest-location')}
             </div>
             <div style="margin-bottom: 6px;">
@@ -1283,5 +1289,11 @@ class MapRenderer {
         }
     }
 
-
+    setSelectedManager(managerId) {
+        console.log("setting selected manager to", managerId);
+        this.selectedManager = managerId;
+        if (this.element.classList.contains('is-loaded') && this.gpsDataManagers.length > 0) {
+            this._refitBounds();
+        }
+    }
 }
