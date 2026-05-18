@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
-public class NominatimResultHandler implements ResultHandler{
+public class NominatimResultHandler implements ResultHandler {
     @Override
     public boolean canHandle(GeocoderType type) {
         return type == GeocoderType.NOMINATIM;
