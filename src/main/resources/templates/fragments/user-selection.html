@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div class="user-timeline-selection" th:fragment="user-selection" th:if="${timelineData.users != null && timelineData.users.size() > 1}">
+        <div th:title="${userData.displayName}" th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
+             class="user-header"
+             th:classappend="${iterStat.first} ? 'active' : ''"
+             th:data-user-id="${userData.userId}"
+             onDblClick="followUser(this)"
+             onclick="showUser(this)">
+            <img th:src="@{${userData.userAvatarUrl}}"
+                 th:alt="${userData.avatarFallback}"
+                 class="avatar">
+            <div th:text="${userData.displayName}" class="username">Username</div>
+            <span class="user-follow-badge"><i class="lni lni-locked-1"> </i></span>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

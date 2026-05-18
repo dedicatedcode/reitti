@@ -1804,6 +1804,35 @@ button:disabled {
     padding-left: 42px;
 }
 
+#auto-update-user-selection .user-header {
+    text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
+}
+#auto-update-user-selection .user-header i {
+    text-shadow: none;
+}
+#auto-update-user-selection {
+    z-index: 2000;
+    position: fixed;
+    bottom: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#auto-update-user-selection.hidden,
+#auto-update-user-selection.hidden .user-header {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#auto-update-user-selection .user-timeline-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--color-background-dark);
+    border-top: 1px solid var(--color-highlight);
+    width: 100%;
+    box-sizing: border-box;
+}
 .user-timeline-section .no-entries {
     color: white;
     padding: 48px;
