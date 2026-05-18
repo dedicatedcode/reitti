@@ -69,10 +69,10 @@ class MapRenderer {
     static setActiveMapStyleId(mapStyleId) {
         window.reittiActiveMapStyleId = mapStyleId;
         window.localStorage?.setItem('mapStyleId', mapStyleId);
-        return fetch(`${window.contextPath || ''}/settings/map-styles/api/active`, {
+        return fetch(`${window.contextPath || ''}/settings/map-styles/active`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({activeStyleId: mapStyleId})
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({activeStyleId: mapStyleId})
         }).catch(error => {
             console.warn('Unable to persist active map style:', error);
         });
