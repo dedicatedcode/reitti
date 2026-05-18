@@ -73,6 +73,11 @@
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
 </div>
+<div id="auto-update-user-selection" th:hx-get="@{/timeline/user-selection}" class="hidden"
+     hx-trigger="dateChanged  from:body"
+     hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}">
+
+</div>
 <div id="date-picker-container"></div>
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
 
@@ -169,11 +174,13 @@
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
         const fabContainer = document.getElementById('fab-container');
+        const autoUpdateUserSelection = document.getElementById('auto-update-user-selection');
 
         if (autoUpdateMode) {
             timeline.classList.add('hidden');
             datePicker.classList.add('hidden');
             fabContainer.classList.add('hidden');
+            autoUpdateUserSelection.classList.remove('hidden');
             if (window.horizontalDatePicker) {
                 window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
             }
@@ -182,6 +189,7 @@
             timeline.classList.remove('hidden');
             datePicker.classList.remove('hidden');
             fabContainer.classList.remove('hidden');
+            autoUpdateUserSelection.classList.add('hidden');
         }
         updateAvatarsVisibility();
         handleAutoTodaySelectionTimer(autoUpdateMode)
@@ -388,6 +396,29 @@
             };
         } else {
             throw new Error('Invalid date range');
+        }
+    }
+
+    function showUser(userHeader) {
+        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+    }
+
+    function followUser(userHeader) {
+        const badge = userHeader.querySelector('.user-follow-badge');
+        const wasSelected = badge.classList.contains('active');
+        document.querySelectorAll('.user-header .user-follow-badge').forEach(element => {
+            element.classList.remove('active');
+        });
+
+        const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${userHeader.dataset.userId}"] .user-follow-badge`);
+
+        if (!wasSelected) {
+            followedBadge.forEach(badge => badge.classList.add('active'));
+            mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+            localStorage.setItem('followedUser', userHeader.getAttribute('data-user-id'));
+        } else {
+            mapRenderer.setSelectedManager(null);
+            localStorage.removeItem('followedUser');
         }
     }
 
@@ -613,6 +644,20 @@
         };
     }
 
+    function updateFollowedUser() {
+        if (localStorage.getItem('followedUser')) {
+            const followedUserId = localStorage.getItem('followedUser');
+            const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${followedUserId}"] .user-follow-badge`);
+            if (followedBadge) {
+                followedBadge.forEach(badge => badge.classList.add('active'));
+                mapRenderer.setSelectedManager(followedUserId);
+            } else {
+                console.warn(`User with ID ${followedUserId} not found in the DOM. Will drop it from local storage.`);
+                localStorage.removeItem('followedUser');
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
             settingsMenu.restoreState();
@@ -647,7 +692,7 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
-
+                updateFollowedUser();
                 stopAnimation();
 
                 const params = getTimelineParams();
