@@ -1,25 +1,22 @@
 package com.dedicatedcode.reitti;
 
-import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.ImportProcessor;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
-import com.dedicatedcode.reitti.service.processing.LocationDataIngestPipeline;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import com.github.kagkarlsson.scheduler.ScheduledExecution;
+import com.github.kagkarlsson.scheduler.Scheduler;
 import org.awaitility.Awaitility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -28,10 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class TestingService {
-
-    private static final List<String> QUEUES_TO_CHECK = List.of(
-            "reitti.place.created.v2"
-    );
 
     @Autowired
     private UserJdbcService userJdbcService;
@@ -42,59 +35,32 @@ public class TestingService {
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
-    private RedisQueueService redisQueueService;
-    @Autowired
     private TripJdbcService tripRepository;
     @Autowired
     private ProcessedVisitJdbcService processedVisitRepository;
     @Autowired
-    private ProcessingPipelineTrigger trigger;
-    @Autowired
     private UserService userService;
     @Autowired
-    private ImportProcessor importBatchProcessor;
-    @Autowired
     private SignificantPlaceJdbcService significantPlaceJdbcService;
-
     @Autowired
-    private LocationDataIngestPipeline locationDataIngestPipeline;
+    private ApiTokenJdbcService apiTokenJdbcService;
+    @Autowired
+    private DeviceJdbcService deviceJdbcService;
+    @Autowired
+    private Scheduler scheduler;
 
     public void importData(User user, String path) {
+        importData(user, null, path);
+    }
+    public void importData(User user, Device device, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
-            gpxImporter.importGpx(is, user);
+            gpxImporter.importGpx(is, user, device, null);
         } else if (path.endsWith(".geojson")) {
-            geoJsonImporter.importGeoJson(is, user);
+            geoJsonImporter.importGeoJson(is, user, device, null);
         } else {
             throw new IllegalStateException("Unsupported file type: " + path);
         }
-    }
-
-
-
-    public void processWhileImport(User user, String file) {
-        GpxImporter importer = new GpxImporter(new ImportStateHolder(), new ImportProcessor() {
-            @Override
-            public void processBatch(User user, List<LocationPoint> batch) {
-                for (int i = 0; i < batch.size(); i += 5) {
-                    int endIndex = Math.min(i + 5, batch.size());
-                    List<LocationPoint> chunk = batch.subList(i, endIndex);
-                    locationDataIngestPipeline.processLocationData(user.getUsername(), new ArrayList<>(chunk));
-                    TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), null, UUID.randomUUID().toString());
-                    trigger.handle(triggerEvent, true);
-                }
-            }
-
-            @Override
-            public void scheduleProcessingTrigger(String username) {
-            }
-
-            @Override
-            public boolean isIdle() {
-                return false;
-            }
-        });
-        importer.importGpx(getClass().getResourceAsStream(file), user);
     }
 
     public User admin() {
@@ -112,21 +78,18 @@ public class TestingService {
         AtomicInteger stableChecks = new AtomicInteger(0);
 
         // Require multiple consecutive stable checks
-        final int requiredStableChecks = 2;
+        final int requiredStableChecks = 5;
 
         Awaitility.await()
+                .logging()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
                 .until(() -> {
-                    // Check all queues are empty
-                    boolean queuesAreEmpty = QUEUES_TO_CHECK.stream()
-                            .allMatch(name -> {
-                                long pendingMessageCount = this.redisQueueService.getQueueSummary().totalPending();
-                                return pendingMessageCount == 0;
-                            });
+                    List<ScheduledExecution<Object>> instances = scheduler.getScheduledExecutions()
+                            .stream().filter(t -> !t.getTaskInstance().getTaskName().equals("sse-emitter-task")).toList();
 
-                    if (!queuesAreEmpty) {
+                    if (!instances.isEmpty()) {
                         stableChecks.set(0);
                         return false;
                     }
@@ -142,7 +105,7 @@ public class TestingService {
                     lastRawCount.set(currentRawCount);
                     lastTripCount.set(currentTripCount);
 
-                    if (countsStable && this.trigger.isIdle() && importBatchProcessor.isIdle()) {
+                    if (countsStable) {
                         return stableChecks.incrementAndGet() >= requiredStableChecks;
                     } else {
                         stableChecks.set(0);
@@ -152,13 +115,6 @@ public class TestingService {
     }
 
     public void clearData() {
-        QUEUES_TO_CHECK.forEach(name -> this.redisQueueService.purgeAllQueues());
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
         //now clear the database
         this.tripRepository.deleteAll();
         this.processedVisitRepository.deleteAll();
@@ -169,8 +125,34 @@ public class TestingService {
         importData(user, path);
         awaitDataImport(100);
     }
+    public void importAndProcess(User user, Device device, String path) {
+        importData(user, device, path);
+        awaitDataImport(100);
+    }
 
     public SignificantPlace newSignificantPlace(User user) {
         return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
+    }
+
+    public ApiToken createApiToken(User user, String name, Device device) {
+        return this.apiTokenJdbcService.save(new ApiToken(user, name, device));
+    }
+
+    public Device createRandomDevice(User user) {
+        Instant now = Instant.now();
+        Device device = new Device(
+                null,
+                "test-device_" + UUID.randomUUID(),
+                true,
+                true,
+                "#3e3e3e",
+                now,
+                now,
+                1L
+        );
+        Device saved = deviceJdbcService.save(device, user);
+        ApiToken apiToken = new ApiToken(user, saved.name(), saved);
+        this.apiTokenJdbcService.save(apiToken);
+        return saved;
     }
 }

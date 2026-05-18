@@ -61,7 +61,7 @@ public class ReittiIntegrationService {
         this.avatarService = avatarService;
     }
 
-    public List<UserTimelineData> getTimelineDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
+    public List<UserTimelineData> getUserData(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
         return this.jdbcService
                 .findAllByUser(user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
@@ -69,23 +69,7 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching user timeline data range for [{}] from {} to {}", integration, startDate, endDate);
                     try {
-                        RemoteUser remoteUser = handleRemoteUser(integration);
-                        List<TimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
-                        integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
-
-                        String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
-                        String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
-
-                        return new UserTimelineData("remote:" + integration.getId(),
-                                                    remoteUser.getDisplayName(),
-                                                    this.avatarService.generateInitials(remoteUser.getDisplayName()),
-                                                    "/reitti-integration/avatar/" + integration.getId(),
-                                                    integration.getColor(),
-                                                    timelineEntries,
-                                                    null,
-                                                    String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
-                                                    mapMetaDataUrl,
-                                                    mapStreamDataUrl);
+                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, handleRemoteUser(integration), Collections.emptyList());
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -96,6 +80,30 @@ public class ReittiIntegrationService {
                     return null;
                 }).toList();
     }
+
+    public List<UserTimelineData> getTimelineDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
+        return this.jdbcService
+                .findAllByUser(user)
+                .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
+
+                    log.debug("Fetching user timeline data range for [{}] from {} to {}", integration, startDate, endDate);
+                    try {
+                        RemoteUser remoteUser = handleRemoteUser(integration);
+                        List<TimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
+
+                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, remoteUser, timelineEntries);
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    }
+                    return null;
+                }).toList();
+    }
+
 
     public ReittiRemoteInfo getInfo(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
         return getInfo(integration.getUrl(), integration.getToken());
@@ -663,6 +671,25 @@ public class ReittiIntegrationService {
         }
 
         return locationPoint;
+    }
+
+
+    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<TimelineEntry> timelineEntries) {
+        integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+
+        String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
+        String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
+
+        return new UserTimelineData("remote:" + integration.getId(),
+                                    remoteUser.getDisplayName(),
+                                    this.avatarService.generateInitials(remoteUser.getDisplayName()),
+                                    "/reitti-integration/avatar/" + integration.getId(),
+                                    integration.getColor(),
+                                    timelineEntries,
+                                    null,
+                                    String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
+                                    mapMetaDataUrl,
+                                    mapStreamDataUrl);
     }
 
 }

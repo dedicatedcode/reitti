@@ -1,13 +1,18 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.DefaultImportProcessor;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,26 +22,39 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class GeoJsonImporter {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(GeoJsonImporter.class);
-    
+
     private final ObjectMapper objectMapper;
     private final ImportStateHolder stateHolder;
-    private final DefaultImportProcessor batchProcessor;
-    
-    public GeoJsonImporter(ObjectMapper objectMapper, ImportStateHolder stateHolder, DefaultImportProcessor batchProcessor) {
+    private final LocationPointStagingService stagingService;
+    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobSchedulingService jobSchedulingService;
+    private final int graceTimeSeconds;
+
+    public GeoJsonImporter(ObjectMapper objectMapper,
+                           ImportStateHolder stateHolder,
+                           LocationPointStagingService stagingService,
+                           Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                           JobSchedulingService jobSchedulingService,
+                           @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         this.objectMapper = objectMapper;
         this.stateHolder = stateHolder;
-        this.batchProcessor = batchProcessor;
+        this.stagingService = stagingService;
+        this.promotionTask = promotionTask;
+        this.jobSchedulingService = jobSchedulingService;
+        this.graceTimeSeconds = graceTimeSeconds;
     }
-    
-    public Map<String, Object> importGeoJson(InputStream inputStream, User user) {
-        AtomicInteger processedCount = new AtomicInteger(0);
 
+    public Map<String, Object> importGeoJson(InputStream inputStream, User user, Device device, String originalFilename) {
+        AtomicInteger processedCount = new AtomicInteger(0);
+        UUID parentJobId = null;
+        String partitionKey = null;
         try {
             stateHolder.importStarted();
             logger.info("Importing GeoJSON file for user {}", user.getUsername());
@@ -46,9 +64,15 @@ public class GeoJsonImporter {
             if (!rootNode.has("type")) {
                 return Map.of("success", false, "error", "Invalid GeoJSON: missing 'type' field");
             }
-
+            partitionKey = UUID.randomUUID().toString();
+            this.stagingService.ensurePartitionExists(partitionKey);
+            parentJobId = jobSchedulingService.createParentJob(
+                    user,
+                    JobType.GEOJSON_IMPORT,
+                    "GeoJson Import - " + originalFilename
+            );
             String type = rootNode.get("type").asText();
-            List<LocationPoint> batch = new ArrayList<>(batchProcessor.getBatchSize());
+            List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
 
             switch (type) {
                 case "FeatureCollection" -> {
@@ -64,8 +88,8 @@ public class GeoJsonImporter {
                             batch.add(point);
                             processedCount.incrementAndGet();
 
-                            if (batch.size() >= batchProcessor.getBatchSize()) {
-                                batchProcessor.processBatch(user, batch);
+                            if (batch.size() >= stagingService.getBatchSize()) {
+                                stagingService.insertBatch(partitionKey, user, device, batch);
                                 batch.clear();
                             }
                         }
@@ -94,15 +118,25 @@ public class GeoJsonImporter {
 
             // Process any remaining locations
             if (!batch.isEmpty()) {
-                batchProcessor.processBatch(user, batch);
+                stagingService.insertBatch(partitionKey, user, device, batch);
             }
 
 
             logger.info("Imported and queued {} location points from GeoJSON file for user [{}]", processedCount.get(), user.getUsername());
+
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(user)
+                    .jobType(JobType.GEOJSON_IMPORT)
+                    .friendlyName("GeoJson Data Promotion")
+                    .build();
+            jobSchedulingService.scheduleTask(promotionTask,
+                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              Instant.now().plusSeconds(graceTimeSeconds),
+                                              metadata);
             if (processedCount.get() == 0) {
                 return Map.of("success", false,
-                        "error", "No valid location points found in GeoJSON",
-                        "pointsReceived", 0);
+                              "error", "No valid location points found in GeoJSON",
+                              "pointsReceived", 0);
             } else {
                 return Map.of(
                         "success", true,
@@ -112,12 +146,16 @@ public class GeoJsonImporter {
             }
         } catch (IOException e) {
             logger.error("Error processing GeoJSON file", e);
+            if (parentJobId != null) {
+                this.jobSchedulingService.cancel(parentJobId);
+                this.stagingService.dropPartition(partitionKey);
+            }
             return Map.of("success", false, "error", "Error processing GeoJSON file: " + e.getMessage());
         } finally {
             stateHolder.importFinished();
         }
     }
-    
+
     /**
      * Converts a GeoJSON Feature to our LocationPoint format
      */
@@ -199,7 +237,7 @@ public class GeoJsonImporter {
 
         // Try to extract elevation from coordinates (3rd element) or properties
         Double elevation = null;
-        
+
         // First try coordinates array (GeoJSON can have [lon, lat, elevation])
         if (coordinates.size() >= 3) {
             try {
@@ -208,7 +246,7 @@ public class GeoJsonImporter {
                 // Ignore invalid elevation in coordinates
             }
         }
-        
+
         // If not found in coordinates, try properties
         if (elevation == null) {
             String[] elevationFields = {"elevation", "ele", "altitude", "alt", "height"};
@@ -223,7 +261,7 @@ public class GeoJsonImporter {
                 }
             }
         }
-        
+
         point.setElevationMeters(elevation);
 
         return point;

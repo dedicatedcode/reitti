@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,13 @@ public class GeoPointAnomalyFilter {
         this.config = config;
     }
 
-    public List<RawLocationPoint> detectAnomalies(List<RawLocationPoint> pointsToCheck) {
+    public List<SourceLocationPoint> detectAnomalies(List<SourceLocationPoint> pointsToCheck) {
         if (pointsToCheck == null || pointsToCheck.size() < 2) {
             return new ArrayList<>();
         }
 
-        List<RawLocationPoint> sortedPoints = pointsToCheck.stream()
-                .sorted(Comparator.comparing(RawLocationPoint::getTimestamp))
+        List<SourceLocationPoint> sortedPoints = pointsToCheck.stream()
+                .sorted(Comparator.comparing(SourceLocationPoint::getTimestamp))
                 .collect(Collectors.toList());
 
         Set<Long> anomalyIds = new HashSet<>();
@@ -41,14 +42,14 @@ public class GeoPointAnomalyFilter {
                 .collect(Collectors.toList());
     }
 
-    private Set<Long> filterByAccuracy(List<RawLocationPoint> points) {
+    private Set<Long> filterByAccuracy(List<SourceLocationPoint> points) {
         return points.stream()
                 .filter(p -> p.getAccuracyMeters() > config.getMaxAccuracyMeters())
-                .map(RawLocationPoint::getId)
+                .map(SourceLocationPoint::getId)
                 .collect(Collectors.toSet());
     }
 
-    private Set<Long> filterBySpeed(List<RawLocationPoint> points) {
+    private Set<Long> filterBySpeed(List<SourceLocationPoint> points) {
         Set<Long> anomalies = new HashSet<>();
 
         if (points.size() < 2) return anomalies;
@@ -100,7 +101,7 @@ public class GeoPointAnomalyFilter {
         return anomalies;
     }
 
-    private double calculateSpeed(RawLocationPoint p1, RawLocationPoint p2) {
+    private double calculateSpeed(SourceLocationPoint p1, SourceLocationPoint p2) {
         if (p1.getTimestamp() == null || p2.getTimestamp() == null) {
             return -1; // Invalid
         }

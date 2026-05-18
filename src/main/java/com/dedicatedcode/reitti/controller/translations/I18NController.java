@@ -42,50 +42,97 @@ public class I18NController {
 
         // The logic is bundled with the data
         String script = """
-        (function() {
-            window.I18N = window.I18N || {};
-            // Merge new messages into the existing global object
-            Object.assign(window.I18N, %s);
-
-            if (!window.t) {
-                window.t = function(key, params = []) {
-                    const internalKey = "js." + key; // Automatically adds the prefix
-                    if (!window.I18N || !(internalKey in window.I18N)) {
-                        console.error('I18N Error: Key [' + internalKey + '] not found.');
-                        return '??' + internalKey + '??';
-                    }
-
-                    let msg = window.I18N[internalKey];
-
-                    // 1. Handle ChoiceFormat (Plurals)
-                    const choiceRegex = /\\{(\\d+),choice,([^}]+)\\}/g;
-                    msg = msg.replace(choiceRegex, (match, paramIndex, choicesStr) => {
-                        const value = parseFloat(params[paramIndex]);
-                        if (isNaN(value)) return match;
-                        const choices = choicesStr.split('|');
-                        let selectedChoice = "";
-                        for (const choice of choices) {
-                            const separatorIndex = choice.search(/[#<]/);
-                            const limit = parseFloat(choice.substring(0, separatorIndex));
-                            const separator = choice.charAt(separatorIndex);
-                            const text = choice.substring(separatorIndex + 1);
-                            if ((separator === '#' && value >= limit) || (separator === '<' && value > limit)) {
-                                selectedChoice = text;
-                            }
+                (function() {
+                        window.I18N = window.I18N || {};
+                        Object.assign(window.I18N, %s);
+    
+                        if (!window.t) {
+                            window.t = function(key, params = []) {
+                                const internalKey = "js." + key;
+                                if (!window.I18N || !(internalKey in window.I18N)) {
+                                    console.error('I18N Error: Key [' + internalKey + '] not found.');
+                                    return '??' + internalKey + '??';
+                                }
+    
+                                let msg = window.I18N[internalKey];
+    
+                                // Helper: replace standard {N} and {N,number(,integer)?} placeholders
+                                const applyParams = (str) => {
+                                    params.forEach((param, index) => {
+                                        str = str.replace(
+                                            new RegExp('\\\\{' + index + '(?:,number(?:,integer)?)?\\\\}', 'g'),
+                                            param
+                                        );
+                                    });
+                                    return str;
+                                };
+    
+                                // 1. Handle ChoiceFormat (Plurals) with brace-depth-aware scanning
+                                const choiceStart = /\\{(\\d+),choice,/g;
+                                let result = '';
+                                let lastIndex = 0;
+                                let m;
+                                while ((m = choiceStart.exec(msg)) !== null) {
+                                    // Find the matching closing brace, respecting nested {...}
+                                    let depth = 1;
+                                    let i = choiceStart.lastIndex;
+                                    while (i < msg.length && depth > 0) {
+                                        const ch = msg[i];
+                                        if (ch === '{') depth++;
+                                        else if (ch === '}') depth--;
+                                        if (depth === 0) break;
+                                        i++;
+                                    }
+                                    if (depth !== 0) {
+                                        // Unbalanced; bail out and leave the rest as-is
+                                        break;
+                                    }
+    
+                                    const paramIndex = m[1];
+                                    const choicesStr = msg.substring(choiceStart.lastIndex, i);
+                                    const value = parseFloat(params[paramIndex]);
+    
+                                    let replacement;
+                                    if (isNaN(value)) {
+                                        replacement = msg.substring(m.index, i + 1);
+                                    } else {
+                                        const choices = choicesStr.split('|');
+                                        let selectedChoice = null;
+                                        for (const choice of choices) {
+                                            const separatorIndex = choice.search(/[#<]/);
+                                            if (separatorIndex < 0) continue;
+                                            const limit = parseFloat(choice.substring(0, separatorIndex));
+                                            const separator = choice.charAt(separatorIndex);
+                                            const text = choice.substring(separatorIndex + 1);
+                                            if ((separator === '#' && value >= limit) ||
+                                                (separator === '<' && value > limit)) {
+                                                selectedChoice = text;
+                                            }
+                                        }
+                                        if (selectedChoice === null) {
+                                            const first = choices[0];
+                                            const sepIdx = first.search(/[#<]/);
+                                            selectedChoice = sepIdx >= 0 ? first.substring(sepIdx + 1) : first;
+                                        }
+                                        // Resolve nested {N}/{N,number,integer} inside the chosen branch
+                                        replacement = applyParams(selectedChoice);
+                                    }
+    
+                                    result += msg.substring(lastIndex, m.index) + replacement;
+                                    lastIndex = i + 1;
+                                    choiceStart.lastIndex = i + 1;
+                                }
+                                result += msg.substring(lastIndex);
+                                msg = result;
+    
+                                // 2. Handle remaining standard params {0}, {0,number}, {0,number,integer}
+                                msg = applyParams(msg);
+    
+                                return msg;
+                            };
                         }
-                        return selectedChoice || choices[0].substring(choices[0].search(/[#<]/) + 1);
-                    });
-
-                    // 2. Handle standard params {0}
-                    params.forEach((param, index) => {
-                        msg = msg.replace(new RegExp('\\\\{' + index + '(,number,integer|,number)?\\\\}', 'g'), param);
-                    });
-
-                    return msg;
-                };
-            }
-        })();
-        """.formatted(json);
+                    })();
+                """.formatted(json);
 
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
         if ("development".equalsIgnoreCase(version)) {

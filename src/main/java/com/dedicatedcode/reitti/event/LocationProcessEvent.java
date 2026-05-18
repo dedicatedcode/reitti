@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 
 public class LocationProcessEvent implements Serializable {
@@ -14,6 +13,7 @@ public class LocationProcessEvent implements Serializable {
     private final Instant latest;
     private final String previewId;
     private final String traceId;
+    private final UUID parentJobId;
 
     @JsonCreator
     public LocationProcessEvent(
@@ -21,12 +21,14 @@ public class LocationProcessEvent implements Serializable {
             @JsonProperty("earliest") Instant earliest,
             @JsonProperty("latest") Instant latest,
             @JsonProperty("previewId") String previewId,
-            @JsonProperty("trace-id") String traceId) {
+            @JsonProperty("trace-id") String traceId,
+            @JsonProperty("parent-job-id") UUID parentJobId) {
         this.username = username;
         this.earliest = earliest;
         this.latest = latest;
         this.previewId = previewId;
         this.traceId = traceId;
+        this.parentJobId = parentJobId;
     }
 
     public String getUsername() {
@@ -47,6 +49,10 @@ public class LocationProcessEvent implements Serializable {
 
     public String getTraceId() {
         return traceId;
+    }
+
+    public UUID getParentJobId() {
+        return parentJobId;
     }
 
     @Override

@@ -1,4 +1,4 @@
-FROM nginx:alpine
+FROM nginx:1.30.1-trixie
 
 # Create cache directories for different tile types
 RUN mkdir -p /var/cache/nginx/osm /var/cache/nginx/vector /var/cache/nginx/custom /var/cache/nginx/terrain /var/cache/nginx/satellite

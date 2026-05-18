@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration.mqtt;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,7 +67,7 @@ class OwnTracksProcessorTest {
         ownTracksProcessor.process(testUser, validJson.getBytes());
 
         // Then
-        verify(locationBatchingService).addLocationPoint(eq(testUser), locationPointCaptor.capture());
+        verify(locationBatchingService).addLocationPoint(eq(testUser), nullable(Device.class), locationPointCaptor.capture());
         LocationPoint capturedPoint = locationPointCaptor.getValue();
         assertEquals(expectedLocationPoint.getTimestamp(), capturedPoint.getTimestamp());
         assertEquals(expectedLocationPoint.getLatitude(), capturedPoint.getLatitude());
@@ -87,7 +88,7 @@ class OwnTracksProcessorTest {
         ownTracksProcessor.process(testUser, nonLocationJson.getBytes());
 
         // Then
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        verify(locationBatchingService, never()).addLocationPoint(any(), nullable(Device.class), any());
     }
 
     @Test
@@ -107,7 +108,7 @@ class OwnTracksProcessorTest {
         ownTracksProcessor.process(testUser, invalidJson.getBytes());
 
         // Then
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        verify(locationBatchingService, never()).addLocationPoint(any(), nullable(Device.class), any());
     }
 
     @Test
@@ -119,6 +120,6 @@ class OwnTracksProcessorTest {
 
         // When/Then
         assertDoesNotThrow(() -> ownTracksProcessor.process(testUser, invalidJson.getBytes()));
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        verify(locationBatchingService, never()).addLocationPoint(any(), nullable(Device.class), any());
     }
 }

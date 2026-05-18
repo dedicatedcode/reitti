@@ -10,10 +10,11 @@ import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 import static com.dedicatedcode.reitti.model.geocoding.GeocoderType.GEO_APIFY;
-import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
 
 @Controller
 @RequestMapping("/settings/geocode-services")
@@ -37,7 +37,8 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceJdbcService placeJdbcService;
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
-    private final RedisQueueService messageEnqueuer;
+    private final JobSchedulingService jobScheduler;
+    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -49,7 +50,8 @@ public class GeoCodingSettingsController {
                                        SignificantPlaceJdbcService placeJdbcService,
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
-                                       RedisQueueService messageEnqueuer,
+                                       JobSchedulingService jobScheduler,
+                                       Task<SignificantPlaceCreatedEvent> reverseGeocodingTask,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
@@ -59,7 +61,8 @@ public class GeoCodingSettingsController {
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userJdbcService = userJdbcService;
-        this.messageEnqueuer = messageEnqueuer;
+        this.jobScheduler = jobScheduler;
+        this.reverseGeocodingTask = reverseGeocodingTask;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
@@ -120,7 +123,7 @@ public class GeoCodingSettingsController {
             Map<String, Object> result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
 
-        }catch (Exception e) {
+        } catch (Exception e) {
             model.addAttribute("testResult", Map.of("success", false, "message", e.getMessage()));
         }
         return "settings/fragments/geocoding :: test-result-display";
@@ -157,15 +160,15 @@ public class GeoCodingSettingsController {
 
     @PostMapping
     public String saveGeocodeService(@RequestParam(required = false) Long id,
-                                       @RequestParam String name,
-                                       @RequestParam(required = false) String url,
-                                       @RequestParam GeocoderType type,
-                                       @RequestParam(required = false) String apiKey,
-                                       @RequestParam(required = false) String language,
-                                       @RequestParam(required = false) Integer limit,
-                                       @RequestParam(required = false) Double radius,
-                                       @RequestParam int priority,
-                                       Model model) {
+                                     @RequestParam String name,
+                                     @RequestParam(required = false) String url,
+                                     @RequestParam GeocoderType type,
+                                     @RequestParam(required = false) String apiKey,
+                                     @RequestParam(required = false) String language,
+                                     @RequestParam(required = false) Integer limit,
+                                     @RequestParam(required = false) Double radius,
+                                     @RequestParam int priority,
+                                     Model model) {
         try {
             Map<String, String> params = new HashMap<>();
             if (language != null && !language.isEmpty()) {
@@ -258,7 +261,11 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
+                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(currentUser)
+                                                          .friendlyName("Manual reverse geocoding")
+                                                          .jobType(JobType.REVERSE_GEOCODE).build());
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.run.success", nonGeocodedPlaces.size()));
@@ -299,7 +306,11 @@ public class GeoCodingSettingsController {
                             place.getLongitudeCentroid(),
                             UUID.randomUUID().toString()
                     );
-                    messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
+                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(currentUser)
+                                                          .friendlyName("Manual reverse geocoding")
+                                                          .jobType(JobType.REVERSE_GEOCODE).build());
                 }
 
                 model.addAttribute("successMessage", i18n.translate("geocoding.clear.success", allPlaces.size()));

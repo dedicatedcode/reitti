@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workbench</title>
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../static/css/datetime-picker.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/workbench.css}" href="/css/workbench.css">
+
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/datetime-picker.js}"></script>
+
+</head>
+<body>
+<div class="navigation-container overlay" th:replace="~{fragments/main-navigation :: main-navigation('workbench')}"></div>
+
+<div id="map" class="is-loading inspect"></div>
+<div id="selectionInfo" class="floating selection-info" style="display:none">
+    <div class="sel-info-head">
+        <span class="sel-info-title"></span>
+        <button class="sel-info-close" title="Clear selection" aria-label="Clear selection">×</button>
+    </div>
+    <div class="sel-info-body"></div>
+</div>
+
+<div class="floating zoom-indicator">
+    <span id="loadingIndicator" th:text="#{workbench.loading.label}">[Loading ...]</span>
+</div>
+
+<div class="floating" id="historyPanel">
+    <div class="history-header">
+        <div style="display:flex; align-items:center; gap:9px;">
+            <h4 th:text="#{workbench.history.headline}">Action History</h4>
+            <span class="history-count" id="histCount">0</span>
+        </div>
+        <span class="history-clear" id="histClear" th:text="#{workbench.history.action.clear}">CLEAR</span>
+    </div>
+    <div class="history-list" id="histList">
+        <div class="history-empty" th:utext="#{workbench.history.empty}">No actions yet —<br>copy a patch or move a point<br>to begin weaving.</div>
+    </div>
+</div>
+
+<div id="boxSelectOverlay"></div>
+<div id="helpPanel" class="help-panel" role="dialog" aria-labelledby="helpPanelTitle" aria-hidden="true">
+    <div class="help-panel-backdrop"></div>
+    <div class="help-panel-card">
+        <div class="help-panel-head">
+            <h2 id="helpPanelTitle" th:text="#{workbench.help.headline}">Keyboard shortcuts</h2>
+            <button class="help-panel-close" aria-label="Close">×</button>
+        </div>
+
+        <div class="help-panel-body">
+            <section class="help-section">
+                <h3>Tools</h3>
+                <dl>
+                    <dt><kbd>1</kbd></dt><dd th:text="#{workbench.action.inspect}">Inspect</dd>
+                    <dt><kbd>2</kbd></dt><dd th:text="#{workbench.action.select}">Select</dd>
+                    <dt><kbd>3</kbd></dt><dd th:text="#{workbench.action.boxselect}">Box select</dd>
+                </dl>
+            </section>
+
+            <section class="help-section">
+                <h3 th:text="#{workbench.help.headline.selection}">Selection</h3>
+                <dl>
+                    <dt><kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd></dt>
+                    <dd th:text="#{workbench.help.previous_next_point}">Previous / next point</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> / <kbd>→</kbd></dt>
+                    <dd th:text="#{workbench.help.extend_selection}">Extend selection by one point</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>End</kbd></dt>
+                    <dd th:text="#{workbench.help.jump_to_first_last_point}">Jump to first / last point in window</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Home</kbd> / <kbd>End</kbd></dt>
+                    <dd th:text="#{workbench.help.extend_to_start_end}">Extend selection to start / end</dd>
+
+                    <dt><kbd>Ctrl</kbd>+<kbd>A</kbd></dt>
+                    <dd th:text="#{workbench.help.select_all_in_window}">Select all points in editable window</dd>
+
+                    <dt><kbd>Esc</kbd></dt>
+                    <dd th:text="#{workbench.help.clear_selection}">Clear selection</dd>
+                </dl>
+            </section>
+
+            <section class="help-section">
+                <h3 th:text="#{workbench.help.headline.editing}">Editing</h3>
+                <dl>
+                    <dt><kbd>Delete</kbd></dt>
+                    <dd th:text="#{workbench.help.remove_selected_point}">Remove selected points</dd>
+                </dl>
+            </section>
+
+            <p class="help-footnote" th:utext="#{workbench.help.footnote}">
+                On macOS, <kbd>Cmd</kbd> works in place of <kbd>Ctrl</kbd>.
+            </p>
+        </div>
+    </div>
+</div>
+<div id="drawer">
+    <div class="drawer-head">
+        <label for="startDate" th:text="#{common.form.date}">Date</label>
+        <div class="datetime-picker" id="startDatePicker">
+            <input type="date" id="startDate" name="startDate" required class="date-input form-control">
+            <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
+
+        </div>
+        <div class="brand serif"></div>
+        <div class="time" id="drawerClock"></div>
+
+        <div class="sep"></div>
+
+        <button class="btn head-btn active" data-tool="inspect" th:text="#{workbench.action.inspect}">Inspect</button>
+        <button class="btn head-btn" data-tool="select" th:text="#{workbench.action.select}">Select</button>
+        <button class="btn head-btn" data-tool="boxselect" th:text="#{workbench.action.boxselect}">Box</button>
+        <button id="btnHelp" class="head-btn" th:title="#{workbench.action.help.title}" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </button>
+        <div class="sep"></div>
+
+        <select class="device-select" id="deviceSelect">
+            <option value="default" selected th:data-color="${userSettings.timelineColor()}" th:text="#{workbench.device.default.label}">Default</option>
+            <option th:each="device : ${devices}" th:data-color="${device.color()}" th:value="${device.id()}" value="garmin" th:text="${device.name()}">Garmin Fenix 7</option>
+            <option value="gopro" th:remove="all">GoPro Hero 12</option>
+            <option value="null" th:remove="all">Phone</option>
+        </select>
+
+        <button class="head-btn" id="btnDelete" th:title="#{workbench.action.delete.title}" title="Delete selection" disabled th:text="#{workbench.action.delete}">Delete</button>
+
+        <div style="flex:1"></div>
+    </div>
+
+    <div class="drawer-body">
+        <!-- Row 1: Main Journey -->
+        <div class="lane-label-cell">
+            <div class="title" th:text="#{workbench.timeline.main.title}">Main Timeline</div>
+            <div class="sub" th:text="#{workbench.timeline.main.sub}">(generated)</div>
+        </div>
+        <div class="lane-canvas-cell" id="mainLaneCell">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+        <div class="right-cell">
+            <div class="woven-count">
+                <div class="num" id="wovenCount">0</div>
+                <div class="label" th:text="#{workbench.timeline.woven_count}">Woven Segments</div>
+            </div>
+        </div>
+
+        <!-- Row 2: Connector -->
+        <div class="lane-label-cell">
+        </div>
+        <div class="lane-canvas-cell">
+            <div class="connector-row" id="connectorRow">
+                <div class="connector-guide" id="connectorGuide"></div>
+                <button class="btn weave-patch-btn" id="btnCopy" th:title="#{workbench.action.weave.title}" title="Weave this patch into the Main Journey">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19V5"/>
+                        <path d="M5 12l7-7 7 7"/>
+                    </svg>
+                    Insert
+                </button>
+            </div>
+        </div>
+        <div class="right-cell"></div>
+        <!-- Row 3: Device Source -->
+        <div class="lane-label-cell">
+            <div class="title" th:text="#{workbench.timeline.device.title}">Device</div>
+            <div class="sub" id="deviceSubLabel">(Default)</div>
+        </div>
+        <div class="lane-canvas-cell" id="deviceLaneCell">
+            <canvas id="deviceCanvas"></canvas>
+            <div id="patchBox">
+                <div class="patch-handle left" data-edge="left"></div>
+                <div class="patch-handle right" data-edge="right"></div>
+                <div class="patch-timestamps">
+                    <span id="patchStartLabel">10:28:15</span>
+                    <span id="patchEndLabel">10:43:00</span>
+                </div>
+            </div>
+            <div id="playhead"></div>
+        </div>
+        <div class="right-cell">
+            <button class="btn weave-btn" id="btnCommit">
+                <span th:text="#{common.actions.save}">Save</span>
+                <span class="weave-badge" id="commitBadge" style="display:none">0</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="commitModal">
+    <div class="commit-dialog">
+        <div class="commit-header">
+            <div>
+                <div class="title" th:text="#{workbench.commit.title}">Save your changes</div>
+                <div class="sub" id="commitSummary">—</div>
+            </div>
+            <div class="close-x" id="commitClose">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </div>
+        </div>
+        <div class="commit-body">
+            <div id="commitSummaryDetail" class="commit-summary-detail"></div>
+            <div class="commit-irreversible-warning">
+                <span class="warning-icon">⚠️</span>
+                <span th:text="#{workbench.commit.irreversible}">This action cannot be undone. All edits will be permanently stored.</span>
+            </div>
+        </div>
+        <div class="commit-footer">
+            <button class="btn btn-muted" id="commitCancel" th:text="#{common.actions.cancel}">Cancel</button>
+            <button class="btn" style="width:auto; padding: 10px 22px;" id="commitConfirm"
+                    th:text="#{workbench.commit.confirm}">Save changes</button>
+        </div>
+    </div>
+</div>>
+<script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+    window.userSettings = /*[[${userSettings}]]*/ {}
+
+    dateSelection = new DateTimePicker(document.getElementById('startDatePicker'), {
+        timeFormat: getBrowserTimeFormat(),
+        popupPlacement: 'top'
+    });
+
+    dateSelection.on('change', (value, date, instance) => {
+        if (date) {
+            goToDate(date);
+        }
+    });
+
+
+</script>
+<script th:src="@{js/workbench.js}" src="../static/js/workbench.js"></script>
+</body>
+</html>

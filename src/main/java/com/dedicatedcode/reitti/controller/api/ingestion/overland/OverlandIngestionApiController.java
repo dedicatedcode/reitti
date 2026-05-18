@@ -67,7 +67,7 @@ public class OverlandIngestionApiController {
             
             // Add each location point to the batching service
             for (LocationPoint point : locationPoints) {
-                this.locationBatchingService.addLocationPoint(user, point);
+                this.locationBatchingService.addLocationPoint(user, null, point);
             }
             logger.debug("Successfully received and queued {} Overland location points for user {}",
                     locationPoints.size(), user.getUsername());
