@@ -52,6 +52,10 @@ public class ProcessedVisit {
         return this.version;
     }
 
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
     public ProcessedVisit withId(Long id) {
         return new ProcessedVisit(id, this.place, this.startTime, this.endTime, this.durationSeconds, metadata, this.version);
     }

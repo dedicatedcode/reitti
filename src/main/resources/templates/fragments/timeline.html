@@ -56,14 +56,31 @@
                 <div class="entry-description">
                     <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
                         <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
-                        <a class="lni lni-pencil-1 edit-icon"
-                           th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"
-                           th:if="${iterStat.first && entry.place?.id != null}"></a>
+                        <div class="place-actions">
+                            <a class="lni lni-pencil-1 edit-icon"
+                               th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"></a>
+                            <a class="lni lni-comment-1-text edit-icon"
+                               th:hx-get="@{/metadata/visit/{id}(id=${entry.resourceId})}"
+                               th:hx-target="${'#metadata-container_' + entry.id}"></a>
+                        </div>
                     </div>
 
                     <!-- Trip description -->
-                    <span th:if="${entry.type.name() == 'TRIP'}" th:text="#{timeline.trip}">Trip</span>
+                    <div th:if="${entry.type.name() == 'TRIP'}" class="place-name-container">
+                        <span class="place-name" th:text="#{timeline.trip}">Trip</span>
+                        <div class="place-actions">
+                            <i class="lni lni-pencil-1 edit-icon"
+                               th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
+                               th:hx-target="${'#trip-transport-mode-container_' + entry.resourceId}"
+                               hx-swap="outerHTML"></i>
+                            <a class="lni lni-comment-1-text edit-icon"
+                               th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
+                               th:hx-target="${'#metadata-container_' + entry.id}"></a>
+                        </div>
+                    </div>
                 </div>
+                <div class="metadata-container" th:id="${'metadata-container_' + entry.id}"></div>
+
                 <!-- Type -->
                 <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
                     <span th:text="#{${entry.place.type.messageKey}}">Home</span>
@@ -79,13 +96,8 @@
                             <span th:text="#{timeline.distance}">Distance</span>:
                             <span th:text="${entry.formattedDistance}">5.2 km</span>
                         </span>
-                        <div th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
+                        <div th:id="${'trip-transport-mode-container_' + entry.resourceId}" th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
                             <span th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
-                            <i class="lni lni-pencil-1 edit-icon"
-                               th:if="${iterStat.first}"
-                               th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
-                               hx-target="closest .trip-transport-mode-container"
-                               hx-swap="outerHTML"></i>
                         </div>
                     </span>
                 </span>

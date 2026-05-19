@@ -76,6 +76,10 @@ public class Trip {
         return version;
     }
 
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
     public Trip withId(Long id) {
         return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, metadata, this.version);
     }

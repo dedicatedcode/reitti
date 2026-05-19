@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{page.title}">Reitti - Your Location Timeline</title>
+    <link rel="manifest" crossorigin="use-credentials" th:href="@{/manifest.json}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="../../../static/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="../../../static/css/date-picker.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../../../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../../static/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../../static/css/photo-client.css">
+    <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="../../../static/css/inline-edit.css">
+    <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="../../../static/css/avatar-marker.css">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="../../../static/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-control.css}" href="../../../static/css/time-control.css">
+</head>
+<body style="background-color: var(--color-background-dark); padding: 24px">
+
+<div th:fragment="metadata">
+    <form class="setting" th:action="@{/api/v1/metadata}" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+        <label for="mood">Mood:</label>
+        <div class="sensitivity-buttons-container">
+            <input type="hidden">
+            <div class="toggle-buttons" id="mood">
+                <button type="button" th:classappend="${metadata.mood == 'HAPPY' ? 'active' : ''}" class="btn">HAPPY</button>
+                <button type="button" th:classappend="${metadata.mood == 'RELAXED' ? 'active' : ''}" class="btn">RELAXED</button>
+                <button type="button" th:classappend="${metadata.mood == 'ADVENTUROUS' ? 'active' : ''}" class="btn">ADVENTUROUS</button>
+                <button type="button" th:classappend="${metadata.mood == 'TIRED' ? 'active' : ''}" class="btn">TIRED</button>
+                <button type="button" th:classappend="${metadata.mood == 'STRESSED' ? 'active' : ''}" class="btn">STRESSED</button>
+            </div>
+        </div>
+        </div>
+        <div class="form-group">
+            <label for="reason">Reason:</label>
+            <input type="text" id="reason" name="reason" placeholder="Enter reason" th:value="${metadata.reason}">
+        </div>
+        <div class="form-group">
+            <label for="tags">Tags &amp; Companions:</label>
+            <input type="text" id="tags" name="tags" placeholder="Enter reason">
+        </div>
+        <div class="form-group">
+            <label for="notes">Notes / Journal</label>
+            <textarea rows="10" id="notes" name="notes" placeholder="Enter notes" th:value="${metadata.description}"></textarea>
+        </div>
+        <div class="form-buttons">
+            <button type="submit" class="btn btn-sm" th:text="#{form.update}">Update</button>
+            <button type="button"
+                    class="btn btn-sm btn-secondary"
+                    hx-target="closest .trip-transport-mode-container"
+                    hx-swap="outerHTML"
+                    th:text="#{form.cancel}">Cancel</button>
+        </div>
+    </form>
+
+</div>
+
+</body>
+</html>

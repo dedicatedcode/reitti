@@ -11,6 +11,8 @@ CREATE TABLE location_metadata
 );
 
 CREATE INDEX idx_override_time_range ON location_metadata USING GIST (time_range);
+CREATE INDEX idx_metadata_tags_gin ON location_metadata USING gin ((metadata->'tags'));
+CREATE INDEX idx_metadata_companions_gin ON location_metadata USING gin ((metadata->'companions'));
 
 ALTER TABLE processed_visits
     ADD COLUMN metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
