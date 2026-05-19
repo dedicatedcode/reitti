@@ -5,6 +5,9 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,9 +28,12 @@ public class TripJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    public TripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService) {
+    private final ObjectMapper objectMapper;
+
+    public TripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.processedVisitJdbcService = processedVisitJdbcService;
+        this.objectMapper = objectMapper;
     }
 
     private final RowMapper<Trip> TRIP_ROW_MAPPER = new RowMapper<>() {
@@ -34,18 +41,26 @@ public class TripJdbcService {
         public Trip mapRow(ResultSet rs, int rowNum) throws SQLException {
             ProcessedVisit startVisit = processedVisitJdbcService.findById(rs.getLong("start_visit_id")).orElseThrow();
             ProcessedVisit endVisit = processedVisitJdbcService.findById(rs.getLong("end_visit_id")).orElseThrow();
-            return new Trip(
-                    rs.getLong("id"),
-                    rs.getTimestamp("start_time").toInstant(),
-                    rs.getTimestamp("end_time").toInstant(),
-                    rs.getLong("duration_seconds"),
-                    rs.getDouble("estimated_distance_meters"),
-                    rs.getDouble("travelled_distance_meters"),
-                    TransportMode.valueOf(rs.getString("transport_mode_inferred")),
-                    startVisit,
-                    endVisit,
-                    rs.getLong("version")
-            );
+            try {
+                String metadataValue = rs.getString("metadata");
+                Map<String, Object> metadata = metadataValue != null ? objectMapper.readValue(metadataValue, new TypeReference<>() {}) : null;
+                return new Trip(
+                        rs.getLong("id"),
+                        rs.getTimestamp("start_time").toInstant(),
+                        rs.getTimestamp("end_time").toInstant(),
+                        rs.getLong("duration_seconds"),
+                        rs.getDouble("estimated_distance_meters"),
+                        rs.getDouble("travelled_distance_meters"),
+                        TransportMode.valueOf(rs.getString("transport_mode_inferred")),
+                        startVisit,
+                        endVisit,
+                        metadata,
+                        rs.getLong("version")
+                );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
         }
     };
 

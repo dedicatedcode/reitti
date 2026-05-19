@@ -42,6 +42,7 @@ public class PreviewTripJdbcService {
                     TransportMode.valueOf(rs.getString("transport_mode_inferred")),
                     startVisit,
                     endVisit,
+                    null,
                     rs.getLong("version")
             );
         }

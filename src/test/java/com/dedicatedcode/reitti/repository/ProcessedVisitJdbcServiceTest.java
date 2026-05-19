@@ -46,7 +46,7 @@ class ProcessedVisitJdbcServiceTest {
         // Given
         Instant startTime = Instant.now().minus(2, ChronoUnit.HOURS);
         Instant endTime = Instant.now().minus(1, ChronoUnit.HOURS);
-        ProcessedVisit visit = new ProcessedVisit(testPlace, startTime, endTime, 3600L);
+        ProcessedVisit visit = new ProcessedVisit(testPlace, startTime, endTime, 3600L, null);
 
         // When
         ProcessedVisit created = processedVisitJdbcService.create(testUser, visit);
@@ -92,7 +92,7 @@ class ProcessedVisitJdbcServiceTest {
         
         // Create visit for another user (should not be returned)
         SignificantPlace anotherUserPlace = createTestPlaceForUser(anotherUser, "Other Place", 53.865149, 10.702927);
-        processedVisitJdbcService.create(anotherUser, new ProcessedVisit(anotherUserPlace, Instant.now().minus(30, ChronoUnit.MINUTES), Instant.now(), 1800L));
+        processedVisitJdbcService.create(anotherUser, new ProcessedVisit(anotherUserPlace, Instant.now().minus(30, ChronoUnit.MINUTES), Instant.now(), 1800L, null));
 
         // When
         List<ProcessedVisit> visits = processedVisitJdbcService.findByUser(testUser);
@@ -214,12 +214,13 @@ class ProcessedVisitJdbcServiceTest {
         Instant newStartTime = Instant.now().minus(3, ChronoUnit.HOURS);
         Instant newEndTime = Instant.now().minus(30, ChronoUnit.MINUTES);
         ProcessedVisit updatedVisit = new ProcessedVisit(
-            visit.getId(),
-            anotherPlace,
-            newStartTime,
-            newEndTime,
-            5400L,
-            visit.getVersion()
+                visit.getId(),
+                anotherPlace,
+                newStartTime,
+                newEndTime,
+                5400L,
+                null,
+                visit.getVersion()
         );
 
         // When
@@ -260,8 +261,8 @@ class ProcessedVisitJdbcServiceTest {
         // Given
         Instant baseTime = Instant.now().minus(4, ChronoUnit.HOURS);
         List<ProcessedVisit> visitsToInsert = List.of(
-            new ProcessedVisit(testPlace, baseTime, baseTime.plus(1, ChronoUnit.HOURS), 3600L),
-            new ProcessedVisit(anotherPlace, baseTime.plus(2, ChronoUnit.HOURS), baseTime.plus(3, ChronoUnit.HOURS), 3600L)
+            new ProcessedVisit(testPlace, baseTime, baseTime.plus(1, ChronoUnit.HOURS), 3600L, null),
+            new ProcessedVisit(anotherPlace, baseTime.plus(2, ChronoUnit.HOURS), baseTime.plus(3, ChronoUnit.HOURS), 3600L, null)
         );
 
         // When
@@ -291,7 +292,7 @@ class ProcessedVisitJdbcServiceTest {
         SignificantPlace anotherUserPlace = createTestPlaceForUser(anotherUser, "Other Place", 53.865149, 10.702927);
         
         createTestVisit(testPlace, Instant.now().minus(1, ChronoUnit.HOURS), Instant.now(), 3600L);
-        processedVisitJdbcService.create(anotherUser, new ProcessedVisit(anotherUserPlace, Instant.now().minus(1, ChronoUnit.HOURS), Instant.now(), 3600L));
+        processedVisitJdbcService.create(anotherUser, new ProcessedVisit(anotherUserPlace, Instant.now().minus(1, ChronoUnit.HOURS), Instant.now(), 3600L, null));
 
         // When
         processedVisitJdbcService.deleteAllForUser(testUser);
@@ -332,7 +333,7 @@ class ProcessedVisitJdbcServiceTest {
     }
 
     private ProcessedVisit createTestVisit(SignificantPlace place, Instant startTime, Instant endTime, Long duration) {
-        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration);
+        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration, null);
         return processedVisitJdbcService.create(testUser, visit);
     }
 

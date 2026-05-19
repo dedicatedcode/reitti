@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.model.geo;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
 public class Trip {
@@ -14,13 +15,14 @@ public class Trip {
     private final TransportMode transportModeInferred;
     private final ProcessedVisit startVisit;
     private final ProcessedVisit endVisit;
+    private final Map<String, Object> metadata;
     private final Long version;
 
-    public Trip(Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit) {
-        this(null, startTime, endTime, durationSeconds, estimatedDistanceMeters, travelledDistanceMeters, transportModeInferred, startVisit, endVisit, 1L);
+    public Trip(Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Map<String, Object> metadata) {
+        this(null, startTime, endTime, durationSeconds, estimatedDistanceMeters, travelledDistanceMeters, transportModeInferred, startVisit, endVisit, metadata, 1L);
     }
     
-    public Trip(Long id, Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Long version) {
+    public Trip(Long id, Instant startTime, Instant endTime, Long durationSeconds, Double estimatedDistanceMeters, Double travelledDistanceMeters, TransportMode transportModeInferred, ProcessedVisit startVisit, ProcessedVisit endVisit, Map<String, Object> metadata, Long version) {
         this.id = id;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -30,6 +32,7 @@ public class Trip {
         this.transportModeInferred = transportModeInferred;
         this.startVisit = startVisit;
         this.endVisit = endVisit;
+        this.metadata = metadata;
         this.version = version;
     }
 
@@ -74,15 +77,19 @@ public class Trip {
     }
 
     public Trip withId(Long id) {
-        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, this.version);
+        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, metadata, this.version);
     }
 
     public Trip withTransportMode(TransportMode mode) {
-        return new Trip(this.id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, mode, this.startVisit, this.endVisit, this.version);
+        return new Trip(this.id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, mode, this.startVisit, this.endVisit, metadata, this.version);
     }
 
     public Trip withVersion(long version) {
-        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, version);
+        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, metadata, version);
+    }
+
+    public Trip withMetadata(Map<String, Object> metadata) {
+        return new Trip(id, this.startTime, this.endTime, this.durationSeconds, this.estimatedDistanceMeters, this.travelledDistanceMeters, this.transportModeInferred, this.startVisit, this.endVisit, metadata, this.version);
     }
 
     @Override
@@ -96,5 +103,4 @@ public class Trip {
     public int hashCode() {
         return Objects.hashCode(id);
     }
-
 }

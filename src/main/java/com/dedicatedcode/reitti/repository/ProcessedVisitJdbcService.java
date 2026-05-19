@@ -3,6 +3,10 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,10 +18,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
@@ -25,10 +26,12 @@ public class ProcessedVisitJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final ObjectMapper objectMapper;
 
-    public ProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, SignificantPlaceJdbcService significantPlaceJdbcService) {
+    public ProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, SignificantPlaceJdbcService significantPlaceJdbcService, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.objectMapper = objectMapper;
     }
 
     private final RowMapper<ProcessedVisit> PROCESSED_VISIT_ROW_MAPPER = new RowMapper<>() {
@@ -36,15 +39,23 @@ public class ProcessedVisitJdbcService {
         public ProcessedVisit mapRow(ResultSet rs, int rowNum) throws SQLException {
             SignificantPlace place = significantPlaceJdbcService.findById(rs.getLong("place_id")).orElseThrow();
             Long processedVisitId = rs.getLong("id");
+            try {
+                String metadataValue = rs.getString("metadata");
+                Map<String, Object> metadata = metadataValue != null ? objectMapper.readValue(metadataValue, new TypeReference<>() {}) : null;
+                return new ProcessedVisit(
+                        processedVisitId,
+                        place,
+                        rs.getTimestamp("start_time").toInstant(),
+                        rs.getTimestamp("end_time").toInstant(),
+                        rs.getLong("duration_seconds"),
+                        metadata,
+                        rs.getLong("version")
+                );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
 
-            return new ProcessedVisit(
-                    processedVisitId,
-                    place,
-                    rs.getTimestamp("start_time").toInstant(),
-                    rs.getTimestamp("end_time").toInstant(),
-                    rs.getLong("duration_seconds"),
-                    rs.getLong("version")
-            );
+
         }
     };
 

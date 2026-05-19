@@ -4,10 +4,12 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.*;
+import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
+import com.dedicatedcode.reitti.service.MetadataOverrideService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -53,6 +55,7 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
+    private final MetadataOverrideService metadataOverrideService;
     private final JobSchedulingService jobScheduler;
     private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
 
@@ -72,7 +75,7 @@ public class UnifiedLocationProcessingService {
             TransportModeService transportModeService,
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
-            GeometryFactory geometryFactory,
+            GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             JobSchedulingService jobScheduler,
             Task<SignificantPlaceCreatedEvent> reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
@@ -91,6 +94,7 @@ public class UnifiedLocationProcessingService {
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
+        this.metadataOverrideService = metadataOverrideService;
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
     }
@@ -560,7 +564,9 @@ public class UnifiedLocationProcessingService {
             return null;
         }
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
-        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
+
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(startTime, endTime).map(MemoryMetadata::getProperties).orElse(null);
+        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond(), metadata);
     }
 
     private StayPoint createStayPoint(List<RawLocationPoint> clusterPoints) {
@@ -774,6 +780,8 @@ public class UnifiedLocationProcessingService {
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
         TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, tripStartTime, tripEndTime);
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);
+
         Trip trip = new Trip(
                 tripStartTime,
                 tripEndTime,
@@ -782,7 +790,8 @@ public class UnifiedLocationProcessingService {
                 travelledDistanceMeters,
                 transportMode,
                 startVisit,
-                endVisit
+                endVisit,
+                metadata
         );
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
                 Optional.ofNullable(startVisit.getPlace().getName()).orElse("Unknown Name"),
