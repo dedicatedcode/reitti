@@ -115,6 +115,7 @@ class Autocomplete {
             const node = wrapper.firstElementChild;
             if (node) {
                 node.classList.add('suggestion-item');
+                node.dataset.autocompleteValue = item;  // store original suggestion string
                 node.addEventListener('mousedown', (e) => {
                     e.preventDefault(); // prevent blur before select
                     this.selectSuggestion(item);
@@ -152,8 +153,9 @@ class Autocomplete {
         } else if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             if (this.activeIndex >= 0 && this.activeIndex < items.length) {
-                const text = items[this.activeIndex].textContent;
-                if (text) this.selectSuggestion(text);
+                const activeNode = items[this.activeIndex];
+                const value = activeNode ? activeNode.dataset.autocompleteValue : undefined;
+                if (value) this.selectSuggestion(value);
             }
         } else if (event.key === 'Escape') {
             this.hideSuggestions();
