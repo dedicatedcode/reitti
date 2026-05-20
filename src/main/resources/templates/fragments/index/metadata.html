@@ -42,15 +42,14 @@
         </div>
 
 
-        <!-- Reason with autocomplete (unchanged except targeting same suggestions endpoint) -->
+        <!-- Reason with autocomplete (relying on data attributes and the Autocomplete class) -->
         <div class="form-group autocomplete">
             <label for="reason">Reason</label>
             <input type="text" id="reason" name="reason"
-                   th:hx-get="@{metadata/suggestions/reason}"
-                   hx-trigger="keyup changed delay:300ms"
-                   hx-target="#reason-suggestions"
-                   hx-swap="innerHTML"
-                   hx-vals='js:{"query": document.getElementById("reason").value}'>
+                   data-autocomplete-url="/metadata/suggestions/reason"
+                   data-autocomplete-min-length="2"
+                   data-autocomplete-delay="300"
+                   data-autocomplete-container="#reason-suggestions">
             <div id="reason-suggestions" class="suggestions-dropdown"></div>
         </div>
 
@@ -67,11 +66,10 @@
             </div>
             <div class="autocomplete">
                 <input type="text" id="tags-input" placeholder="Add a tag..."
-                       th:hx-get="@{/metadata/suggestions/tags}"
-                       hx-trigger="keyup changed delay:300ms"
-                       hx-target="#tags-suggestions"
-                       hx-swap="innerHTML"
-                       hx-vals='js:{"query": document.getElementById("tags-input").value}'
+                       data-autocomplete-url="/metadata/suggestions/tags"
+                       data-autocomplete-min-length="2"
+                       data-autocomplete-delay="300"
+                       data-autocomplete-container="#tags-suggestions"
                        onkeydown="handleTagsKey(event)">
                 <div id="tags-suggestions" class="suggestions-dropdown"></div>
             </div>
@@ -93,48 +91,21 @@
     </form>
     <script>
         (function () {
-            function initializeMetadataOverlayAutocomplete() {
-                const reasonInput = document.getElementById('reason');
-                if (reasonInput && !reasonInput.autocompleteInstance) {
-                    const url = reasonInput.dataset.autocompleteUrl;
-                    const container = reasonInput.dataset.autocompleteContainer || '#reason-suggestions';
-                    reasonInput.autocompleteInstance = new Autocomplete(reasonInput, {
-                        url: url,
-                        container: container,
-                        onSelect: function(item) {
-                            reasonInput.value = item;
-                            const dd = document.getElementById('reason-suggestions');
-                            if (dd) dd.innerHTML = '';
-                        }
-                    });
-                }
+            const reasonInput = document.getElementById('reason');
+            if (reasonInput) new Autocomplete(reasonInput);
 
-                const tagsInput = document.getElementById('tags-input');
-                if (tagsInput && !tagsInput.autocompleteInstance) {
-                    const url = tagsInput.dataset.autocompleteUrl;
-                    const container = tagsInput.dataset.autocompleteContainer || '#tags-suggestions';
-                    tagsInput.autocompleteInstance = new Autocomplete(tagsInput, {
-                        url: url,
-                        container: container,
-                        onSelect: function(item) {
-                            addTagChip(item);
-                            tagsInput.value = '';
-                            const dd = document.getElementById('tags-suggestions');
-                            if (dd) dd.innerHTML = '';
-                        }
-                    });
-                }
+            const tagsInput = document.getElementById('tags-input');
+            if (tagsInput) {
+                new Autocomplete(tagsInput, {
+                    onSelect: function(item) {
+                        addTagChip(item);
+                        tagsInput.value = '';
+                    }
+                });
             }
         })();
     </script>
 </div>
 
-<th:block th:fragment="suggestions(suggestionList, inputId)">
-    <th:block th:each="suggestion : ${suggestionList}">
-        <div class="suggestion-item"
-             th:attr="onclick=|selectSuggestion('${inputId}','${suggestion}')|"
-             th:text="${suggestion}">suggestion</div>
-    </th:block>
-</th:block>
 </body>
 </html>

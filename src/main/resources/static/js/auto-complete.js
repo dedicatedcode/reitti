@@ -3,22 +3,44 @@ class Autocomplete {
      * @param {HTMLInputElement} input
      * @param {Object} options
      * @param {string} options.url            - JSON endpoint (GET, ?query= parameter)
-     * @param {number}   - minimum characters before fetching
-     * @param {number}     - debounce delay in ms
-     * @param {string|HTMLElement}  - suggestions container (id, selector ref, or element)
-     * @param {function(string): string}  - returns HTML for a single suggestion
-     * @param {function(string): void}     - called when a suggestion is chosen
+     * @param {number} options.minLength      - minimum characters before fetching
+     * @param {number} options.delay          - debounce delay in ms
+     * @param {string|HTMLElement} options.container  - suggestions container (id, selector ref, or element)
+     * @param {function(string): string} options.renderItem - returns HTML for a single suggestion
+     * @param {function(string): void} options.onSelect - called when a suggestion is chosen
      */
     constructor(input, options = {}) {
         this.input = input;
-        this.url = options.url;
-        this.minLength = options.minLength ?? 2;
-        this.delay = options.delay ?? 300;
-        this.renderItem = options.renderItem || (item => `<div class="suggestion-item">${item}</div>`);
-        this.onSelect = options.onSelect || (() => {});
 
-        // container resolution
-        const containerOpt = options.container;
+        // --- URL ---
+        this.url = options.url || input.dataset.autocompleteUrl || '';
+
+        // --- minLength ---
+        if (options.minLength !== undefined) {
+            this.minLength = options.minLength;
+        } else {
+            const ml = input.dataset.autocompleteMinLength;
+            this.minLength = ml ? parseInt(ml, 10) : 2;
+        }
+
+        // --- delay ---
+        if (options.delay !== undefined) {
+            this.delay = options.delay;
+        } else {
+            const d = input.dataset.autocompleteDelay;
+            this.delay = d ? parseInt(d, 10) : 300;
+        }
+
+        // --- renderItem (default returns a simple <div>) ---
+        this.renderItem = options.renderItem || (item => `<div class="suggestion-item">${item}</div>`);
+
+        // --- onSelect (default writes into the input) ---
+        this.onSelect = options.onSelect || (item => {
+            this.input.value = item;
+        });
+
+        // --- container resolution ---
+        const containerOpt = options.container || input.dataset.autocompleteContainer;
         if (containerOpt) {
             if (typeof containerOpt === 'string') {
                 this.container = document.querySelector(containerOpt);
@@ -130,7 +152,7 @@ class Autocomplete {
         } else if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             if (this.activeIndex >= 0 && this.activeIndex < items.length) {
-                const text = items.textContent;
+                const text = items[this.activeIndex].textContent;
                 if (text) this.selectSuggestion(text);
             }
         } else if (event.key === 'Escape') {
