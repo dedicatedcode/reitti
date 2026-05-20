@@ -6,13 +6,11 @@ import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,15 +43,12 @@ public class MetadataController {
         return "fragments/index/metadata :: metadata";
     }
 
-    @GetMapping("/suggestions/{field}")
-    public String getSuggestions(@AuthenticationPrincipal User user,
+    @GetMapping(value = "/suggestions/{field}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus
+    public List<String> getSuggestions(@AuthenticationPrincipal User user,
                                  @PathVariable String field,
-                                 @RequestParam String query,
-                                 Model model) {
-        List<String> suggestions = List.of("Test 1", "Test 2", "Test 3", "Test 4");
-        model.addAttribute("suggestionList", suggestions);
-        model.addAttribute("inputId", field); // "reason" or "tags"
-        return "fragments/index/metadata :: suggestions";
+                                 @RequestParam String query) {
+        return List.of("Test 1", "Test 2", "Test 3", "Test 4");
     }
 
 }

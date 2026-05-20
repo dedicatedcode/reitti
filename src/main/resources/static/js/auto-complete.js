@@ -39,6 +39,8 @@ class Autocomplete {
             this.input.value = item;
         });
 
+        this.tagMode = options.tagMode || input.dataset.autocompleteTagMode === 'true';
+
         // --- container resolution ---
         const containerOpt = options.container || input.dataset.autocompleteContainer;
         if (containerOpt) {
