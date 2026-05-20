@@ -61,7 +61,9 @@
                                th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"></a>
                             <a class="lni lni-comment-1-text edit-icon"
                                th:hx-get="@{/metadata/visit/{id}(id=${entry.resourceId})}"
-                               th:hx-target="${'#metadata-container_' + entry.id}"></a>
+                               hx-target="#metadata-overlay-content"
+                               hx-swap="innerHTML"
+                               hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
                         </div>
                     </div>
 
@@ -75,12 +77,12 @@
                                hx-swap="outerHTML"></i>
                             <a class="lni lni-comment-1-text edit-icon"
                                th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
-                               th:hx-target="${'#metadata-container_' + entry.id}"></a>
+                               hx-target="#metadata-overlay-content"
+                               hx-swap="innerHTML"
+                               hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
                         </div>
                     </div>
                 </div>
-                <div class="metadata-container" th:id="${'metadata-container_' + entry.id}"></div>
-
                 <!-- Type -->
                 <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
                     <span th:text="#{${entry.place.type.messageKey}}">Home</span>

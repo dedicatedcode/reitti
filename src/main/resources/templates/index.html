@@ -38,6 +38,149 @@
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
     <script th:src="@{/js/SettingsMenu.js}"></script>
+    <style>
+        /* Overlay styles */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay.hidden {
+            display: none;
+        }
+        .overlay-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+        .overlay-content {
+            position: relative;
+            background: var(--color-background-dark, #1e1e1e);
+            border-radius: 12px;
+            padding: 32px;
+            min-width: 360px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        /* Mood buttons */
+        .mood-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .mood-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--color-border, #444);
+            background: var(--color-input-bg, #2a2a2a);
+            color: var(--color-text, #ccc);
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .mood-btn.active {
+            background-color: var(--color-primary, #4da6ff);
+            color: white;
+            border-color: transparent;
+        }
+        .mood-btn:hover {
+            opacity: 0.85;
+        }
+
+        /* Autocomplete dropdown */
+        .autocomplete {
+            position: relative;
+        }
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--color-background-dark, #1e1e1e);
+            border: 1px solid var(--color-border, #444);
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 20;
+            border-radius: 0 0 8px 8px;
+        }
+        .suggestions-dropdown:empty {
+            display: none;
+        }
+        .suggestion-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            color: var(--color-text, #ccc);
+        }
+        .suggestion-item:hover {
+            background: var(--color-primary, #4da6ff);
+            color: white;
+        }
+
+        /* General form styling for the overlay */
+        .metadata-form .form-group {
+            margin-bottom: 16px;
+        }
+        .metadata-form label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .metadata-form input,
+        .metadata-form textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--color-input-bg, #2a2a2a);
+            border: 1px solid var(--color-border, #444);
+            border-radius: 6px;
+            color: var(--color-text, #ccc);
+        }
+        .form-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .tags-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .tag-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            background: var(--color-primary, #4da6ff);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        .tag-chip .tag-remove {
+            margin-left: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+        .tag-chip .tag-remove:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
 <div id="new-map" style="display: block"></div>
@@ -46,6 +189,12 @@
         <div id="progress-bar" class="loading-progress-bar"></div>
     </div>
     <div id="status-text" class="status-text">Ready</div>
+</div>
+<div id="metadata-overlay" class="overlay hidden">
+    <div class="overlay-backdrop" onclick="closeMetadataOverlay()"></div>
+    <div class="overlay-content" id="metadata-overlay-content">
+        <!-- Content loaded via HTMX -->
+    </div>
 </div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
@@ -1019,6 +1168,79 @@
             toggleBtn.classList.add('active');
         }
     }
+
+    // Metadata Overlay
+    function openMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.remove('hidden');
+    }
+    function closeMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.add('hidden');
+        // Optionally clear the content to stop any pending requests
+        document.getElementById('metadata-overlay-content').innerHTML = '';
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('metadata-overlay').classList.contains('hidden')) {
+            closeMetadataOverlay();
+        }
+    });
+
+    function selectSuggestion(inputId, value) {
+        if (inputId === 'reason') {
+            // Fill the text input directly
+            document.getElementById('reason').value = value;
+            // Clear dropdown
+            document.getElementById('reason-suggestions').innerHTML = '';
+        } else if (inputId === 'tags') {
+            // Add chip
+            addTagChip(value);
+            // Clear input field
+            document.getElementById('tags-input').value = '';
+            // Clear dropdown
+            document.getElementById('tags-suggestions').innerHTML = '';
+        }
+    }
+
+    function addTagChip(tag) {
+        tag = tag.trim();
+        if (!tag) return;
+
+        // Avoid duplicates
+        const existing = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        if (existing.includes(tag)) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" onclick="removeTagChip(this)">&times;</span>`;
+        document.getElementById('tags-chips-container').appendChild(chip);
+
+        updateTagsHidden();
+    }
+
+    function removeTagChip(removeBtn) {
+        removeBtn.parentElement.remove();
+        updateTagsHidden();
+    }
+
+    function updateTagsHidden() {
+        const tags = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        document.getElementById('tags-hidden').value = tags.join(',');
+    }
+    function handleTagsKey(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const input = event.target;
+            const tag = input.value.trim();
+            if (tag) {
+                addTagChip(tag);
+                input.value = '';
+                // Clear suggestions dropdown immediately
+                document.getElementById('tags-suggestions').innerHTML = '';
+            }
+        }
+    }
+
 </script>
 
 </body>

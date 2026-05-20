@@ -23,43 +23,82 @@
 <body style="background-color: var(--color-background-dark); padding: 24px">
 
 <div th:fragment="metadata">
-    <form class="setting" th:action="@{/api/v1/metadata}" method="post" enctype="multipart/form-data">
+    <form class="metadata-form" th:action="@{/api/v1/metadata}" method="post">
+        <!-- Hidden fields for backend -->
+        <input type="hidden" name="type" th:value="${type}">
+        <input type="hidden" name="id" th:value="${id}">
+
+        <!-- Mood selection with emojis -->
         <div class="form-group">
-        <label for="mood">Mood:</label>
-        <div class="sensitivity-buttons-container">
-            <input type="hidden">
-            <div class="toggle-buttons" id="mood">
-                <button type="button" th:classappend="${metadata.mood == 'HAPPY' ? 'active' : ''}" class="btn">HAPPY</button>
-                <button type="button" th:classappend="${metadata.mood == 'RELAXED' ? 'active' : ''}" class="btn">RELAXED</button>
-                <button type="button" th:classappend="${metadata.mood == 'ADVENTUROUS' ? 'active' : ''}" class="btn">ADVENTUROUS</button>
-                <button type="button" th:classappend="${metadata.mood == 'TIRED' ? 'active' : ''}" class="btn">TIRED</button>
-                <button type="button" th:classappend="${metadata.mood == 'STRESSED' ? 'active' : ''}" class="btn">STRESSED</button>
+            <label>Mood</label>
+            <div class="mood-buttons">
+                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'HAPPY' ? 'active' : ''}" data-value="HAPPY">😊 Happy</button>
+                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'RELAXED' ? 'active' : ''}" data-value="RELAXED">😌 Relaxed</button>
+                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'ADVENTUROUS' ? 'active' : ''}" data-value="ADVENTUROUS">🤠 Adventurous</button>
+                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'TIRED' ? 'active' : ''}" data-value="TIRED">😴 Tired</button>
+                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'STRESSED' ? 'active' : ''}" data-value="STRESSED">😫 Stressed</button>
             </div>
+            <input type="hidden" name="mood" th:value="${metadata.mood}">
         </div>
+
+
+        <!-- Reason with autocomplete (unchanged except targeting same suggestions endpoint) -->
+        <div class="form-group autocomplete">
+            <label for="reason">Reason</label>
+            <input type="text" id="reason" name="reason"
+                   th:hx-get="@{metadata/suggestions/reason}"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-target="#reason-suggestions"
+                   hx-swap="innerHTML"
+                   hx-vals='js:{"query": document.getElementById("reason").value}'>
+            <div id="reason-suggestions" class="suggestions-dropdown"></div>
         </div>
+
+        <!-- Tags: chips + autocomplete -->
         <div class="form-group">
-            <label for="reason">Reason:</label>
-            <input type="text" id="reason" name="reason" placeholder="Enter reason" th:value="${metadata.reason}">
+            <label>Tags & Companions</label>
+            <div id="tags-chips-container" class="tags-chips">
+                <th:block th:each="tag : ${metadata.tags}">
+          <span class="tag-chip">
+            <span class="tag-text" th:text="${tag}">tag</span>
+            <span class="tag-remove" onclick="removeTagChip(this)">&times;</span>
+          </span>
+                </th:block>
+            </div>
+            <div class="autocomplete">
+                <input type="text" id="tags-input" placeholder="Add a tag..."
+                       th:hx-get="@{/metadata/suggestions/tags}"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="#tags-suggestions"
+                       hx-swap="innerHTML"
+                       hx-vals='js:{"query": document.getElementById("tags-input").value}'
+                       onkeydown="handleTagsKey(event)">
+                <div id="tags-suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <!-- Hidden field that holds the comma‑separated list for submission -->
+            <input type="hidden" name="tags" id="tags-hidden" th:value="${#strings.listJoin(metadata.tags, ',')}">
         </div>
-        <div class="form-group">
-            <label for="tags">Tags &amp; Companions:</label>
-            <input type="text" id="tags" name="tags" placeholder="Enter reason">
-        </div>
+
+        <!-- Notes / Journal -->
         <div class="form-group">
             <label for="notes">Notes / Journal</label>
-            <textarea rows="10" id="notes" name="notes" placeholder="Enter notes" th:value="${metadata.description}"></textarea>
+            <textarea rows="6" id="notes" name="notes" placeholder="Enter notes" th:text="${metadata.description}"></textarea>
         </div>
+
+        <!-- Actions -->
         <div class="form-buttons">
-            <button type="submit" class="btn btn-sm" th:text="#{form.update}">Update</button>
-            <button type="button"
-                    class="btn btn-sm btn-secondary"
-                    hx-target="closest .trip-transport-mode-container"
-                    hx-swap="outerHTML"
-                    th:text="#{form.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{form.update}">Update</button>
+            <button type="button" class="btn btn-secondary" onclick="closeMetadataOverlay()" th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
-
 </div>
 
+<th:block th:fragment="suggestions(suggestionList, inputId)">
+    <th:block th:each="suggestion : ${suggestionList}">
+        <div class="suggestion-item"
+             th:attr="onclick=|selectSuggestion('${inputId}','${suggestion}')|"
+             th:text="${suggestion}">suggestion</div>
+    </th:block>
+</th:block>
 </body>
 </html>

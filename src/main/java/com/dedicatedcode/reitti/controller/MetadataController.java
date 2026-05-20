@@ -12,8 +12,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -41,6 +43,17 @@ public class MetadataController {
         model.addAttribute("metadata", metadata);
 
         return "fragments/index/metadata :: metadata";
+    }
+
+    @GetMapping("/suggestions/{field}")
+    public String getSuggestions(@AuthenticationPrincipal User user,
+                                 @PathVariable String field,
+                                 @RequestParam String query,
+                                 Model model) {
+        List<String> suggestions = List.of("Test 1", "Test 2", "Test 3", "Test 4");
+        model.addAttribute("suggestionList", suggestions);
+        model.addAttribute("inputId", field); // "reason" or "tags"
+        return "fragments/index/metadata :: suggestions";
     }
 
 }
