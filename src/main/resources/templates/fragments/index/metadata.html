@@ -91,6 +91,42 @@
             <button type="button" class="btn btn-secondary" onclick="closeMetadataOverlay()" th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
+    <script>
+        (function () {
+            function initializeMetadataOverlayAutocomplete() {
+                const reasonInput = document.getElementById('reason');
+                if (reasonInput && !reasonInput.autocompleteInstance) {
+                    const url = reasonInput.dataset.autocompleteUrl;
+                    const container = reasonInput.dataset.autocompleteContainer || '#reason-suggestions';
+                    reasonInput.autocompleteInstance = new Autocomplete(reasonInput, {
+                        url: url,
+                        container: container,
+                        onSelect: function(item) {
+                            reasonInput.value = item;
+                            const dd = document.getElementById('reason-suggestions');
+                            if (dd) dd.innerHTML = '';
+                        }
+                    });
+                }
+
+                const tagsInput = document.getElementById('tags-input');
+                if (tagsInput && !tagsInput.autocompleteInstance) {
+                    const url = tagsInput.dataset.autocompleteUrl;
+                    const container = tagsInput.dataset.autocompleteContainer || '#tags-suggestions';
+                    tagsInput.autocompleteInstance = new Autocomplete(tagsInput, {
+                        url: url,
+                        container: container,
+                        onSelect: function(item) {
+                            addTagChip(item);
+                            tagsInput.value = '';
+                            const dd = document.getElementById('tags-suggestions');
+                            if (dd) dd.innerHTML = '';
+                        }
+                    });
+                }
+            }
+        })();
+    </script>
 </div>
 
 <th:block th:fragment="suggestions(suggestionList, inputId)">

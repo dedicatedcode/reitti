@@ -1,0 +1,150 @@
+class Autocomplete {
+    /**
+     * @param {HTMLInputElement} input
+     * @param {Object} options
+     * @param {string} options.url            - JSON endpoint (GET, ?query= parameter)
+     * @param {number}   - minimum characters before fetching
+     * @param {number}     - debounce delay in ms
+     * @param {string|HTMLElement}  - suggestions container (id, selector ref, or element)
+     * @param {function(string): string}  - returns HTML for a single suggestion
+     * @param {function(string): void}     - called when a suggestion is chosen
+     */
+    constructor(input, options = {}) {
+        this.input = input;
+        this.url = options.url;
+        this.minLength = options.minLength ?? 2;
+        this.delay = options.delay ?? 300;
+        this.renderItem = options.renderItem || (item => `<div class="suggestion-item">${item}</div>`);
+        this.onSelect = options.onSelect || (() => {});
+
+        // container resolution
+        const containerOpt = options.container;
+        if (containerOpt) {
+            if (typeof containerOpt === 'string') {
+                this.container = document.querySelector(containerOpt);
+            } else if (containerOpt instanceof HTMLElement) {
+                this.container = containerOpt;
+            }
+        }
+        if (!this.container) {
+            // fallback – try next sibling with class 'suggestions-dropdown'
+            const sibling = input.nextElementSibling;
+            if (sibling && sibling.classList.contains('suggestions-dropdown')) {
+                this.container = sibling;
+            } else {
+                // create one
+                const dd = document.createElement('div');
+                dd.className = 'suggestions-dropdown';
+                input.parentNode.insertBefore(dd, input.nextElementSibling);
+                this.container = dd;
+            }
+        }
+
+        this.timer = null;
+        this.activeIndex = -1;
+        this.loading = false;
+
+        this.input.addEventListener('input', () => this.handleInput());
+        this.input.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        this.input.addEventListener('blur', () => {
+            setTimeout(() => this.hideSuggestions(), 200);
+        });
+    }
+
+    handleInput() {
+        const query = this.input.value.trim();
+        if (query.length < this.minLength) {
+            this.hideSuggestions();
+            return;
+        }
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = setTimeout(async () => {
+            await this.fetchSuggestions(query);
+        }, this.delay);
+    }
+
+    async fetchSuggestions(query) {
+        this.loading = true;
+        try {
+            const resp = await fetch(`${this.url}?query=${encodeURIComponent(query)}`);
+            if (!resp.ok) {
+                this.hideSuggestions();
+                return;
+            }
+            const data = await resp.json();   // assume array of strings
+            this.renderSuggestions(data);
+        } catch (e) {
+            this.hideSuggestions();
+        } finally {
+            this.loading = false;
+        }
+    }
+
+    renderSuggestions(items) {
+        this.container.innerHTML = '';
+        if (!items || items.length === 0) {
+            this.hideSuggestions();
+            return;
+        }
+        const fragment = document.createDocumentFragment();
+        items.forEach((item, idx) => {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = this.renderItem(item);
+            const node = wrapper.firstElementChild;
+            if (node) {
+                node.classList.add('suggestion-item');
+                node.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // prevent blur before select
+                    this.selectSuggestion(item);
+                });
+                fragment.appendChild(node);
+            }
+        });
+        this.container.appendChild(fragment);
+        this.activeIndex = -1;
+    }
+
+    selectSuggestion(item) {
+        this.onSelect(item);
+        this.hideSuggestions();
+    }
+
+    hideSuggestions() {
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+    }
+
+    handleKeyDown(event) {
+        const items = this.container ? this.container.querySelectorAll('.suggestion-item') : [];
+        if (items.length === 0) return;
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            this.activeIndex = Math.min(this.activeIndex + 1, items.length - 1);
+            this.updateActiveItem(items);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            this.activeIndex = Math.max(this.activeIndex - 1, 0);
+            this.updateActiveItem(items);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (this.activeIndex >= 0 && this.activeIndex < items.length) {
+                const text = items.textContent;
+                if (text) this.selectSuggestion(text);
+            }
+        } else if (event.key === 'Escape') {
+            this.hideSuggestions();
+        }
+    }
+
+    updateActiveItem(items) {
+        items.forEach((el, idx) => {
+            if (idx === this.activeIndex) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        });
+    }
+}
