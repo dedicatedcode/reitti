@@ -1185,49 +1185,33 @@
         }
     });
 
-    // function selectSuggestion(inputId, value) {
-    //     if (inputId === 'reason') {
-    //         // Fill the text input directly
-    //         document.getElementById('reason').value = value;
-    //         // Clear dropdown
-    //         document.getElementById('reason-suggestions').innerHTML = '';
-    //     } else if (inputId === 'tags') {
-    //         // Add chip
-    //         addTagChip(value);
-    //         // Clear input field
-    //         document.getElementById('tags-input').value = '';
-    //         // Clear dropdown
-    //         document.getElementById('tags-suggestions').innerHTML = '';
-    //     }
-    // }
-    //
-    // function addTagChip(tag) {
-    //     tag = tag.trim();
-    //     if (!tag) return;
-    //
-    //     // Avoid duplicates
-    //     const existing = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
-    //         .map(el => el.textContent);
-    //     if (existing.includes(tag)) return;
-    //
-    //     const chip = document.createElement('span');
-    //     chip.className = 'tag-chip';
-    //     chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" onclick="removeTagChip(this)">&times;</span>`;
-    //     document.getElementById('tags-chips-container').appendChild(chip);
-    //
-    //     updateTagsHidden();
-    // }
-    //
-    // function removeTagChip(removeBtn) {
-    //     removeBtn.parentElement.remove();
-    //     updateTagsHidden();
-    // }
-    //
-    // function updateTagsHidden() {
-    //     const tags = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
-    //         .map(el => el.textContent);
-    //     document.getElementById('tags-hidden').value = tags.join(',');
-    // }
+    function addTagChip(tag) {
+        tag = tag.trim();
+        if (!tag) return;
+
+        // Avoid duplicates
+        const existing = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        if (existing.includes(tag)) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" onclick="removeTagChip(this)">&times;</span>`;
+        document.getElementById('tags-chips-container').appendChild(chip);
+
+        updateTagsHidden();
+    }
+
+    function removeTagChip(removeBtn) {
+        removeBtn.parentElement.remove();
+        updateTagsHidden();
+    }
+
+    function updateTagsHidden() {
+        const tags = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        document.getElementById('tags-hidden').value = tags.join(',');
+    }
 
 </script>
 

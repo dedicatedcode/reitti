@@ -44,7 +44,7 @@ public class MetadataController {
     }
 
     @GetMapping(value = "/suggestions/{field}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus
+    @ResponseBody
     public List<String> getSuggestions(@AuthenticationPrincipal User user,
                                  @PathVariable String field,
                                  @RequestParam String query) {
