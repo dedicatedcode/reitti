@@ -142,6 +142,18 @@ class Autocomplete {
 
     handleKeyDown(event) {
         const items = this.container ? this.container.querySelectorAll('.suggestion-item') : [];
+
+        // Tag‑mode: commit raw input on Enter/Space when no active item is highlighted
+        if ((event.key === 'Enter' || event.key === ' ') && this.tagMode) {
+            const value = this.input.value.trim();
+            if (value !== '' && (this.activeIndex === -1 || items.length === 0)) {
+                event.preventDefault();
+                this.selectSuggestion(value);
+                return;
+            }
+        }
+
+        // Don't react to arrows if there are no suggestions
         if (items.length === 0) return;
 
         if (event.key === 'ArrowDown') {
