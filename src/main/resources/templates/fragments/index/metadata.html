@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,46 +23,48 @@
 <body style="background-color: var(--color-background-dark); padding: 24px">
 
 <div th:fragment="metadata">
-    <form class="metadata-form" th:action="@{/api/v1/metadata}" method="post">
+
+    <h2 th:if="${type == 'trip'}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
+    <h2 th:if="${type == 'visit'}" th:text="#{metadata.panel.headline.visit(${placeName}, ${start}, ${end})}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
+    <form class="metadata-form" th:action="@{/metadata}" method="post">
         <!-- Hidden fields for backend -->
         <input type="hidden" name="type" th:value="${type}">
         <input type="hidden" name="id" th:value="${id}">
+        <input type="hidden" name="returnUrl" th:value="${returnUrl}">
 
         <!-- Mood selection with emojis -->
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label>Mood</label>
-            <div class="mood-buttons">
-                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'HAPPY' ? 'active' : ''}" data-value="HAPPY">😊 Happy</button>
-                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'RELAXED' ? 'active' : ''}" data-value="RELAXED">😌 Relaxed</button>
-                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'ADVENTUROUS' ? 'active' : ''}" data-value="ADVENTUROUS">🤠 Adventurous</button>
-                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'TIRED' ? 'active' : ''}" data-value="TIRED">😴 Tired</button>
-                <button type="button" class="btn mood-btn" th:classappend="${metadata.mood == 'STRESSED' ? 'active' : ''}" data-value="STRESSED">😫 Stressed</button>
+            <div class="toggle-buttons">
+                <th:block th:each="mood : ${availableMoods}">
+                    <input th:checked="${metadata.mood != null && metadata.mood.name() == mood.name()}" type="radio" th:id="${mood}" name="mood" th:value="${mood}" value="HAPPY"/>
+                    <label th:for="${mood}"><span th:text="${mood.icon}">😊</span> <span th:text="#{'metadata.mood.' + ${mood.name()} + '.label'}">Happy</span></label>
+                </th:block>
             </div>
-            <input type="hidden" name="mood" th:value="${metadata.mood}">
+            <div style="position: absolute; top: 0; right: 0;">
+                <button class="btn btn-link" onclick="Array.from( document.querySelectorAll('.toggle-buttons input:checked'), input => input.checked = false ); return false">Unset</button>
+            </div>
         </div>
 
-
-        <!-- Reason with autocomplete (relying on data attributes and the Autocomplete class) -->
         <div class="form-group autocomplete">
             <label for="reason">Reason</label>
             <input type="text" id="reason" name="reason"
                    data-autocomplete-url="/metadata/suggestions/reason"
                    data-autocomplete-min-length="2"
                    data-autocomplete-delay="300"
-                   data-autocomplete-container="#reason-suggestions">
+                   data-autocomplete-container="#reason-suggestions"
+                   th:value="${metadata.reason}"
+                   autocomplete="off">
             <div id="reason-suggestions" class="suggestions-dropdown"></div>
         </div>
 
-        <!-- Tags: chips + autocomplete -->
         <div class="form-group">
-            <label>Tags &amp; Companions</label>
+            <label for="tags-input">Tags &amp; Companions</label>
             <div id="tags-chips-container" class="tags-chips">
-                <th:block th:each="tag : ${metadata.tags}">
-          <span class="tag-chip">
-            <span class="tag-text" th:text="${tag}">tag</span>
-            <span class="tag-remove" onclick="removeTagChip(this)">&times;</span>
-          </span>
-                </th:block>
+              <span class="tag-chip" th:each="tag : ${metadata.tags}">
+                <span class="tag-text" th:text="${tag}">tag</span>
+                <span class="tag-remove" onclick="removeTagChip(this)">&times;</span>
+              </span>
             </div>
             <div class="autocomplete">
                 <input type="text" id="tags-input" placeholder="Add a tag..."
@@ -70,7 +72,8 @@
                        data-autocomplete-min-length="2"
                        data-autocomplete-delay="300"
                        data-autocomplete-container="#tags-suggestions"
-                       data-autocomplete-tag-mode="true">
+                       data-autocomplete-tag-mode="true"
+                       autocomplete="off">
                 <div id="tags-suggestions" class="suggestions-dropdown"></div>
             </div>
             <!-- Hidden field that holds the comma‑separated list for submission -->

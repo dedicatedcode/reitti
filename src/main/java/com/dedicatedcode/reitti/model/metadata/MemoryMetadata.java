@@ -12,6 +12,10 @@ public class MemoryMetadata {
     private final Instant startTime;
     private final Instant endTime;
 
+    public static MemoryMetadata empty() {
+        return new MemoryMetadata(null, null);
+    }
+
     public MemoryMetadata(Instant startTime, Instant endTime) {
         this.startTime = startTime;
         this.endTime = endTime;

@@ -474,6 +474,31 @@ label {
     box-shadow: var(--box-shadow);
 }
 
+.toggle-buttons input[type="radio"] {
+    width: 0;
+}
+
+.toggle-buttons label {
+    background: var(--color-background-dark);
+    display: inline-block;
+    width: 100%;
+    background: #2a2a2a;
+    border: 1px solid var(--color-background-dark-light);
+    color: var(--color-text-white, #ccc);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease-in-out;
+}
+
+.toggle-buttons input[type="radio"]:checked + label,
+.toggle-buttons label:hover {
+    border: 1px solid var(--color-highlight);
+    filter: brightness(1.1);
+    box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+}
+
 input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
     width: 100%;
     padding: 8px;
@@ -544,6 +569,45 @@ th, td {
 tr:hover {
     color: var(--color-highlight);
     background-color: var(--color-background-dark-light);
+}
+
+/* Tags */
+
+.tags-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.tag-chip {
+    transition: all 0.15s ease-in-out;
+    font-size: 0.9rem;
+    display: inline-block;
+    background: #2a2a2a;
+    border: 1px solid var(--color-highlight);
+    color: var(--color-text-white);
+    padding: 6px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 0 1px 0 var(--color-highlight) inset, 0 0 1px 0 var(--color-highlight);
+}
+
+.tag-chip:hover {
+    border: 1px solid var(--color-highlight);
+    filter: brightness(1.05);
+    box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+}
+
+.tag-chip .tag-remove {
+    margin-left: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.tag-chip .tag-remove:hover {
+    opacity: 1;
 }
 
 
@@ -878,6 +942,21 @@ button:hover {
 
 .btn-muted {
     filter: brightness(0.7);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--color-highlight);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.btn-link:hover {
+    background-color: unset;
+    filter: brightness(1.2);
+    box-shadow: unset;
 }
 
 .upload-options progress {

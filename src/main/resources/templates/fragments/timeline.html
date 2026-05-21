@@ -62,6 +62,7 @@
                             <a class="lni lni-comment-1-text edit-icon"
                                th:hx-get="@{/metadata/visit/{id}(id=${entry.resourceId})}"
                                hx-target="#metadata-overlay-content"
+                               hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
                                hx-swap="innerHTML"
                                hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
                         </div>
@@ -77,6 +78,7 @@
                                hx-swap="outerHTML"></i>
                             <a class="lni lni-comment-1-text edit-icon"
                                th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
+                               hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
                                hx-target="#metadata-overlay-content"
                                hx-swap="innerHTML"
                                hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>

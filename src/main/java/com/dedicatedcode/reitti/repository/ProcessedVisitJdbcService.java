@@ -137,25 +137,35 @@ public class ProcessedVisitJdbcService {
     }
 
     public ProcessedVisit create(User user, ProcessedVisit visit) {
-        String sql = "INSERT INTO processed_visits (user_id, start_time, end_time, duration_seconds, place_id, version) " +
-                "VALUES (?, ?, ?, ?, ?, 1) RETURNING id";
+        String sql = "INSERT INTO processed_visits (user_id, start_time, end_time, duration_seconds, place_id, metadata, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?::jsonb, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
-                visit.getPlace() != null ? visit.getPlace().getId() : null
+                visit.getPlace() != null ? visit.getPlace().getId() : null,
+                asJson(visit.getMetadata())
         );
         return visit.withId(id).withVersion(1);
     }
 
+    private String asJson(Object value) {
+        try {
+            return this.objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public ProcessedVisit update(ProcessedVisit visit) {
-        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ? WHERE id = ?";
+        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ?, metadata = ?::jsonb WHERE id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace().getId(),
+                asJson(visit.getMetadata()),
                 visit.getId()
         );
         return visit;
@@ -192,10 +202,10 @@ public class ProcessedVisitJdbcService {
         List<ProcessedVisit> result = new ArrayList<>();
 
         // 1. Build the multi-row INSERT statement structure
-        String valuePlaceholder = "(?, ?, ?, ?, ?)";
+        String valuePlaceholder = "(?, ?, ?, ?, ?, ?::jsonb)";
         String valuesPlaceholders = String.join(", ", Collections.nCopies(visitsToStore.size(), valuePlaceholder));
 
-        String sql = "INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)\n" +
+        String sql = "INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, metadata)\n" +
                 "VALUES " + valuesPlaceholders + " RETURNING id;";
 
         List<Object> batchArgs = new ArrayList<>();
@@ -205,6 +215,7 @@ public class ProcessedVisitJdbcService {
             batchArgs.add(Timestamp.from(visit.getStartTime()));
             batchArgs.add(Timestamp.from(visit.getEndTime()));
             batchArgs.add(visit.getDurationSeconds());
+            batchArgs.add(asJson(visit.getMetadata()));
         }
 
         List<Long> updateCounts = jdbcTemplate.query(sql, new ArgumentPreparedStatementSetter(batchArgs.toArray()), (resultSet, _) -> resultSet.getLong("id"));
