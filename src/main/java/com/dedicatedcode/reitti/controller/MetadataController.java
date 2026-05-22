@@ -68,9 +68,7 @@ public class MetadataController {
             model.addAttribute("name", p.getPlace().getName());
             model.addAttribute("timerange", TimeUtil.formatTimeRange(p.getStartTime(), p.getEndTime(), timezone, LocalDate.now(), userSettings));
         });
-        trip.ifPresent(t -> {
-            model.addAttribute("timerange", TimeUtil.formatTimeRange(t.getStartTime(), t.getEndTime(), timezone, LocalDate.now(), userSettings));
-        });
+        trip.ifPresent(t -> model.addAttribute("timerange", TimeUtil.formatTimeRange(t.getStartTime(), t.getEndTime(), timezone, LocalDate.now(), userSettings)));
 
         return "fragments/index/metadata :: metadata";
     }
