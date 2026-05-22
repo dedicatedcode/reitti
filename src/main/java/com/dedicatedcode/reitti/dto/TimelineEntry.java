@@ -11,7 +11,6 @@ import java.time.ZoneId;
  */
 public class TimelineEntry {
 
-
     public enum Type {VISIT, TRIP;}
 
     private String id;
@@ -29,6 +28,7 @@ public class TimelineEntry {
     private Double distanceMeters;
     private String formattedDistance;
     private TransportMode transportMode;
+    private boolean editable;
 
     // Getters and setters
     public String getId() {
@@ -151,4 +151,11 @@ public class TimelineEntry {
         this.path = path;
     }
 
+    public boolean isEditable() {
+        return editable;
+    }
+
+    public void setEditable(boolean editable) {
+        this.editable = editable;
+    }
 }

@@ -38,6 +38,59 @@
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
     <script th:src="@{/js/SettingsMenu.js}"></script>
+    <script th:src="@{/js/auto-complete.js}"></script>
+    <style>
+        /* Overlay styles */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .overlay-content {
+            position: relative;
+            background: var(--color-background-dark, #1e1e1e);
+            border-radius: 12px;
+            min-width: 360px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 0 24px 24px 24px;
+        }
+
+        .overlay-content h2 {
+            border-bottom: 1px solid var(--color-highlight);
+            padding-bottom: 12px;
+            color: var(--color-highlight);
+            font-weight: 100;
+            font-family: var(--sans-serif-font);
+        }
+
+
+    </style>
 </head>
 <body>
 <div id="new-map" style="display: block"></div>
@@ -46,6 +99,12 @@
         <div id="progress-bar" class="loading-progress-bar"></div>
     </div>
     <div id="status-text" class="status-text">Ready</div>
+</div>
+<div id="metadata-overlay" class="overlay hidden">
+    <div class="overlay-backdrop" onclick="closeMetadataOverlay()"></div>
+    <div class="overlay-content" id="metadata-overlay-content">
+        <!-- Content loaded via HTMX -->
+    </div>
 </div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
@@ -1025,6 +1084,50 @@
             toggleBtn.classList.add('active');
         }
     }
+
+    // Metadata Overlay
+    function openMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.remove('hidden');
+    }
+    function closeMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.add('hidden');
+        // Optionally clear the content to stop any pending requests
+        document.getElementById('metadata-overlay-content').innerHTML = '';
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('metadata-overlay').classList.contains('hidden')) {
+            closeMetadataOverlay();
+        }
+    });
+
+    function addTagChip(tag) {
+        tag = tag.trim();
+        if (!tag) return;
+
+        // Avoid duplicates
+        const existing = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        if (existing.includes(tag)) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" onclick="removeTagChip(this)">&times;</span>`;
+        document.getElementById('tags-chips-container').appendChild(chip);
+
+        updateTagsHidden();
+    }
+
+    function removeTagChip(removeBtn) {
+        removeBtn.parentElement.remove();
+        updateTagsHidden();
+    }
+
+    function updateTagsHidden() {
+        const tags = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        document.getElementById('tags-hidden').value = tags.join(',');
+    }
+
 </script>
 
 </body>

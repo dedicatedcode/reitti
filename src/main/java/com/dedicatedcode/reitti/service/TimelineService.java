@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -46,21 +45,21 @@ public class TimelineService {
         this.i18n = i18n;
     }
 
-    public List<TimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay) {
+    public List<TimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
         List<ProcessedVisit> processedVisits = previewProcessedVisitJdbcService.findByUserAndTimeOverlap(user, previewId, startOfDay, endOfDay);
         List<Trip> trips = previewTripJdbcService.findByUserAndTimeOverlap(user, previewId, startOfDay, endOfDay);
 
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
-            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings);
+            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings, ownData);
         } catch (JsonProcessingException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
         }
     }
 
-    public List<TimelineEntry> buildTimelineEntries(User user, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay) {
+    public List<TimelineEntry> buildTimelineEntries(User user, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
 
         List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
         List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
@@ -68,7 +67,7 @@ public class TimelineService {
         UserSettings userSettings = userSettingsJdbcService.findByUserId(user.getId())
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
-            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings);
+            return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings, ownData);
         } catch (JsonProcessingException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
@@ -78,7 +77,7 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) throws JsonProcessingException {
+    private List<TimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings, boolean ownData) throws JsonProcessingException {
         List<TimelineEntry> entries = new ArrayList<>();
 
         for (ProcessedVisit visit : processedVisits) {
@@ -93,9 +92,10 @@ public class TimelineService {
                 entry.setStartTimezone(visit.getPlace().getTimezone());
                 entry.setEndTime(visit.getEndTime());
                 entry.setEndTimezone(visit.getPlace().getTimezone());
-                entry.setFormattedTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate, userSettings));
-                entry.setFormattedLocalTimeRange(formatTimeRange(visit.getStartTime(), visit.getEndTime(), visit.getPlace().getTimezone(), selectedDate, userSettings));
+                entry.setFormattedTimeRange(TimeUtil.formatTimeRange(visit.getStartTime(), visit.getEndTime(), timezone, selectedDate, userSettings));
+                entry.setFormattedLocalTimeRange(TimeUtil.formatTimeRange(visit.getStartTime(), visit.getEndTime(), visit.getPlace().getTimezone(), selectedDate, userSettings));
                 entry.setFormattedDuration(formatDuration(visit.getStartTime(), visit.getEndTime()));
+                entry.setEditable(ownData);
                 entries.add(entry);
             }
         }
@@ -110,9 +110,10 @@ public class TimelineService {
             entry.setStartTimezone(trip.getStartVisit().getPlace().getTimezone());
             entry.setEndTime(trip.getEndTime());
             entry.setEndTimezone(trip.getEndVisit().getPlace().getTimezone());
-            entry.setFormattedTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate, userSettings));
+            entry.setFormattedTimeRange(TimeUtil.formatTimeRange(trip.getStartTime(), trip.getEndTime(), timezone, selectedDate, userSettings));
             entry.setFormattedDuration(formatDuration(trip.getStartTime(), trip.getEndTime()));
-            entry.setFormattedLocalTimeRange(formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate, userSettings));
+            entry.setFormattedLocalTimeRange(TimeUtil.formatTimeRange(trip.getStartTime(), trip.getEndTime(), trip.getStartVisit().getPlace().getTimezone(), trip.getEndVisit().getPlace().getTimezone(), selectedDate, userSettings));
+            entry.setEditable(ownData);
 
             if (trip.getTravelledDistanceMeters() != null) {
                 entry.setDistanceMeters(trip.getTravelledDistanceMeters());
@@ -132,36 +133,6 @@ public class TimelineService {
         entries.sort(Comparator.comparing(TimelineEntry::getStartTime));
 
         return entries;
-    }
-
-    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId startTimezone, ZoneId endTimezone, LocalDate selectedDate, UserSettings userSettings) {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMM d " + userSettings.getTimeMode().getPattern());
-
-        LocalDate startDate = startTime.atZone(startTimezone).toLocalDate();
-        LocalDate endDate = endTime.atZone(endTimezone).toLocalDate();
-        LocalDate selectedDateInStartTimezone = selectedDate.atTime(10,0).atZone(startTimezone).toLocalDate();
-        LocalDate selectedDateInEndTimezone = selectedDate.atTime(10,0).atZone(endTimezone).toLocalDate();
-        String start, end;
-
-        // If start time is not on the selected date, show date + time
-        if (!startDate.equals(selectedDateInStartTimezone)) {
-            start = startTime.atZone(startTimezone).format(dateTimeFormatter);
-        } else {
-            start = userSettings.getTimeMode().format(startTime, startTimezone);
-        }
-
-        // If end time is not on the selected date, show date + time
-        if (!endDate.equals(selectedDateInEndTimezone)) {
-            end = endTime.atZone(endTimezone).format(dateTimeFormatter);
-        } else {
-            end = userSettings.getTimeMode().format(endTime, endTimezone);
-        }
-
-        return start + " - " + end;
-    }
-
-    private String formatTimeRange(Instant startTime, Instant endTime, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings) {
-        return formatTimeRange(startTime, endTime, timezone, timezone, selectedDate, userSettings);
     }
 
     /**

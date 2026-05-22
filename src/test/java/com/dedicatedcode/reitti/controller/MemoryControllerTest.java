@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @IntegrationTest
-class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
+class MemoryControllerTest {
 
     @Autowired
     private TestingService testingService;
@@ -75,14 +75,16 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T10:00:00Z"),
                 Instant.parse("2023-01-01T12:00:00Z"),
-                7200L
+                7200L,
+                null
         );
 
         ProcessedVisit otherVisit = new ProcessedVisit(
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T14:00:00Z"),
                 Instant.parse("2023-01-01T16:00:00Z"),
-                7200L
+                7200L,
+                null
         );
         ProcessedVisit savedVisit = this.processedVisitJdbcService.create(user, visit);
         ProcessedVisit savedOtherVisit = this.processedVisitJdbcService.create(user, otherVisit);
@@ -98,7 +100,8 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                              10000.0,
                              TransportMode.DRIVING,
                              savedVisit,
-                             savedOtherVisit);
+                             savedOtherVisit,
+                             null);
 
         Trip savedTrip = this.tripJdbcService.create(user, trip);
 
@@ -147,14 +150,16 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T10:00:00Z"),
                 Instant.parse("2023-01-01T12:00:00Z"),
-                7200L
+                7200L,
+                null
         );
 
         ProcessedVisit otherVisit = new ProcessedVisit(
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T14:00:00Z"),
                 Instant.parse("2023-01-01T16:00:00Z"),
-                7200L
+                7200L,
+                null
         );
         ProcessedVisit savedVisit = this.processedVisitJdbcService.create(user, visit);
         ProcessedVisit savedOtherVisit = this.processedVisitJdbcService.create(user, otherVisit);
@@ -170,7 +175,8 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                              10000.0,
                              TransportMode.DRIVING,
                              savedVisit,
-                             savedOtherVisit);
+                             savedOtherVisit,
+                             null);
 
         Trip savedTrip = this.tripJdbcService.create(user, trip);
 

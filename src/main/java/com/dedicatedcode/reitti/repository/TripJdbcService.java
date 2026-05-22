@@ -5,6 +5,9 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,9 +28,12 @@ public class TripJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    public TripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService) {
+    private final ObjectMapper objectMapper;
+
+    public TripJdbcService(JdbcTemplate jdbcTemplate, ProcessedVisitJdbcService processedVisitJdbcService, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.processedVisitJdbcService = processedVisitJdbcService;
+        this.objectMapper = objectMapper;
     }
 
     private final RowMapper<Trip> TRIP_ROW_MAPPER = new RowMapper<>() {
@@ -34,18 +41,26 @@ public class TripJdbcService {
         public Trip mapRow(ResultSet rs, int rowNum) throws SQLException {
             ProcessedVisit startVisit = processedVisitJdbcService.findById(rs.getLong("start_visit_id")).orElseThrow();
             ProcessedVisit endVisit = processedVisitJdbcService.findById(rs.getLong("end_visit_id")).orElseThrow();
-            return new Trip(
-                    rs.getLong("id"),
-                    rs.getTimestamp("start_time").toInstant(),
-                    rs.getTimestamp("end_time").toInstant(),
-                    rs.getLong("duration_seconds"),
-                    rs.getDouble("estimated_distance_meters"),
-                    rs.getDouble("travelled_distance_meters"),
-                    TransportMode.valueOf(rs.getString("transport_mode_inferred")),
-                    startVisit,
-                    endVisit,
-                    rs.getLong("version")
-            );
+            try {
+                String metadataValue = rs.getString("metadata");
+                Map<String, Object> metadata = metadataValue != null ? objectMapper.readValue(metadataValue, new TypeReference<>() {}) : null;
+                return new Trip(
+                        rs.getLong("id"),
+                        rs.getTimestamp("start_time").toInstant(),
+                        rs.getTimestamp("end_time").toInstant(),
+                        rs.getLong("duration_seconds"),
+                        rs.getDouble("estimated_distance_meters"),
+                        rs.getDouble("travelled_distance_meters"),
+                        TransportMode.valueOf(rs.getString("transport_mode_inferred")),
+                        startVisit,
+                        endVisit,
+                        metadata,
+                        rs.getLong("version")
+                );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
         }
     };
 
@@ -106,8 +121,8 @@ public class TripJdbcService {
     }
 
     public Trip create(User user, Trip trip) {
-        String sql = "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, travelled_distance_meters, transport_mode_inferred, start_visit_id, end_visit_id, version) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING id";
+        String sql = "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, travelled_distance_meters, transport_mode_inferred, start_visit_id, end_visit_id, metadata, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 Timestamp.from(trip.getStartTime()),
@@ -116,13 +131,14 @@ public class TripJdbcService {
                 trip.getTravelledDistanceMeters(),
                 trip.getTransportModeInferred().name(),
                 trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
-                trip.getEndVisit() != null ? trip.getEndVisit().getId() : null
+                trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
+                asJson(trip.getMetadata())
         );
         return trip.withId(id);
     }
 
     public Trip update(Trip trip) {
-        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, transport_mode_inferred = ?, start_visit_id = ?, end_visit_id = ?, version = ? WHERE id = ?";
+        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, transport_mode_inferred = ?, start_visit_id = ?, end_visit_id = ?, metadata = ?::jsonb, version = ? WHERE id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(trip.getStartTime()),
                 Timestamp.from(trip.getEndTime()),
@@ -131,6 +147,7 @@ public class TripJdbcService {
                 trip.getTransportModeInferred().name(),
                 trip.getStartVisit() != null ? trip.getStartVisit().getId() : null,
                 trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
+                asJson(trip.getMetadata()),
                 trip.getVersion() + 1,
                 trip.getId()
         );
@@ -152,8 +169,8 @@ public class TripJdbcService {
         
         String sql = """
             INSERT INTO trips (user_id, start_visit_id, end_visit_id, start_time, end_time,
-                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING;
+                              duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, metadata, version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?) ON CONFLICT DO NOTHING;
             """;
         
         List<Object[]> batchArgs = tripsToInsert.stream()
@@ -167,6 +184,7 @@ public class TripJdbcService {
                 trip.getEstimatedDistanceMeters(),
                 trip.getTravelledDistanceMeters(),
                 trip.getTransportModeInferred().name(),
+                asJson(trip.getMetadata()),
                 trip.getVersion()
             })
             .collect(Collectors.toList());
@@ -223,5 +241,14 @@ public class TripJdbcService {
                                  user.getId(),
                                  idList,
                                  idList);
+    }
+
+
+    private String asJson(Object value) {
+        try {
+            return this.objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
