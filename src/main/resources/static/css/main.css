@@ -697,47 +697,6 @@ header {
     display: block;
 }
 
-.map-styles-settings-page .settings-card {
-    max-width: 900px;
-}
-
-.map-styles-settings-page .settings-description {
-    color: var(--color-text-gray);
-    margin-top: -8px;
-    max-width: 900px;
-}
-
-.map-styles-settings-page .settings-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 12px;
-}
-
-.map-styles-settings-page .settings-card-header h3 {
-    margin: 0;
-}
-
-.map-styles-settings-page select,
-.map-styles-settings-page input,
-.map-styles-settings-page textarea {
-    width: 100%;
-    color: var(--color-text-white);
-    background: var(--color-background-dark-light);
-    border: 1px solid var(--color-highlight);
-    border-radius: 4px;
-    padding: 8px;
-    font: inherit;
-}
-
-.map-styles-settings-page textarea {
-    resize: vertical;
-    min-height: 180px;
-    font-family: monospace;
-    font-size: 0.9rem;
-}
-
 /* Responsive adjustments for settings menu */
 @media (max-width: 768px) {
     .settings-menu {

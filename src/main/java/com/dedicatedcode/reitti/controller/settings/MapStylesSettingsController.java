@@ -46,7 +46,7 @@ public class MapStylesSettingsController {
     @GetMapping("/api")
     @ResponseBody
     public MapStyleSettingsDTO getSettings(@AuthenticationPrincipal User user) {
-        return userMapStyleJdbcService.getSettings(user, normalizedContextPath());
+        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
     }
 
     @PostMapping("/api")
@@ -55,7 +55,7 @@ public class MapStylesSettingsController {
         UserMapStyle validatedStyle = userMapStyleValidator.validateAndNormalize(user, request);
         UserMapStyle style = userMapStyleJdbcService.save(user, validatedStyle);
         userMapStyleJdbcService.setActiveStyleId(user, style.frontendId());
-        return userMapStyleJdbcService.getSettings(user, normalizedContextPath());
+        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
     }
 
     @PostMapping("/api/active")
@@ -70,7 +70,7 @@ public class MapStylesSettingsController {
             throw new IllegalArgumentException("Unknown style id: " + styleId);
         }
         userMapStyleJdbcService.setActiveStyleId(user, styleId);
-        return userMapStyleJdbcService.getSettings(user, normalizedContextPath());
+        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
     }
 
     @DeleteMapping("/api/{id}")
@@ -84,8 +84,4 @@ public class MapStylesSettingsController {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 
-    private String normalizedContextPath() {
-        String contextPath = contextPathHolder.getContextPath();
-        return "/".equals(contextPath) ? "" : contextPath;
-    }
 }
