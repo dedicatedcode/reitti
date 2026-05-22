@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{page.title}">Reitti - Your Location Timeline</title>
+    <link rel="manifest" crossorigin="use-credentials" th:href="@{/manifest.json}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="../../../static/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="../../../static/css/date-picker.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="../../../static/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../../static/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../../static/css/photo-client.css">
+    <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="../../../static/css/inline-edit.css">
+    <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="../../../static/css/avatar-marker.css">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="../../../static/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-control.css}" href="../../../static/css/time-control.css">
+</head>
+<body style="background-color: var(--color-background-dark); padding: 24px">
+
+<div th:fragment="metadata">
+
+    <h2 th:if="${type == 'trip'}" th:text="#{metadata.panel.headline.trip(${timerange})}">Trip between Mai 15 07:32 - 05:54</h2>
+    <h2 th:if="${type == 'visit'}" th:text="#{metadata.panel.headline.visit(${name}, ${timerange})}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
+    <form class="metadata-form" th:action="@{/metadata}" method="post">
+        <!-- Hidden fields for backend -->
+        <input type="hidden" name="type" th:value="${type}">
+        <input type="hidden" name="id" th:value="${id}">
+        <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+
+        <!-- Mood selection with emojis -->
+        <div class="form-group" style="position: relative;">
+            <label>Mood</label>
+            <div class="toggle-buttons">
+                <th:block th:each="mood : ${availableMoods}">
+                    <input th:checked="${metadata.mood != null && metadata.mood.name() == mood.name()}" type="radio" th:id="${mood}" name="mood" th:value="${mood}" value="HAPPY"/>
+                    <label th:for="${mood}"><span th:text="${mood.icon}">😊</span> <span th:text="#{'metadata.mood.' + ${mood.name()} + '.label'}">Happy</span></label>
+                </th:block>
+            </div>
+            <div style="position: absolute; top: 0; right: 0;">
+                <button class="btn btn-link" onclick="Array.from( document.querySelectorAll('.toggle-buttons input:checked'), input => input.checked = false ); return false">Unset</button>
+            </div>
+        </div>
+
+        <div class="form-group autocomplete">
+            <label for="reason">Reason</label>
+            <input type="text" id="reason" name="reason"
+                   data-autocomplete-url="/metadata/suggestions/reason"
+                   data-autocomplete-min-length="2"
+                   data-autocomplete-delay="300"
+                   data-autocomplete-container="#reason-suggestions"
+                   th:value="${metadata.reason}"
+                   autocomplete="off">
+            <div id="reason-suggestions" class="suggestions-dropdown"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="tags-input">Tags &amp; Companions</label>
+            <div id="tags-chips-container" class="tags-chips">
+              <span class="tag-chip" th:each="tag : ${metadata.tags}">
+                <span class="tag-text" th:text="${tag}">tag</span>
+                <span class="tag-remove" onclick="removeTagChip(this)">&times;</span>
+              </span>
+            </div>
+            <div class="autocomplete">
+                <input type="text" id="tags-input" placeholder="Add a tag..."
+                       data-autocomplete-url="/metadata/suggestions/tags"
+                       data-autocomplete-min-length="2"
+                       data-autocomplete-delay="300"
+                       data-autocomplete-container="#tags-suggestions"
+                       data-autocomplete-tag-mode="true"
+                       autocomplete="off">
+                <div id="tags-suggestions" class="suggestions-dropdown"></div>
+            </div>
+            <!-- Hidden field that holds the comma‑separated list for submission -->
+            <input type="hidden" name="tags" id="tags-hidden" th:value="${#strings.listJoin(metadata.tags, ',')}">
+        </div>
+
+        <!-- Notes / Journal -->
+        <div class="form-group">
+            <label for="notes">Notes / Journal</label>
+            <textarea rows="6" id="notes" name="notes" placeholder="Enter notes" th:text="${metadata.description}"></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-buttons">
+            <button type="submit" class="btn btn-primary" th:text="#{form.update}">Update</button>
+            <button type="button" class="btn btn-secondary" onclick="closeMetadataOverlay()" th:text="#{form.cancel}">Cancel</button>
+        </div>
+    </form>
+    <script>
+        (function () {
+            const reasonInput = document.getElementById('reason');
+            if (reasonInput) new Autocomplete(reasonInput);
+
+            const tagsInput = document.getElementById('tags-input');
+            if (tagsInput) {
+                new Autocomplete(tagsInput, {
+                    onSelect: function(item) {
+                        addTagChip(item);
+                        tagsInput.value = '';
+                    }
+                });
+            }
+        })();
+    </script>
+</div>
+
+</body>
+</html>

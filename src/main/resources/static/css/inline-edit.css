@@ -5,18 +5,27 @@
 
 .edit-icon {
     opacity: 0;
-    margin-left: 8px;
     transition: opacity 0.2s ease;
     cursor: pointer;
     font-size: 1.6rem;
-    position: absolute;
-    top: 0;
-    right: 0;
     background: gray;
     border: 1px solid wheat;
     color: wheat;
     border-radius: 4px;
     text-decoration: none;
+}
+
+.place-actions {
+    display: flex;
+    flex-direction: column;
+    top: 0;
+    position: absolute;
+    flex-grow: 0;
+    align-items: start;
+    gap: 8px;
+    right: -48px;
+    text-shadow: none;
+
 }
 
 .timeline-entry.trip.active:hover .edit-icon,

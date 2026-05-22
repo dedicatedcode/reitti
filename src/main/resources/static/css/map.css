@@ -150,7 +150,6 @@
 details.maplibregl-ctrl-attrib[open] {
     background: rgba(255, 255, 255, 0.95) !important;
     border-radius: 8px !important;
-    padding: 5px 12px;
 }
 
 /* Remove the default arrow in some browsers */

@@ -35,7 +35,7 @@ public class TimelineApiController {
         Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
         Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
-        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
+        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay, true);
     }
 
 }

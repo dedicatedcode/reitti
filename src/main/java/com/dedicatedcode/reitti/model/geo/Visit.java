@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.model.geo;
 
+import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
+
 import java.time.Instant;
 import java.util.Objects;
 

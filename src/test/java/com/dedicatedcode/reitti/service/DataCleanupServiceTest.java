@@ -250,23 +250,24 @@ class DataCleanupServiceTest {
 
     private ProcessedVisit createTestVisit(SignificantPlace place, Instant startTime, Instant endTime) {
         long duration = ChronoUnit.SECONDS.between(startTime, endTime);
-        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration);
+        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration,null);
         return processedVisitJdbcService.create(testUser, visit);
     }
 
     private Trip createTestTrip(ProcessedVisit startVisit, ProcessedVisit endVisit) {
         long duration = ChronoUnit.SECONDS.between(startVisit.getEndTime(), endVisit.getStartTime());
         Trip trip = new Trip(
-            null,
-            startVisit.getEndTime(),
-            endVisit.getStartTime(),
-            duration,
-            1000.0,
-            1200.0,
-            TransportMode.WALKING,
-            startVisit,
-            endVisit,
-            1L
+                null,
+                startVisit.getEndTime(),
+                endVisit.getStartTime(),
+                duration,
+                1000.0,
+                1200.0,
+                TransportMode.WALKING,
+                startVisit,
+                endVisit,
+                null,
+                1L
         );
         return tripJdbcService.create(testUser, trip);
     }
