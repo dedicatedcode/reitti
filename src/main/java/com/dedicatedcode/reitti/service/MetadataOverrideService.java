@@ -74,6 +74,6 @@ public class MetadataOverrideService {
     }
 
     public List<String> loadSuggestions(User user, String field, String query) {
-        return null;
+        return overrideJdbcService.findDistinctSuggestions(user, field, query);
     }
 }

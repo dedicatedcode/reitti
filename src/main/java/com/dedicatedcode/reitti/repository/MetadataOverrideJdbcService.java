@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -93,6 +94,31 @@ public class MetadataOverrideJdbcService {
             jdbcTemplate.update(sql, jsonPayload, rangeLiteral, user.getId());
         } catch (Exception e) {
             throw new RuntimeException("Serialization mapping failed", e);
+        }
+    }
+
+    public List<String> findDistinctSuggestions(User user, String field, String query) {
+        if ("reason".equals(field)) {
+            String sql = """
+            SELECT DISTINCT metadata->>'reason' AS value
+            FROM location_metadata
+            WHERE user_id = ?
+              AND metadata->>'reason' IS NOT NULL
+              AND metadata->>'reason' ILIKE ?
+            ORDER BY value
+            """;
+            return jdbcTemplate.queryForList(sql, String.class, user.getId(), query + "%");
+        } else if ("tags".equals(field)) {
+            String sql = """
+            SELECT DISTINCT tag
+            FROM location_metadata, jsonb_array_elements_text(metadata->'tags') AS tag
+            WHERE user_id = ?
+              AND tag ILIKE ?
+            ORDER BY tag
+            """;
+            return jdbcTemplate.queryForList(sql, String.class, user.getId(), query + "%");
+        } else {
+            return List.of();
         }
     }
 }
