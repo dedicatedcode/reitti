@@ -171,8 +171,12 @@ class Autocomplete {
                 const value = activeNode ? activeNode.dataset.autocompleteValue : undefined;
                 if (value) this.selectSuggestion(value);
             }
-        } else if (event.key === 'Escape') {
-            this.hideSuggestions();
+        }  else if (event.key === 'Escape') {
+            if (items.length > 0) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.hideSuggestions();
+            }
         }
     }
 
