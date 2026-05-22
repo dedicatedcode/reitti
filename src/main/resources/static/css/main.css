@@ -461,37 +461,6 @@ header {
     padding-top: 4px;
 }
 
-.custom-map-style-form {
-    border-top: 1px solid var(--color-highlight-transparent);
-    margin-top: 12px;
-    padding-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.custom-map-style-form .form-group {
-    margin: 0;
-}
-
-.custom-map-style-form.hidden {
-    display: none;
-}
-
-.custom-map-style-mode-panel.hidden,
-.map-styles-settings-page .form-group.hidden {
-    display: none;
-}
-
-.custom-map-style-form-header {
-    color: var(--color-text-gray);
-    font-size: 0.78rem;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    margin: 0;
-    text-transform: uppercase;
-}
-
 .custom-map-style-mode-panel {
     display: flex;
     flex-direction: column;
@@ -725,7 +694,50 @@ header {
     background-color: var(--color-background-dark);
     font-family: var(--sans-serif-font);
     transition: all ease 0.2s;
+    border-right: 4px;
 }
+
+
+.btn,
+a.btn,
+button {
+    font-size: 14px;
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn:hover,
+a.btn:hover,
+button:hover {
+    background-color: #525252;
+    filter: brightness(1.05);
+    box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
+}
+
+.btn-muted {
+    filter: brightness(0.7);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--color-highlight);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.btn-link:hover {
+    background-color: unset;
+    filter: brightness(1.2);
+    box-shadow: unset;
+}
+
 
 a.btn-default,
 .btn-default {
@@ -790,6 +802,10 @@ label {
     display: inline-flex;
 }
 
+.toggle-buttons.pills {
+    gap: 6px;
+}
+
 .toggle-buttons .btn {
     padding: 0.375rem 0.75rem;
     cursor: pointer;
@@ -799,12 +815,14 @@ label {
     border: 1px solid var(--color-highlight);
 }
 
-.toggle-buttons .btn:not(:last-child) {
+.toggle-buttons .btn:not(:last-child),
+.toggle-buttons label:not(:last-of-type) {
     border-bottom-right-radius: 0;
     border-top-right-radius: 0;
 }
 
-.toggle-buttons .btn:not(:first-child) {
+.toggle-buttons .btn:not(:first-child),
+.toggle-buttons label:not(:first-of-type) {
     border-bottom-left-radius: 0;
     border-top-left-radius: 0;
 }
@@ -816,6 +834,7 @@ label {
 
 .toggle-buttons input[type="radio"] {
     width: 0;
+    margin: 0;
 }
 
 .toggle-buttons label {
@@ -826,10 +845,15 @@ label {
     border: 1px solid var(--color-background-dark-light);
     color: var(--color-text-white, #ccc);
     padding: 6px 12px;
-    border-radius: 20px;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.15s ease-in-out;
+    border-radius: 4px;
+}
+
+.toggle-buttons.pills label {
+    padding: 6px 12px;
+    border-radius: 20px;
 }
 
 .toggle-buttons input[type="radio"]:checked + label,
@@ -1259,44 +1283,6 @@ tr:hover {
 .htmx-request .htmx-indicator {
     display: inline;
     height: initial;
-}
-
-a.btn,
-button {
-    font-size: 14px;
-    color: var(--color-highlight);
-    border: 1px solid var(--color-highlight);
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-}
-
-a.btn:hover,
-button:hover {
-    background-color: #525252;
-    filter: brightness(1.05);
-    box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
-}
-
-.btn-muted {
-    filter: brightness(0.7);
-}
-
-.btn-link {
-    background: transparent;
-    border: none;
-    padding: 0;
-    color: var(--color-highlight);
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-.btn-link:hover {
-    background-color: unset;
-    filter: brightness(1.2);
-    box-shadow: unset;
 }
 
 .upload-options progress {

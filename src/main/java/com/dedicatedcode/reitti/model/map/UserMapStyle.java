@@ -14,6 +14,10 @@ public record UserMapStyle(
         boolean shared,
         Long version
 ) {
+    public static UserMapStyle defaultReittiStyle() {
+            return new UserMapStyle(-1L, null, "Reitti", "mapbox", "url", "url", null, "/styles/reitti.json", null, null, false, null);
+    }
+
     public String frontendId() {
         return "custom-" + id;
     }

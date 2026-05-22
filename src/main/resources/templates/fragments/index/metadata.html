@@ -20,7 +20,7 @@
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="../../../static/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="../../../static/css/time-control.css">
 </head>
-<body style="background-color: var(--color-background-dark); padding: 24px">
+<body>
 
 <div th:fragment="metadata">
 
@@ -35,7 +35,7 @@
         <!-- Mood selection with emojis -->
         <div class="form-group" style="position: relative;">
             <label>Mood</label>
-            <div class="toggle-buttons">
+            <div class="toggle-buttons pills">
                 <th:block th:each="mood : ${availableMoods}">
                     <input th:checked="${metadata.mood != null && metadata.mood.name() == mood.name()}" type="radio" th:id="${mood}" name="mood" th:value="${mood}" value="HAPPY"/>
                     <label th:for="${mood}"><span th:text="${mood.icon}">😊</span> <span th:text="#{'metadata.mood.' + ${mood.name()} + '.label'}">Happy</span></label>
