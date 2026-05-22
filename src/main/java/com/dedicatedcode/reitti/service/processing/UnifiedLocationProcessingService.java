@@ -537,7 +537,7 @@ public class UnifiedLocationProcessingService {
                 currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime)
                         ? nextVisit.getEndTime() : currentEndTime;
             } else {
-                ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
+                ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime, currentEndTime);
                 if (processedVisit != null) {
                     result.add(processedVisit);
                 }
@@ -547,14 +547,14 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        ProcessedVisit lastProcessedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
+        ProcessedVisit lastProcessedVisit = createProcessedVisit(user, currentPlace, currentStartTime, currentEndTime);
         if (lastProcessedVisit != null) {
             result.add(lastProcessedVisit);
         }
         return result;
     }
 
-    private ProcessedVisit createProcessedVisit(SignificantPlace place, Instant startTime, Instant endTime) {
+    private ProcessedVisit createProcessedVisit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
         if (endTime.isBefore(startTime)) {
             logger.warn("Skipping zero or negative duration processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
             return null;  // Indicate to skip
@@ -565,7 +565,7 @@ public class UnifiedLocationProcessingService {
         }
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
 
-        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(startTime, endTime).map(MemoryMetadata::getProperties).orElse(null);
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, startTime, endTime).map(MemoryMetadata::getProperties).orElse(null);
         return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond(), metadata);
     }
 
@@ -780,7 +780,7 @@ public class UnifiedLocationProcessingService {
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
         TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, tripStartTime, tripEndTime);
-        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);
 
         Trip trip = new Trip(
                 tripStartTime,

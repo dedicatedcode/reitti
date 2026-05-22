@@ -73,7 +73,7 @@ public class ReittiIntegrationApiController {
         Instant startOfRange = selectedStartDate.atStartOfDay(userTimezone).toInstant();
         Instant endOfRange = selectedEndDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
-        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange);
+        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedStartDate, startOfRange, endOfRange, false);
     }
 
     @PostMapping("/subscribe")

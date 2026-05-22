@@ -5,8 +5,10 @@ import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.metadata.Mood;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.MetadataOverrideService;
 import com.dedicatedcode.reitti.service.TimeUtil;
 import org.springframework.http.MediaType;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -26,14 +29,17 @@ import java.util.Optional;
 public class MetadataController {
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final MetadataOverrideService service;
+    private final MetadataOverrideService metadataService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
 
     public MetadataController(TripJdbcService tripJdbcService,
                               ProcessedVisitJdbcService processedVisitJdbcService,
-                              MetadataOverrideService service) {
+                              MetadataOverrideService metadataService,
+                              UserSettingsJdbcService userSettingsJdbcService) {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.service = service;
+        this.metadataService = metadataService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
     @GetMapping("/{type}/{id}")
@@ -44,6 +50,7 @@ public class MetadataController {
                               @RequestParam(defaultValue = "UTC") ZoneId timezone,
                               @RequestParam(required = false) String returnUrl) {
 
+        UserSettings userSettings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         Optional<ProcessedVisit> visit = type.equals("visit") ? this.processedVisitJdbcService.findById(id) : Optional.empty();
         Optional<Trip> trip = type.equals("trip") ? this.tripJdbcService.findById(id) : Optional.empty();
         Map<String, Object> properties = switch (type) {
@@ -57,10 +64,12 @@ public class MetadataController {
         model.addAttribute("metadata", metadata);
         model.addAttribute("availableMoods", Mood.values());
         model.addAttribute("returnUrl", returnUrl);
-        visit.ifPresent(processedVisit -> {
-            model.addAttribute("name", processedVisit.getPlace().getName());
-            model.addAttribute("start", TimeUtil.adjustInstant(processedVisit.getStartTime(), timezone));
-            model.addAttribute("end", TimeUtil.adjustInstant(processedVisit.getEndTime(), timezone));
+        visit.ifPresent(p -> {
+            model.addAttribute("name", p.getPlace().getName());
+            model.addAttribute("timerange", TimeUtil.formatTimeRange(p.getStartTime(), p.getEndTime(), timezone, LocalDate.now(), userSettings));
+        });
+        trip.ifPresent(t -> {
+            model.addAttribute("timerange", TimeUtil.formatTimeRange(t.getStartTime(), t.getEndTime(), timezone, LocalDate.now(), userSettings));
         });
 
         return "fragments/index/metadata :: metadata";
@@ -71,7 +80,7 @@ public class MetadataController {
     public List<String> getSuggestions(@AuthenticationPrincipal User user,
                                  @PathVariable String field,
                                  @RequestParam String query) {
-        return List.of("Test 1", "Test 2", "Test 3", "Test 4");
+        return this.metadataService.loadSuggestions(user, field, query);
     }
 
     @PostMapping
@@ -94,7 +103,7 @@ public class MetadataController {
                 if (trip.isEmpty()) {
                     throw new IllegalArgumentException("Trip not found");
                 } else {
-                    this.service.saveTripMetadata(trip.get(), metadata);
+                    this.metadataService.saveTripMetadata(user, trip.get(), metadata);
                 }
             }
             case "visit" -> {
@@ -102,7 +111,7 @@ public class MetadataController {
                 if (visit.isEmpty()) {
                     throw new IllegalArgumentException("Visit not found");
                 } else {
-                    this.service.saveVisitMetadata(visit.get(), metadata);
+                    this.metadataService.saveVisitMetadata(user, visit.get(), metadata);
                 }
             }
             default -> throw new IllegalStateException("Unexpected value: " + type);

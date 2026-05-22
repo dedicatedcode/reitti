@@ -2,16 +2,16 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.Trip;
-import com.dedicatedcode.reitti.model.geo.Visit;
 import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.MetadataOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -34,16 +34,16 @@ public class MetadataOverrideService {
      * Dual-writes to the active cached entity and the persistent vault table.
      */
     @Transactional
-    public void saveTripMetadata(Trip currentTrip, MemoryMetadata dto) {
+    public void saveTripMetadata(User user, Trip currentTrip, MemoryMetadata dto) {
         try {
             MemoryMetadata override = this.overrideJdbcService
-                    .findBestOverlappingOverride(currentTrip.getStartTime(), currentTrip.getEndTime()).orElseGet(() -> {
+                    .findBestOverlappingOverride(user, currentTrip.getStartTime(), currentTrip.getEndTime()).orElseGet(() -> {
                 MemoryMetadata metadata = new MemoryMetadata(currentTrip.getStartTime(), currentTrip.getEndTime());
-                this.overrideJdbcService.insertOverride("TRIP", metadata);
+                this.overrideJdbcService.insertOverride(user, "TRIP", metadata);
                 return metadata;
             });
             override.setProperties(dto.getProperties());
-            this.overrideJdbcService.updateOverridePayload(override);
+            this.overrideJdbcService.updateOverridePayload(user, override);
             this.tripJdbcService.update(currentTrip.withMetadata(override.getProperties()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize and save metadata", e);
@@ -51,16 +51,16 @@ public class MetadataOverrideService {
     }
 
     @Transactional
-    public void saveVisitMetadata(ProcessedVisit currentVisit, MemoryMetadata dto) {
+    public void saveVisitMetadata(User user, ProcessedVisit currentVisit, MemoryMetadata dto) {
         try {
             MemoryMetadata override = this.overrideJdbcService
-                    .findBestOverlappingOverride(currentVisit.getStartTime(), currentVisit.getEndTime()).orElseGet(() -> {
+                    .findBestOverlappingOverride(user, currentVisit.getStartTime(), currentVisit.getEndTime()).orElseGet(() -> {
                         MemoryMetadata metadata = new MemoryMetadata(currentVisit.getStartTime(), currentVisit.getEndTime());
-                        this.overrideJdbcService.insertOverride("VISIT", metadata);
+                        this.overrideJdbcService.insertOverride(user, "VISIT", metadata);
                         return metadata;
                     });
             override.setProperties(dto.getProperties());
-            this.overrideJdbcService.updateOverridePayload(override);
+            this.overrideJdbcService.updateOverridePayload(user, override);
             this.processedVisitJdbcService.update(currentVisit.withMetadata(override.getProperties()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize and save metadata", e);
@@ -68,8 +68,12 @@ public class MetadataOverrideService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<MemoryMetadata> findOverlappingMetadata(Instant startTime, Instant endTime) {
+    public Optional<MemoryMetadata> findOverlappingMetadata(User user, Instant startTime, Instant endTime) {
         return overrideJdbcService
-                .findBestOverlappingOverride(startTime, endTime);
+                .findBestOverlappingOverride(user, startTime, endTime);
+    }
+
+    public List<String> loadSuggestions(User user, String field, String query) {
+        return null;
     }
 }

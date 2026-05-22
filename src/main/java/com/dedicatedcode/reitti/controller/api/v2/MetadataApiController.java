@@ -29,7 +29,7 @@ public class MetadataApiController {
     @GetMapping("/{type}/{id}")
     public MemoryMetadata getMetadata(@AuthenticationPrincipal User user, @PathVariable String type, @PathVariable Long id) {
         TimeRange timeRange = findTimeRange(type, id);
-        return this.metadataOverrideJdbcService.findBestOverlappingOverride(timeRange.start(), timeRange.end()).orElse(null);
+        return this.metadataOverrideJdbcService.findBestOverlappingOverride(user, timeRange.start(), timeRange.end()).orElse(null);
     }
 
     @PostMapping("/{type}/{id}")
@@ -64,7 +64,7 @@ public class MetadataApiController {
             default -> throw new IllegalStateException("Unexpected value: " + type);
         };
 
-        this.metadataOverrideJdbcService.insertOverride(type, metadata);
+        this.metadataOverrideJdbcService.insertOverride(user, type, metadata);
         return metadata;
     }
 

@@ -24,8 +24,8 @@
 
 <div th:fragment="metadata">
 
-    <h2 th:if="${type == 'trip'}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
-    <h2 th:if="${type == 'visit'}" th:text="#{metadata.panel.headline.visit(${placeName}, ${start}, ${end})}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
+    <h2 th:if="${type == 'trip'}" th:text="#{metadata.panel.headline.trip(${timerange})}">Trip between Mai 15 07:32 - 05:54</h2>
+    <h2 th:if="${type == 'visit'}" th:text="#{metadata.panel.headline.visit(${name}, ${timerange})}">Visit to Moltkestraße (Mai 15 07:32 - 05:54)</h2>
     <form class="metadata-form" th:action="@{/metadata}" method="post">
         <!-- Hidden fields for backend -->
         <input type="hidden" name="type" th:value="${type}">
