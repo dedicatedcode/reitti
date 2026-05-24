@@ -12,7 +12,6 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +37,6 @@ public class UserSettingsControllerAdvice {
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final ContextPathHolder contextPathHolder;
     private final ObjectMapper objectMapper;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
@@ -46,14 +44,12 @@ public class UserSettingsControllerAdvice {
                                         UserMapStyleJdbcService userMapStyleJdbcService,
                                         TilesCustomizationProvider tilesCustomizationProvider,
                                         RawLocationPointJdbcService rawLocationPointJdbcService,
-                                        ContextPathHolder contextPathHolder,
                                         ObjectMapper objectMapper) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.contextPathHolder = contextPathHolder;
         this.objectMapper = objectMapper;
     }
     
@@ -132,7 +128,7 @@ public class UserSettingsControllerAdvice {
     public String getCurrentUserMapStylesJson() {
         return getCurrentUser().map(user -> {
             try {
-                return objectMapper.writeValueAsString(userMapStyleJdbcService.getSettings(user, normalizedContextPath()).customStyles());
+                return objectMapper.writeValueAsString(userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList());
             } catch (JsonProcessingException e) {
                 return "[]";
             }
@@ -152,11 +148,6 @@ public class UserSettingsControllerAdvice {
             return Optional.empty();
         }
         return userJdbcService.findByUsername(authentication.getName());
-    }
-
-    private String normalizedContextPath() {
-        String contextPath = contextPathHolder.getContextPath();
-        return "/".equals(contextPath) ? "" : contextPath;
     }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {

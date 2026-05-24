@@ -1,14 +1,13 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.dto.map.ActiveMapStyleRequest;
-import com.dedicatedcode.reitti.dto.map.MapStyleSettingsDTO;
-import com.dedicatedcode.reitti.dto.map.SaveMapStyleRequest;
+import com.dedicatedcode.reitti.dto.map.MapStyleConfigDTO;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
+import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.service.ContextPathHolder;
-import com.dedicatedcode.reitti.service.UserMapStyleValidator;
+import com.dedicatedcode.reitti.service.I18nService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,25 +15,24 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/settings/map-styles")
 public class MapStylesSettingsController {
     private final boolean dataManagementEnabled;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
-    private final UserMapStyleValidator userMapStyleValidator;
-    private final ContextPathHolder contextPathHolder;
+    private final I18nService i18n;
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            UserMapStyleValidator userMapStyleValidator,
-            ContextPathHolder contextPathHolder) {
+            I18nService i18n) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
-        this.userMapStyleValidator = userMapStyleValidator;
-        this.contextPathHolder = contextPathHolder;
+        this.i18n = i18n;
     }
 
     @GetMapping
@@ -43,80 +41,178 @@ public class MapStylesSettingsController {
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
 
-        List<UserMapStyle> persisted = userMapStyleJdbcService.findAll(user);
+        List<MapStyleConfigDTO> persisted = userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList();
         model.addAttribute("defaultStyle", UserMapStyle.defaultReittiStyle());
         model.addAttribute("styles", persisted);
         model.addAttribute("activeMapStyleId", userMapStyleJdbcService.getActiveStyleId(user));
         return "settings/map-styles";
     }
 
-    @GetMapping("/add")
-    public String addFragment(@AuthenticationPrincipal User user, @RequestParam String type, Model model) {
-        model.addAttribute("type", type);
+    @GetMapping("/clear")
+    public String clearStyles(@AuthenticationPrincipal User user, Model model) {
+        return "settings/map-styles :: empty-form-state";
+    }
+
+    @GetMapping("/form")
+    public String addFragment(@AuthenticationPrincipal User user,
+                              @RequestParam(required = false) Long id,
+                              Model model) {
+        if (id != null) {
+            model.addAttribute("style", userMapStyleJdbcService.findById(user, id).map(s -> s.toDto(user)).orElseThrow(() -> new IllegalArgumentException("Unknown style id: " + id)));
+        }
         return "settings/fragments/map-styles :: style-form";
     }
 
-    @GetMapping("/style-form")
-    public String loadStyleFormFragment(@AuthenticationPrincipal User user, @RequestParam String type, Model model) {
-        return switch (type) {
-            case "vector" -> "settings/fragments/map-styles :: vector-style-form";
-            case "raster" -> "settings/fragments/map-styles :: raster-style-form";
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
-        };
-    }
-
-    @GetMapping("/style-form/vector")
-    public String loadVectorStyleFormFragment(@AuthenticationPrincipal User user, @RequestParam String type, Model model) {
-        return switch (type) {
-            case "json" -> "settings/fragments/map-styles :: vector-style-json";
-            case "url" -> "settings/fragments/map-styles :: vector-style-url";
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
-        };
-    }
-
-    @GetMapping("/style-form/raster")
-    public String loadRasterStyleFormFragment(@AuthenticationPrincipal User user, @RequestParam String type, Model model) {
-        return switch (type) {
-            case "url-template" -> "settings/fragments/map-styles :: raster-style-url-template";
-            case "json-url" -> "settings/fragments/map-styles :: raster-style-json-url";
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
-        };
-    }
-
-    @GetMapping("/api")
-    @ResponseBody
-    public MapStyleSettingsDTO getSettings(@AuthenticationPrincipal User user) {
-        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
-    }
-
-    @PostMapping("/api")
-    @ResponseBody
-    public MapStyleSettingsDTO saveStyle(@AuthenticationPrincipal User user, @RequestBody SaveMapStyleRequest request) {
-        UserMapStyle validatedStyle = userMapStyleValidator.validateAndNormalize(user, request);
-        UserMapStyle style = userMapStyleJdbcService.save(user, validatedStyle);
-        userMapStyleJdbcService.setActiveStyleId(user, style.frontendId());
-        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
-    }
-
-    @PostMapping("/api/active")
-    @ResponseBody
-    public MapStyleSettingsDTO setActiveStyle(@AuthenticationPrincipal User user, @RequestBody ActiveMapStyleRequest request) {
-        String styleId = request.activeStyleId();
-        boolean valid = UserMapStyleJdbcService.DEFAULT_STYLE_ID.equals(styleId)
-                || UserMapStyleJdbcService.resolveCustomId(styleId)
-                        .flatMap(id -> userMapStyleJdbcService.findById(user, id))
-                        .isPresent();
-        if (!valid) {
-            throw new IllegalArgumentException("Unknown style id: " + styleId);
+    @PostMapping("/activate")
+    public String activateStyle(@AuthenticationPrincipal User user, @RequestParam String id, Model model) {
+        if (!id.equals(UserMapStyleJdbcService.DEFAULT_STYLE_ID) && this.userMapStyleJdbcService.findById(user, Long.parseLong(id)).isEmpty()) {
+            throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
         }
-        userMapStyleJdbcService.setActiveStyleId(user, styleId);
-        return userMapStyleJdbcService.getSettings(user, this.contextPathHolder.getContextPath());
+        this.userMapStyleJdbcService.setActiveStyleId(user, id);
+
+
+        List<MapStyleConfigDTO> persisted = userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList();
+        model.addAttribute("defaultStyle", UserMapStyle.defaultReittiStyle());
+        model.addAttribute("styles", persisted);
+        model.addAttribute("activeMapStyleId", userMapStyleJdbcService.getActiveStyleId(user));
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+
+        return "settings/map-styles :: styles-table";
     }
 
-    @DeleteMapping("/api/{id}")
-    public ResponseEntity<Void> deleteStyle(@AuthenticationPrincipal User user, @PathVariable long id) {
-        userMapStyleJdbcService.delete(user, id);
-        return ResponseEntity.noContent().build();
+
+    @PostMapping
+    public String saveMapStyle(@AuthenticationPrincipal User user, @RequestParam Map<String, String> params, Model model) {
+        Long id = params.get("id") != null ? Long.parseLong(params.get("id")) : null;
+        if (id != null && this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
+            throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
+        }
+        String mapType = params.get("mapType");
+        String name = params.get("name");
+
+        List<String> errors = new ArrayList<>();
+
+        if (name == null || name.isBlank()) {
+            errors.add(i18n.translate("map.settings.dialog.map-styles.error-name-required"));
+        }
+
+        if ("vector".equals(mapType)) {
+            String styleInputType = params.get("styleInputType");
+            if ("url".equals(styleInputType)) {
+                String url = params.get("vectorStyleUrl");
+                if (url == null || url.isBlank()) {
+                    errors.add(i18n.translate("map.settings.dialog.map-styles.error-style-url-required"));
+                }
+            } else if ("json".equals(styleInputType)) {
+                String json = params.get("vectorStyleJson");
+                if (json == null || json.isBlank()) {
+                    errors.add(i18n.translate("map.settings.dialog.map-styles.error-style-json-required"));
+                }
+            }
+        } else if ("raster".equals(mapType)) {
+            String rasterSourceInputType = params.get("rasterSourceInputType");
+            if ("url-template".equals(rasterSourceInputType)) {
+                String template = params.get("rasterTileTemplate");
+                if (template == null || template.isBlank()) {
+                    errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tile-template-required"));
+                }
+            } else if ("json-url".equals(rasterSourceInputType)) {
+                String tileJsonUrl = params.get("rasterTileJsonUrl");
+                if (tileJsonUrl == null || tileJsonUrl.isBlank()) {
+                    errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tilejson-required"));
+                }
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            model.addAttribute("error", String.join("<br>", errors));
+            model.addAttribute("style", buildFromParams(user, params).toDto(user));
+            model.addAttribute("isAdmin", dataManagementEnabled);
+            return "settings/fragments/map-styles :: style-form";
+        }
+
+        UserMapStyle mapStyle = buildFromParams(user, params);
+        userMapStyleJdbcService.save(user, mapStyle);
+
+        return getPage(user, model);
+    }
+
+    private UserMapStyle buildFromParams(User user, Map<String, String> params) {
+        String id = params.get("id");
+        String name = params.get("name");
+        String mapType = params.get("mapType");
+        String styleInputType = params.get("styleInputType");
+        String rasterSourceInputType = params.get("rasterSourceInputType");
+        String vectorStyleUrl = params.get("vectorStyleUrl");
+        String vectorStyleJson = params.get("vectorStyleJson");
+        String rasterTileTemplate = params.get("rasterTileTemplate");
+        String rasterTileJsonUrl = params.get("rasterTileJsonUrl");
+        String attributionOverride = params.get("attributionOverride");
+        String glyphsUrlOverride = params.get("glyphsUrlOverride");
+        String spriteUrlOverride = params.get("spriteUrlOverride");
+        String minzoom = params.get("minzoom");
+        String maxzoom = params.get("maxzoom");
+        String tileSize = params.get("tileSize");
+        String scheme = params.get("scheme");
+        boolean proxyTiles = "on".equals(params.get("proxyTiles"));
+        boolean shared = "on".equals(params.get("shared"));
+
+        // Build the data source
+        MapStyleDataSource dataSource = new MapStyleDataSource(
+                null,
+                mapType,
+                rasterTileJsonUrl,
+                rasterTileTemplate,
+                attributionOverride,
+                hasValue(minzoom) ? Integer.parseInt(minzoom) : null,
+                hasValue(maxzoom) ? Integer.parseInt(maxzoom) : null,
+                hasValue(tileSize) ? Integer.parseInt(tileSize) : null,
+                scheme,
+                proxyTiles
+        );
+
+        // Build vector options
+        MapStyleVectorOptions vectorOptions = new MapStyleVectorOptions(
+                attributionOverride,
+                glyphsUrlOverride,
+                spriteUrlOverride
+        );
+
+        // Determine the style URL and input based on map type
+        String styleUrl = null;
+        String styleInput = null;
+
+        if ("vector".equals(mapType)) {
+            if ("url".equals(styleInputType)) {
+                styleUrl = vectorStyleUrl;
+            } else {
+                styleInput = vectorStyleJson;
+            }
+        }
+
+        return new UserMapStyle(
+                id != null ? Long.parseLong(id) : null,
+                user.getId(),
+                name,
+                mapType,
+                styleInputType,
+                rasterSourceInputType,
+                styleInput,
+                styleUrl,
+                dataSource,
+                vectorOptions,
+                shared,
+                null);
+    }
+
+    @DeleteMapping
+    public String deleteMapStyle(@AuthenticationPrincipal User user, @RequestParam Long id, Model model) {
+        if (this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
+            throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
+        }
+
+        this.userMapStyleJdbcService.delete(user, id);
+        return getPage(user, model);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -124,4 +220,7 @@ public class MapStylesSettingsController {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank();
+    }
 }
