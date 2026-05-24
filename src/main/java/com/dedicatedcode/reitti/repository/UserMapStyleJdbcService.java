@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.map.MapStyleConfigDTO;
-import com.dedicatedcode.reitti.dto.map.MapStyleSettingsDTO;
 import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;

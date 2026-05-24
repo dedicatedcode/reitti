@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
-import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -59,7 +58,6 @@ public class MapStyleController {
     private final ContextPathHolder contextPathHolder;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
-    private final MapStyleUrlValidator mapStyleUrlValidator;
     private final HttpClient httpClient;
     private final boolean tileCacheEnabled;
 
@@ -68,13 +66,11 @@ public class MapStyleController {
             ContextPathHolder contextPathHolder,
             UserSettingsJdbcService userSettingsJdbcService,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapStyleUrlValidator mapStyleUrlValidator,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
         this.contextPathHolder = contextPathHolder;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
-        this.mapStyleUrlValidator = mapStyleUrlValidator;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -119,7 +115,7 @@ public class MapStyleController {
     }
 
     private JsonNode fetchRemoteStyle(UserMapStyle style) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(mapStyleUrlValidator.requireHttpUrl(style.styleUrl(), "Vector style URL"))
+        HttpRequest request = HttpRequest.newBuilder(URI.create(style.styleUrl()))
                 .timeout(Duration.ofSeconds(20))
                 .header("Accept", "application/json")
                 .GET()

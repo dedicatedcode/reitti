@@ -62,7 +62,6 @@ class MapStyleControllerTest {
                 new ContextPathHolder(""),
                 mock(UserSettingsJdbcService.class),
                 userMapStyleJdbcService,
-                new MapStyleUrlValidator(mock(I18nService.class)),
                 "http://tile-cache"
         );
 
@@ -102,7 +101,6 @@ class MapStyleControllerTest {
                 new ContextPathHolder(""),
                 mock(UserSettingsJdbcService.class),
                 userMapStyleJdbcService,
-                new MapStyleUrlValidator(mock(I18nService.class)),
                 ""
         );
 

@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,14 +26,16 @@ public class MapStylesSettingsController {
     private final boolean dataManagementEnabled;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final I18nService i18n;
+    private final ObjectMapper objectMapper;
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            I18nService i18n) {
+            I18nService i18n, ObjectMapper objectMapper) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.i18n = i18n;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
@@ -70,7 +73,6 @@ public class MapStylesSettingsController {
         }
         this.userMapStyleJdbcService.setActiveStyleId(user, id);
 
-
         List<MapStyleConfigDTO> persisted = userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList();
         model.addAttribute("defaultStyle", UserMapStyle.defaultReittiStyle());
         model.addAttribute("styles", persisted);
@@ -79,7 +81,6 @@ public class MapStylesSettingsController {
 
         return "settings/map-styles :: styles-table";
     }
-
 
     @PostMapping
     public String saveMapStyle(@AuthenticationPrincipal User user, @RequestParam Map<String, String> params, Model model) {
@@ -107,6 +108,11 @@ public class MapStylesSettingsController {
                 String json = params.get("vectorStyleJson");
                 if (json == null || json.isBlank()) {
                     errors.add(i18n.translate("map.settings.dialog.map-styles.error-style-json-required"));
+                }
+                try {
+                    objectMapper.readTree(json);
+                } catch (Exception e) {
+                    errors.add(i18n.translate("map.settings.dialog.map-styles.error-json"));
                 }
             }
         } else if ("raster".equals(mapType)) {
