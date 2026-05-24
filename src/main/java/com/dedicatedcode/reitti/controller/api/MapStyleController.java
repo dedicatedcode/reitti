@@ -87,7 +87,7 @@ public class MapStyleController {
     }
 
     @GetMapping(value = "/custom/{id}.json", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> getUserCustomStyle(@AuthenticationPrincipal User user, @PathVariable long id, HttpServletRequest request) throws IOException, InterruptedException {
+    public ResponseEntity<JsonNode> getUserCustomStyle(@AuthenticationPrincipal User user, @PathVariable long id, HttpServletRequest request) throws InterruptedException {
         Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, id);
         if (style.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -208,7 +208,7 @@ public class MapStyleController {
         getOrCreateMetadata(mutableStyle).put("reitti:attribution-override", attribution);
 
         if (mutableStyle.get("sources") instanceof ObjectNode sourcesObject) {
-            sourcesObject.fields().forEachRemaining(entry -> {
+            sourcesObject.properties().forEach(entry -> {
                 if (entry.getValue() instanceof ObjectNode source) {
                     source.put("attribution", attribution);
                 }
@@ -334,7 +334,7 @@ public class MapStyleController {
         mutableSources.fieldNames().forEachRemaining(sourceIds::add);
 
         Map<String, String> reservedRasterTiles = reservedRasterTileUrls(baseUrl);
-        mutableSources.fields().forEachRemaining(entry -> {
+        mutableSources.properties().forEach(entry -> {
             if (!(entry.getValue() instanceof ObjectNode source)) {
                 return;
             }
