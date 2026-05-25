@@ -69,13 +69,6 @@ class MapRenderer {
     static setActiveMapStyleId(mapStyleId) {
         window.reittiActiveMapStyleId = mapStyleId;
         window.localStorage?.setItem('mapStyleId', mapStyleId);
-        return fetch(`${window.contextPath || ''}/settings/map-styles/active`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({activeStyleId: mapStyleId})
-        }).catch(error => {
-            console.warn('Unable to persist active map style:', error);
-        });
     }
 
     static getMapStyle(styleId) {
@@ -273,7 +266,6 @@ class MapRenderer {
     async _updateViewStateInternal(next) {
         await this._initialLoadPromise;
         const prev = { ...this.viewState };
-        next.mapStyleId = next.mapStyleId || prev.mapStyleId || MapRenderer.getDefaultMapStyleId();
         this.viewState = next;
 
         const styleChanged = prev.mapStyleId !== next.mapStyleId;
@@ -1318,7 +1310,7 @@ class MapRenderer {
         const satelliteLayerId = this._getStyleCapabilities().satelliteLayerId;
         if (!satelliteLayerId || !this.map.getLayer || !this.map.getLayer(satelliteLayerId)) return;
 
-        this.map.setLayoutProperty('satellite-layer', 'visibility', enable ? 'visible' : 'none');
+        this.map.setLayoutProperty(satelliteLayerId, 'visibility', enable ? 'visible' : 'none');
         this.map.setPaintProperty(satelliteLayerId, 'raster-opacity', enable ? 1 : 0);
 
         const style = this.map.getStyle();

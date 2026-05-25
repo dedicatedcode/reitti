@@ -13,10 +13,9 @@ class MapControls {
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
-                <label class="map-style-selector" title="Change Map style">
+                <label class="map-style-selector" title="${t('map.display-control.map-style.title')}" title="Change Map style">
                     <i class="lni lni-layers-1"></i>
-                    <select id="map-style-select">
-                    </select>
+                    <select id="map-style-select"></select>
                 </label>
                 <button type="button" class="btn map-control-btn active" id="toggle-3d-btn" title="${t('map.display-control.mode.3d.enabled.title')}">
                     <i class="lni lni-map-marker-1"></i>
