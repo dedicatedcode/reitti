@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+
+<body class="settings-page">
+    <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+
+    <div class="settings-container">
+        <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+        <div class="settings-content-area">
+            <div id="map-style-settings-page" class="settings-section active map-styles-settings-page">
+                <h2 th:text="#{settings.map.styles}">Map Styles</h2>
+                <p class="settings-description" th:text="#{settings.map.styles.description}">
+                    Manage custom MapLibre styles and optional data sources.
+                </p>
+
+                <div th:replace="~{fragments/map-styles :: settings-card}"></div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        window.userSettings = /*[[${userSettings}]]*/ {};
+    </script>
+</body>
+
+</html>
