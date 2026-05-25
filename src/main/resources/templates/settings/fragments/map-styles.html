@@ -9,8 +9,10 @@
               hx-target="body">
             <input type="hidden" name="id" th:if="${style != null}" th:value="${style.id()}">
 
-            <div th:if="${error}" class="alert alert-danger" style="display: block;">
-                <span th:text="${error}">Error message</span>
+            <div id="errors">
+                <div th:if="${error}" class="alert alert-danger" th:fragment="errors" style="display: block;">
+                    <span th:utext="${error}">Error message</span>
+                </div>
             </div>
             <h3 th:text="#{${style == null ? 'map.settings.dialog.map-styles.add-title' : 'map.settings.dialog.map-styles.edit-title'}}">Add Custom Style</h3>
 
@@ -80,30 +82,34 @@
                 </div>
 
                 <!-- Vector advanced options -->
-                <details class="custom-map-style-advanced">
+                <div class="form-group">
+                    <details class="custom-map-style-advanced">
                     <summary th:text="#{map.settings.dialog.map-styles.advanced-options}">Advanced Options</summary>
-                    <div class="form-group">
+                    <div>
+                        <div class="form-group">
                         <label for="custom-map-style-attribution-override"
                                th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution Override</label>
                         <input type="text" id="custom-map-style-attribution-override" name="attributionOverride"
                                th:value="${style?.dataSource?.attribution}"
                                placeholder="© OpenStreetMap contributors">
-                    </div>
-                    <div class="form-group">
-                        <label for="custom-map-style-glyphs-url"
-                               th:text="#{map.settings.dialog.map-styles.glyphs-url}">Glyphs URL Override</label>
-                        <input type="text" id="custom-map-style-glyphs-url" name="glyphsUrlOverride"
-                               th:value="${style?.vectorOptions?.glyphsUrlOverride}"
-                               placeholder="https://example.com/{fontstack}/{range}.pbf">
-                    </div>
-                    <div class="form-group">
-                        <label for="custom-map-style-sprite-url"
-                               th:text="#{map.settings.dialog.map-styles.sprite-url}">Sprite URL Override</label>
-                        <input type="text" id="custom-map-style-sprite-url" name="spriteUrlOverride"
-                               th:value="${style?.vectorOptions?.spriteUrlOverride}"
-                               placeholder="https://example.com/sprite">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-glyphs-url"
+                                   th:text="#{map.settings.dialog.map-styles.glyphs-url}">Glyphs URL Override</label>
+                            <input type="text" id="custom-map-style-glyphs-url" name="glyphsUrlOverride"
+                                   th:value="${style?.vectorOptions?.glyphsUrlOverride}"
+                                   placeholder="https://example.com/{fontstack}/{range}.pbf">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-sprite-url"
+                                   th:text="#{map.settings.dialog.map-styles.sprite-url}">Sprite URL Override</label>
+                            <input type="text" id="custom-map-style-sprite-url" name="spriteUrlOverride"
+                                   th:value="${style?.vectorOptions?.spriteUrlOverride}"
+                                   placeholder="https://example.com/sprite">
+                        </div>
                     </div>
                 </details>
+                </div>
             </div>
 
             <!-- ============ RASTER SECTION ============ -->
@@ -145,7 +151,7 @@
 
                 <!-- Raster TileJSON URL -->
                 <div id="raster-tilejson-group"
-                     th:classappend="${(style != null && style.rasterSourceInputType() != 'json-url') ? 'hidden' : ''}">
+                     th:classappend="${(style == null || style.rasterSourceInputType() != 'url-template') ? 'hidden' : ''}">
                     <div class="form-group">
                         <label for="custom-map-style-tilejson-url"
                                th:text="#{map.settings.dialog.map-styles.tilejson-url}">TileJSON URL</label>
@@ -163,82 +169,79 @@
                 </div>
 
                 <!-- Raster Tile Settings -->
-                <details class="custom-map-style-advanced" open>
+                <div class="form-group">
+                    <details open>
                     <summary th:text="#{map.settings.dialog.map-styles.tile-settings}">Tile Settings</summary>
-                    <div class="form-group">
-                        <label for="custom-map-style-minzoom"
-                               th:text="#{map.settings.dialog.map-styles.minzoom}">Min Zoom</label>
-                        <input type="number" id="custom-map-style-minzoom" min="0" max="24" step="1"
-                               placeholder="0" name="minzoom" th:value="${style?.dataSource?.minzoom}">
-                    </div>
-                    <div class="form-group">
-                        <label for="custom-map-style-maxzoom"
-                               th:text="#{map.settings.dialog.map-styles.maxzoom}">Max Zoom</label>
-                        <input type="number" id="custom-map-style-maxzoom" min="0" max="24" step="1"
-                               placeholder="19" name="maxzoom" th:value="${style?.dataSource?.maxzoom}">
-                    </div>
-                    <div class="form-group">
-                        <label for="custom-map-style-tile-size"
-                               th:text="#{map.settings.dialog.map-styles.tile-size}">Tile Size</label>
-                        <select id="custom-map-style-tile-size" name="tileSize">
-                            <option value="256" th:selected="${style?.dataSource?.tileSize == 256}">256</option>
-                            <option value="512" th:selected="${style?.dataSource?.tileSize == 512}">512</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="custom-map-style-scheme"
-                               th:text="#{map.settings.dialog.map-styles.scheme}">Scheme</label>
-                        <select id="custom-map-style-scheme" name="scheme">
-                            <option value="xyz" th:selected="${style?.dataSource?.scheme == 'xyz'}">XYZ</option>
-                            <option value="tms" th:selected="${style?.dataSource?.scheme == 'tms'}">TMS</option>
-                        </select>
+                    <div>
+                        <div class="form-group">
+                            <label for="custom-map-style-minzoom"
+                                   th:text="#{map.settings.dialog.map-styles.minzoom}">Min Zoom</label>
+                            <input type="number" id="custom-map-style-minzoom" min="0" max="24" step="1"
+                                   placeholder="0" name="minzoom" th:value="${style?.dataSource?.minzoom}">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-maxzoom"
+                                   th:text="#{map.settings.dialog.map-styles.maxzoom}">Max Zoom</label>
+                            <input type="number" id="custom-map-style-maxzoom" min="0" max="24" step="1"
+                                   placeholder="19" name="maxzoom" th:value="${style?.dataSource?.maxzoom}">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-tile-size"
+                                   th:text="#{map.settings.dialog.map-styles.tile-size}">Tile Size</label>
+                            <select id="custom-map-style-tile-size" name="tileSize">
+                                <option value="256" th:selected="${style?.dataSource?.tileSize == 256}">256</option>
+                                <option value="512" th:selected="${style?.dataSource?.tileSize == 512}">512</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-map-style-scheme"
+                                   th:text="#{map.settings.dialog.map-styles.scheme}">Scheme</label>
+                            <select id="custom-map-style-scheme" name="scheme">
+                                <option value="xyz" th:selected="${style?.dataSource?.scheme == 'xyz'}">XYZ</option>
+                                <option value="tms" th:selected="${style?.dataSource?.scheme == 'tms'}">TMS</option>
+                            </select>
+                        </div>
                     </div>
                 </details>
+                </div>
             </div>
 
             <!-- Admin toggles -->
-            <div class="custom-map-style-share-panel" th:if="${isAdmin}">
-                <div class="custom-map-style-share-copy">
-                    <label for="custom-map-style-proxy-tiles"
-                           th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</label>
-                    <p th:text="#{map.settings.dialog.map-styles.proxy-tiles-info}">Fetches Tiles via Reitti, disable to use browser fetching.</p>
-                </div>
-                <label class="settings-toggle-switch">
-                    <input type="checkbox" id="custom-map-style-proxy-tiles" name="proxyTiles"
+            <div th:if="${isAdmin}">
+                <div class="form-group slide-reveal-container">
+                    <input type="checkbox" name="proxyTiles" id="custom-map-style-share-copy"
                            th:checked="${style?.custom}">
-                    <span></span>
-                </label>
+                    <label for="custom-map-style-share-copy" class="slide-reveal">
+                        <span class="slide-box"></span>
+                        <span class="label-text" th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</span>
+                    </label>
+                    <p class="form-description" th:text="#{map.settings.dialog.map-styles.proxy-tiles-info}">Fetches
+                        Tiles via Reitti, disable to use browser fetching.</p>
+                </div>
             </div>
-            <div class="custom-map-style-share-panel" th:if="${isAdmin}">
-                <div class="custom-map-style-share-copy">
-                    <label for="custom-map-style-shared"
-                           th:text="#{map.settings.dialog.map-styles.shared}">Share with all users</label>
-                    <p th:text="#{map.settings.dialog.map-styles.shared-info}">Other users can select
+            <div th:if="${isAdmin}">
+                <div class="form-group slide-reveal-container">
+                    <input type="checkbox" name="proxyTiles" id="custom-map-style-shared" th:checked="${style?.shared}">
+                    <label for="custom-map-style-shared" class="slide-reveal">
+                        <span class="slide-box"></span>
+                        <span class="label-text"
+                              th:text="#{map.settings.dialog.map-styles.shared}">Share with all users</span>
+                    </label>
+                    <p class="form-description" th:text="#{map.settings.dialog.map-styles.shared-info}">Other users can
+                        select
                         this style, but only you can edit it.</p>
                 </div>
-                <label class="settings-toggle-switch">
-                    <input type="checkbox" id="custom-map-style-shared" name="shared"
-                           th:checked="${style?.shared}">
-                    <span></span>
-                </label>
             </div>
 
-            <div class="custom-map-style-error" id="custom-map-style-error" role="alert" th:if="${error}">
-                <p th:text="${error}"></p>
-            </div>
-
-            <div class="custom-map-style-actions">
+            <div class="form-actions">
                 <button type="submit" class="btn">
-                    <i class="lni lni-check"></i>
-                    <span th:text="#{map.settings.dialog.map-styles.save}">Save</span>
+                    <span th:text="#{form.save}">Save</span>
                 </button>
-                <button type="button" class="btn btn-link" id="cancel-map-style-btn"
+                <button type="button" class="btn btn-link"
                         th:hx-get="@{/settings/map-styles/clear}"
-                        hx-trigger="click"
                         hx-swap="innerHTML"
                         hx-target="#map-style-form-container">
-                    <i class="lni lni-xmark"></i>
-                    <span th:text="#{map.settings.dialog.map-styles.cancel}">Cancel</span>
+                    <span th:text="#{form.cancel}">Cancel</span>
                 </button>
             </div>
         </form>

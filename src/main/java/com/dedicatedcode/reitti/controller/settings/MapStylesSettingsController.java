@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +65,8 @@ public class MapStylesSettingsController {
         if (id != null) {
             model.addAttribute("style", userMapStyleJdbcService.findById(user, id).map(s -> s.toDto(user)).orElseThrow(() -> new IllegalArgumentException("Unknown style id: " + id)));
         }
+        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+
         return "settings/fragments/map-styles :: style-form";
     }
 
@@ -83,7 +87,7 @@ public class MapStylesSettingsController {
     }
 
     @PostMapping
-    public String saveMapStyle(@AuthenticationPrincipal User user, @RequestParam Map<String, String> params, Model model) {
+    public String saveMapStyle(@AuthenticationPrincipal User user, @RequestParam Map<String, String> params, Model model, HttpServletResponse response) {
         Long id = params.get("id") != null ? Long.parseLong(params.get("id")) : null;
         if (id != null && this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
@@ -132,9 +136,8 @@ public class MapStylesSettingsController {
 
         if (!errors.isEmpty()) {
             model.addAttribute("error", String.join("<br>", errors));
-            model.addAttribute("style", buildFromParams(user, params).toDto(user));
-            model.addAttribute("isAdmin", dataManagementEnabled);
-            return "settings/fragments/map-styles :: style-form";
+            response.setHeader("HX-Retarget", "#errors");
+            return "settings/fragments/map-styles :: errors";
         }
 
         UserMapStyle mapStyle = buildFromParams(user, params);

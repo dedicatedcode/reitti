@@ -38,7 +38,7 @@ public record UserMapStyle(
                 rasterSourceInputType(),
                 styleUrl,
                 styleInput(),
-                id() != -1,
+                id != null && id != -1,
                 shared(),
                 userId().equals(user.getId()),
                 dataSource(),
