@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
-import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -59,7 +58,6 @@ public class MapStyleController {
     private final ContextPathHolder contextPathHolder;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
-    private final MapStyleUrlValidator mapStyleUrlValidator;
     private final HttpClient httpClient;
     private final boolean tileCacheEnabled;
 
@@ -68,13 +66,11 @@ public class MapStyleController {
             ContextPathHolder contextPathHolder,
             UserSettingsJdbcService userSettingsJdbcService,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapStyleUrlValidator mapStyleUrlValidator,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
         this.contextPathHolder = contextPathHolder;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
-        this.mapStyleUrlValidator = mapStyleUrlValidator;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -91,7 +87,7 @@ public class MapStyleController {
     }
 
     @GetMapping(value = "/custom/{id}.json", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> getUserCustomStyle(@AuthenticationPrincipal User user, @PathVariable long id, HttpServletRequest request) throws IOException, InterruptedException {
+    public ResponseEntity<JsonNode> getUserCustomStyle(@AuthenticationPrincipal User user, @PathVariable long id, HttpServletRequest request) throws InterruptedException {
         Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, id);
         if (style.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -119,7 +115,7 @@ public class MapStyleController {
     }
 
     private JsonNode fetchRemoteStyle(UserMapStyle style) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(mapStyleUrlValidator.requireHttpUrl(style.styleUrl(), "Vector style URL"))
+        HttpRequest request = HttpRequest.newBuilder(URI.create(style.styleUrl()))
                 .timeout(Duration.ofSeconds(20))
                 .header("Accept", "application/json")
                 .GET()
@@ -212,7 +208,7 @@ public class MapStyleController {
         getOrCreateMetadata(mutableStyle).put("reitti:attribution-override", attribution);
 
         if (mutableStyle.get("sources") instanceof ObjectNode sourcesObject) {
-            sourcesObject.fields().forEachRemaining(entry -> {
+            sourcesObject.properties().forEach(entry -> {
                 if (entry.getValue() instanceof ObjectNode source) {
                     source.put("attribution", attribution);
                 }
@@ -338,7 +334,7 @@ public class MapStyleController {
         mutableSources.fieldNames().forEachRemaining(sourceIds::add);
 
         Map<String, String> reservedRasterTiles = reservedRasterTileUrls(baseUrl);
-        mutableSources.fields().forEachRemaining(entry -> {
+        mutableSources.properties().forEach(entry -> {
             if (!(entry.getValue() instanceof ObjectNode source)) {
                 return;
             }

@@ -13,13 +13,17 @@
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/map-style-settings.js}"></script>
 </head>
 
 <body class="settings-page">
     <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
 
     <div class="settings-container">
-        <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+        <div
+            th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}">
+        </div>
         <div class="settings-content-area">
             <div id="map-style-settings-page" class="settings-section active map-styles-settings-page">
                 <h2 th:text="#{settings.map.styles}">Map Styles</h2>
@@ -27,13 +31,105 @@
                     Manage custom MapLibre styles and optional data sources.
                 </p>
 
-                <div th:replace="~{fragments/map-styles :: settings-card}"></div>
+                <div class="settings-card" id="map-style-list-container" >
+                    <table th:fragment="styles-table">
+                        <thead>
+                        <tr>
+                            <th th:text="#{map.settings.dialog.map-styles.table.name}">Name</th>
+                            <th th:text="#{map.settings.dialog.map-styles.table.active}">Active</th>
+                            <th th:text="#{map.settings.dialog.map-styles.table.type}">Type</th>
+                            <th th:text="#{map.settings.dialog.map-styles.table.notes}">Notes</th>
+                            <th th:text="#{map.settings.dialog.map-styles.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Reitti</td>
+                            <td>
+                                <span th:if="${'reitti' == activeMapStyleId}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{map.settings.dialog.map-styles.table.status.active}">In Use</span>
+                                </span>
+                                <span th:if="${'reitti' != activeMapStyleId}">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{map.settings.dialog.map-styles.table.status.inactive}">Available</span>
+                                </span>
+                            </td>
+                            <td th:text="#{map.settings.dialog.map-styles.map-type.vector}">Vector</td>
+                            <td><span th:text="#{map.settings.dialog.map-styles.table.default}">Managed by reitti</span></td>
+                            <td>
+                                <button th:if="${'reitti' != activeMapStyleId}"
+                                        class="btn"
+                                        th:hx-post="@{/settings/map-styles/activate(id=reitti)}"
+                                        hx-target="#map-style-list-container"
+                                        hx-vals='js:{"timezone": getUserTimezone()}'
+                                        th:text="#{map.settings.dialog.map-styles.set-as-active}">Set as Active
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:each="style : ${styles}">
+                            <td th:text="${style.label()}"></td>
+                            <td>
+                                <span th:if="${style.id() == activeMapStyleId}">
+                                    <i class="lni lni-check"></i>
+                                    <span th:text="#{map.settings.dialog.map-styles.table.status.active}">In Use</span>
+                                </span>
+                                <span th:if="${style.id() != activeMapStyleId}">
+                                    <i class="lni lni-xmark"></i>
+                                    <span th:text="#{map.settings.dialog.map-styles.table.status.inactive}">Available</span>
+                                </span>
+                            </td>
+                            <td th:text="#{'map.settings.dialog.map-styles.map-type.' + ${style.mapType()}}">Vector</td>
+                            <td><span th:unless="${style.editable()}" th:text="#{map.settings.dialog.map-styles.table.shared}"></span></td>
+                            <td>
+                                    <button th:if="${style.id() != activeMapStyleId}" class="btn"
+                                            th:hx-post="@{/settings/map-styles/activate(id=${style.id()})}"
+                                            hx-target="#map-style-list-container"
+                                            th:text="#{map.settings.dialog.map-styles.set-as-active}">Set as Active
+                                    </button>
+                                    <button th:if="${style.editable()}" class="btn"
+                                            th:hx-get="@{/settings/map-styles/form(id=${style.id()})}"
+                                            hx-target="#map-style-form-container"
+                                            hx-vals='js:{"timezone": getUserTimezone()}'
+                                            hx-swap="innerHTML"
+                                            th:text="#{form.edit}">Edit
+                                    </button>
+
+                                    <button th:if="${style.editable()}" class="btn btn-danger"
+                                            th:hx-delete="@{/settings/map-styles(id=${style.id()})}"
+                                            th:hx-confirm="#{map.settings.dialog.map-styles.delete.confirm}"
+                                            hx-target="body"
+                                            th:text="#{form.delete}">Delete
+                                    </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-card" id="map-style-form-container">
+                    <div class="settings-card-header" th:fragment="empty-form-state">
+                        <h3 th:text="#{map.settings.dialog.map-styles.custom-title}">Custom Styles</h3>
+                        <button th:hx-get="@{/settings/map-styles/form}"
+                                hx-vals='{"type": "vector"}'
+                                hx-target="#map-style-form-container"
+                                type="button" class="btn">
+                            <i class="lni lni-plus"></i>
+                            <span th:text="#{map.settings.dialog.map-styles.add}">Add Style</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script th:inline="javascript">
-        window.userSettings = /*[[${userSettings}]]*/ {};
+        window.contextPath = /*[[@{/}]]*/ "/";
+        window.contextPath = window.contextPath.replace(/\/$/, '');
+        window.userSettings = /*[[${userSettings}]]*/ {}
+        window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/[];
+        window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ "reitti";
+        window.reittiIsAdmin = /*[[${isAdmin}]]*/ false;
     </script>
 </body>
 

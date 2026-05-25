@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<body>
+<div th:fragment="style-form">
+    <div th:fragment="style-form">
+        <form id="custom-map-style-form"
+              class="custom-map-style-form"
+              th:hx-post="@{/settings/map-styles}"
+              hx-target="body">
+            <input type="hidden" name="id" th:if="${style != null}" th:value="${style.id()}">
+
+            <div th:if="${error}" class="alert alert-danger" style="display: block;">
+                <span th:text="${error}">Error message</span>
+            </div>
+            <h3 th:text="#{${style == null ? 'map.settings.dialog.map-styles.add-title' : 'map.settings.dialog.map-styles.edit-title'}}">Add Custom Style</h3>
+
+            <div class="form-group">
+                <label for="custom-map-style-name"
+                       th:text="#{map.settings.dialog.map-styles.name}">Name</label>
+                <input type="text" id="custom-map-style-name" name="name"
+                       th:value="${style?.label}"
+                       th:placeholder="#{map.settings.dialog.map-styles.name.placeholder}"
+                       autocomplete="off">
+            </div>
+
+            <!-- Map Type -->
+            <div class="form-group">
+                <label th:text="#{map.settings.dialog.map-styles.map-type}">Map Type</label>
+                <div class="toggle-buttons" id="map-type-toggle">
+                    <input id="vector-select" type="radio" name="mapType" value="vector"
+                           th:checked="${style == null || style.mapType() == 'vector'}">
+                    <label for="vector-select"
+                           th:text="#{map.settings.dialog.map-styles.map-type.vector}">Vector Style</label>
+                    <input id="raster-select" type="radio" name="mapType" value="raster"
+                           th:checked="${style != null && style.mapType() == 'raster'}">
+                    <label for="raster-select"
+                           th:text="#{map.settings.dialog.map-styles.map-type.raster}">Raster Tiles</label>
+                </div>
+            </div>
+
+            <!-- ============ VECTOR SECTION ============ -->
+            <div class="style-section" id="vector-section"
+                 th:classappend="${(style != null && style.mapType() == 'raster') ? 'hidden' : ''}">
+
+                <div class="form-group">
+                    <label th:text="#{map.settings.dialog.map-styles.style-input}">Style Input</label>
+                    <div class="toggle-buttons" id="vector-input-toggle">
+                        <input id="vector-style-input-url" type="radio" name="styleInputType" value="url"
+                               th:checked="${style == null || style.styleInputType() == 'url'}">
+                        <label for="vector-style-input-url"
+                               th:text="#{map.settings.dialog.map-styles.style-input.url}">Style JSON URL</label>
+                        <input id="vector-style-input-json" type="radio" name="styleInputType" value="json"
+                               th:checked="${style != null && style.styleInputType() == 'json'}">
+                        <label for="vector-style-input-json"
+                               th:text="#{map.settings.dialog.map-styles.style-input.json}">Paste Style JSON</label>
+                    </div>
+                </div>
+
+                <!-- URL input -->
+                <div id="vector-input-url-group"
+                     th:classappend="${(style != null && style.styleInputType() != 'url') ? 'hidden' : ''}">
+                    <div class="form-group">
+                        <label for="custom-map-style-url"
+                               th:text="#{map.settings.dialog.map-styles.style-json-url}">Style JSON URL</label>
+                        <input type="url" id="custom-map-style-url" name="vectorStyleUrl"
+                               th:value="${style?.styleUrl}"
+                               placeholder="https://example.com/style.json" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- JSON textarea -->
+                <div id="vector-input-json-group"
+                     th:classappend="${(style == null || style.styleInputType() != 'json' ) ? 'hidden' : ''}">
+                    <div class="form-group">
+                        <label for="custom-map-style-json"
+                               th:text="#{map.settings.dialog.map-styles.style-json}">Style JSON</label>
+                        <textarea id="custom-map-style-json" rows="8" name="vectorStyleJson"
+                                  placeholder='{"version": 8, ...}' th:text="${style?.styleInput}"></textarea>
+                    </div>
+                </div>
+
+                <!-- Vector advanced options -->
+                <details class="custom-map-style-advanced">
+                    <summary th:text="#{map.settings.dialog.map-styles.advanced-options}">Advanced Options</summary>
+                    <div class="form-group">
+                        <label for="custom-map-style-attribution-override"
+                               th:text="#{map.settings.dialog.map-styles.attribution-override}">Attribution Override</label>
+                        <input type="text" id="custom-map-style-attribution-override" name="attributionOverride"
+                               th:value="${style?.dataSource?.attribution}"
+                               placeholder="© OpenStreetMap contributors">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-glyphs-url"
+                               th:text="#{map.settings.dialog.map-styles.glyphs-url}">Glyphs URL Override</label>
+                        <input type="text" id="custom-map-style-glyphs-url" name="glyphsUrlOverride"
+                               th:value="${style?.vectorOptions?.glyphsUrlOverride}"
+                               placeholder="https://example.com/{fontstack}/{range}.pbf">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-sprite-url"
+                               th:text="#{map.settings.dialog.map-styles.sprite-url}">Sprite URL Override</label>
+                        <input type="text" id="custom-map-style-sprite-url" name="spriteUrlOverride"
+                               th:value="${style?.vectorOptions?.spriteUrlOverride}"
+                               placeholder="https://example.com/sprite">
+                    </div>
+                </details>
+            </div>
+
+            <!-- ============ RASTER SECTION ============ -->
+            <div class="style-section" id="raster-section"
+                 th:classappend="${(style == null || style.mapType() == 'vector') ? 'hidden' : ''}">
+
+                <div class="form-group">
+                    <label th:text="#{map.settings.dialog.map-styles.style-input}">Style Input</label>
+                    <div class="toggle-buttons" id="raster-input-toggle">
+                        <input id="raster-style-input-template" type="radio" name="rasterSourceInputType" value="url-template"
+                               th:checked="${style == null || style.rasterSourceInputType() == 'url-template'}">
+                        <label for="raster-style-input-template"
+                               th:text="#{map.settings.dialog.map-styles.source-input.tile-template}">Tile URL Template</label>
+                        <input id="raster-style-input-tilejson" type="radio" name="rasterSourceInputType" value="json-url"
+                               th:checked="${style != null && style.rasterSourceInputType() == 'json-url'}">
+                        <label for="raster-style-input-tilejson"
+                               th:text="#{map.settings.dialog.map-styles.source-input.tilejson}">TileJSON URL</label>
+                    </div>
+                </div>
+
+                <!-- Raster URL Template -->
+                <div id="raster-template-group"
+                     th:classappend="${(style != null && style.rasterSourceInputType() == 'json-url') ? 'hidden' : ''}">
+                    <div class="form-group">
+                        <label for="custom-map-style-tile-template"
+                               th:text="#{map.settings.dialog.map-styles.tile-template}">Tile URL Template</label>
+                        <input type="text" id="custom-map-style-tile-template" name="rasterTileTemplate"
+                               th:value="${style?.dataSource?.tileUrlTemplate}"
+                               placeholder="https://tile.example.com/{z}/{x}/{y}.png">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-attribution"
+                               th:text="#{map.settings.dialog.map-styles.attribution}">Attribution</label>
+                        <input type="text" id="custom-map-style-attribution" name="attributionOverride"
+                               th:value="${style?.dataSource?.attribution}"
+                               placeholder="© OpenStreetMap contributors">
+                    </div>
+                </div>
+
+                <!-- Raster TileJSON URL -->
+                <div id="raster-tilejson-group"
+                     th:classappend="${(style != null && style.rasterSourceInputType() != 'json-url') ? 'hidden' : ''}">
+                    <div class="form-group">
+                        <label for="custom-map-style-tilejson-url"
+                               th:text="#{map.settings.dialog.map-styles.tilejson-url}">TileJSON URL</label>
+                        <input type="url" id="custom-map-style-tilejson-url" name="rasterTileJsonUrl"
+                               th:value="${style?.dataSource?.tileJsonUrl}"
+                               placeholder="https://example.com/tiles.json">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-raster-attribution-override"
+                               th:text="#{map.settings.dialog.map-styles.attribution}">Attribution Override</label>
+                        <input type="text" id="custom-map-style-raster-attribution-override" name="attributionOverride"
+                               th:value="${style?.dataSource?.attribution}"
+                               placeholder="© OpenStreetMap contributors">
+                    </div>
+                </div>
+
+                <!-- Raster Tile Settings -->
+                <details class="custom-map-style-advanced" open>
+                    <summary th:text="#{map.settings.dialog.map-styles.tile-settings}">Tile Settings</summary>
+                    <div class="form-group">
+                        <label for="custom-map-style-minzoom"
+                               th:text="#{map.settings.dialog.map-styles.minzoom}">Min Zoom</label>
+                        <input type="number" id="custom-map-style-minzoom" min="0" max="24" step="1"
+                               placeholder="0" name="minzoom" th:value="${style?.dataSource?.minzoom}">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-maxzoom"
+                               th:text="#{map.settings.dialog.map-styles.maxzoom}">Max Zoom</label>
+                        <input type="number" id="custom-map-style-maxzoom" min="0" max="24" step="1"
+                               placeholder="19" name="maxzoom" th:value="${style?.dataSource?.maxzoom}">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-tile-size"
+                               th:text="#{map.settings.dialog.map-styles.tile-size}">Tile Size</label>
+                        <select id="custom-map-style-tile-size" name="tileSize">
+                            <option value="256" th:selected="${style?.dataSource?.tileSize == 256}">256</option>
+                            <option value="512" th:selected="${style?.dataSource?.tileSize == 512}">512</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-map-style-scheme"
+                               th:text="#{map.settings.dialog.map-styles.scheme}">Scheme</label>
+                        <select id="custom-map-style-scheme" name="scheme">
+                            <option value="xyz" th:selected="${style?.dataSource?.scheme == 'xyz'}">XYZ</option>
+                            <option value="tms" th:selected="${style?.dataSource?.scheme == 'tms'}">TMS</option>
+                        </select>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Admin toggles -->
+            <div class="custom-map-style-share-panel" th:if="${isAdmin}">
+                <div class="custom-map-style-share-copy">
+                    <label for="custom-map-style-proxy-tiles"
+                           th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</label>
+                    <p th:text="#{map.settings.dialog.map-styles.proxy-tiles-info}">Fetches Tiles via Reitti, disable to use browser fetching.</p>
+                </div>
+                <label class="settings-toggle-switch">
+                    <input type="checkbox" id="custom-map-style-proxy-tiles" name="proxyTiles"
+                           th:checked="${style?.custom}">
+                    <span></span>
+                </label>
+            </div>
+            <div class="custom-map-style-share-panel" th:if="${isAdmin}">
+                <div class="custom-map-style-share-copy">
+                    <label for="custom-map-style-shared"
+                           th:text="#{map.settings.dialog.map-styles.shared}">Share with all users</label>
+                    <p th:text="#{map.settings.dialog.map-styles.shared-info}">Other users can select
+                        this style, but only you can edit it.</p>
+                </div>
+                <label class="settings-toggle-switch">
+                    <input type="checkbox" id="custom-map-style-shared" name="shared"
+                           th:checked="${style?.shared}">
+                    <span></span>
+                </label>
+            </div>
+
+            <div class="custom-map-style-error" id="custom-map-style-error" role="alert" th:if="${error}">
+                <p th:text="${error}"></p>
+            </div>
+
+            <div class="custom-map-style-actions">
+                <button type="submit" class="btn">
+                    <i class="lni lni-check"></i>
+                    <span th:text="#{map.settings.dialog.map-styles.save}">Save</span>
+                </button>
+                <button type="button" class="btn btn-link" id="cancel-map-style-btn"
+                        th:hx-get="@{/settings/map-styles/clear}"
+                        hx-trigger="click"
+                        hx-swap="innerHTML"
+                        hx-target="#map-style-form-container">
+                    <i class="lni lni-xmark"></i>
+                    <span th:text="#{map.settings.dialog.map-styles.cancel}">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+    <script>
+        (function() {
+            function bindEvents() {
+                const mapTypeToggle = document.getElementById('map-type-toggle');
+                if (mapTypeToggle) {
+                    mapTypeToggle.addEventListener('change', function(e) {
+                        if (e.target.name === 'mapType') {
+                            const vectorSection = document.getElementById('vector-section');
+                            const rasterSection = document.getElementById('raster-section');
+                            if (e.target.value === 'vector') {
+                                vectorSection.classList.remove('hidden');
+                                rasterSection.classList.add('hidden');
+                            } else {
+                                vectorSection.classList.add('hidden');
+                                rasterSection.classList.remove('hidden');
+                            }
+                        }
+                    });
+                }
+
+                // Vector input toggle
+                const vectorInputToggle = document.getElementById('vector-input-toggle');
+                if (vectorInputToggle) {
+                    vectorInputToggle.addEventListener('change', function(e) {
+                        if (e.target.name === 'styleInputType') {
+                            const jsonGroup = document.getElementById('vector-input-json-group');
+                            const urlGroup = document.getElementById('vector-input-url-group');
+                            if (document.getElementById('vector-style-input-json').checked) {
+                                jsonGroup.classList.remove('hidden');
+                                urlGroup.classList.add('hidden');
+                            } else {
+                                jsonGroup.classList.add('hidden');
+                                urlGroup.classList.remove('hidden');
+                            }
+                        }
+                    });
+                }
+
+                // Raster input toggle
+                const rasterInputToggle = document.getElementById('raster-input-toggle');
+                if (rasterInputToggle) {
+                    rasterInputToggle.addEventListener('change', function(e) {
+                        if (e.target.name === 'rasterSourceInputType') {
+                            const templateGroup = document.getElementById('raster-template-group');
+                            const tilejsonGroup = document.getElementById('raster-tilejson-group');
+                            if (document.getElementById('raster-style-input-tilejson').checked) {
+                                templateGroup.classList.add('hidden');
+                                tilejsonGroup.classList.remove('hidden');
+                            } else {
+                                templateGroup.classList.remove('hidden');
+                                tilejsonGroup.classList.add('hidden');
+                            }
+                        }
+                    });
+                }
+            }
+
+            bindEvents();
+        })();
+    </script>
+    </div>
+</body>
+</html>

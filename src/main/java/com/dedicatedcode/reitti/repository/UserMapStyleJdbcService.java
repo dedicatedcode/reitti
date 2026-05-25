@@ -1,7 +1,5 @@
 package com.dedicatedcode.reitti.repository;
 
-import com.dedicatedcode.reitti.dto.map.MapStyleConfigDTO;
-import com.dedicatedcode.reitti.dto.map.MapStyleSettingsDTO;
 import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
@@ -178,30 +176,6 @@ public class UserMapStyleJdbcService {
         }
     }
 
-    public MapStyleSettingsDTO getSettings(User user, String contextPath) {
-        return new MapStyleSettingsDTO(
-                getActiveStyleId(user),
-                findAll(user).stream().map(style -> toDto(user, style, contextPath)).toList()
-        );
-    }
-
-    public MapStyleConfigDTO toDto(User user, UserMapStyle style, String contextPath) {
-        return new MapStyleConfigDTO(
-                style.frontendId(),
-                style.name(),
-                style.mapType(),
-                style.styleJson() != null ? "json" : style.styleInputType(),
-                style.rasterSourceInputType(),
-                styleUrlForClient(style, contextPath),
-                style.styleInput(),
-                true,
-                style.shared(),
-                style.userId().equals(user.getId()),
-                style.dataSource(),
-                style.vectorOptions()
-        );
-    }
-
     public static Optional<Long> resolveCustomId(String frontendId) {
         if (frontendId == null || frontendId.isBlank() || !frontendId.startsWith("custom-")) {
             return Optional.empty();
@@ -211,10 +185,6 @@ public class UserMapStyleJdbcService {
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
-    }
-
-    private String styleUrlForClient(UserMapStyle style, String contextPath) {
-        return contextPath + "/map/custom/" + style.id() + ".json?v=" + style.version();
     }
 
     private static String defaultText(String value, String defaultValue) {
