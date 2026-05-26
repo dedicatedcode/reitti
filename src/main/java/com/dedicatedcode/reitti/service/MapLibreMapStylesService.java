@@ -78,12 +78,12 @@ private final HttpClient httpClient;
         }
 
         return new MapLibreStyleDefinition(
-        styleId,
-        style.name(),
-        style.mapType(),
-        "json",
-        styleJson,
-        buildCapabilities(style)
+            styleId,
+            style.name(),
+            style.mapType(),
+            "json",
+            styleJson,
+            buildCapabilities(style)
         );
     }
 
