@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
-import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -35,7 +33,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +50,6 @@ public class TileProxyController {
     private final boolean tileCacheEnabled;
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
-    private final MapStyleUrlValidator mapStyleUrlValidator;
     private final MapLibreMapStylesService mapLibreMapStylesService;
 
     // Maps source names to internal paths and coordinate ordering
@@ -80,13 +76,11 @@ public class TileProxyController {
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapStyleUrlValidator mapStyleUrlValidator,
             MapLibreMapStylesService mapLibreMapStylesService) {
         this.tileCacheUrl = tileCacheUrl;
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
-        this.mapStyleUrlValidator = mapStyleUrlValidator;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -146,7 +140,7 @@ public class TileProxyController {
             if (!source.get().proxyTiles()) {
                 return ResponseEntity.notFound().build();
             }
-            URI tileJsonUri = mapStyleUrlValidator.requireHttpUrl(tileJsonUrl, "Custom TileJSON URL");
+            URI tileJsonUri = URI.create(tileJsonUrl);
 
             HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
             if (response.statusCode() != 200) {
@@ -207,7 +201,7 @@ public class TileProxyController {
                     .replace("{y}", String.valueOf(y))
                     .replace("{r}", "");
 
-            URI upstreamTileUri = mapStyleUrlValidator.requireHttpUrl(upstreamTileUrl, "Custom tile URL");
+            URI upstreamTileUri = URI.create(upstreamTileUrl);
             log.trace("Fetching custom tile [{}/{}]: {}", styleId, sourceId, upstreamTileUri);
 
             if (this.tileCacheEnabled) {
@@ -345,7 +339,7 @@ public class TileProxyController {
         return response.body();
     }
 
-    private Optional<TileSource> resolveTileSource(User user, String styleId, String sourceId, boolean proxyTiles) throws IOException {
+    private Optional<TileSource> resolveTileSource(User user, String styleId, String sourceId, boolean proxyTiles) {
         if (!StringUtils.hasText(styleId) || !StringUtils.hasText(sourceId)) {
             return Optional.empty();
         }
@@ -356,21 +350,21 @@ public class TileProxyController {
             return Optional.empty();
         }
 
-        return sourceFromStyle(styleJson, sourceId, null, proxyTiles);
+        return sourceFromStyle(styleJson, sourceId, proxyTiles);
     }
 
-    private Optional<TileSource> sourceFromStyle(JsonNode style, String sourceId, URI styleBaseUri, boolean proxyTiles) {
+    private Optional<TileSource> sourceFromStyle(JsonNode style, String sourceId, boolean proxyTiles) {
         JsonNode source = findSource(style, sourceId);
         if (source == null) {
             return Optional.empty();
         }
 
-        String tileJsonUrl = resolveSourceUrl(source.path("url").asText(""), styleBaseUri);
+        String tileJsonUrl = resolveSourceUrl(source.path("url").asText(""));
         List<String> tileTemplates = new ArrayList<>();
         JsonNode tiles = source.get("tiles");
         if (tiles instanceof ArrayNode tileArray) {
             tileArray.forEach(tile -> {
-                String tileUrl = resolveTileTemplate(tile.asText(""), styleBaseUri);
+                String tileUrl = resolveTileTemplate(tile.asText(""));
                 if (StringUtils.hasText(tileUrl)) {
                     tileTemplates.add(normalizeTileTemplateForProxy(tileUrl));
                 }
@@ -390,9 +384,7 @@ public class TileProxyController {
         }
         List<String> allSourceIds = new ArrayList<>();
         sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
-        var fields = sourcesObject.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
             if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey(), allSourceIds)) {
                 return entry.getValue();
             }
@@ -400,35 +392,29 @@ public class TileProxyController {
         return null;
     }
 
-    private String resolveSourceUrl(String sourceUrl, URI styleBaseUri) {
+    private String resolveSourceUrl(String sourceUrl) {
         if (!StringUtils.hasText(sourceUrl)) {
             return null;
         }
         if (sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://")) {
             return sourceUrl;
         }
-        if (styleBaseUri != null) {
-            return styleBaseUri.resolve(sourceUrl).toString();
-        }
         return null;
     }
 
-    private String resolveTileTemplate(String tileUrl, URI styleBaseUri) {
+    private String resolveTileTemplate(String tileUrl) {
         if (!StringUtils.hasText(tileUrl)) {
             return null;
         }
         if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
             return tileUrl;
         }
-        if (styleBaseUri != null && containsTilePlaceholders(tileUrl)) {
-            return styleBaseUri.resolve(tileUrl).toString();
-        }
         return null;
     }
 
     private String tileTemplate(TileSource source) throws Exception {
         if (!source.tileUrlTemplates().isEmpty()) {
-            return source.tileUrlTemplates().get(0);
+            return source.tileUrlTemplates().getFirst();
         }
 
         if (!StringUtils.hasText(source.tileJsonUrl())) {
@@ -436,7 +422,7 @@ public class TileProxyController {
         }
 
         String tileJsonUrl = source.tileJsonUrl();
-        URI tileJsonUri = mapStyleUrlValidator.requireHttpUrl(tileJsonUrl, "Custom TileJSON URL");
+        URI tileJsonUri = URI.create(tileJsonUrl);
 
         HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
         if (response.statusCode() != 200) {
@@ -458,10 +444,6 @@ public class TileProxyController {
             return normalizeTileTemplateForProxy(tileJsonUri.resolve(tileUrl).toString());
         }
         return null;
-    }
-
-    private boolean containsTilePlaceholders(String tileUrl) {
-        return tileUrl.contains("{z}") && tileUrl.contains("{x}") && tileUrl.contains("{y}");
     }
 
     private String styleSourceTileUrl(HttpServletRequest request, String styleId, String sourceId, String tileUrl) {

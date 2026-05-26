@@ -4,10 +4,8 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
-import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -118,7 +116,6 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    new MapStyleUrlValidator(mock(I18nService.class)),
                     stylesService
             );
 
@@ -165,7 +162,6 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    new MapStyleUrlValidator(mock(I18nService.class)),
                     stylesService
             );
 
@@ -226,7 +222,6 @@ class TileProxyControllerTest {
                     "",                          // cache disabled (empty url)
                     new ObjectMapper(),
                     jdbc,
-                    new MapStyleUrlValidator(mock(I18nService.class)),
                     stylesService
             );
 
@@ -300,7 +295,6 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    new MapStyleUrlValidator(mock(I18nService.class)),
                     stylesService
             );
 
@@ -335,7 +329,7 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null, null
+                    null, null
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -365,7 +359,7 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null, null
+                    null, null
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -395,7 +389,7 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null, null
+                    null, null
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -426,7 +420,7 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null, null
+                    null, null
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -446,7 +440,7 @@ class TileProxyControllerTest {
         TileProxyController controller = new TileProxyController(
                 "http://localhost:9999",
                 new ObjectMapper(),
-                null, null, null
+                null, null
         );
 
         HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -474,7 +468,6 @@ class TileProxyControllerTest {
                 "",
                 new ObjectMapper(),
                 mock(UserMapStyleJdbcService.class),
-                mock(MapStyleUrlValidator.class),
                 stylesService
         );
 
@@ -493,7 +486,6 @@ class TileProxyControllerTest {
                 "",
                 new ObjectMapper(),
                 mock(UserMapStyleJdbcService.class),
-                mock(MapStyleUrlValidator.class),
                 stylesService
         );
 
