@@ -279,9 +279,9 @@ public class TileProxyController {
                 long numericId = Long.parseLong(styleId.substring("custom-".length()));
                 Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, numericId);
                 if (style.isPresent()) {
-                    MapStyleDataSource source = style.get().getSource();
+                    MapStyleDataSource source = style.get().dataSource();
                     if (source != null) {
-                        return source.isProxyTiles();
+                        return source.proxyTiles();
                     }
                 }
             } catch (NumberFormatException ignored) {
