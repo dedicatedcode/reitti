@@ -5,9 +5,13 @@ import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.dedicatedcode.reitti.service.MapStyleUrlValidator;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +22,16 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class TileProxyControllerTest {
     private static final String JAWG_SOURCE_ID = "streets-v2+landcover-v1.1+hillshade-v1";
     private static final String JAWG_TILE_URL = "https://tile.jawg.io/streets-v2+landcover-v1.1+hillshade-v1/{z}/{x}/{y}.pbf?access-token=test-token";
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void resolvesReadableSourcePathIdBackToOriginalTileTemplate() throws Exception {
@@ -68,11 +76,21 @@ class TileProxyControllerTest {
             UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
             when(userMapStyleJdbcService.findById(user, 42L)).thenReturn(Optional.of(style));
 
+            // Build the style JSON that the service would return
+            ObjectNode styleJson = (ObjectNode) objectMapper.readTree(style.styleJson());
+            // Add runtime sources (the service would do this, but we need to simulate it)
+            // The controller's resolveTileSource will look at the style JSON returned by the service.
+            // We'll mock the service to return this style JSON directly.
+            MapLibreMapStylesService mapLibreMapStylesService = mock(MapLibreMapStylesService.class);
+            when(mapLibreMapStylesService.getCompleteStyleJson(eq("custom-42"), eq(user)))
+                    .thenReturn(styleJson);
+
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     userMapStyleJdbcService,
-                    new MapStyleUrlValidator(mock(I18nService.class))
+                    new MapStyleUrlValidator(mock(I18nService.class)),
+                    mapLibreMapStylesService
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
@@ -137,11 +155,17 @@ class TileProxyControllerTest {
             UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
             when(userMapStyleJdbcService.findById(user, 42L)).thenReturn(Optional.of(style));
 
+            ObjectNode styleJson = (ObjectNode) objectMapper.readTree(style.styleJson());
+            MapLibreMapStylesService mapLibreMapStylesService = mock(MapLibreMapStylesService.class);
+            when(mapLibreMapStylesService.getCompleteStyleJson(eq("custom-42"), eq(user)))
+                    .thenReturn(styleJson);
+
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     userMapStyleJdbcService,
-                    new MapStyleUrlValidator(mock(I18nService.class))
+                    new MapStyleUrlValidator(mock(I18nService.class)),
+                    mapLibreMapStylesService
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
@@ -205,11 +229,17 @@ class TileProxyControllerTest {
             UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
             when(userMapStyleJdbcService.findById(user, 42L)).thenReturn(Optional.of(style));
 
+            ObjectNode styleJson = (ObjectNode) objectMapper.readTree(style.styleJson());
+            MapLibreMapStylesService mapLibreMapStylesService = mock(MapLibreMapStylesService.class);
+            when(mapLibreMapStylesService.getCompleteStyleJson(eq("custom-42"), eq(user)))
+                    .thenReturn(styleJson);
+
             TileProxyController controller = new TileProxyController(
                     "",
                     new ObjectMapper(),
                     userMapStyleJdbcService,
-                    new MapStyleUrlValidator(mock(I18nService.class))
+                    new MapStyleUrlValidator(mock(I18nService.class)),
+                    mapLibreMapStylesService
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
