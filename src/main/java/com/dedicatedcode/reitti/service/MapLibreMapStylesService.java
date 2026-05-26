@@ -69,10 +69,7 @@ public class MapLibreMapStylesService {
         List<MapLibreStyleDefinition> definitions = new ArrayList<>();
         for (UserMapStyle style : all) {
             try {
-                MapLibreStyleDefinition def = buildStyleDefinition(style);
-                if (def != null) {
-                    definitions.add(def);
-                }
+                definitions.add(buildStyleDefinition(style));
             } catch (Exception e) {
                 log.warn("Failed to build style definition for style [{}]: {}", style.id(), e.getMessage());
             }
@@ -305,9 +302,7 @@ public class MapLibreMapStylesService {
             return;
         }
 
-        Iterator<Map.Entry<String, JsonNode>> fields = sourcesObject.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
             String sourceId = entry.getKey();
             JsonNode source = entry.getValue();
             if (!(source instanceof ObjectNode sourceNode)) {
@@ -387,14 +382,13 @@ public class MapLibreMapStylesService {
         String styleId = String.valueOf(style.id());
         String contextPath = contextPathHolder.getContextPath();
 
-        MapLibreStyleDefinition def = new MapLibreStyleDefinition();
-        def.setId(styleId);
-        def.setLabel(style.name());
-        def.setMapType(style.mapType());
-        def.setStyleInputType("url");
-        def.setStyleUrl(contextPath + "/api/v1/tiles/styles/" + styleId + "/style.json");
-        def.setCapabilities(buildCapabilities(style));
-        return def;
+        return new MapLibreStyleDefinition(
+                styleId,
+                style.name(),
+                style.mapType(),
+                "url",
+                contextPath + "/api/v1/tiles/styles/" + styleId + "/style.json",
+                buildCapabilities(style));
     }
 
     private Map<String, Object> buildCapabilities(UserMapStyle style) {
