@@ -14,7 +14,6 @@
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/util.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
-    <script th:src="@{/js/map-style-settings.js}"></script>
 </head>
 
 <body class="settings-page">
@@ -50,10 +49,6 @@
                                     <i class="lni lni-check"></i>
                                     <span th:text="#{map.settings.dialog.map-styles.table.status.active}">In Use</span>
                                 </span>
-                                <span th:if="${'reitti' != activeMapStyleId}">
-                                    <i class="lni lni-xmark"></i>
-                                    <span th:text="#{map.settings.dialog.map-styles.table.status.inactive}">Available</span>
-                                </span>
                             </td>
                             <td th:text="#{map.settings.dialog.map-styles.map-type.vector}">Vector</td>
                             <td><span th:text="#{map.settings.dialog.map-styles.table.default}">Managed by reitti</span></td>
@@ -73,10 +68,6 @@
                                 <span th:if="${style.id() == activeMapStyleId}">
                                     <i class="lni lni-check"></i>
                                     <span th:text="#{map.settings.dialog.map-styles.table.status.active}">In Use</span>
-                                </span>
-                                <span th:if="${style.id() != activeMapStyleId}">
-                                    <i class="lni lni-xmark"></i>
-                                    <span th:text="#{map.settings.dialog.map-styles.table.status.inactive}">Available</span>
                                 </span>
                             </td>
                             <td th:text="#{'map.settings.dialog.map-styles.map-type.' + ${style.mapType()}}">Vector</td>
