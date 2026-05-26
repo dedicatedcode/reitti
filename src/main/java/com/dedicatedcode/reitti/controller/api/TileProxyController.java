@@ -265,10 +265,6 @@ public class TileProxyController {
 
     // ---------- private helpers ----------
 
-    /**
-     * Returns whether tile proxying is enabled for the given style.
-     * For built‑in styles (no "custom-" prefix) default is {@code true}.
-     */
     private boolean isProxyTilesEnabled(User user, String styleId) {
         if (styleId != null && styleId.startsWith("custom-")) {
             try {

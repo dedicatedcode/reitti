@@ -94,7 +94,6 @@ class MapLibreMapStylesServiceTest {
                 "tile_template", styleJson, null,
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, false),
                 null, false, 1L);
-        when(userMapStyleJdbcService.resolveCustomId("custom-1")).thenReturn(Optional.of(1L));
         when(userMapStyleJdbcService.findById(user, 1L)).thenReturn(Optional.of(style));
 
         JsonNode result = service.getCompleteStyleJson("custom-1", user);
@@ -115,8 +114,8 @@ class MapLibreMapStylesServiceTest {
         List<MapLibreStyleDefinition> config = service.getConfig(user);
         assertThat(config).hasSize(1);
         MapLibreStyleDefinition def = config.get(0);
-        assertThat(def.name()).isEqualTo("Style1");
-        assertThat(def.type()).isEqualTo("vector");
+        assertThat(def.label()).isEqualTo("Style1");
+        assertThat(def.mapType()).isEqualTo("vector");
     }
 
     @Test
@@ -135,7 +134,7 @@ class MapLibreMapStylesServiceTest {
 
         List<MapLibreStyleDefinition> config = service.getConfig(user);
         assertThat(config).hasSize(1);
-        assertThat(config.get(0).name()).isEqualTo("Good");
+        assertThat(config.get(0).label()).isEqualTo("Good");
     }
 
     private User createUser() {

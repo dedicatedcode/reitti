@@ -26,9 +26,9 @@ public class UserMapStyleJdbcService {
             rs.getLong("id"),
             rs.getLong("user_id"),
             rs.getString("name"),
-            defaultText(rs.getString("map_type"), "vector"),
-            defaultText(rs.getString("style_input_type"), "url"),
-            defaultText(rs.getString("raster_source_input_type"), "tile_template"),
+            rs.getString("map_type"),
+            rs.getString("style_input_type"),
+            rs.getString("raster_source_input_type"),
             rs.getString("style_json"),
             rs.getString("style_url"),
             new MapStyleDataSource(
@@ -176,18 +176,4 @@ public class UserMapStyleJdbcService {
         }
     }
 
-    public static Optional<Long> resolveCustomId(String frontendId) {
-        if (frontendId == null || frontendId.isBlank() || !frontendId.startsWith("custom-")) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(Long.parseLong(frontendId.substring("custom-".length())));
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static String defaultText(String value, String defaultValue) {
-        return value != null && !value.isBlank() ? value : defaultValue;
-    }
 }

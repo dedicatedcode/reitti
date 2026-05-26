@@ -305,7 +305,7 @@ class TileProxyControllerTest {
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(response.getBody().get("tiles").get(0).asText())
-                    .startsWith("http://localhost:8080");
+                    .startsWith("/api/v1/tiles/styles/custom-");
         } finally {
             tileCache.stop(0);
         }

@@ -83,11 +83,11 @@ public class MapLibreMapStylesService {
             if ("reitti".equals(styleId)) {
                 return buildReittiStyleJson(user);
             }
-            Optional<Long> customId = UserMapStyleJdbcService.resolveCustomId(styleId);
-            if (customId.isEmpty() || user == null) {
+            Long customId = getCustomId(styleId);
+            if (customId == null || user == null) {
                 return null;
             }
-            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, customId.get());
+            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, customId);
             if (styleOpt.isEmpty()) {
                 return null;
             }
@@ -95,6 +95,14 @@ public class MapLibreMapStylesService {
             return buildCustomStyleJson(style);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    private static Long getCustomId(String styleId) {
+        try {
+            return Long.parseLong(styleId);
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 
