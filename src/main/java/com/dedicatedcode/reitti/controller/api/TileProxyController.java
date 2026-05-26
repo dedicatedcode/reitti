@@ -134,7 +134,8 @@ public class TileProxyController {
             HttpServletRequest request) {
 
         try {
-            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId);
+            boolean proxyTiles = isProxyTilesEnabled(user, styleId);
+            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId, proxyTiles);
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
@@ -188,7 +189,8 @@ public class TileProxyController {
             @PathVariable String ext) {
 
         try {
-            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId);
+            boolean proxyTiles = isProxyTilesEnabled(user, styleId);
+            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId, proxyTiles);
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
@@ -267,6 +269,27 @@ public class TileProxyController {
 
     // ---------- private helpers ----------
 
+    /**
+     * Returns whether tile proxying is enabled for the given style.
+     * For built‑in styles (no "custom-" prefix) default is {@code true}.
+     */
+    private boolean isProxyTilesEnabled(User user, String styleId) {
+        if (styleId != null && styleId.startsWith("custom-")) {
+            try {
+                long numericId = Long.parseLong(styleId.substring("custom-".length()));
+                Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, numericId);
+                if (style.isPresent()) {
+                    MapStyleDataSource source = style.get().getSource();
+                    if (source != null) {
+                        return source.isProxyTiles();
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return true;
+    }
+
     private ResponseEntity<byte[]> fetchTile(String tileUrl, String contentType, String source) {
         return fetchTile(tileUrl, contentType, source, Map.of());
     }
@@ -322,7 +345,7 @@ public class TileProxyController {
         return response.body();
     }
 
-    private Optional<TileSource> resolveTileSource(User user, String styleId, String sourceId) throws IOException {
+    private Optional<TileSource> resolveTileSource(User user, String styleId, String sourceId, boolean proxyTiles) throws IOException {
         if (!StringUtils.hasText(styleId) || !StringUtils.hasText(sourceId)) {
             return Optional.empty();
         }
@@ -333,7 +356,7 @@ public class TileProxyController {
             return Optional.empty();
         }
 
-        return sourceFromStyle(styleJson, sourceId, null, true);
+        return sourceFromStyle(styleJson, sourceId, null, proxyTiles);
     }
 
     private Optional<TileSource> sourceFromStyle(JsonNode style, String sourceId, URI styleBaseUri, boolean proxyTiles) {
