@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -116,7 +117,8 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    stylesService
+                    stylesService,
+                    new ContextPathHolder("")
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
@@ -162,7 +164,8 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    stylesService
+                    stylesService,
+                    new ContextPathHolder("")
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
@@ -222,7 +225,8 @@ class TileProxyControllerTest {
                     "",                          // cache disabled (empty url)
                     new ObjectMapper(),
                     jdbc,
-                    stylesService
+                    stylesService,
+                    new ContextPathHolder("")
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
@@ -295,11 +299,12 @@ class TileProxyControllerTest {
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
                     jdbc,
-                    stylesService
+                    stylesService,
+                    new ContextPathHolder("")
             );
 
             ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(
-                    user, FRONTEND_ID, "raster-source", request
+                    user, FRONTEND_ID, "raster-source"
             );
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
@@ -329,7 +334,8 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null
+                    null, null,
+                    new ContextPathHolder("")
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -359,7 +365,8 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null
+                    null, null,
+                    new ContextPathHolder("")
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -389,7 +396,8 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null
+                    null, null,
+                    new ContextPathHolder("")
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -420,7 +428,8 @@ class TileProxyControllerTest {
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
-                    null, null
+                    null, null,
+                    new ContextPathHolder("")
             );
 
             HttpServletRequest mockRequest = mock(HttpServletRequest.class);
