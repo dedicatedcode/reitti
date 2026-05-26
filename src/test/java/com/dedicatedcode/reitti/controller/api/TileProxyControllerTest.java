@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpServer;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
@@ -333,7 +334,10 @@ class TileProxyControllerTest {
                     null, null, null
             );
 
-            ResponseEntity<byte[]> response = controller.getTile("vector", Z, X, Y, "pbf", null);
+            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+            when(mockRequest.getQueryString()).thenReturn(null);
+
+            ResponseEntity<byte[]> response = controller.getTile("vector", Z, X, Y, "pbf", mockRequest);
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("vector-tile");
@@ -360,7 +364,10 @@ class TileProxyControllerTest {
                     null, null, null
             );
 
-            ResponseEntity<byte[]> response = controller.getTile("raster", Z, X, Y, "png", null);
+            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+            when(mockRequest.getQueryString()).thenReturn(null);
+
+            ResponseEntity<byte[]> response = controller.getTile("raster", Z, X, Y, "png", mockRequest);
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("raster-tile");
@@ -387,7 +394,10 @@ class TileProxyControllerTest {
                     null, null, null
             );
 
-            ResponseEntity<byte[]> response = controller.getTile("terrain", Z, X, Y, "webp", null);
+            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+            when(mockRequest.getQueryString()).thenReturn(null);
+
+            ResponseEntity<byte[]> response = controller.getTile("terrain", Z, X, Y, "webp", mockRequest);
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("terrain-tile");
@@ -415,7 +425,10 @@ class TileProxyControllerTest {
                     null, null, null
             );
 
-            ResponseEntity<byte[]> response = controller.getTile("satellite", Z, X, Y, "jpg", null);
+            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+            when(mockRequest.getQueryString()).thenReturn(null);
+
+            ResponseEntity<byte[]> response = controller.getTile("satellite", Z, X, Y, "jpg", mockRequest);
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("satellite-tile");
@@ -432,7 +445,10 @@ class TileProxyControllerTest {
                 null, null, null
         );
 
-        ResponseEntity<byte[]> response = controller.getTile("nonexistent", Z, X, Y, "pbf", null);
+        HttpServletRequest mockRequest = mock(HttpServletRequest.class);
+        when(mockRequest.getQueryString()).thenReturn(null);
+
+        ResponseEntity<byte[]> response = controller.getTile("nonexistent", Z, X, Y, "pbf", mockRequest);
         assertThat(response.getStatusCode().is4xxClientError()).isTrue();
     }
 
