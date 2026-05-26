@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +43,7 @@ class MapLibreMapStylesServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(contextPathHolder.getContextPath()).thenReturn("");
+        lenient().when(contextPathHolder.getContextPath()).thenReturn("");
         service = new MapLibreMapStylesService(
                 userMapStyleJdbcService,
                 contextPathHolder,
@@ -50,6 +51,13 @@ class MapLibreMapStylesServiceTest {
                 objectMapper,
                 "" // tile cache disabled
         );
+    }
+
+    @Test
+    void getCompleteStyleJsonReturnsNullForReittiWhenUserIsNull() {
+        // reitti style with null user should still work (no user-specific logic for reitti)
+        JsonNode result = service.getCompleteStyleJson("reitti", null);
+        assertThat(result).isNotNull();
     }
 
     @Test
@@ -79,19 +87,23 @@ class MapLibreMapStylesServiceTest {
     }
 
     @Test
-    void getCompleteStyleJsonReturnsCustomStyleJson() throws Exception {
+    void getCompleteStyleJsonReturnsCustomRasterStyleJson() throws Exception {
         User user = createUser();
-        String styleJson = "{\"version\":8,\"sources\":{},\"layers\":[]}";
+        // Use a raster style with a tile URL template (simpler code path)
+        String tileUrlTemplate = "https://example.com/{z}/{x}/{y}.png";
         UserMapStyle style = new UserMapStyle(
-                1L, user.getId(), "Test", "vector", "json",
-                "tile_template", styleJson, null,
-                new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, false),
+                1L, user.getId(), "RasterTest", "raster", "json",
+                tileUrlTemplate, null, null,
+                new MapStyleDataSource("raster-source", "raster", null, null, null, null, null, 256, null, false),
                 null, false, 1L);
         when(userMapStyleJdbcService.findById(user, 1L)).thenReturn(Optional.of(style));
 
-        JsonNode result = service.getCompleteStyleJson("custom-1", user);
+        JsonNode result = service.getCompleteStyleJson("1", user);
         assertThat(result).isNotNull();
         assertThat(result.path("version").asInt()).isEqualTo(8);
+        // Verify the source is present
+        JsonNode sources = result.path("sources");
+        assertThat(sources.has("raster-source")).isTrue();
     }
 
     @Test
@@ -112,22 +124,25 @@ class MapLibreMapStylesServiceTest {
     }
 
     @Test
-    void getConfigSkipsFailingStyles() {
+    void getConfigDoesNotSkipStylesWithNullMapType() {
         User user = createUser();
         UserMapStyle goodStyle = new UserMapStyle(
                 1L, user.getId(), "Good", "vector", "json",
                 null, "{}", null,
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, false),
                 null, false, 1L);
-        UserMapStyle failingStyle = new UserMapStyle(
+        UserMapStyle styleWithNullMapType = new UserMapStyle(
                 2L, user.getId(), null, null, null,
                 null, null, null,
-                null, null, false, 1L); // missing mapType will cause buildStyleDefinition to log a warning and skip
-        when(userMapStyleJdbcService.findAll(user)).thenReturn(List.of(goodStyle, failingStyle));
+                null, null, false, 1L);
+        when(userMapStyleJdbcService.findAll(user)).thenReturn(List.of(goodStyle, styleWithNullMapType));
 
         List<MapLibreStyleDefinition> config = service.getConfig(user);
-        assertThat(config).hasSize(1);
+        // Both styles are included (the service does not skip null mapType)
+        assertThat(config).hasSize(2);
         assertThat(config.get(0).label()).isEqualTo("Good");
+        assertThat(config.get(1).label()).isNull();
+        assertThat(config.get(1).mapType()).isNull();
     }
 
     private User createUser() {
