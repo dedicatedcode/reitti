@@ -9,5 +9,5 @@ public record MapLibreStyleDefinition(
     String label,
     String mapType,
     String styleInputType,
-    JsonNode styleInput,
+    String styleUrl,
     Object capabilities) implements Serializable {}
