@@ -4,9 +4,9 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.MapStylePathUtils;
-import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +51,7 @@ public class TileProxyController {
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final MapLibreMapStylesService mapLibreMapStylesService;
+    private final ContextPathHolder contextPathHolder;
 
     // Maps source names to internal paths and coordinate ordering
     private record SourceConfig(String path, boolean swapXY, String contentType) {}
@@ -76,12 +77,14 @@ public class TileProxyController {
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapLibreMapStylesService mapLibreMapStylesService) {
+            MapLibreMapStylesService mapLibreMapStylesService,
+            ContextPathHolder contextPathHolder) {
         this.tileCacheUrl = tileCacheUrl;
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
+        this.contextPathHolder = contextPathHolder;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -124,8 +127,7 @@ public class TileProxyController {
     public ResponseEntity<JsonNode> getStyleSourceTileJson(
             @AuthenticationPrincipal User user,
             @PathVariable String styleId,
-            @PathVariable String sourceId,
-            HttpServletRequest request) {
+            @PathVariable String sourceId) {
 
         try {
             boolean proxyTiles = isProxyTilesEnabled(user, styleId);
@@ -153,10 +155,10 @@ public class TileProxyController {
                 ArrayNode rewrittenTiles = objectMapper.createArrayNode();
                 String firstTileUrl = tiles.get(0).asText("");
                 if (firstTileUrl.startsWith("http://") || firstTileUrl.startsWith("https://")) {
-                    rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, firstTileUrl));
+                    rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, firstTileUrl));
                 } else if (!firstTileUrl.isBlank()) {
                     String resolvedTileUrl = tileJsonUri.resolve(firstTileUrl).toString();
-                    rewrittenTiles.add(styleSourceTileUrl(request, styleId, sourceId, resolvedTileUrl));
+                    rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
                 } else {
                     rewrittenTiles.add(firstTileUrl);
                 }
@@ -446,9 +448,9 @@ public class TileProxyController {
         return null;
     }
 
-    private String styleSourceTileUrl(HttpServletRequest request, String styleId, String sourceId, String tileUrl) {
+    private String styleSourceTileUrl(String styleId, String sourceId, String tileUrl) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return RequestHelper.getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId)
+        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId)
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
