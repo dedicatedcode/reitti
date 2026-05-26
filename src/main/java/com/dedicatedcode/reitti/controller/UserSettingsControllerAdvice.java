@@ -34,23 +34,17 @@ public class UserSettingsControllerAdvice {
     private static final String DEFAULT_COLOR = "#F5DEB3FF";
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final ObjectMapper objectMapper;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
-                                        UserMapStyleJdbcService userMapStyleJdbcService,
                                         TilesCustomizationProvider tilesCustomizationProvider,
-                                        RawLocationPointJdbcService rawLocationPointJdbcService,
-                                        ObjectMapper objectMapper) {
+                                        RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.objectMapper = objectMapper;
     }
     
     @ModelAttribute("userSettings")
@@ -124,31 +118,6 @@ public class UserSettingsControllerAdvice {
 
     }
 
-    @ModelAttribute("mapStylesJson")
-    public String getCurrentUserMapStylesJson() {
-        return getCurrentUser().map(user -> {
-            try {
-                return objectMapper.writeValueAsString(userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList());
-            } catch (JsonProcessingException e) {
-                return "[]";
-            }
-        }).orElse("[]");
-    }
-
-    @ModelAttribute("activeMapStyleId")
-    public String getCurrentUserActiveMapStyleId() {
-        return getCurrentUser()
-                .map(userMapStyleJdbcService::getActiveStyleId)
-                .orElse("reitti");
-    }
-
-    private Optional<User> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return Optional.empty();
-        }
-        return userJdbcService.findByUsername(authentication.getName());
-    }
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {
         List<String> grantedRoles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();

@@ -41,6 +41,7 @@ class MapRenderer {
         }));
     }
 
+    //Todo: this should be moved into the MapLibreMapStyleService
     static getMapStyleValue(mapStyle) {
         if (mapStyle?.mapType === 'vector') {
             if (mapStyle?.styleInputType === 'url') {

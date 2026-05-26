@@ -17,6 +17,7 @@ public record UserSettingsDTO(
         UnitSystem unitSystem,
         Double homeLatitude,
         Double homeLongitude,
+        @Deprecated(forRemoval = true)
         TilesCustomizationDTO tiles,
         UIMode uiMode,
         PhotoMode photoMode,
@@ -38,6 +39,7 @@ public record UserSettingsDTO(
         DISABLED
     }
 
+    @Deprecated(forRemoval = true)
     public record TilesCustomizationDTO(String service, String attribution){}
 
 }

@@ -230,6 +230,10 @@ public class TileProxyController {
             if (this.tileCacheEnabled) {
                 tileUrl = tileCacheUrl + config.path() + coordPath;
             } else {
+                //Todo: this does not make sense, we need another way of passing the upstream url
+                //      to the tile proxy. Else the user is constrained in using only hard coded urls.
+                //      So there needs to be a component (com.dedicatedcode.reitti.controller.api.MapStyleController) which
+                //      rewrites theses urls in a way that we can resolve them here or pass them to the cache.
                 String upstreamBaseUrl = SOURCE_UPSTREAM_URLS.get(source);
                 if (!StringUtils.hasText(upstreamBaseUrl)) {
                     return ResponseEntity.notFound().build();
