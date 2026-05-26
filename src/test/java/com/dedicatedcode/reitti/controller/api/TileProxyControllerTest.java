@@ -310,7 +310,7 @@ class TileProxyControllerTest {
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(response.getBody().get("tiles").get(0).asText())
-                    .startsWith("http://127.0.0.1:" + tileCache.getAddress().getPort());
+                    .startsWith("http://localhost:8080");
         } finally {
             tileCache.stop(0);
         }
