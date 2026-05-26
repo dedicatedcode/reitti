@@ -291,10 +291,6 @@ class TileProxyControllerTest {
             when(stylesService.getCompleteStyleJson(eq(FRONTEND_ID), eq(user)))
                     .thenReturn(rasterStyle);
 
-            // Provide a mock HttpServletRequest so styleSourceTileUrl does not NPE
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getRequestURL()).thenReturn(new StringBuffer("http://localhost:8080"));
-
             TileProxyController controller = new TileProxyController(
                     "http://127.0.0.1:" + tileCache.getAddress().getPort(),
                     new ObjectMapper(),
@@ -449,7 +445,8 @@ class TileProxyControllerTest {
         TileProxyController controller = new TileProxyController(
                 "http://localhost:9999",
                 new ObjectMapper(),
-                null, null
+                null, null,
+                new ContextPathHolder("")
         );
 
         HttpServletRequest mockRequest = mock(HttpServletRequest.class);
@@ -477,7 +474,8 @@ class TileProxyControllerTest {
                 "",
                 new ObjectMapper(),
                 mock(UserMapStyleJdbcService.class),
-                stylesService
+                stylesService,
+                new ContextPathHolder("")
         );
 
         ResponseEntity<JsonNode> response = controller.getStyleJson(null, "reitti", null);
@@ -495,7 +493,8 @@ class TileProxyControllerTest {
                 "",
                 new ObjectMapper(),
                 mock(UserMapStyleJdbcService.class),
-                stylesService
+                stylesService,
+                new ContextPathHolder("")
         );
 
         ResponseEntity<JsonNode> response = controller.getStyleJson(null, "custom-999", null);
