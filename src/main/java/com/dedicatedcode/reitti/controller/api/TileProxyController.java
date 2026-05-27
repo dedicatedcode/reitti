@@ -337,12 +337,26 @@ public class TileProxyController {
         return response.body();
     }
 
+    /**
+     * Resolves the tile source for a custom style. First tries to get the original
+     * upstream URL via {@link MapLibreMapStylesService#getOriginalTileUrl}.
+     * Falls back to parsing the style JSON (for built-in sources that are not custom styles).
+     */
     private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId, boolean proxyTiles) {
+        // Try to get the original tile URL directly (works for custom styles)
+        String originalTileUrl = mapLibreMapStylesService.getOriginalTileUrl(
+                styleId.toString(), sourceId, user);
+        if (originalTileUrl != null) {
+            List<String> templates = new ArrayList<>();
+            templates.add(normalizeTileTemplateForProxy(originalTileUrl));
+            return Optional.of(new TileSource(null, templates, proxyTiles));
+        }
+
+        // Fallback: parse the style JSON (for built-in sources like "raster", "osm", etc.)
         JsonNode styleJson = mapLibreMapStylesService.getCompleteStyleJson(styleId, user);
         if (styleJson == null) {
             return Optional.empty();
         }
-
         return sourceFromStyle(styleJson, sourceId, proxyTiles);
     }
 
@@ -376,8 +390,7 @@ public class TileProxyController {
             return exactSource;
         }
         for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
-            //Todo: needs to be fixed
-            if (entry.getValue() instanceof ObjectNode && true) {
+            if (entry.getValue() instanceof ObjectNode) {
                 return entry.getValue();
             }
         }
