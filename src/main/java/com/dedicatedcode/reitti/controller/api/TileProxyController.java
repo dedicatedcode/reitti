@@ -67,14 +67,6 @@ public class TileProxyController {
         "satellite", new SourceConfig("/satellite/", true, "image/jpeg")
     );
 
-    private static final Map<String, String> SOURCE_UPSTREAM_URLS = Map.of(
-        "raster", "https://tile.openstreetmap.org/",
-        "osm", "https://tile.openstreetmap.org/",
-        "vector", "https://tiles.dedicatedcode.com/planet/latest/",
-        "terrain", "https://tiles.mapterhorn.com/",
-        "satellite", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"
-    );
-
     public TileProxyController(
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
             ObjectMapper objectMapper,
@@ -93,23 +85,13 @@ public class TileProxyController {
                 .build();
     }
 
-    @GetMapping("/{z}/{x}/{y}.png")
-    public ResponseEntity<byte[]> getTileLegacy(
-            @PathVariable int z,
-            @PathVariable int x,
-            @PathVariable int y,
-            HttpServletRequest request) {
-        return getTile("raster", z, x, y, "png", request);
-    }
-
     /**
      * Serves the complete MapLibre style JSON (with runtime sources and optionally proxied URLs).
      */
     @GetMapping("/styles/{styleId}/style.json")
     public ResponseEntity<JsonNode> getStyleJson(
             @AuthenticationPrincipal User user,
-            @PathVariable Long styleId,
-            HttpServletRequest request) {
+            @PathVariable Long styleId) {
 
         try {
             JsonNode styleJson = mapLibreMapStylesService.getCompleteStyleJson(styleId, user);
@@ -223,51 +205,6 @@ public class TileProxyController {
         }
     }
 
-    @GetMapping("/{source}/{z}/{x}/{y}.{ext}")
-    public ResponseEntity<byte[]> getTile(
-            @PathVariable String source,
-            @PathVariable int z,
-            @PathVariable int x,
-            @PathVariable int y,
-            @PathVariable String ext,
-            HttpServletRequest request) {
-
-        SourceConfig config = SOURCES.get(source);
-        if (config == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        try {
-            String upstreamBaseUrl = SOURCE_UPSTREAM_URLS.get(source);
-            if (!StringUtils.hasText(upstreamBaseUrl)) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String coordPath = config.swapXY()
-                ? String.format("%d/%d/%d", z, y, x)
-                : String.format("%d/%d/%d.%s", z, x, y, ext);
-
-            String upstreamTileUrl = upstreamBaseUrl + coordPath;
-            if (StringUtils.hasText(request.getQueryString())) {
-                upstreamTileUrl += "?" + request.getQueryString();
-            }
-
-            log.trace("Fetching tile [{}]: {}", source, coordPath);
-
-            if (this.tileCacheEnabled) {
-                String tileUrl = tileCacheUrl + "/custom/";
-                return fetchTile(tileUrl, config.contentType(), source, Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
-            }
-
-            return fetchTile(upstreamTileUrl, config.contentType(), source);
-
-        } catch (Exception e) {
-            log.warn("Failed to fetch tile {}/{}/{} from {}: {}", x, y, z, source, e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    // ---------- private helpers ----------
 
     private boolean isProxyTilesEnabled(User user, Long styleId) {
         try {
@@ -337,84 +274,18 @@ public class TileProxyController {
         return response.body();
     }
 
-    /**
-     * Resolves the tile source for a custom style. First tries to get the original
-     * upstream URL via {@link MapLibreMapStylesService#getOriginalTileUrl}.
-     * Falls back to parsing the style JSON (for built-in sources that are not custom styles).
-     */
     private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId, boolean proxyTiles) {
-        // Try to get the original tile URL directly (works for custom styles)
-        String originalTileUrl = mapLibreMapStylesService.getOriginalTileUrl(
-                styleId.toString(), sourceId, user);
+        String originalTileUrl = mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user);
         if (originalTileUrl != null) {
             List<String> templates = new ArrayList<>();
-            templates.add(normalizeTileTemplateForProxy(originalTileUrl));
-            return Optional.of(new TileSource(null, templates, proxyTiles));
-        }
-
-        // Fallback: parse the style JSON (for built-in sources like "raster", "osm", etc.)
-        JsonNode styleJson = mapLibreMapStylesService.getCompleteStyleJson(styleId, user);
-        if (styleJson == null) {
-            return Optional.empty();
-        }
-        return sourceFromStyle(styleJson, sourceId, proxyTiles);
-    }
-
-    private Optional<TileSource> sourceFromStyle(JsonNode style, String sourceId, boolean proxyTiles) {
-        JsonNode source = findSource(style, sourceId);
-        if (source == null) {
-            return Optional.empty();
-        }
-
-        String tileJsonUrl = resolveSourceUrl(source.path("url").asText(""));
-        List<String> tileTemplates = new ArrayList<>();
-        JsonNode tiles = source.get("tiles");
-        if (tiles instanceof ArrayNode tileArray) {
-            tileArray.forEach(tile -> {
-                String tileUrl = resolveTileTemplate(tile.asText(""));
-                if (StringUtils.hasText(tileUrl)) {
-                    tileTemplates.add(normalizeTileTemplateForProxy(tileUrl));
-                }
-            });
-        }
-        return Optional.of(new TileSource(tileJsonUrl, tileTemplates, proxyTiles));
-    }
-
-    private JsonNode findSource(JsonNode style, String sourceId) {
-        JsonNode sources = style.path("sources");
-        if (!(sources instanceof ObjectNode sourcesObject)) {
-            return null;
-        }
-        JsonNode exactSource = sourcesObject.get(sourceId);
-        if (exactSource instanceof ObjectNode) {
-            return exactSource;
-        }
-        for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
-            if (entry.getValue() instanceof ObjectNode) {
-                return entry.getValue();
+            if (originalTileUrl.endsWith(".json")) {
+                return Optional.of(new TileSource(originalTileUrl, List.of(), proxyTiles));
+            } else {
+                templates.add(normalizeTileTemplateForProxy(originalTileUrl));
+                return Optional.of(new TileSource(null, templates, proxyTiles));
             }
         }
-        return null;
-    }
-
-    private String resolveSourceUrl(String sourceUrl) {
-        if (!StringUtils.hasText(sourceUrl)) {
-            return null;
-        }
-        if (sourceUrl.startsWith("http://") || sourceUrl.startsWith("https://")) {
-            return sourceUrl;
-        }
-        return null;
-    }
-
-    private String resolveTileTemplate(String tileUrl) {
-        if (!StringUtils.hasText(tileUrl)) {
-            return null;
-        }
-        if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
-            return tileUrl;
-        }
-        return null;
+        throw new IllegalArgumentException("No original tile URL found for style " + styleId + " and source " + sourceId);
     }
 
     private String tileTemplate(TileSource source) throws Exception {

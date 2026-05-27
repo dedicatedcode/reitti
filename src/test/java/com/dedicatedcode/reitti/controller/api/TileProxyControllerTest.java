@@ -31,7 +31,6 @@ class TileProxyControllerTest {
     private static final String JAWG_TILE_URL = "https://tile.jawg.io/streets-v2+landcover-v1.1+hillshade-v1/{z}/{x}/{y}.pbf?access-token=test-token";
     private static final long USER_ID = 7L;
     private static final long STYLE_ID = 42L;
-    private static final String FRONTEND_ID = "custom-" + STYLE_ID;
     private static final int Z = 15;
     private static final int X = 17619;
     private static final int Y = 10758;
@@ -110,7 +109,7 @@ class TileProxyControllerTest {
 
             ObjectNode styleJson = createStyleJson(JAWG_SOURCE_ID, JAWG_TILE_URL);
             MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-            when(stylesService.getCompleteStyleJson(eq(FRONTEND_ID), eq(user)))
+            when(stylesService.getCompleteStyleJson(eq(style.id()), eq(user)))
                     .thenReturn(styleJson);
 
             TileProxyController controller = new TileProxyController(
@@ -123,7 +122,7 @@ class TileProxyControllerTest {
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
                     user,
-                    FRONTEND_ID,
+                    style.id(),
                     JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
@@ -157,7 +156,7 @@ class TileProxyControllerTest {
 
             ObjectNode styleJson = createStyleJson(JAWG_SOURCE_ID, JAWG_TILE_URL);
             MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-            when(stylesService.getCompleteStyleJson(eq(FRONTEND_ID), eq(user)))
+            when(stylesService.getCompleteStyleJson(eq(style.id()), eq(user)))
                     .thenReturn(styleJson);
 
             TileProxyController controller = new TileProxyController(
@@ -169,7 +168,7 @@ class TileProxyControllerTest {
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
-                    user, FRONTEND_ID,
+                    user, style.id(),
                     JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
@@ -219,7 +218,7 @@ class TileProxyControllerTest {
 
             ObjectNode styleJson = createStyleJson(JAWG_SOURCE_ID, upstreamUrl);
             MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-            when(stylesService.getCompleteStyleJson(eq(FRONTEND_ID), eq(user)))
+            when(stylesService.getCompleteStyleJson(eq(style.id()), eq(user)))
                     .thenReturn(styleJson);
 
             TileProxyController controller = new TileProxyController(
@@ -231,7 +230,7 @@ class TileProxyControllerTest {
             );
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
-                    user, FRONTEND_ID,
+                    user, style.id(),
                     JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
@@ -289,7 +288,7 @@ class TileProxyControllerTest {
             rasterStyle.set("sources", sources);
 
             MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-            when(stylesService.getCompleteStyleJson(eq(FRONTEND_ID), eq(user)))
+            when(stylesService.getCompleteStyleJson(eq(style.id()), eq(user)))
                     .thenReturn(rasterStyle);
 
             TileProxyController controller = new TileProxyController(
@@ -301,7 +300,7 @@ class TileProxyControllerTest {
             );
 
             ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(
-                    user, FRONTEND_ID, "raster-source"
+                    user, style.id(), "raster-source"
             );
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
@@ -313,181 +312,14 @@ class TileProxyControllerTest {
     }
 
     // ------------------------------------------------------------------
-    // Tests for getTile (built‑in source proxying)
-    // ------------------------------------------------------------------
-
-    @Test
-    void proxiesBuiltinVectorTile() throws Exception {
-        HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        tileCache.createContext("/vector/", exchange -> {
-            byte[] body = "vector-tile".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        tileCache.start();
-
-        try {
-            TileProxyController controller = new TileProxyController(
-                    "http://127.0.0.1:" + tileCache.getAddress().getPort(),
-                    new ObjectMapper(),
-                    null, null,
-                    new ContextPathHolder("")
-            );
-
-            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-            when(mockRequest.getQueryString()).thenReturn(null);
-
-            ResponseEntity<byte[]> response = controller.getTile("vector", Z, X, Y, "pbf", mockRequest);
-
-            assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("vector-tile");
-        } finally {
-            tileCache.stop(0);
-        }
-    }
-
-    @Test
-    void proxiesBuiltinRasterTile() throws Exception {
-        HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        tileCache.createContext("/osm/", exchange -> {
-            byte[] body = "raster-tile".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        tileCache.start();
-
-        try {
-            TileProxyController controller = new TileProxyController(
-                    "http://127.0.0.1:" + tileCache.getAddress().getPort(),
-                    new ObjectMapper(),
-                    null, null,
-                    new ContextPathHolder("")
-            );
-
-            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-            when(mockRequest.getQueryString()).thenReturn(null);
-
-            ResponseEntity<byte[]> response = controller.getTile("raster", Z, X, Y, "png", mockRequest);
-
-            assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("raster-tile");
-        } finally {
-            tileCache.stop(0);
-        }
-    }
-
-    @Test
-    void proxiesBuiltinTerrainTile() throws Exception {
-        HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        tileCache.createContext("/terrain/", exchange -> {
-            byte[] body = "terrain-tile".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        tileCache.start();
-
-        try {
-            TileProxyController controller = new TileProxyController(
-                    "http://127.0.0.1:" + tileCache.getAddress().getPort(),
-                    new ObjectMapper(),
-                    null, null,
-                    new ContextPathHolder("")
-            );
-
-            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-            when(mockRequest.getQueryString()).thenReturn(null);
-
-            ResponseEntity<byte[]> response = controller.getTile("terrain", Z, X, Y, "webp", mockRequest);
-
-            assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("terrain-tile");
-        } finally {
-            tileCache.stop(0);
-        }
-    }
-
-    @Test
-    void proxiesBuiltinSatelliteTile() throws Exception {
-        // Satellites use swapped coordinates (y/x instead of x/y)
-        HttpServer tileCache = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        tileCache.createContext("/satellite/", exchange -> {
-            byte[] body = "satellite-tile".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        tileCache.start();
-
-        try {
-            TileProxyController controller = new TileProxyController(
-                    "http://127.0.0.1:" + tileCache.getAddress().getPort(),
-                    new ObjectMapper(),
-                    null, null,
-                    new ContextPathHolder("")
-            );
-
-            HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-            when(mockRequest.getQueryString()).thenReturn(null);
-
-            ResponseEntity<byte[]> response = controller.getTile("satellite", Z, X, Y, "jpg", mockRequest);
-
-            assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            assertThat(new String(response.getBody(), StandardCharsets.UTF_8)).isEqualTo("satellite-tile");
-        } finally {
-            tileCache.stop(0);
-        }
-    }
-
-    @Test
-    void returnsNotFoundForUnknownSource() throws Exception {
-        TileProxyController controller = new TileProxyController(
-                "http://localhost:9999",
-                new ObjectMapper(),
-                null, null,
-                new ContextPathHolder("")
-        );
-
-        HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-        when(mockRequest.getQueryString()).thenReturn(null);
-
-        ResponseEntity<byte[]> response = controller.getTile("nonexistent", Z, X, Y, "pbf", mockRequest);
-        assertThat(response.getStatusCode().is4xxClientError()).isTrue();
-    }
-
-    // ------------------------------------------------------------------
     // Tests for getStyleJson
     // ------------------------------------------------------------------
 
-    @Test
-    void returnsStyleJsonForReittiStyle() throws Exception {
-        MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-        ObjectNode fakeStyle = objectMapper.createObjectNode();
-        fakeStyle.put("version", 8);
-        fakeStyle.put("name", "Reitti");
-
-        when(stylesService.getCompleteStyleJson(eq("reitti"), any()))
-                .thenReturn(fakeStyle);
-
-        TileProxyController controller = new TileProxyController(
-                "",
-                new ObjectMapper(),
-                mock(UserMapStyleJdbcService.class),
-                stylesService,
-                new ContextPathHolder("")
-        );
-
-        ResponseEntity<JsonNode> response = controller.getStyleJson(null, "reitti", null);
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(response.getBody().get("name").asText()).isEqualTo("Reitti");
-    }
 
     @Test
     void returnsNotFoundForMissingCustomStyle() throws Exception {
         MapLibreMapStylesService stylesService = mock(MapLibreMapStylesService.class);
-        when(stylesService.getCompleteStyleJson(eq("custom-999"), any()))
+        when(stylesService.getCompleteStyleJson(eq(999L), any()))
                 .thenReturn(null);
 
         TileProxyController controller = new TileProxyController(
@@ -498,7 +330,7 @@ class TileProxyControllerTest {
                 new ContextPathHolder("")
         );
 
-        ResponseEntity<JsonNode> response = controller.getStyleJson(null, "custom-999", null);
+        ResponseEntity<JsonNode> response = controller.getStyleJson(null, 999L);
         assertThat(response.getStatusCode().is4xxClientError()).isTrue();
     }
 }
