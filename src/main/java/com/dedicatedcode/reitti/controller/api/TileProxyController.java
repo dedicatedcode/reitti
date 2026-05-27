@@ -108,7 +108,7 @@ public class TileProxyController {
     @GetMapping("/styles/{styleId}/style.json")
     public ResponseEntity<JsonNode> getStyleJson(
             @AuthenticationPrincipal User user,
-            @PathVariable String styleId,
+            @PathVariable Long styleId,
             HttpServletRequest request) {
 
         try {
@@ -128,7 +128,7 @@ public class TileProxyController {
     @GetMapping("/styles/{styleId}/{sourceId}/tilejson.json")
     public ResponseEntity<JsonNode> getStyleSourceTileJson(
             @AuthenticationPrincipal User user,
-            @PathVariable String styleId,
+            @PathVariable Long styleId,
             @PathVariable String sourceId) {
 
         try {
@@ -179,7 +179,7 @@ public class TileProxyController {
     @GetMapping("/styles/{styleId}/{sourceId}/{z}/{x}/{y}.{ext}")
     public ResponseEntity<byte[]> getStyleSourceTile(
             @AuthenticationPrincipal User user,
-            @PathVariable String styleId,
+            @PathVariable Long styleId,
             @PathVariable String sourceId,
             @PathVariable int z,
             @PathVariable int x,
@@ -269,20 +269,16 @@ public class TileProxyController {
 
     // ---------- private helpers ----------
 
-    private boolean isProxyTilesEnabled(User user, String styleId) {
-        if (styleId != null && styleId.startsWith("custom-")) {
-            try {
-                long numericId = Long.parseLong(styleId.substring("custom-".length()));
-                Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, numericId);
-                if (style.isPresent()) {
-                    MapStyleDataSource source = style.get().dataSource();
-                    if (source != null) {
-                        return source.proxyTiles();
-                    }
+    private boolean isProxyTilesEnabled(User user, Long styleId) {
+        try {
+            Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, styleId);
+            if (style.isPresent()) {
+                MapStyleDataSource source = style.get().dataSource();
+                if (source != null) {
+                    return source.proxyTiles();
                 }
-            } catch (NumberFormatException ignored) {
             }
-        }
+        } catch (NumberFormatException ignored) {}
         return true;
     }
 
@@ -341,21 +337,7 @@ public class TileProxyController {
         return response.body();
     }
 
-    private Optional<TileSource> resolveTileSource(User user, String styleId, String sourceId, boolean proxyTiles) {
-        if (!StringUtils.hasText(styleId) || !StringUtils.hasText(sourceId)) {
-            return Optional.empty();
-        }
-
-        // For the reitti style, use the original upstream URLs directly
-        if ("reitti".equals(styleId)) {
-            String originalUrl = mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user);
-            if (originalUrl == null) {
-                return Optional.empty();
-            }
-            return Optional.of(new TileSource(null, List.of(originalUrl), proxyTiles));
-        }
-
-        // For custom styles, use the style JSON to resolve
+    private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId, boolean proxyTiles) {
         JsonNode styleJson = mapLibreMapStylesService.getCompleteStyleJson(styleId, user);
         if (styleJson == null) {
             return Optional.empty();
@@ -393,8 +375,6 @@ public class TileProxyController {
         if (exactSource instanceof ObjectNode) {
             return exactSource;
         }
-        List<String> allSourceIds = new ArrayList<>();
-        sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
         for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
             //Todo: needs to be fixed
             if (entry.getValue() instanceof ObjectNode && true) {
@@ -458,7 +438,7 @@ public class TileProxyController {
         return null;
     }
 
-    private String styleSourceTileUrl(String styleId, String sourceId, String tileUrl) {
+    private String styleSourceTileUrl(Long styleId, String sourceId, String tileUrl) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
         return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
