@@ -84,10 +84,11 @@ class MapLibreMapStylesServiceTest {
         User user = createUser();
         // Use a raster style with a tile URL template (simpler code path)
         String tileUrlTemplate = "https://example.com/{z}/{x}/{y}.png";
+        // The dataSource must provide the tileUrlTemplate, otherwise buildRasterStyleJson returns null.
         UserMapStyle style = new UserMapStyle(
                 1L, user.getId(), "RasterTest", "raster", "json",
                 tileUrlTemplate, null, null,
-                new MapStyleDataSource("raster-source", "raster", null, null, null, null, null, 256, null, false),
+                new MapStyleDataSource("raster-source", "raster", null, tileUrlTemplate, null, null, null, 256, null, false),
                 null, false, 1L);
         when(userMapStyleJdbcService.findById(user, 1L)).thenReturn(Optional.of(style));
 
