@@ -67,13 +67,9 @@ public class MapLibreMapStylesService {
     }
 
     @Cacheable(value = "mapStyleJson", key = "#styleId + ':' + (#user != null ? #user.id : 'anon')")
-    public JsonNode getCompleteStyleJson(String styleId, User user) {
+    public JsonNode getCompleteStyleJson(Long styleId, User user) {
         try {
-            Long customId = getCustomId(styleId);
-            if (customId == null || user == null) {
-                return null;
-            }
-            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, customId);
+            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, styleId);
             if (styleOpt.isEmpty()) {
                 return null;
             }
@@ -84,18 +80,9 @@ public class MapLibreMapStylesService {
         }
     }
 
-    /**
-     * Returns the original upstream tile URL template for a given style and source.
-     * For the built-in "reitti" style, uses the hardcoded map.
-     * For custom styles, returns the original URL from the style JSON (before rewriting).
-     */
-    public String getOriginalTileUrl(String styleId, String sourceId, User user) {
+    public String getOriginalTileUrl(Long styleId, String sourceId, User user) {
         try {
-            Long customId = getCustomId(styleId);
-            if (customId == null || user == null) {
-                return null;
-            }
-            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, customId);
+            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, styleId);
             if (styleOpt.isEmpty()) {
                 return null;
             }
@@ -125,14 +112,6 @@ public class MapLibreMapStylesService {
             return null;
         } catch (Exception e) {
             log.warn("Failed to get original tile URL for [{}/{}]: {}", styleId, sourceId, e.getMessage());
-            return null;
-        }
-    }
-
-    private static Long getCustomId(String styleId) {
-        try {
-            return Long.parseLong(styleId);
-        } catch (NumberFormatException e) {
             return null;
         }
     }
