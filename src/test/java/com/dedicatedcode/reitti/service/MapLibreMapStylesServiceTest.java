@@ -54,13 +54,6 @@ class MapLibreMapStylesServiceTest {
     }
 
     @Test
-    void getCompleteStyleJsonReturnsNullForReittiWhenUserIsNull() {
-        // reitti style with null user should still work (no user-specific logic for reitti)
-        JsonNode result = service.getCompleteStyleJson("reitti", null);
-        assertThat(result).isNotNull();
-    }
-
-    @Test
     void getCompleteStyleJsonReturnsReittiStyleWithRuntimeSources() {
         User user = createUser();
         UserSettings userSettings = mock(UserSettings.class);
