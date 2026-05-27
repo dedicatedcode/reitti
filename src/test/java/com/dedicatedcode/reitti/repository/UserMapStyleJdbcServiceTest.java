@@ -15,11 +15,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Integration test for {@link UserMapStyleJdbcService}.
- *
- * Uses the real database and the helper {@link TestingService} to set up users.
- */
 @IntegrationTest
 class UserMapStyleJdbcServiceTest {
 
@@ -162,7 +157,7 @@ class UserMapStyleJdbcServiceTest {
                 "Test Style",
                 "raster",
                 "json",
-                null,
+                "url-template",
                 "{\"version\":8,\"sources\":{}}",
                 null,
                 dataSource,

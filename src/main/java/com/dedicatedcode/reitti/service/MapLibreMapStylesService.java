@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -15,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -33,16 +31,8 @@ import java.util.*;
 public class MapLibreMapStylesService {
     private static final Logger log = LoggerFactory.getLogger(MapLibreMapStylesService.class);
 
-    // Original upstream URLs for the built-in "reitti" style sources
-    private static final Map<String, String> REITTI_ORIGINAL_UPSTREAM_URLS = Map.of(
-        "dedicatedcode", "https://tiles.dedicatedcode.com/planet/latest/{z}/{x}/{y}.pbf",
-        "terrain-source", "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
-        "satellite-source", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-    );
-
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final ContextPathHolder contextPathHolder;
-    private final UserSettingsJdbcService userSettingsJdbcService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final boolean tileCachingEnabled;
@@ -50,12 +40,10 @@ public class MapLibreMapStylesService {
     public MapLibreMapStylesService(
             UserMapStyleJdbcService userMapStyleJdbcService,
             ContextPathHolder contextPathHolder,
-            UserSettingsJdbcService userSettingsJdbcService,
             ObjectMapper objectMapper,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.contextPathHolder = contextPathHolder;
-        this.userSettingsJdbcService = userSettingsJdbcService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -81,9 +69,6 @@ public class MapLibreMapStylesService {
     @Cacheable(value = "mapStyleJson", key = "#styleId + ':' + (#user != null ? #user.id : 'anon')")
     public JsonNode getCompleteStyleJson(String styleId, User user) {
         try {
-            if ("reitti".equals(styleId)) {
-                return buildReittiStyleJson(user);
-            }
             Long customId = getCustomId(styleId);
             if (customId == null || user == null) {
                 return null;
@@ -105,11 +90,6 @@ public class MapLibreMapStylesService {
      * For custom styles, returns the original URL from the style JSON (before rewriting).
      */
     public String getOriginalTileUrl(String styleId, String sourceId, User user) {
-        if ("reitti".equals(styleId)) {
-            return REITTI_ORIGINAL_UPSTREAM_URLS.get(sourceId);
-        }
-        // For custom styles, we need to get the original style JSON (without rewrites)
-        // and extract the tile URL template.
         try {
             Long customId = getCustomId(styleId);
             if (customId == null || user == null) {
@@ -155,24 +135,6 @@ public class MapLibreMapStylesService {
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    // ---------- private helpers ----------
-
-    private JsonNode buildReittiStyleJson(User user) throws IOException {
-        boolean preferColored = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).isPreferColoredMap();
-        String stylePath = preferColored ? "static/map/colored.json" : "static/map/reitti.json";
-        ObjectNode style = (ObjectNode) objectMapper.readTree(new ClassPathResource(stylePath).getInputStream());
-
-        // Rewrite resource URLs (glyphs)
-        rewriteResourceUrls(style);
-
-        // Rewrite tile URLs if caching is enabled
-        if (tileCachingEnabled) {
-            rewriteTileUrlsInStyle(style, "reitti");
-        }
-
-        return style;
     }
 
     private JsonNode buildCustomStyleJson(UserMapStyle style) throws IOException {
@@ -406,13 +368,11 @@ public class MapLibreMapStylesService {
 
     private String proxyTileUrl(String styleId, String sourceId, String originalUrl) {
         String ext = TileUrlUtils.extractTileExtension(originalUrl);
-        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/"
-                + MapStylePathUtils.sourcePathId(sourceId) + "/{z}/{x}/{y}." + ext;
+        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}." + ext;
     }
 
     private String proxyTileJsonUrl(String styleId, String sourceId) {
-        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/"
-                + MapStylePathUtils.sourcePathId(sourceId) + "/tilejson.json";
+        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/tilejson.json";
     }
 
     private JsonNode fetchStyleJson(String styleUrl) throws IOException {
@@ -486,7 +446,7 @@ public class MapLibreMapStylesService {
         List<String> allSourceIds = new ArrayList<>();
         sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
         for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
-            if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey(), allSourceIds)) {
+            if (entry.getValue() instanceof ObjectNode) {
                 return entry.getValue();
             }
         }

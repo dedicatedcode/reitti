@@ -5,9 +5,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
-import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,7 +15,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +53,6 @@ public class MapStyleController {
 
     private final ObjectMapper objectMapper;
     private final ContextPathHolder contextPathHolder;
-    private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final HttpClient httpClient;
     private final boolean tileCacheEnabled;
@@ -64,26 +60,16 @@ public class MapStyleController {
     public MapStyleController(
             ObjectMapper objectMapper,
             ContextPathHolder contextPathHolder,
-            UserSettingsJdbcService userSettingsJdbcService,
             UserMapStyleJdbcService userMapStyleJdbcService,
             @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
         this.objectMapper = objectMapper;
         this.contextPathHolder = contextPathHolder;
-        this.userSettingsJdbcService = userSettingsJdbcService;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         this.tileCacheEnabled = StringUtils.hasText(cacheUrl);
-    }
-
-    @GetMapping(value = "/reitti.json", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> getStyle(@AuthenticationPrincipal User user, HttpServletRequest request) throws IOException {
-        boolean preferColored = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).isPreferColoredMap();
-        String stylePath = preferColored ? "static/map/colored.json" : "static/map/reitti.json";
-        JsonNode style = objectMapper.readTree(new ClassPathResource(stylePath).getInputStream());
-        return buildStyleResponse(style, request, "reitti", true);
     }
 
     @GetMapping(value = "/custom/{id}.json", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -96,7 +82,7 @@ public class MapStyleController {
             JsonNode styleJson = readUserStyle(style.get());
             styleJson = applyVectorOptions(styleJson, style.get().vectorOptions());
             styleJson = applyCustomDataSource(styleJson, style.get().dataSource());
-            return buildStyleResponse(styleJson, request, style.get().frontendId(), shouldProxyTiles(style.get()));
+            return buildStyleResponse(styleJson, request, style.get().id(), shouldProxyTiles(style.get()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (IOException e) {
@@ -235,7 +221,7 @@ public class MapStyleController {
         return mutableStyle;
     }
 
-    private ResponseEntity<JsonNode> buildStyleResponse(JsonNode style, HttpServletRequest request, String styleId, boolean proxyCustomTiles) {
+    private ResponseEntity<JsonNode> buildStyleResponse(JsonNode style, HttpServletRequest request, Long styleId, boolean proxyCustomTiles) {
         style = ensureRuntimeSources(style, request);
         if (proxyCustomTiles) {
             style = rewriteUrlsForProxy(style, request, styleId);
@@ -323,7 +309,7 @@ public class MapStyleController {
         return mutableStyle;
     }
 
-    private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request, String styleId) {
+    private JsonNode rewriteUrlsForProxy(JsonNode style, HttpServletRequest request, Long styleId) {
         ObjectNode mutableStyle = style.deepCopy();
         if (!(mutableStyle.get("sources") instanceof ObjectNode mutableSources)) {
             return mutableStyle;
@@ -346,7 +332,7 @@ public class MapStyleController {
                 source.set("tiles", singleTileArray(reservedTileUrl));
                 return;
             }
-            rewriteTileSource(source, baseUrl, styleId, entry.getKey(), sourceIds, styleBaseUri);
+            rewriteTileSource(source, baseUrl, styleId, entry.getKey(), styleBaseUri);
         });
         return mutableStyle;
     }
@@ -360,7 +346,7 @@ public class MapStyleController {
         return reserved;
     }
 
-    private void rewriteTileSource(ObjectNode source, String baseUrl, String styleId, String sourceId, List<String> allSourceIds, URI styleBaseUri) {
+    private void rewriteTileSource(ObjectNode source, String baseUrl, Long styleId, String sourceId, URI styleBaseUri) {
         String sourceUrl = source.path("url").asText("");
         String firstTileUrl = getFirstTileUrl(source);
 
@@ -370,35 +356,35 @@ public class MapStyleController {
             return;
         }
         if (isHttpUrl(sourceUrl)) {
-            source.set("url", new TextNode(styleSourceTileJsonUrl(baseUrl, styleId, sourceId, allSourceIds)));
+            source.set("url", new TextNode(styleSourceTileJsonUrl(baseUrl, styleId, sourceId)));
             return;
         }
-        rewriteTileTemplates(source, baseUrl, styleId, sourceId, allSourceIds, styleBaseUri);
+        rewriteTileTemplates(source, baseUrl, styleId, sourceId, styleBaseUri);
     }
 
-    private void rewriteTileTemplates(ObjectNode source, String baseUrl, String styleId, String sourceId, List<String> allSourceIds, URI styleBaseUri) {
+    private void rewriteTileTemplates(ObjectNode source, String baseUrl, Long styleId, String sourceId, URI styleBaseUri) {
         if (!(source.get("tiles") instanceof ArrayNode tileArray) || tileArray.isEmpty()) {
             return;
         }
         String firstTileUrl = tileArray.get(0).asText("");
         ArrayNode rewrittenTiles = objectMapper.createArrayNode();
         if (isHttpUrl(firstTileUrl)) {
-            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, allSourceIds, firstTileUrl));
+            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, firstTileUrl));
         } else if (styleBaseUri != null && containsTilePlaceholders(firstTileUrl)) {
-            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, allSourceIds, styleBaseUri.resolve(firstTileUrl).toString()));
+            rewrittenTiles.add(styleSourceTileUrl(baseUrl, styleId, sourceId, styleBaseUri.resolve(firstTileUrl).toString()));
         } else {
             rewrittenTiles.add(firstTileUrl);
         }
         source.set("tiles", rewrittenTiles);
     }
 
-    private String styleSourceTileJsonUrl(String baseUrl, String styleId, String sourceId, List<String> allSourceIds) {
-        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId, allSourceIds) + "/tilejson.json";
+    private String styleSourceTileJsonUrl(String baseUrl, Long styleId, String sourceId) {
+        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + sourceId+ "/tilejson.json";
     }
 
-    private String styleSourceTileUrl(String baseUrl, String styleId, String sourceId, List<String> allSourceIds, String tileUrl) {
+    private String styleSourceTileUrl(String baseUrl, Long styleId, String sourceId, String tileUrl) {
         String normalizedTileUrl = tileUrl.replace("{r}", "");
-        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId, allSourceIds)
+        return baseUrl + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 

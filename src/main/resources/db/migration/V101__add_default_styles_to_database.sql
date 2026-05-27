@@ -5,7 +5,7 @@ CREATE TEMP TABLE tmp_default_style_ids (id BIGINT, name TEXT);
 
 WITH inserted AS (
     INSERT INTO user_map_styles (name, user_id, map_type, style_input_type, style_json, default_style, shared, proxy_tiles)
-        VALUES ('Reitti', 'vector', 'json', '{
+        VALUES ('Reitti', 1, 'vector', 'json', '{
   "version": 8,
   "name": "Bright Faded",
   "metadata": {
@@ -6213,7 +6213,7 @@ WITH inserted AS (
     }
   ],
   "id": "bright"
-}', true, true, true, true)
+}', TRUE, TRUE, TRUE)
         RETURNING id, name
 )
 INSERT INTO tmp_default_style_ids (id, name) SELECT id, name FROM inserted;
@@ -8893,12 +8893,14 @@ INSERT INTO user_map_style_settings (user_id, active_style_id)
 SELECT us.user_id, t.id
 FROM user_settings us
          CROSS JOIN tmp_default_style_ids t
-WHERE us.prefer_colored_map = true
-  AND t.name = 'Reitti (Colored)' ON CONFLICT DO UPDATE SET active_style_id = t.id;
+WHERE us.prefer_colored_map = TRUE
+  AND t.name = 'Reitti (Colored)'
+ON CONFLICT(user_id) DO UPDATE SET active_style_id = EXCLUDED.active_style_id;
 
 INSERT INTO user_map_style_settings (user_id, active_style_id)
 SELECT us.user_id, t.id
 FROM user_settings us
          CROSS JOIN tmp_default_style_ids t
-WHERE us.prefer_colored_map = false
-  AND t.name = 'Reitti' ON CONFLICT DO UPDATE SET active_style_id = t.id;
+WHERE us.prefer_colored_map = FALSE
+  AND t.name = 'Reitti'
+ON CONFLICT(user_id) DO UPDATE SET active_style_id = EXCLUDED.active_style_id;

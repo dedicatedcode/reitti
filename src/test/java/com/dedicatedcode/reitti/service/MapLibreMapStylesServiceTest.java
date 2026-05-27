@@ -9,7 +9,6 @@ import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,10 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MapLibreMapStylesServiceTest {
@@ -47,7 +43,6 @@ class MapLibreMapStylesServiceTest {
         service = new MapLibreMapStylesService(
                 userMapStyleJdbcService,
                 contextPathHolder,
-                userSettingsJdbcService,
                 objectMapper,
                 "" // tile cache disabled
         );
@@ -89,7 +84,7 @@ class MapLibreMapStylesServiceTest {
                 1L, user.getId(), "RasterTest", "raster", "json",
                 tileUrlTemplate, null, null,
                 new MapStyleDataSource("raster-source", "raster", null, tileUrlTemplate, null, null, null, 256, null, false),
-                null, false, 1L);
+                null, false, false, 1L);
         when(userMapStyleJdbcService.findById(user, 1L)).thenReturn(Optional.of(style));
 
         JsonNode result = service.getCompleteStyleJson("1", user);
@@ -107,7 +102,7 @@ class MapLibreMapStylesServiceTest {
                 1L, user.getId(), "Style1", "vector", "json",
                 null, "{}", null,
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, false),
-                null, false, 1L);
+                null, false, false, 1L);
         when(userMapStyleJdbcService.findAll(user)).thenReturn(List.of(style));
 
         List<MapLibreStyleDefinition> config = service.getConfig(user);
@@ -124,11 +119,11 @@ class MapLibreMapStylesServiceTest {
                 1L, user.getId(), "Good", "vector", "json",
                 null, "{}", null,
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, false),
-                null, false, 1L);
+                null, false, false, 1L);
         UserMapStyle styleWithNullMapType = new UserMapStyle(
                 2L, user.getId(), null, null, null,
                 null, null, null,
-                null, null, false, 1L);
+                null, null, false, false, 1L);
         when(userMapStyleJdbcService.findAll(user)).thenReturn(List.of(goodStyle, styleWithNullMapType));
 
         List<MapLibreStyleDefinition> config = service.getConfig(user);

@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
-import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class MapStyleControllerTest {
-    private static final String JAWG_SOURCE_ID = "streets-v2+landcover-v1.1+hillshade-v1";
+    private static final String JAWG_SOURCE_ID = "";
     private static final String JAWG_TILE_URL = "https://tile.jawg.io/streets-v2+landcover-v1.1+hillshade-v1/{z}/{x}/{y}.pbf?access-token=test-token";
 
     @Test
@@ -50,6 +49,7 @@ class MapStyleControllerTest {
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, true),
                 null,
                 false,
+                false,
                 1L
         );
         UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
@@ -58,7 +58,6 @@ class MapStyleControllerTest {
         MapStyleController controller = new MapStyleController(
                 objectMapper,
                 new ContextPathHolder(""),
-                mock(UserSettingsJdbcService.class),
                 userMapStyleJdbcService,
                 "http://tile-cache"
         );
@@ -67,7 +66,7 @@ class MapStyleControllerTest {
 
         JsonNode tiles = response.getBody().path("sources").path(JAWG_SOURCE_ID).path("tiles");
         assertThat(tiles.get(0).asText()).isEqualTo(
-                "http://localhost/api/v1/tiles/styles/custom-42/" + MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID) + "/{z}/{x}/{y}.pbf"
+                "http://localhost/api/v1/tiles/styles/custom-42/streets-v2+landcover-v1.1+hillshade-v1/{z}/{x}/{y}.pbf"
         );
     }
 
@@ -89,6 +88,7 @@ class MapStyleControllerTest {
                         0, 14, 256, "xyz", false),
                 null,
                 false,
+                false,
                 1L
         );
         UserMapStyleJdbcService userMapStyleJdbcService = mock(UserMapStyleJdbcService.class);
@@ -97,7 +97,6 @@ class MapStyleControllerTest {
         MapStyleController controller = new MapStyleController(
                 objectMapper,
                 new ContextPathHolder(""),
-                mock(UserSettingsJdbcService.class),
                 userMapStyleJdbcService,
                 ""
         );

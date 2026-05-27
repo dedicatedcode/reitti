@@ -101,7 +101,6 @@ public class UserMapStyleJdbcService {
 
     @Transactional
     public UserMapStyle save(User user, UserMapStyle style) {
-        // Prevent modification of built‑in default styles
         if (style.id() != null) {
             Optional<UserMapStyle> existing = findById(user, style.id());
             if (existing.isPresent() && existing.get().defaultStyle()) {

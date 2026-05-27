@@ -47,7 +47,6 @@ public class MapStylesSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
 
         List<MapStyleConfigDTO> persisted = userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList();
-        model.addAttribute("defaultStyle", UserMapStyle.defaultReittiStyle());
         model.addAttribute("styles", persisted);
         model.addAttribute("activeMapStyleId", userMapStyleJdbcService.getActiveStyleId(user));
         return "settings/map-styles";
@@ -78,7 +77,6 @@ public class MapStylesSettingsController {
         this.userMapStyleJdbcService.setActiveStyleId(user, id);
 
         List<MapStyleConfigDTO> persisted = userMapStyleJdbcService.findAll(user).stream().map(s -> s.toDto(user)).toList();
-        model.addAttribute("defaultStyle", UserMapStyle.defaultReittiStyle());
         model.addAttribute("styles", persisted);
         model.addAttribute("activeMapStyleId", userMapStyleJdbcService.getActiveStyleId(user));
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
@@ -210,6 +208,7 @@ public class MapStylesSettingsController {
                 styleUrl,
                 dataSource,
                 vectorOptions,
+                false,
                 shared,
                 null);
     }

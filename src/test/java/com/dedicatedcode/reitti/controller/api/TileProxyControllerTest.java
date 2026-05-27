@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
-import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -80,6 +79,7 @@ class TileProxyControllerTest {
                 new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, proxyTiles),
                 null,
                 false,
+                false,
                 1L
         );
     }
@@ -124,7 +124,7 @@ class TileProxyControllerTest {
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
                     user,
                     FRONTEND_ID,
-                    MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID),
+                    JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
 
@@ -170,7 +170,7 @@ class TileProxyControllerTest {
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
                     user, FRONTEND_ID,
-                    MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID),
+                    JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
 
@@ -211,6 +211,7 @@ class TileProxyControllerTest {
                     new MapStyleDataSource(null, "vector", null, null, null, null, null, null, null, true),
                     null,
                     false,
+                    false,
                     1L
             );
             UserMapStyleJdbcService jdbc = mock(UserMapStyleJdbcService.class);
@@ -231,7 +232,7 @@ class TileProxyControllerTest {
 
             ResponseEntity<byte[]> response = controller.getStyleSourceTile(
                     user, FRONTEND_ID,
-                    MapStylePathUtils.sourcePathId(JAWG_SOURCE_ID),
+                    JAWG_SOURCE_ID,
                     Z, X, Y, EXT
             );
 
@@ -270,7 +271,7 @@ class TileProxyControllerTest {
                     STYLE_ID, USER_ID, "Raster", "raster", "json",
                     "tile_template", null, null,
                     new MapStyleDataSource("raster-source", "raster", tileJsonUrl, null, null, null, null, 256, null, true),
-                    null, false, 1L
+                    null, false, false, 1L
             );
             UserMapStyleJdbcService jdbc = mock(UserMapStyleJdbcService.class);
             when(jdbc.findById(user, STYLE_ID)).thenReturn(Optional.of(style));

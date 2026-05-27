@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
-import com.dedicatedcode.reitti.service.MapStylePathUtils;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +33,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.InflaterInputStream;
@@ -394,7 +396,8 @@ public class TileProxyController {
         List<String> allSourceIds = new ArrayList<>();
         sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
         for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
-            if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey(), allSourceIds)) {
+            //Todo: needs to be fixed
+            if (entry.getValue() instanceof ObjectNode && true) {
                 return entry.getValue();
             }
         }
@@ -457,7 +460,7 @@ public class TileProxyController {
 
     private String styleSourceTileUrl(String styleId, String sourceId, String tileUrl) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + MapStylePathUtils.sourcePathId(sourceId)
+        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 

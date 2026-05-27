@@ -14,17 +14,10 @@ public record UserMapStyle(
         String styleUrl,
         MapStyleDataSource dataSource,
         MapStyleVectorOptions vectorOptions,
+        boolean defaultStyle,
         boolean shared,
         Long version
 ) {
-    public static UserMapStyle defaultReittiStyle() {
-        return new UserMapStyle(-1L, null, "Reitti", "vector", "url", "url", null, "/styles/reitti.json", null, null, false, null);
-    }
-
-    public String frontendId() {
-        return "custom-" + id;
-    }
-
     public String styleInput() {
         return styleJson != null ? styleJson : styleUrl;
     }
@@ -38,9 +31,9 @@ public record UserMapStyle(
                 rasterSourceInputType(),
                 styleUrl,
                 styleInput(),
-                id != null && id != -1,
+                !defaultStyle,
                 shared(),
-                userId().equals(user.getId()),
+                userId().equals(user.getId()) && !defaultStyle,
                 dataSource(),
                 vectorOptions());
     }
