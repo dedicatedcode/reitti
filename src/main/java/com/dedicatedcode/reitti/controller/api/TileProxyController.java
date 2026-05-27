@@ -119,39 +119,59 @@ public class TileProxyController {
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            String tileJsonUrl = source.get().tileJsonUrl();
-            if (!StringUtils.hasText(tileJsonUrl)) {
-                return ResponseEntity.notFound().build();
-            }
-            if (!source.get().proxyTiles()) {
-                return ResponseEntity.notFound().build();
-            }
-            URI tileJsonUri = URI.create(tileJsonUrl);
+            TileSource tileSource = source.get();
 
-            HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
-            if (response.statusCode() != 200) {
-                log.debug("Failed to fetch custom TileJSON [{}]: HTTP {}", tileJsonUri, response.statusCode());
-                return ResponseEntity.notFound().build();
-            }
-
-            JsonNode tileJson = objectMapper.readTree(responseBody(response));
-            if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles && !tiles.isEmpty()) {
-                ArrayNode rewrittenTiles = objectMapper.createArrayNode();
-                String firstTileUrl = tiles.get(0).asText("");
-                if (firstTileUrl.startsWith("http://") || firstTileUrl.startsWith("https://")) {
-                    rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, firstTileUrl));
-                } else if (!firstTileUrl.isBlank()) {
-                    String resolvedTileUrl = tileJsonUri.resolve(firstTileUrl).toString();
-                    rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
-                } else {
-                    rewrittenTiles.add(firstTileUrl);
+            // Case 1: We have a TileJSON URL – fetch it and rewrite the tiles array
+            if (tileSource.tileJsonUrl() != null && !tileSource.tileJsonUrl().isBlank()) {
+                String tileJsonUrl = tileSource.tileJsonUrl();
+                if (!tileSource.proxyTiles()) {
+                    return ResponseEntity.notFound().build();
                 }
-                mutableTileJson.set("tiles", rewrittenTiles);
+                URI tileJsonUri = URI.create(tileJsonUrl);
+
+                HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
+                if (response.statusCode() != 200) {
+                    log.debug("Failed to fetch custom TileJSON [{}]: HTTP {}", tileJsonUri, response.statusCode());
+                    return ResponseEntity.notFound().build();
+                }
+
+                JsonNode tileJson = objectMapper.readTree(responseBody(response));
+                if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles && !tiles.isEmpty()) {
+                    ArrayNode rewrittenTiles = objectMapper.createArrayNode();
+                    String firstTileUrl = tiles.get(0).asText("");
+                    if (firstTileUrl.startsWith("http://") || firstTileUrl.startsWith("https://")) {
+                        rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, firstTileUrl));
+                    } else if (!firstTileUrl.isBlank()) {
+                        String resolvedTileUrl = tileJsonUri.resolve(firstTileUrl).toString();
+                        rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
+                    } else {
+                        rewrittenTiles.add(firstTileUrl);
+                    }
+                    mutableTileJson.set("tiles", rewrittenTiles);
+                }
+
+                return ResponseEntity.ok()
+                        .cacheControl(CacheControl.noCache().cachePrivate())
+                        .body(tileJson);
             }
 
-            return ResponseEntity.ok()
-                    .cacheControl(CacheControl.noCache().cachePrivate())
-                    .body(tileJson);
+            // Case 2: We have a tile URL template directly – build a TileJSON on the fly
+            if (!tileSource.tileUrlTemplates().isEmpty()) {
+                String template = tileSource.tileUrlTemplates().getFirst();
+                ObjectNode tileJson = objectMapper.createObjectNode();
+                tileJson.put("tilejson", "2.2.0");
+                tileJson.put("name", "Custom Tiles");
+                ArrayNode tiles = objectMapper.createArrayNode();
+                String proxiedTileUrl = styleSourceTileUrl(styleId, sourceId, template);
+                tiles.add(proxiedTileUrl);
+                tileJson.set("tiles", tiles);
+                return ResponseEntity.ok()
+                        .cacheControl(CacheControl.noCache().cachePrivate())
+                        .body(tileJson);
+            }
+
+            // No valid source configuration found
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.warn("Failed to fetch custom TileJSON [{}/{}]: {}", styleId, sourceId, e.getMessage());
             return ResponseEntity.notFound().build();
