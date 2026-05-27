@@ -60,7 +60,7 @@ public class UserMapStyleJdbcService {
                 rowMapper,
                 user.getId()
         );
-        return query.stream().sorted(Comparator.comparing(UserMapStyle::defaultStyle).thenComparing(UserMapStyle::id)).toList();
+        return query.stream().sorted(Comparator.comparing(UserMapStyle::defaultStyle).reversed().thenComparing(UserMapStyle::id)).toList();
     }
 
     public Optional<UserMapStyle> findById(User user, long id) {

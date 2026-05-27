@@ -1,33 +1,12 @@
 class MapRenderer {
-    static getBundledMapStyles() {
-        const contextPath = window.contextPath || '';
-        return [
-            {
-                id: 'reitti',
-                label: 'Reitti',
-                mapType: 'vector',
-                styleInputType: 'url',
-                styleUrl: `${contextPath}/map/reitti.json?ts=${Date.now()}`,
-                capabilities: {
-                    terrainSourceId: 'terrain-source',
-                    hillshadeLayerId: 'hillshading',
-                    satelliteLayerId: 'satellite-layer',
-                    building3dLayerIds: ['building-3d']
-                }
-            }
-        ];
-    }
-
-    static getCustomMapStyles() {
+     static getCustomMapStyles() {
         return Array.isArray(window.reittiCustomMapStyles)
             ? window.reittiCustomMapStyles
             : [];
     }
 
     static getMapStyles() {
-        const bundledStyles = MapRenderer.getBundledMapStyles();
         return [
-            ...bundledStyles,
             ...MapRenderer.getCustomMapStyles()
         ];
     }

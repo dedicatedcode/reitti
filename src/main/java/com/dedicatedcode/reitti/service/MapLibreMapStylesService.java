@@ -141,7 +141,7 @@ public class MapLibreMapStylesService {
                     originalTileUrlCache.put(cacheKey, tileUrl);
                     return tileUrl;
                 }
-                return url; // fallback: return the TileJSON URL itself (not ideal but better than nothing)
+                return url; // fallback: return the TileJSON URL itself
             }
             return null;
         } catch (Exception e) {
@@ -181,7 +181,7 @@ public class MapLibreMapStylesService {
     }
 
     private JsonNode buildCustomStyleJsonInternal(UserMapStyle style, boolean shouldProxy) throws IOException {
-        String styleId = String.valueOf(style.id());
+        Long styleId = style.id();
 
         JsonNode styleJson;
         if ("raster".equals(style.mapType())) {
@@ -198,7 +198,7 @@ public class MapLibreMapStylesService {
         return finalizeStyle((ObjectNode) styleJson, styleId, shouldProxy);
     }
 
-    private JsonNode buildRasterStyleJson(UserMapStyle style, boolean shouldProxy, String styleId) {
+    private JsonNode buildRasterStyleJson(UserMapStyle style, boolean shouldProxy, Long styleId) {
         MapStyleDataSource dataSource = style.dataSource();
         if (dataSource == null) {
             return null;
@@ -267,7 +267,7 @@ public class MapLibreMapStylesService {
         return rasterStyle;
     }
 
-    private JsonNode buildVectorStyleJson(UserMapStyle style, boolean shouldProxy, String styleId) throws IOException {
+    private JsonNode buildVectorStyleJson(UserMapStyle style, boolean shouldProxy, Long styleId) throws IOException {
         JsonNode styleNode;
 
         if (StringUtils.hasText(style.styleJson())) {
@@ -285,11 +285,8 @@ public class MapLibreMapStylesService {
         return styleNode;
     }
 
-    private JsonNode finalizeStyle(ObjectNode style, String styleId, boolean proxyEnabled) {
+    private JsonNode finalizeStyle(ObjectNode style, Long styleId, boolean proxyEnabled) {
         // Do not add runtime sources for the reitti style (they are already in the JSON)
-        if (!"reitti".equals(styleId)) {
-            ensureRuntimeSources(style);
-        }
         rewriteResourceUrls(style);
 
         if (proxyEnabled) {
@@ -375,7 +372,7 @@ public class MapLibreMapStylesService {
         }
     }
 
-    private void rewriteTileUrlsInStyle(ObjectNode style, String styleId) {
+    private void rewriteTileUrlsInStyle(ObjectNode style, Long styleId) {
         JsonNode sources = style.path("sources");
         if (!(sources instanceof ObjectNode sourcesObject)) {
             return;
@@ -418,13 +415,13 @@ public class MapLibreMapStylesService {
         }
     }
 
-    private String proxyTileUrl(String styleId, String sourceId, String originalUrl) {
+    private String proxyTileUrl(Long styleId, String sourceId, String originalUrl) {
         // originalUrl is already stored in cache by the caller (rewriteTileUrlsInStyle or buildRasterStyleJson)
         String ext = TileUrlUtils.extractTileExtension(originalUrl);
         return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}." + ext;
     }
 
-    private String proxyTileJsonUrl(String styleId, String sourceId) {
+    private String proxyTileJsonUrl(Long styleId, String sourceId) {
         return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/tilejson.json";
     }
 
@@ -486,22 +483,10 @@ public class MapLibreMapStylesService {
         return caps;
     }
 
-    // Helper to find a source node in a style JSON
     private JsonNode findSource(JsonNode style, String sourceId) {
         JsonNode sources = style.path("sources");
-        if (!(sources instanceof ObjectNode sourcesObject)) {
-            return null;
-        }
-        JsonNode exactSource = sourcesObject.get(sourceId);
-        if (exactSource instanceof ObjectNode) {
-            return exactSource;
-        }
-        List<String> allSourceIds = new ArrayList<>();
-        sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
-        for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
-            if (entry.getValue() instanceof ObjectNode) {
-                return entry.getValue();
-            }
+        if (sources instanceof ObjectNode sourcesObject) {
+            return sourcesObject.get(sourceId);
         }
         return null;
     }

@@ -49,31 +49,6 @@ class MapLibreMapStylesServiceTest {
     }
 
     @Test
-    void getCompleteStyleJsonReturnsReittiStyleWithRuntimeSources() {
-        User user = createUser();
-        UserSettings userSettings = mock(UserSettings.class);
-        when(userSettingsJdbcService.getOrCreateDefaultSettings(user.getId())).thenReturn(userSettings);
-
-        JsonNode result = service.getCompleteStyleJson("reitti", user);
-        assertThat(result).isNotNull();
-        assertThat(result.get("version").asInt()).isEqualTo(8);
-
-        // Verify runtime sources are present
-        JsonNode sources = result.get("sources");
-        assertThat(sources).isNotNull();
-        assertThat(sources.has("reitti-terrain-source")).isTrue();
-        assertThat(sources.has("reitti-satellite-source")).isTrue();
-    }
-
-    @Test
-    void getCompleteStyleJsonReturnsNullForNonexistentCustomStyle() {
-        // styleId that is not "reitti" and not parseable as custom -> resolveCustomId returns empty -> null
-        User user = createUser();
-        JsonNode result = service.getCompleteStyleJson("unknown-style", user);
-        assertThat(result).isNull();
-    }
-
-    @Test
     void getCompleteStyleJsonReturnsCustomRasterStyleJson() throws Exception {
         User user = createUser();
         // Use a raster style with a tile URL template (simpler code path)
@@ -86,7 +61,7 @@ class MapLibreMapStylesServiceTest {
                 null, false, false, 1L);
         when(userMapStyleJdbcService.findById(user, 1L)).thenReturn(Optional.of(style));
 
-        JsonNode result = service.getCompleteStyleJson("1", user);
+        JsonNode result = service.getCompleteStyleJson(1L, user);
         assertThat(result).isNotNull();
         assertThat(result.path("version").asInt()).isEqualTo(8);
         // Verify the source is present

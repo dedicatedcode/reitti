@@ -26,11 +26,13 @@ public class MapStyleControllerAdvice {
 
     @ModelAttribute("mapStylesJson")
     public String getMapStylesConfiguration(@AuthenticationPrincipal User user) throws JsonProcessingException {
+        if (user == null) { return null; }
         return this.objectMapper.writeValueAsString(this.mapLibreMapStylesService.getConfig(user));
     }
 
     @ModelAttribute("activeMapStyleId")
     public String getCurrentUserActiveMapStyleId(@AuthenticationPrincipal User user) {
+        if (user == null) { return null; }
         return this.userMapStyleJdbcService.getActiveStyleId(user);
     }
 }

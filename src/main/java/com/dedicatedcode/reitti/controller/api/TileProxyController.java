@@ -163,7 +163,7 @@ public class TileProxyController {
                 tileJson.put("name", "Custom Tiles");
                 ArrayNode tiles = objectMapper.createArrayNode();
                 String proxiedTileUrl = styleSourceTileUrl(styleId, sourceId, template);
-                tiles.add(proxiedTileUrl);
+                tiles.add("http://localhost:8080"+proxiedTileUrl);
                 tileJson.set("tiles", tiles);
                 return ResponseEntity.ok()
                         .cacheControl(CacheControl.noCache().cachePrivate())
