@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,11 +55,12 @@ public class UserMapStyleJdbcService {
     );
 
     public List<UserMapStyle> findAll(User user) {
-        return jdbcTemplate.query(
+        List<UserMapStyle> query = jdbcTemplate.query(
                 "SELECT * FROM user_map_styles WHERE user_id = ? OR shared = TRUE ORDER BY shared, name, id",
                 rowMapper,
                 user.getId()
         );
+        return query.stream().sorted(Comparator.comparing(UserMapStyle::defaultStyle).thenComparing(UserMapStyle::id)).toList();
     }
 
     public Optional<UserMapStyle> findById(User user, long id) {
