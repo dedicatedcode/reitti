@@ -33,11 +33,12 @@ import java.util.*;
 public class MapLibreMapStylesService {
     private static final Logger log = LoggerFactory.getLogger(MapLibreMapStylesService.class);
 
-    private static final String RUNTIME_TERRAIN_SOURCE = "reitti-terrain-source";
-    private static final String RUNTIME_SATELLITE_SOURCE = "reitti-satellite-source";
-    private static final String RUNTIME_BUILDING_SOURCE = "reitti-building-source";
-
-    private static final String VECTOR_TILEJSON_URL = "https://tiles.dedicatedcode.com/planet";
+    // Original upstream URLs for the built-in "reitti" style sources
+    private static final Map<String, String> REITTI_ORIGINAL_UPSTREAM_URLS = Map.of(
+        "dedicatedcode", "https://tiles.dedicatedcode.com/planet/latest/{z}/{x}/{y}.pbf",
+        "terrain-source", "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
+        "satellite-source", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    );
 
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final ContextPathHolder contextPathHolder;
@@ -98,6 +99,56 @@ public class MapLibreMapStylesService {
         }
     }
 
+    /**
+     * Returns the original upstream tile URL template for a given style and source.
+     * For the built-in "reitti" style, uses the hardcoded map.
+     * For custom styles, returns the original URL from the style JSON (before rewriting).
+     */
+    public String getOriginalTileUrl(String styleId, String sourceId, User user) {
+        if ("reitti".equals(styleId)) {
+            return REITTI_ORIGINAL_UPSTREAM_URLS.get(sourceId);
+        }
+        // For custom styles, we need to get the original style JSON (without rewrites)
+        // and extract the tile URL template.
+        try {
+            Long customId = getCustomId(styleId);
+            if (customId == null || user == null) {
+                return null;
+            }
+            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, customId);
+            if (styleOpt.isEmpty()) {
+                return null;
+            }
+            UserMapStyle style = styleOpt.get();
+            // Build the style JSON without rewriting (by passing proxyEnabled=false)
+            JsonNode originalStyle = buildCustomStyleJsonInternal(style, false);
+            if (originalStyle == null) {
+                return null;
+            }
+            JsonNode source = findSource(originalStyle, sourceId);
+            if (source == null) {
+                return null;
+            }
+            // Try "tiles" array first
+            JsonNode tiles = source.get("tiles");
+            if (tiles instanceof ArrayNode tileArray && !tileArray.isEmpty()) {
+                String tileUrl = tileArray.get(0).asText("");
+                if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
+                    return tileUrl;
+                }
+            }
+            // Try "url" (TileJSON)
+            String url = source.path("url").asText("");
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                return url;
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to get original tile URL for [{}/{}]: {}", styleId, sourceId, e.getMessage());
+            return null;
+        }
+    }
+
     private static Long getCustomId(String styleId) {
         try {
             return Long.parseLong(styleId);
@@ -111,12 +162,17 @@ public class MapLibreMapStylesService {
     private JsonNode buildReittiStyleJson(User user) throws IOException {
         boolean preferColored = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).isPreferColoredMap();
         String stylePath = preferColored ? "static/map/colored.json" : "static/map/reitti.json";
-        JsonNode style = objectMapper.readTree(new ClassPathResource(stylePath).getInputStream());
-        return finalizeStyle((ObjectNode) style, "reitti", shouldProxyTilesForReitti());
-    }
+        ObjectNode style = (ObjectNode) objectMapper.readTree(new ClassPathResource(stylePath).getInputStream());
 
-    private boolean shouldProxyTilesForReitti() {
-        return tileCachingEnabled;
+        // Rewrite resource URLs (glyphs)
+        rewriteResourceUrls(style);
+
+        // Rewrite tile URLs if caching is enabled
+        if (tileCachingEnabled) {
+            rewriteTileUrlsInStyle(style, "reitti");
+        }
+
+        return style;
     }
 
     private JsonNode buildCustomStyleJson(UserMapStyle style) throws IOException {
@@ -124,6 +180,10 @@ public class MapLibreMapStylesService {
                 && style.dataSource() != null
                 && style.dataSource().proxyTiles();
 
+        return buildCustomStyleJsonInternal(style, shouldProxy);
+    }
+
+    private JsonNode buildCustomStyleJsonInternal(UserMapStyle style, boolean shouldProxy) throws IOException {
         String styleId = String.valueOf(style.id());
 
         JsonNode styleJson;
@@ -218,7 +278,10 @@ public class MapLibreMapStylesService {
     }
 
     private JsonNode finalizeStyle(ObjectNode style, String styleId, boolean proxyEnabled) {
-        ensureRuntimeSources(style);
+        // Do not add runtime sources for the reitti style (they are already in the JSON)
+        if (!"reitti".equals(styleId)) {
+            ensureRuntimeSources(style);
+        }
         rewriteResourceUrls(style);
 
         if (proxyEnabled) {
@@ -231,14 +294,14 @@ public class MapLibreMapStylesService {
     private void ensureRuntimeSources(ObjectNode style) {
         ObjectNode sources = ensureSourcesNode(style);
 
-        if (!sources.has(RUNTIME_TERRAIN_SOURCE)) {
-            sources.set(RUNTIME_TERRAIN_SOURCE, buildTerrainSource());
+        if (!sources.has("reitti-terrain-source")) {
+            sources.set("reitti-terrain-source", buildTerrainSource());
         }
-        if (!sources.has(RUNTIME_SATELLITE_SOURCE)) {
-            sources.set(RUNTIME_SATELLITE_SOURCE, buildSatelliteSource());
+        if (!sources.has("reitti-satellite-source")) {
+            sources.set("reitti-satellite-source", buildSatelliteSource());
         }
-        if (!styleHasBuildingLayer(style) && !sources.has(RUNTIME_BUILDING_SOURCE)) {
-            sources.set(RUNTIME_BUILDING_SOURCE, buildBuildingSource());
+        if (!styleHasBuildingLayer(style) && !sources.has("reitti-building-source")) {
+            sources.set("reitti-building-source", buildBuildingSource());
         }
     }
 
@@ -272,7 +335,7 @@ public class MapLibreMapStylesService {
     private ObjectNode buildBuildingSource() {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", "vector");
-        source.put("url", VECTOR_TILEJSON_URL);
+        source.put("url", "https://tiles.dedicatedcode.com/planet");
         source.put("minzoom", 0);
         source.put("maxzoom", 14);
         source.put("attribution", "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>");
@@ -408,5 +471,25 @@ public class MapLibreMapStylesService {
             caps.put("building3dLayerIds", Collections.singletonList("reitti-building-3d"));
         }
         return caps;
+    }
+
+    // Helper to find a source node in a style JSON
+    private JsonNode findSource(JsonNode style, String sourceId) {
+        JsonNode sources = style.path("sources");
+        if (!(sources instanceof ObjectNode sourcesObject)) {
+            return null;
+        }
+        JsonNode exactSource = sourcesObject.get(sourceId);
+        if (exactSource instanceof ObjectNode) {
+            return exactSource;
+        }
+        List<String> allSourceIds = new ArrayList<>();
+        sourcesObject.fieldNames().forEachRemaining(allSourceIds::add);
+        for (Map.Entry<String, JsonNode> entry : sourcesObject.properties()) {
+            if (entry.getValue() instanceof ObjectNode && MapStylePathUtils.matchesSourcePathId(sourceId, entry.getKey(), allSourceIds)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 }

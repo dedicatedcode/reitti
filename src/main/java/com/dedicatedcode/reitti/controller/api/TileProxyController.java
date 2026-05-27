@@ -236,26 +236,28 @@ public class TileProxyController {
         }
 
         try {
+            String upstreamBaseUrl = SOURCE_UPSTREAM_URLS.get(source);
+            if (!StringUtils.hasText(upstreamBaseUrl)) {
+                return ResponseEntity.notFound().build();
+            }
+
             String coordPath = config.swapXY()
                 ? String.format("%d/%d/%d", z, y, x)
                 : String.format("%d/%d/%d.%s", z, x, y, ext);
 
-            String tileUrl;
-            if (this.tileCacheEnabled) {
-                tileUrl = tileCacheUrl + config.path() + coordPath;
-            } else {
-                String upstreamBaseUrl = SOURCE_UPSTREAM_URLS.get(source);
-                if (!StringUtils.hasText(upstreamBaseUrl)) {
-                    return ResponseEntity.notFound().build();
-                }
-                tileUrl = upstreamBaseUrl + coordPath;
-            }
+            String upstreamTileUrl = upstreamBaseUrl + coordPath;
             if (StringUtils.hasText(request.getQueryString())) {
-                tileUrl += "?" + request.getQueryString();
+                upstreamTileUrl += "?" + request.getQueryString();
             }
+
             log.trace("Fetching tile [{}]: {}", source, coordPath);
 
-            return fetchTile(tileUrl, config.contentType(), source);
+            if (this.tileCacheEnabled) {
+                String tileUrl = tileCacheUrl + "/custom/";
+                return fetchTile(tileUrl, config.contentType(), source, Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+            }
+
+            return fetchTile(upstreamTileUrl, config.contentType(), source);
 
         } catch (Exception e) {
             log.warn("Failed to fetch tile {}/{}/{} from {}: {}", x, y, z, source, e.getMessage());
@@ -342,7 +344,16 @@ public class TileProxyController {
             return Optional.empty();
         }
 
-        // Use the service to get the full style JSON (from cache or freshly built)
+        // For the reitti style, use the original upstream URLs directly
+        if ("reitti".equals(styleId)) {
+            String originalUrl = mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user);
+            if (originalUrl == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new TileSource(null, List.of(originalUrl), proxyTiles));
+        }
+
+        // For custom styles, use the style JSON to resolve
         JsonNode styleJson = mapLibreMapStylesService.getCompleteStyleJson(styleId, user);
         if (styleJson == null) {
             return Optional.empty();
