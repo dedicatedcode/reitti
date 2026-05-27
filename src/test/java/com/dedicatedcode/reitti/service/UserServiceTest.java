@@ -14,7 +14,6 @@ import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -93,7 +92,6 @@ class UserServiceTest {
                 "password123",
                 Role.ADMIN,
                 UnitSystem.IMPERIAL,
-                true,
                 Language.EN,
                 null,
                 null,
@@ -119,7 +117,6 @@ class UserServiceTest {
                 "password123",
                 Role.ADMIN,
                 UnitSystem.IMPERIAL,
-                true,
                 Language.EN,
                 52.5200,
                 13.4050,
@@ -140,7 +137,6 @@ class UserServiceTest {
         // Verify user settings were created
         UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         assertThat(settings.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
-        assertThat(settings.isPreferColoredMap()).isTrue();
         assertThat(settings.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(settings.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(settings.getHomeLongitude()).isEqualTo(13.4050);
@@ -164,7 +160,6 @@ class UserServiceTest {
             "password123",
             Role.USER,
             UnitSystem.METRIC,
-            false,
             Language.DE,
             null,
             null,

@@ -10,11 +10,8 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -53,8 +50,7 @@ public class UserSettingsControllerAdvice {
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false,
-                                       Language.EN,
+            return new UserSettingsDTO(Language.EN,
                                        Locale.ENGLISH.toLanguageTag(),
                                        Instant.now(),
                                        UnitSystem.METRIC,
@@ -83,8 +79,7 @@ public class UserSettingsControllerAdvice {
                 latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             }
             Language selectedLanguage = dbSettings.getSelectedLanguage();
-            return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
-                                       selectedLanguage,
+            return new UserSettingsDTO(selectedLanguage,
                                        selectedLanguage.getLocale().toLanguageTag(),
                                        latestData,
                                        dbSettings.getUnitSystem(),
@@ -100,8 +95,7 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getColor());
         }
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false,
-                                   Language.EN,
+        return new UserSettingsDTO(Language.EN,
                                    Locale.ENGLISH.toLanguageTag(),
                                    Instant.now(),
                                    UnitSystem.METRIC,

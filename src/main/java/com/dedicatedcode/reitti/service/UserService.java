@@ -84,7 +84,6 @@ public class UserService {
                               String password,
                               Role role,
                               UnitSystem unitSystem,
-                              boolean preferColoredMap,
                               Language preferredLanguage,
                               Double homeLatitude,
                               Double homeLongitude,
@@ -97,7 +96,6 @@ public class UserService {
                 .withRole(role));
 
         UserSettings userSettings = new UserSettings(createdUser.getId(),
-                                                     preferColoredMap,
                                                      preferredLanguage,
                                                      unitSystem,
                                                      homeLatitude,

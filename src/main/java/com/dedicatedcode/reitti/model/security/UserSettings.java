@@ -13,7 +13,6 @@ import java.util.Objects;
 public class UserSettings implements Serializable {
     
     private final Long userId;
-    private final boolean preferColoredMap;
     private final Language selectedLanguage;
     private final UnitSystem unitSystem;
     private final Double homeLatitude;
@@ -26,9 +25,8 @@ public class UserSettings implements Serializable {
     private final String color;
     private final Long version;
 
-    public UserSettings(Long userId, boolean preferColoredMap, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, TimeMode timeMode, String customCss, Instant latestData, String color, Long version) {
+    public UserSettings(Long userId, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, TimeMode timeMode, String customCss, Instant latestData, String color, Long version) {
         this.userId = userId;
-        this.preferColoredMap = preferColoredMap;
         this.selectedLanguage = selectedLanguage;
         this.unitSystem = unitSystem;
         this.homeLatitude = homeLatitude;
@@ -43,14 +41,10 @@ public class UserSettings implements Serializable {
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId, false, Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, null, null, "#f1ba63", null);
+        return new UserSettings(userId,  Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, null, null, "#f1ba63", null);
     }
     public Long getUserId() {
         return userId;
-    }
-    
-    public boolean isPreferColoredMap() {
-        return preferColoredMap;
     }
     
     public Language getSelectedLanguage() {
@@ -94,7 +88,7 @@ public class UserSettings implements Serializable {
     }
 
     public UserSettings withHomeCoordinates(Double homeLatitude, Double homeLongitude) {
-        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, this.timeMode, customCss, latestData, color, version);
+        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, this.timeMode, customCss, latestData, color, version);
     }
 
     public String getColor() {
@@ -106,8 +100,7 @@ public class UserSettings implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         UserSettings that = (UserSettings) o;
-        return preferColoredMap == that.preferColoredMap &&
-                Objects.equals(userId, that.userId) &&
+        return  Objects.equals(userId, that.userId) &&
                 Objects.equals(selectedLanguage, that.selectedLanguage) &&
                 Objects.equals(unitSystem, that.unitSystem) &&
                 Objects.equals(homeLatitude, that.homeLatitude) &&
@@ -122,14 +115,13 @@ public class UserSettings implements Serializable {
     
     @Override
     public int hashCode() {
-        return Objects.hash(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, version);
+        return Objects.hash(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, version);
     }
     
     @Override
     public String toString() {
         return "UserSettings{" +
                 "userId=" + userId +
-                ", preferColoredMap=" + preferColoredMap +
                 ", selectedLanguage='" + selectedLanguage + '\'' +
                 ", unitSystem=" + unitSystem +
                 ", homeLatitude=" + homeLatitude +
@@ -144,6 +136,6 @@ public class UserSettings implements Serializable {
     }
 
     public UserSettings withVersion(long version) {
-        return new UserSettings(userId, preferColoredMap, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, color, version);
+        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, color, version);
     }
 }

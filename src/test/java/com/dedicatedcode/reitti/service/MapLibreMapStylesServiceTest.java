@@ -52,7 +52,6 @@ class MapLibreMapStylesServiceTest {
     void getCompleteStyleJsonReturnsReittiStyleWithRuntimeSources() {
         User user = createUser();
         UserSettings userSettings = mock(UserSettings.class);
-        when(userSettings.isPreferColoredMap()).thenReturn(false);
         when(userSettingsJdbcService.getOrCreateDefaultSettings(user.getId())).thenReturn(userSettings);
 
         JsonNode result = service.getCompleteStyleJson("reitti", user);

@@ -8904,3 +8904,5 @@ FROM user_settings us
 WHERE us.prefer_colored_map = FALSE
   AND t.name = 'Reitti'
 ON CONFLICT(user_id) DO UPDATE SET active_style_id = EXCLUDED.active_style_id;
+
+ALTER TABLE user_settings DROP COLUMN prefer_colored_map;

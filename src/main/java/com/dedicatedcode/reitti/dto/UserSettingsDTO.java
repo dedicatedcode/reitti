@@ -10,7 +10,6 @@ import java.time.ZoneId;
 import java.util.Locale;
 
 public record UserSettingsDTO(
-        boolean preferColoredMap,
         Language selectedLanguage,
         String selectedLocale,
         Instant newestData,
