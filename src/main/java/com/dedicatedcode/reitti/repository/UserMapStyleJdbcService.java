@@ -49,6 +49,7 @@ public class UserMapStyleJdbcService {
                     rs.getString("sprite_url_override")
             ),
             rs.getBoolean("shared"),
+            rs.getBoolean("default_style"),
             rs.getLong("version")
     );
 
@@ -100,14 +101,22 @@ public class UserMapStyleJdbcService {
 
     @Transactional
     public UserMapStyle save(User user, UserMapStyle style) {
+        // Prevent modification of built‑in default styles
+        if (style.id() != null) {
+            Optional<UserMapStyle> existing = findById(user, style.id());
+            if (existing.isPresent() && existing.get().defaultStyle()) {
+                throw new UnsupportedOperationException("Default styles cannot be modified.");
+            }
+        }
+
         if (style.id() != null && findOwnedById(user, style.id()).isPresent()) {
             jdbcTemplate.update("""
                     UPDATE user_map_styles
                     SET name = ?, map_type = ?, style_input_type = ?, raster_source_input_type = ?,
                         style_json = ?, style_url = ?, source_id = ?, source_type = ?, tilejson_url = ?,
                         tile_url_template = ?, attribution = ?, minzoom = ?, maxzoom = ?, tile_size = ?, scheme = ?,
-                        proxy_tiles = ?, attribution_override = ?, glyphs_url_override = ?, sprite_url_override = ?, shared = ?,
-                        updated_at = CURRENT_TIMESTAMP, version = version + 1
+                        proxy_tiles = ?, attribution_override = ?, glyphs_url_override = ?, sprite_url_override = ?,
+                        shared = ?, default_style = ?, updated_at = CURRENT_TIMESTAMP, version = version + 1
                     WHERE user_id = ? AND id = ?
                     """,
                     style.name(),
@@ -130,6 +139,7 @@ public class UserMapStyleJdbcService {
                     style.vectorOptions().glyphsUrlOverride(),
                     style.vectorOptions().spriteUrlOverride(),
                     style.shared(),
+                    style.defaultStyle(),
                     user.getId(),
                     style.id());
             return findOwnedById(user, style.id()).orElseThrow();
@@ -139,8 +149,8 @@ public class UserMapStyleJdbcService {
                 INSERT INTO user_map_styles
                     (user_id, name, map_type, style_input_type, raster_source_input_type, style_json, style_url,
                      source_id, source_type, tilejson_url, tile_url_template, attribution, minzoom, maxzoom, tile_size, scheme,
-                     proxy_tiles, attribution_override, glyphs_url_override, sprite_url_override, shared)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     proxy_tiles, attribution_override, glyphs_url_override, sprite_url_override, shared, default_style)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id
                 """,
                 Long.class,
@@ -164,16 +174,17 @@ public class UserMapStyleJdbcService {
                 style.vectorOptions().attributionOverride(),
                 style.vectorOptions().glyphsUrlOverride(),
                 style.vectorOptions().spriteUrlOverride(),
-                style.shared());
+                style.shared(),
+                style.defaultStyle());
         return findOwnedById(user, id).orElseThrow();
     }
 
     @Transactional
     public void delete(User user, long id) {
+        // Prevent deletion of default styles (they are not owned by any user anyway)
         jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ? AND id = ?", user.getId(), id);
         if (("custom-" + id).equals(getActiveStyleId(user))) {
             setActiveStyleId(user, DEFAULT_STYLE_ID);
         }
     }
-
 }
