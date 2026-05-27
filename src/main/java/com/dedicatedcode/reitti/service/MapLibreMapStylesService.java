@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
+import com.dedicatedcode.reitti.util.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -286,37 +287,46 @@ public class MapLibreMapStylesService {
     }
 
     private JsonNode finalizeStyle(ObjectNode style, Long styleId, boolean proxyEnabled) {
-        // Do not add runtime sources for the reitti style (they are already in the JSON)
+        // Rewrite resource URLs (e.g. glyphs) with correct context path
         rewriteResourceUrls(style);
 
         if (proxyEnabled) {
             rewriteTileUrlsInStyle(style, styleId);
         }
 
+        // Add runtime sources (terrain, satellite, building) with styleId‑aware URLs
+        ensureRuntimeSources(style, styleId, proxyEnabled);
+
         return style;
     }
 
-    private void ensureRuntimeSources(ObjectNode style) {
+    private void ensureRuntimeSources(ObjectNode style, Long styleId, boolean proxyEnabled) {
         ObjectNode sources = ensureSourcesNode(style);
 
         if (!sources.has("reitti-terrain-source")) {
-            sources.set("reitti-terrain-source", buildTerrainSource());
+            sources.set("reitti-terrain-source", buildTerrainSource(styleId, proxyEnabled));
         }
         if (!sources.has("reitti-satellite-source")) {
-            sources.set("reitti-satellite-source", buildSatelliteSource());
+            sources.set("reitti-satellite-source", buildSatelliteSource(styleId, proxyEnabled));
         }
         if (!styleHasBuildingLayer(style) && !sources.has("reitti-building-source")) {
-            sources.set("reitti-building-source", buildBuildingSource());
+            sources.set("reitti-building-source", buildBuildingSource(styleId, proxyEnabled));
         }
     }
 
-    private ObjectNode buildTerrainSource() {
+    private ObjectNode buildTerrainSource(Long styleId, boolean proxyEnabled) {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", "raster-dem");
-        String url = tileCachingEnabled
-                ? contextPathHolder.getContextPath() + "/api/v1/tiles/terrain/{z}/{x}/{y}.webp"
-                : "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
-        source.set("tiles", singleTileArray(url));
+        String originalUrl = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
+        if (proxyEnabled) {
+            String sourceId = "reitti-terrain-source";
+            String cacheKey = styleId + ":" + sourceId;
+            originalTileUrlCache.put(cacheKey, originalUrl);
+            String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.webp";
+            source.set("tiles", singleTileArray(proxiedUrl));
+        } else {
+            source.set("tiles", singleTileArray(originalUrl));
+        }
         source.put("tileSize", 256);
         source.put("encoding", "terrarium");
         source.put("maxzoom", 14);
@@ -324,23 +334,37 @@ public class MapLibreMapStylesService {
         return source;
     }
 
-    private ObjectNode buildSatelliteSource() {
+    private ObjectNode buildSatelliteSource(Long styleId, boolean proxyEnabled) {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", "raster");
-        String url = tileCachingEnabled
-                ? contextPathHolder.getContextPath() + "/api/v1/tiles/satellite/{z}/{x}/{y}.jpg"
-                : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-        source.set("tiles", singleTileArray(url));
+        String originalUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+        if (proxyEnabled) {
+            String sourceId = "reitti-satellite-source";
+            String cacheKey = styleId + ":" + sourceId;
+            originalTileUrlCache.put(cacheKey, originalUrl);
+            String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.jpg";
+            source.set("tiles", singleTileArray(proxiedUrl));
+        } else {
+            source.set("tiles", singleTileArray(originalUrl));
+        }
         source.put("tileSize", 256);
         source.put("maxzoom", 18);
         source.put("attribution", "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community");
         return source;
     }
 
-    private ObjectNode buildBuildingSource() {
+    private ObjectNode buildBuildingSource(Long styleId, boolean proxyEnabled) {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", "vector");
-        source.put("url", "https://tiles.dedicatedcode.com/planet");
+        String originalTileJsonUrl = "https://tiles.dedicatedcode.com/planet";
+        String sourceId = "reitti-building-source";
+        if (proxyEnabled) {
+            String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
+            originalTileJsonUrlCache.put(tileJsonCacheKey, originalTileJsonUrl);
+            source.put("url", proxyTileJsonUrl(styleId, sourceId));
+        } else {
+            source.put("url", originalTileJsonUrl);
+        }
         source.put("minzoom", 0);
         source.put("maxzoom", 14);
         source.put("attribution", "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>");
