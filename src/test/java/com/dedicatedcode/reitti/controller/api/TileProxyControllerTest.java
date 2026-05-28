@@ -14,12 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TileProxyControllerTest {
 
@@ -69,11 +71,16 @@ class TileProxyControllerTest {
         when(mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user))
                 .thenReturn(tileUrlTemplate);
 
-        // ContextPath is empty
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setScheme("http");
+        request.setServerName("localhost");
+        request.setServerPort(8080);
+        // Optionally set context path if needed
+        request.setContextPath("");
         when(contextPathHolder.getContextPath()).thenReturn("");
 
         // Act
-        ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(user, styleId, sourceId, null);
+        ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(user, styleId, sourceId, request);
 
         // Assert
         assertEquals(200, response.getStatusCodeValue());
@@ -87,10 +94,10 @@ class TileProxyControllerTest {
 
         String proxiedUrl = tiles.get(0).asText();
         // Verify the proxied URL structure
-        assertTrue(proxiedUrl.startsWith("/api/v1/tiles/styles/1/dedicatedcode/"),
-                "Proxied URL should start with the correct path");
+        assertTrue(proxiedUrl.startsWith("http://localhost:8080/api/v1/tiles/styles/1/dedicatedcode/"),
+                   "Proxied URL should start with the correct path");
         assertTrue(proxiedUrl.endsWith(".pbf"),
-                "Proxied URL should end with .pbf extension");
+                   "Proxied URL should end with .pbf extension");
         // Ensure placeholders are present
         assertTrue(proxiedUrl.contains("{z}"));
         assertTrue(proxiedUrl.contains("{x}"));
