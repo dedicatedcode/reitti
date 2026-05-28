@@ -386,9 +386,9 @@ class MapRenderer {
     }
 
     _buildGenericStyleCapabilities() {
-        const terrainSourceId = 'reitti-terrain-source';
-        const satelliteSourceId = 'reitti-satellite-source';
-        const buildingSourceId = 'reitti-building-source';
+        const terrainSourceId = 'terrain-source';
+        const satelliteSourceId = 'satellite-source';
+        const buildingSourceId = 'building-source';
         const buildingCapabilities = this._detectBuildingCapabilities(buildingSourceId);
 
         return {
@@ -401,9 +401,9 @@ class MapRenderer {
                 maxzoom: 14,
                 attribution: "© <a href='https://mapterhorn.com' target='_blank'>Mapterhorn</a>"
             },
-            hillshadeLayerId: 'reitti-terrain-hillshade',
+            hillshadeLayerId: 'terrain-hillshade',
             hillshadeLayerDefinition: {
-                id: 'reitti-terrain-hillshade',
+                id: 'terrain-hillshade',
                 type: 'hillshade',
                 source: terrainSourceId,
                 layout: {
@@ -423,9 +423,9 @@ class MapRenderer {
                 maxzoom: 18,
                 attribution: "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
             },
-            satelliteLayerId: 'reitti-satellite-layer',
+            satelliteLayerId: 'satellite-layer',
             satelliteLayerDefinition: {
-                id: 'reitti-satellite-layer',
+                id: 'satellite-layer',
                 type: 'raster',
                 source: satelliteSourceId,
                 paint: {
@@ -474,10 +474,10 @@ class MapRenderer {
         }
 
         return {
-            building3dLayerIds: ['reitti-building-3d'],
+            building3dLayerIds: ['building-3d'],
             building3dLayerDefinitions: [
                 {
-                    id: 'reitti-building-3d',
+                    id: 'building-3d',
                     type: 'fill-extrusion',
                     source: sourceId,
                     'source-layer': sourceLayer,
