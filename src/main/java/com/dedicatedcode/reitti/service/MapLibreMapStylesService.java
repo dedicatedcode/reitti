@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.util.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -303,14 +302,14 @@ public class MapLibreMapStylesService {
     private void ensureRuntimeSources(ObjectNode style, Long styleId, boolean proxyEnabled) {
         ObjectNode sources = ensureSourcesNode(style);
 
-        if (!sources.has("reitti-terrain-source")) {
-            sources.set("reitti-terrain-source", buildTerrainSource(styleId, proxyEnabled));
+        if (!sources.has("terrain-source")) {
+            sources.set("terrain-source", buildTerrainSource(styleId, proxyEnabled));
         }
-        if (!sources.has("reitti-satellite-source")) {
-            sources.set("reitti-satellite-source", buildSatelliteSource(styleId, proxyEnabled));
+        if (!sources.has("satellite-source")) {
+            sources.set("satellite-source", buildSatelliteSource(styleId, proxyEnabled));
         }
-        if (!styleHasBuildingLayer(style) && !sources.has("reitti-building-source")) {
-            sources.set("reitti-building-source", buildBuildingSource(styleId, proxyEnabled));
+        if (styleHasBuildingLayer(style) && !sources.has("building-source")) {
+            sources.set("building-source", buildBuildingSource(styleId, proxyEnabled));
         }
     }
 
@@ -319,7 +318,7 @@ public class MapLibreMapStylesService {
         source.put("type", "raster-dem");
         String originalUrl = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
         if (proxyEnabled) {
-            String sourceId = "reitti-terrain-source";
+            String sourceId = "terrain-source";
             String cacheKey = styleId + ":" + sourceId;
             originalTileUrlCache.put(cacheKey, originalUrl);
             String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.webp";
@@ -339,7 +338,7 @@ public class MapLibreMapStylesService {
         source.put("type", "raster");
         String originalUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
         if (proxyEnabled) {
-            String sourceId = "reitti-satellite-source";
+            String sourceId = "satellite-source";
             String cacheKey = styleId + ":" + sourceId;
             originalTileUrlCache.put(cacheKey, originalUrl);
             String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.jpg";
@@ -357,7 +356,7 @@ public class MapLibreMapStylesService {
         ObjectNode source = objectMapper.createObjectNode();
         source.put("type", "vector");
         String originalTileJsonUrl = "https://tiles.dedicatedcode.com/planet";
-        String sourceId = "reitti-building-source";
+        String sourceId = "building-source";
         if (proxyEnabled) {
             String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
             originalTileJsonUrlCache.put(tileJsonCacheKey, originalTileJsonUrl);
