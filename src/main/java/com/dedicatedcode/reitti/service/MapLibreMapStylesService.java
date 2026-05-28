@@ -498,10 +498,10 @@ public class MapLibreMapStylesService {
     private Map<String, Object> buildCapabilities(UserMapStyle style) {
         Map<String, Object> caps = new HashMap<>();
         if ("vector".equals(style.mapType())) {
-            caps.put("terrainSourceId", "reitti-terrain-source");
-            caps.put("hillshadeLayerId", "reitti-terrain-hillshade");
-            caps.put("satelliteLayerId", "reitti-satellite-layer");
-            caps.put("building3dLayerIds", Collections.singletonList("reitti-building-3d"));
+            caps.put("terrainSourceId", "terrain-source");
+            caps.put("hillshadeLayerId", "terrain-hillshade");
+            caps.put("satelliteLayerId", "satellite-layer");
+            caps.put("building3dLayerIds", Collections.singletonList("building-3d"));
         }
         return caps;
     }

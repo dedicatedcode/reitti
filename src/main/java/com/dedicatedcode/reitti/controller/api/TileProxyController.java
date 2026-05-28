@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
+import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -111,7 +112,8 @@ public class TileProxyController {
     public ResponseEntity<JsonNode> getStyleSourceTileJson(
             @AuthenticationPrincipal User user,
             @PathVariable Long styleId,
-            @PathVariable String sourceId) {
+            @PathVariable String sourceId,
+            HttpServletRequest request) {
 
         try {
             boolean proxyTiles = isProxyTilesEnabled(user, styleId);
@@ -162,8 +164,7 @@ public class TileProxyController {
                 tileJson.put("tilejson", "2.2.0");
                 tileJson.put("name", "Custom Tiles");
                 ArrayNode tiles = objectMapper.createArrayNode();
-                String proxiedTileUrl = styleSourceTileUrl(styleId, sourceId, template);
-                tiles.add("http://localhost:8080"+proxiedTileUrl);
+                tiles.add(RequestHelper.getBaseUrl(request) + contextPathHolder.getContextPath() + styleSourceTileUrl(styleId, sourceId, template));
                 tileJson.set("tiles", tiles);
                 return ResponseEntity.ok()
                         .cacheControl(CacheControl.noCache().cachePrivate())

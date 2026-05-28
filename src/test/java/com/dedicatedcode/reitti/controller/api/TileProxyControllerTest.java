@@ -73,7 +73,7 @@ class TileProxyControllerTest {
         when(contextPathHolder.getContextPath()).thenReturn("");
 
         // Act
-        ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(user, styleId, sourceId);
+        ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(user, styleId, sourceId, null);
 
         // Assert
         assertEquals(200, response.getStatusCodeValue());
