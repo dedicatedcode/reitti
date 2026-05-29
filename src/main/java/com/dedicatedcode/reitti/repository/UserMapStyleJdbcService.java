@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -102,6 +103,7 @@ public class UserMapStyleJdbcService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"mapStyleJson", "mapStyles"}, allEntries = true)
     public UserMapStyle save(User user, UserMapStyle style) {
         if (style.id() != null) {
             Optional<UserMapStyle> existing = findById(user, style.id());
@@ -181,6 +183,7 @@ public class UserMapStyleJdbcService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"mapStyleJson", "mapStyles"}, allEntries = true)
     public void delete(User user, long id) {
         // Prevent deletion of default styles (they are not owned by any user anyway)
         jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ? AND id = ?", user.getId(), id);

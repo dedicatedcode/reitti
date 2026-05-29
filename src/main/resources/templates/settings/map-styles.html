@@ -42,26 +42,6 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr>
-                            <td>Reitti</td>
-                            <td>
-                                <span th:if="${'reitti' == activeMapStyleId}">
-                                    <i class="lni lni-check"></i>
-                                    <span th:text="#{map.settings.dialog.map-styles.table.status.active}">In Use</span>
-                                </span>
-                            </td>
-                            <td th:text="#{map.settings.dialog.map-styles.map-type.vector}">Vector</td>
-                            <td><span th:text="#{map.settings.dialog.map-styles.table.default}">Managed by reitti</span></td>
-                            <td>
-                                <button th:if="${'reitti' != activeMapStyleId}"
-                                        class="btn"
-                                        th:hx-post="@{/settings/map-styles/activate(id=reitti)}"
-                                        hx-target="#map-style-list-container"
-                                        hx-vals='js:{"timezone": getUserTimezone()}'
-                                        th:text="#{map.settings.dialog.map-styles.set-as-active}">Set as Active
-                                </button>
-                            </td>
-                        </tr>
                         <tr th:each="style : ${styles}">
                             <td th:text="${style.label()}"></td>
                             <td>
