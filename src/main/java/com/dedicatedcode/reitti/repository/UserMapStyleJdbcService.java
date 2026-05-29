@@ -187,8 +187,12 @@ public class UserMapStyleJdbcService {
     public void delete(User user, long id) {
         // Prevent deletion of default styles (they are not owned by any user anyway)
         jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ? AND id = ?", user.getId(), id);
-        if (("custom-" + id).equals(getActiveStyleId(user))) {
-            setActiveStyleId(user, DEFAULT_STYLE_ID);
-        }
+
+        // Switch any user who had this style as active back to the default Reitti style
+        String styleIdString = "custom-" + id;
+        jdbcTemplate.update(
+                "UPDATE user_map_style_settings SET active_style_id = (SELECT CAST(id AS TEXT) FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?",
+                styleIdString
+        );
     }
 }
