@@ -83,7 +83,12 @@ public class UserService {
     }
 
     private void setDefaultMapStyle(User createdUser) {
-        this.jdbcTemplate.update("", createdUser.getId());
+        Long defaultStyleId = jdbcTemplate.queryForObject(
+                "SELECT id FROM user_map_styles WHERE name = 'Reitti' LIMIT 1",
+                Long.class);
+        if (defaultStyleId != null) {
+            userMapStyleJdbcService.setActiveStyleId(createdUser, defaultStyleId);
+        }
     }
 
     public User createNewUser(String username,
@@ -166,6 +171,8 @@ public class UserService {
         this.rawLocationPointJdbcService.deleteAllForUser(user);
         this.apiTokenJdbcService.deleteForUser(user);
         this.mqttIntegrationJdbcService.deleteForUser(user);
+        // Delete the row in the map style settings table
+        this.jdbcTemplate.update("DELETE FROM user_map_style_settings WHERE user_id = ?", user.getId());
         this.userJdbcService.deleteUser(user.getId());
     }
 
