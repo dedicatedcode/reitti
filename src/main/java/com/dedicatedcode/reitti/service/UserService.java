@@ -33,6 +33,7 @@ public class UserService {
     private final ApiTokenJdbcService apiTokenJdbcService;
     private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final JdbcTemplate jdbcTemplate;
 
     public UserService(UserJdbcService userJdbcService,
@@ -45,7 +46,7 @@ public class UserService {
                        GeocodingResponseJdbcService geocodingResponseJdbcService,
                        ApiTokenJdbcService apiTokenJdbcService,
                        MqttIntegrationJdbcService mqttIntegrationJdbcService,
-                       PasswordEncoder passwordEncoder,
+                       PasswordEncoder passwordEncoder, UserMapStyleJdbcService userMapStyleJdbcService,
                        JdbcTemplate jdbcTemplate) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -59,6 +60,7 @@ public class UserService {
         this.apiTokenJdbcService = apiTokenJdbcService;
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
         this.passwordEncoder = passwordEncoder;
+        this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -75,8 +77,13 @@ public class UserService {
         userSettings = addRandomHomeLocation(userSettings);
         saveDefaultVisitDetectionParameters(createdUser);
         saveDefaultTransportationModeDetectionParameters(createdUser);
+        setDefaultMapStyle(createdUser);
         this.userSettingsJdbcService.save(userSettings);
         return createdUser;
+    }
+
+    private void setDefaultMapStyle(User createdUser) {
+        this.jdbcTemplate.update("", createdUser.getId());
     }
 
     public User createNewUser(String username,
