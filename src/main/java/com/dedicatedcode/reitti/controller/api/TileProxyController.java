@@ -214,9 +214,9 @@ public class TileProxyController {
             if (this.tileCacheEnabled) {
                 String tileUrl = tileCacheUrl + "/custom/";
                 return fetchTile(tileUrl, contentTypeForExtension(ext), "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+            } else {
+                return fetchTile(upstreamTileUrl, contentTypeForExtension(ext), "custom");
             }
-
-            return fetchTile(upstreamTileUrl, contentTypeForExtension(ext), "custom");
         } catch (IllegalArgumentException e) {
             log.warn("Failed to resolve custom tile [{}/{}]: {}", styleId, sourceId, e.getMessage());
             return ResponseEntity.badRequest().build();
