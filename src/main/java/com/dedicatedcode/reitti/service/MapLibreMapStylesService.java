@@ -286,15 +286,11 @@ public class MapLibreMapStylesService {
     }
 
     private JsonNode finalizeStyle(ObjectNode style, Long styleId, boolean proxyEnabled) {
-        // Rewrite resource URLs (e.g. glyphs) with correct context path
-        rewriteResourceUrls(style);
 
         if (proxyEnabled) {
+            rewriteResourceUrls(style);
             rewriteTileUrlsInStyle(style, styleId);
         }
-
-        // Add runtime sources (terrain, satellite, building) with styleId‑aware URLs
-        ensureRuntimeSources(style, styleId, proxyEnabled);
 
         return style;
     }
