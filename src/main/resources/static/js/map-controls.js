@@ -61,6 +61,7 @@ class MapControls {
 
     _setup() {
         this.mapStyleSelect.addEventListener('change', () => {
+            this._updateCapabilitiesUI();
             MapRenderer.setActiveMapStyleId(this.mapStyleSelect.value);
             this.emit('selectionChanged', this.getState());
         });
@@ -79,6 +80,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleTerrainModeBtn.addEventListener('click', () => {
+            if (this.toggleTerrainModeBtn.disabled) return;
+
             const isEnabled = this.toggleTerrainModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableTerrain();
@@ -88,6 +91,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleBuildingsModeBtn.addEventListener('click', () => {
+            if (this.toggleBuildingsModeBtn.disabled) return;
+
             const isEnabled = this.toggleBuildingsModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableBuildings();
@@ -97,6 +102,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleSatelliteModeBtn.addEventListener('click', () => {
+            if (this.toggleSatelliteModeBtn.disabled) return;
+
             const isEnabled = this.toggleSatelliteModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableSatellite();
@@ -159,16 +166,18 @@ class MapControls {
     }
 
     getState() {
+        const activeStyle = MapRenderer.getMapStyles()
+            .find(s => s.id === window.reittiActiveMapStyleId);
+        const caps = activeStyle ? activeStyle.capabilities || {} : {};
         return {
             mapStyleId: this.mapStyleSelect.value,
             is3d: this.toggle3dBtn.classList.contains('active'),
-            renderTerrain: this.toggleTerrainModeBtn.classList.contains('active'),
-            renderBuildings: this.toggleBuildingsModeBtn.classList.contains('active'),
-            renderSatelliteView: this.toggleSatelliteModeBtn.classList.contains('active'),
+            renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
+            renderBuildings:  caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
+            renderSatelliteView: !!caps.satelliteLayerId && this.toggleSatelliteModeBtn.classList.contains('active'),
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
-        }
+        };
     }
-
     refreshMapStyleOptions(preferredStyleId = null) {
         const mapStyles = MapRenderer.getMapStyles();
         const storedMapStyleId = preferredStyleId || MapRenderer.getActiveMapStyleId();
