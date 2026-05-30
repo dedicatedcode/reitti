@@ -17,7 +17,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -70,8 +69,8 @@ public class MapStylesSettingsController {
     }
 
     @PostMapping("/activate")
-    public String activateStyle(@AuthenticationPrincipal User user, @RequestParam String id, Model model) {
-        if (!id.equals(UserMapStyleJdbcService.DEFAULT_STYLE_ID) && this.userMapStyleJdbcService.findById(user, Long.parseLong(id)).isEmpty()) {
+    public String activateStyle(@AuthenticationPrincipal User user, @RequestParam Long id, Model model) {
+        if (this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
         }
         this.userMapStyleJdbcService.setActiveStyleId(user, id);

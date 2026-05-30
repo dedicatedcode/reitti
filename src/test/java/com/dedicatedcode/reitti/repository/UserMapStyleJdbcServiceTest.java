@@ -112,15 +112,41 @@ class UserMapStyleJdbcServiceTest {
     void shouldGetAndSetActiveStyleId() {
         User user = testingService.randomUser();
 
-        // By default the active style should be the constant DEFAULT_STYLE_ID
-        assertThat(service.getActiveStyleId(user))
-                .isEqualTo(UserMapStyleJdbcService.DEFAULT_STYLE_ID);
+        Long defaultStyleId = service.getActiveStyleId(user);
+        Optional<UserMapStyle> defualtStle = this.service.findById(user, defaultStyleId);
+        assertTrue(defualtStle.isPresent());
+        assertEquals("Reitti", defualtStle.get().name());
 
-        String newActiveId = "custom-123";
+        Long newActiveId = 123L;
         service.setActiveStyleId(user, newActiveId);
 
         assertThat(service.getActiveStyleId(user))
                 .isEqualTo(newActiveId);
+    }
+
+    @Test
+    void shouldResetActiveStyleOnDeletion() {
+        User user = testingService.randomUser();
+
+        createTestStyle(user, 123L, true);
+        createTestStyle(testingService.admin(), 124L, true);
+
+        Long defaultStyleId = service.getActiveStyleId(user);
+        Optional<UserMapStyle> defualtStle = this.service.findById(user, defaultStyleId);
+        assertTrue(defualtStle.isPresent());
+        assertEquals("Reitti", defualtStle.get().name());
+
+        Long newActiveId = 123L;
+        service.setActiveStyleId(user, newActiveId);
+        assertThat(service.getActiveStyleId(user)).isEqualTo(newActiveId);
+
+        this.service.delete(user, 123L);
+        assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
+
+        this.service.setActiveStyleId(testingService.admin(), 124L);
+        this.service.delete(testingService.admin(), 124L);
+        assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
+
     }
 
     @Test

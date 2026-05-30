@@ -16,7 +16,6 @@ import java.util.Optional;
 
 @Service
 public class UserMapStyleJdbcService {
-    public static final String DEFAULT_STYLE_ID = "reitti";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -84,17 +83,17 @@ public class UserMapStyleJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public String getActiveStyleId(User user) {
-        List<String> results = jdbcTemplate.queryForList(
+    public Long getActiveStyleId(User user) {
+        List<Long> results = jdbcTemplate.queryForList(
                 "SELECT active_style_id FROM user_map_style_settings WHERE user_id = ?",
-                String.class,
+                Long.class,
                 user.getId()
         );
-        return results.isEmpty() ? DEFAULT_STYLE_ID : results.getFirst();
+        return results.getFirst();
     }
 
     @Transactional
-    public void setActiveStyleId(User user, String activeStyleId) {
+    public void setActiveStyleId(User user, Long activeStyleId) {
         jdbcTemplate.update("""
                 INSERT INTO user_map_style_settings (user_id, active_style_id)
                 VALUES (?, ?)
@@ -187,12 +186,7 @@ public class UserMapStyleJdbcService {
     public void delete(User user, long id) {
         // Prevent deletion of default styles (they are not owned by any user anyway)
         jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ? AND id = ?", user.getId(), id);
-
-        // Switch any user who had this style as active back to the default Reitti style
-        String styleIdString = "custom-" + id;
         jdbcTemplate.update(
-                "UPDATE user_map_style_settings SET active_style_id = (SELECT CAST(id AS TEXT) FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?",
-                styleIdString
-        );
+                "UPDATE user_map_style_settings SET active_style_id = (SELECT CAST(id AS TEXT) FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?", id);
     }
 }

@@ -31,7 +31,7 @@ public class MapStyleControllerAdvice {
     }
 
     @ModelAttribute("activeMapStyleId")
-    public String getCurrentUserActiveMapStyleId(@AuthenticationPrincipal User user) {
+    public Long getCurrentUserActiveMapStyleId(@AuthenticationPrincipal User user) {
         if (user == null) { return null; }
         return this.userMapStyleJdbcService.getActiveStyleId(user);
     }

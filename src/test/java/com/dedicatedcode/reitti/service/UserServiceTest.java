@@ -14,6 +14,7 @@ import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -21,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
 class UserServiceTest {
@@ -45,6 +47,9 @@ class UserServiceTest {
 
     @Autowired
     private TransportModeOverrideJdbcService transportModeOverrideJdbcService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private TestingService testingService;
@@ -81,6 +86,13 @@ class UserServiceTest {
         // Verify default transport mode configurations are created
         List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
         assertThat(transportConfigs).hasSize(4);
+
+        //Verify default MapStyleSetting
+        assertEquals("Reitti",
+                     this.jdbcTemplate.queryForObject("""
+                                                              SELECT name FROM user_map_styles
+                                                                          WHERE id = (SELECT active_style_id FROM user_map_style_settings WHERE user_id = ?)
+                                                              """, String.class, user.getId()));
     }
 
     @Test
@@ -208,5 +220,7 @@ class UserServiceTest {
         
         assertThat(remainingParams).isEmpty();
         assertThat(remainingConfigs).isEmpty();
+
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_map_style_settings WHERE user_id = ?", Integer.class, user.getId()));
     }
 }
