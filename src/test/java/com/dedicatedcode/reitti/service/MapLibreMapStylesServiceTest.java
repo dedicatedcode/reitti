@@ -30,9 +30,6 @@ class MapLibreMapStylesServiceTest {
     @Mock
     private ContextPathHolder contextPathHolder;
 
-    @Mock
-    private UserSettingsJdbcService userSettingsJdbcService;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MapLibreMapStylesService service;

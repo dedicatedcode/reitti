@@ -488,24 +488,117 @@ public class MapLibreMapStylesService {
                 style.mapType(),
                 "url",
                 contextPath + "/api/v1/tiles/styles/" + styleId + "/style.json",
-                buildCapabilities(style));
-    }
-
-    private Map<String, Object> buildCapabilities(UserMapStyle style) {
-        Map<String, Object> caps = new HashMap<>();
-        if ("vector".equals(style.mapType())) {
-            caps.put("terrainSourceId", "terrain-source");
-            caps.put("hillshadeLayerId", "terrain-hillshade");
-            caps.put("satelliteLayerId", "satellite-layer");
-            caps.put("building3dLayerIds", Collections.singletonList("building-3d"));
-        }
-        return caps;
+                detectCapabilities(style));
     }
 
     private JsonNode findSource(JsonNode style, String sourceId) {
         JsonNode sources = style.path("sources");
         if (sources instanceof ObjectNode sourcesObject) {
             return sourcesObject.get(sourceId);
+        }
+        return null;
+    }
+
+    private Map<String, Object> detectCapabilities(UserMapStyle style) {
+        if ("raster".equals(style.mapType())) {
+            return Map.of();
+        }
+
+        // Obtain the raw style JSON either from inline JSON or from style URL.
+        JsonNode styleJson = getStyleJsonForDetection(style);
+        if (!(styleJson instanceof ObjectNode root)) {
+            return Map.of();
+        }
+
+        Map<String, Object> caps = new HashMap<>();
+
+        // 1. Terrain source (raster-dem)
+        JsonNode sources = root.path("sources");
+        if (sources instanceof ObjectNode sourcesObj) {
+            sourcesObj.fields().forEachRemaining(entry -> {
+                JsonNode source = entry.getValue();
+                if (source.isObject() && "raster-dem".equals(source.path("type").asText())) {
+                    caps.put("terrainSourceId", entry.getKey());
+                }
+            });
+        }
+
+        // 2. Hillshade layer (type = "hillshade")
+        JsonNode layers = root.path("layers");
+        if (layers instanceof ArrayNode layerArray) {
+            for (JsonNode layer : layerArray) {
+                if ("hillshade".equals(layer.path("type").asText())) {
+                    caps.put("hillshadeLayerId", layer.path("id").asText());
+                    break;
+                }
+            }
+
+            // 3. Satellite layer (raster source with known satellite patterns)
+            String satelliteLayerId = detectSatelliteLayer(root, layerArray);
+            if (satelliteLayerId != null) {
+                caps.put("satelliteLayerId", satelliteLayerId);
+            }
+
+            // 4. Building 3D layers (fill-extrusion with building in source-layer or id)
+            List<String> building3dIds = new ArrayList<>();
+            for (JsonNode layer : layerArray) {
+                if (!"fill-extrusion".equals(layer.path("type").asText())) {
+                    continue;
+                }
+                String id = layer.path("id").asText("");
+                String sourceLayer = layer.path("source-layer").asText("");
+                if (id.toLowerCase().contains("building") || sourceLayer.toLowerCase().contains("building")) {
+                    building3dIds.add(id);
+                }
+            }
+            if (!building3dIds.isEmpty()) {
+                caps.put("building3dLayerIds", building3dIds);
+            }
+        }
+
+        return caps;
+    }
+
+    private String detectSatelliteLayer(ObjectNode style, ArrayNode layers) {
+        ObjectNode sources = style.path("sources").isObject() ? (ObjectNode) style.path("sources") : null;
+        if (sources == null) return null;
+
+        for (JsonNode layer : layers) {
+            if (!"raster".equals(layer.path("type").asText())) continue;
+            String sourceId = layer.path("source").asText("");
+            JsonNode source = sources.get(sourceId);
+            if (source == null || !source.isObject()) continue;
+
+            // Check source URL for known satellite imagery endpoints
+            String sourceUrl = source.path("url").asText("");
+            JsonNode tiles = source.get("tiles");
+            String firstTileUrl = (tiles instanceof ArrayNode && tiles.size() > 0) ? tiles.get(0).asText("") : "";
+            String combinedUrl = sourceUrl + " " + firstTileUrl;
+            boolean isSatelliteUrl = combinedUrl.contains("arcgisonline")
+                    || combinedUrl.contains("world_imagery")
+                    || combinedUrl.contains("sentinel")
+                    || combinedUrl.contains("planet");
+
+            boolean nameContainsSatellite = layer.path("id").asText("").toLowerCase().contains("satellite")
+                    || sourceId.toLowerCase().contains("satellite");
+
+            if (isSatelliteUrl || nameContainsSatellite) {
+                return layer.path("id").asText();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode getStyleJsonForDetection(UserMapStyle style) {
+        try {
+            if (style.styleJson() != null && !style.styleJson().isBlank()) {
+                return objectMapper.readTree(style.styleJson());
+            }
+            if (style.styleUrl() != null && !style.styleUrl().isBlank()) {
+                return fetchStyleJson(style.styleUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse style JSON for capability detection [{}]: {}", style.id(), e.getMessage());
         }
         return null;
     }
