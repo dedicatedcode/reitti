@@ -277,34 +277,6 @@ class MapControls {
         }[character]));
     }
 
-    _deepMerge(target, source) {
-        let result = {...target};
-        for (const key of Object.keys(source)) {
-            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] && typeof target[key] === 'object') {
-                result[key] = this._deepMerge(target[key], source[key]);
-            } else {
-                result[key] = source[key];
-            }
-        }
-        return result;
-    }
-
-    is3d() {
-        return this.toggle3dBtn.classList.contains('active');
-    }
-
-    isTerrainEnabled() {
-        return this.toggleTerrainModeBtn.classList.contains('active');
-    }
-
-    isBuildingsEnabled() {
-        return this.toggleBuildingsModeBtn.classList.contains('active');
-    }
-
-    isSatelliteViewEnabled() {
-        return this.toggleSatelliteModeBtn.classList.contains('active');
-    }
-
     /** Events **/
     on(event, callback) {
         if (!this.eventListeners[event]) this.eventListeners[event] = [];

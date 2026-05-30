@@ -295,96 +295,6 @@ public class MapLibreMapStylesService {
         return style;
     }
 
-    private void ensureRuntimeSources(ObjectNode style, Long styleId, boolean proxyEnabled) {
-        ObjectNode sources = ensureSourcesNode(style);
-
-        if (!sources.has("terrain-source")) {
-            sources.set("terrain-source", buildTerrainSource(styleId, proxyEnabled));
-        }
-        if (!sources.has("satellite-source")) {
-            sources.set("satellite-source", buildSatelliteSource(styleId, proxyEnabled));
-        }
-        if (styleHasBuildingLayer(style) && !sources.has("building-source")) {
-            sources.set("building-source", buildBuildingSource(styleId, proxyEnabled));
-        }
-    }
-
-    private ObjectNode buildTerrainSource(Long styleId, boolean proxyEnabled) {
-        ObjectNode source = objectMapper.createObjectNode();
-        source.put("type", "raster-dem");
-        String originalUrl = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
-        if (proxyEnabled) {
-            String sourceId = "terrain-source";
-            String cacheKey = styleId + ":" + sourceId;
-            originalTileUrlCache.put(cacheKey, originalUrl);
-            String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.webp";
-            source.set("tiles", singleTileArray(proxiedUrl));
-        } else {
-            source.set("tiles", singleTileArray(originalUrl));
-        }
-        source.put("tileSize", 256);
-        source.put("encoding", "terrarium");
-        source.put("maxzoom", 14);
-        source.put("attribution", "© <a href='https://mapterhorn.com' target='_blank'>Mapterhorn</a>");
-        return source;
-    }
-
-    private ObjectNode buildSatelliteSource(Long styleId, boolean proxyEnabled) {
-        ObjectNode source = objectMapper.createObjectNode();
-        source.put("type", "raster");
-        String originalUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-        if (proxyEnabled) {
-            String sourceId = "satellite-source";
-            String cacheKey = styleId + ":" + sourceId;
-            originalTileUrlCache.put(cacheKey, originalUrl);
-            String proxiedUrl = contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId + "/{z}/{x}/{y}.jpg";
-            source.set("tiles", singleTileArray(proxiedUrl));
-        } else {
-            source.set("tiles", singleTileArray(originalUrl));
-        }
-        source.put("tileSize", 256);
-        source.put("maxzoom", 18);
-        source.put("attribution", "Powered by <a href='https://www.esri.com' target='_blank'>Esri</a> | Sources: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community");
-        return source;
-    }
-
-    private ObjectNode buildBuildingSource(Long styleId, boolean proxyEnabled) {
-        ObjectNode source = objectMapper.createObjectNode();
-        source.put("type", "vector");
-        String originalTileJsonUrl = "https://tiles.dedicatedcode.com/planet";
-        String sourceId = "building-source";
-        if (proxyEnabled) {
-            String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
-            originalTileJsonUrlCache.put(tileJsonCacheKey, originalTileJsonUrl);
-            source.put("url", proxyTileJsonUrl(styleId, sourceId));
-        } else {
-            source.put("url", originalTileJsonUrl);
-        }
-        source.put("minzoom", 0);
-        source.put("maxzoom", 14);
-        source.put("attribution", "© <a href='https://openfreemap.org' target='_blank'>OpenFreeMap</a> © <a href='https://www.openstreetmap.org/copyright' target='_blank'>OSM</a>");
-        return source;
-    }
-
-    private boolean styleHasBuildingLayer(ObjectNode style) {
-        JsonNode layers = style.get("layers");
-        if (!(layers instanceof ArrayNode layerArray)) {
-            return false;
-        }
-        for (JsonNode layer : layerArray) {
-            String layerType = layer.path("type").asText("");
-            if (!"fill".equals(layerType) && !"fill-extrusion".equals(layerType)) {
-                continue;
-            }
-            String layerId = layer.path("id").asText("").toLowerCase();
-            String sourceLayer = layer.path("source-layer").asText("").toLowerCase();
-            if (layerId.contains("building") || sourceLayer.contains("building")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void rewriteResourceUrls(ObjectNode style) {
         if (style.get("glyphs") instanceof TextNode glyphsText && glyphsText.asText().startsWith("/")) {
             style.set("glyphs", new TextNode(contextPathHolder.getContextPath() + glyphsText.asText()));
@@ -463,21 +373,6 @@ public class MapLibreMapStylesService {
         }
     }
 
-    private ObjectNode ensureSourcesNode(ObjectNode mutableStyle) {
-        if (mutableStyle.get("sources") instanceof ObjectNode existing) {
-            return existing;
-        }
-        ObjectNode sources = objectMapper.createObjectNode();
-        mutableStyle.set("sources", sources);
-        return sources;
-    }
-
-    private ArrayNode singleTileArray(String tileUrl) {
-        ArrayNode tiles = objectMapper.createArrayNode();
-        tiles.add(tileUrl);
-        return tiles;
-    }
-
     private MapLibreStyleDefinition buildStyleDefinition(UserMapStyle style) {
         String styleId = String.valueOf(style.id());
         String contextPath = contextPathHolder.getContextPath();
@@ -515,7 +410,7 @@ public class MapLibreMapStylesService {
         // 1. Terrain source (raster-dem)
         JsonNode sources = root.path("sources");
         if (sources instanceof ObjectNode sourcesObj) {
-            sourcesObj.fields().forEachRemaining(entry -> {
+            sourcesObj.properties().forEach(entry -> {
                 JsonNode source = entry.getValue();
                 if (source.isObject() && "raster-dem".equals(source.path("type").asText())) {
                     caps.put("terrainSourceId", entry.getKey());
@@ -572,7 +467,7 @@ public class MapLibreMapStylesService {
             // Check source URL for known satellite imagery endpoints
             String sourceUrl = source.path("url").asText("");
             JsonNode tiles = source.get("tiles");
-            String firstTileUrl = (tiles instanceof ArrayNode && tiles.size() > 0) ? tiles.get(0).asText("") : "";
+            String firstTileUrl = (tiles instanceof ArrayNode && !tiles.isEmpty()) ? tiles.get(0).asText("") : "";
             String combinedUrl = sourceUrl + " " + firstTileUrl;
             boolean isSatelliteUrl = combinedUrl.contains("arcgisonline")
                     || combinedUrl.contains("world_imagery")
