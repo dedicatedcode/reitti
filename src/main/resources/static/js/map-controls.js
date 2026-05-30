@@ -157,6 +157,24 @@ class MapControls {
         } else {
             this._disableGlobeProjection();
         }
+
+        this._updateCapabilitiesUI();
+    }
+
+    _updateCapabilitiesUI() {
+        const activeId = window.reittiActiveMapStyleId;
+        const mapStyles = MapRenderer.getMapStyles();
+        const activeStyle = mapStyles.find(s => s.id === activeId);
+        if (!activeStyle) return;
+
+        const caps = activeStyle.capabilities || {};
+        const hasTerrain = !!caps.terrainSourceId;
+        const hasBuildings = caps.building3dLayerIds && caps.building3dLayerIds.length > 0;
+        const hasSatellite = !!caps.satelliteLayerId;
+
+        this.toggleTerrainModeBtn.disabled = !hasTerrain;
+        this.toggleBuildingsModeBtn.disabled = !hasBuildings;
+        this.toggleSatelliteModeBtn.disabled = !hasSatellite;
     }
 
     mountTo(newContainer) {
@@ -173,7 +191,7 @@ class MapControls {
             mapStyleId: this.mapStyleSelect.value,
             is3d: this.toggle3dBtn.classList.contains('active'),
             renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
-            renderBuildings:  caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
+            renderBuildings: caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
             renderSatelliteView: !!caps.satelliteLayerId && this.toggleSatelliteModeBtn.classList.contains('active'),
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
         };
