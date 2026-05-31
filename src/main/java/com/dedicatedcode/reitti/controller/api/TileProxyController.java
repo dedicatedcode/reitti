@@ -140,14 +140,16 @@ public class TileProxyController {
                 JsonNode tileJson = objectMapper.readTree(responseBody(response));
                 if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles && !tiles.isEmpty()) {
                     ArrayNode rewrittenTiles = objectMapper.createArrayNode();
-                    String firstTileUrl = tiles.get(0).asText("");
-                    if (firstTileUrl.startsWith("http://") || firstTileUrl.startsWith("https://")) {
-                        rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, firstTileUrl));
-                    } else if (!firstTileUrl.isBlank()) {
-                        String resolvedTileUrl = tileJsonUri.resolve(firstTileUrl).toString();
-                        rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
-                    } else {
-                        rewrittenTiles.add(firstTileUrl);
+                    for (JsonNode tileNode : tiles) {
+                        String tileUrl = tileNode.asText("");
+                        if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
+                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, tileUrl));
+                        } else if (!tileUrl.isBlank()) {
+                            String resolvedTileUrl = tileJsonUri.resolve(tileUrl).toString();
+                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
+                        } else {
+                            rewrittenTiles.add(tileUrl);
+                        }
                     }
                     mutableTileJson.set("tiles", rewrittenTiles);
                 }
@@ -296,15 +298,17 @@ public class TileProxyController {
     }
 
     private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId, boolean proxyTiles) {
+        // First, try to get original TileJSON URL (upstream tilejson)
+        String tileJsonUrl = mapLibreMapStylesService.getOriginalTileJsonUrl(styleId, sourceId, user);
+        if (tileJsonUrl != null && !tileJsonUrl.isBlank()) {
+            return Optional.of(new TileSource(tileJsonUrl, List.of(), proxyTiles));
+        }
+        // Fallback to tile URL template
         String originalTileUrl = mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user);
         if (originalTileUrl != null) {
             List<String> templates = new ArrayList<>();
-            if (originalTileUrl.endsWith(".json")) {
-                return Optional.of(new TileSource(originalTileUrl, List.of(), proxyTiles));
-            } else {
-                templates.add(normalizeTileTemplateForProxy(originalTileUrl));
-                return Optional.of(new TileSource(null, templates, proxyTiles));
-            }
+            templates.add(normalizeTileTemplateForProxy(originalTileUrl));
+            return Optional.of(new TileSource(null, templates, proxyTiles));
         }
         throw new IllegalArgumentException("No original tile URL found for style " + styleId + " and source " + sourceId);
     }

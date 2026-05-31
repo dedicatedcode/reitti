@@ -150,6 +150,28 @@ public class MapLibreMapStylesService {
         }
     }
 
+    /**
+     * Returns the original TileJSON URL for a given style and source, if it exists.
+     * This method populates the internal caches if necessary.
+     */
+    public String getOriginalTileJsonUrl(Long styleId, String sourceId, User user) {
+        String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
+        // Check cache
+        String cached = originalTileJsonUrlCache.get(tileJsonCacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        // Trigger getOriginalTileUrl which will fill the cache if appropriate
+        try {
+            getOriginalTileUrl(styleId, sourceId, user);
+        } catch (Exception e) {
+            log.debug("Could not populate tilejson cache: {}", e.getMessage());
+        }
+        // Re-check
+        cached = originalTileJsonUrlCache.get(tileJsonCacheKey);
+        return cached; // may be null
+    }
+
     private String fetchTileUrlFromTileJson(String tileJsonUrl) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(tileJsonUrl))
