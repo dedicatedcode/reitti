@@ -61,7 +61,7 @@ class MapControls {
 
     _setup() {
         this.mapStyleSelect.addEventListener('change', () => {
-            this._updateCapabilitiesUI();
+            this._updateCapabilitiesUI(this.mapStyleSelect.value);
             MapRenderer.setActiveMapStyleId(this.mapStyleSelect.value);
             this.emit('selectionChanged', this.getState());
         });
@@ -157,12 +157,10 @@ class MapControls {
         } else {
             this._disableGlobeProjection();
         }
-
-        this._updateCapabilitiesUI();
+        this._updateCapabilitiesUI(window.reittiActiveMapStyleId);
     }
 
-    _updateCapabilitiesUI() {
-        const activeId = window.reittiActiveMapStyleId;
+    _updateCapabilitiesUI(activeId) {
         const mapStyles = MapRenderer.getMapStyles();
         const activeStyle = mapStyles.find(s => s.id === activeId);
         if (!activeStyle) return;
