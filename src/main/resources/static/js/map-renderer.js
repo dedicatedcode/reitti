@@ -377,10 +377,7 @@ class MapRenderer {
     }
 
     _getStyleCapabilities() {
-        const explicitCapabilities = this.currentMapStyle?.capabilities || {};
-        if (Object.keys(explicitCapabilities).length) {
-            return explicitCapabilities;
-        }
+        return this.currentMapStyle?.capabilities || {};
     }
 
     _cloneStyleDefinition(definition) {

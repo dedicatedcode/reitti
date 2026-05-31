@@ -143,10 +143,10 @@ public class TileProxyController {
                     for (JsonNode tileNode : tiles) {
                         String tileUrl = tileNode.asText("");
                         if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
-                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, tileUrl));
+                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, tileUrl, request));
                         } else if (!tileUrl.isBlank()) {
                             String resolvedTileUrl = tileJsonUri.resolve(tileUrl).toString();
-                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl));
+                            rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, resolvedTileUrl, request));
                         } else {
                             rewrittenTiles.add(tileUrl);
                         }
@@ -166,7 +166,7 @@ public class TileProxyController {
                 tileJson.put("tilejson", "2.2.0");
                 tileJson.put("name", "Custom Tiles");
                 ArrayNode tiles = objectMapper.createArrayNode();
-                tiles.add(RequestHelper.getBaseUrl(request) + contextPathHolder.getContextPath() + styleSourceTileUrl(styleId, sourceId, template));
+                tiles.add(styleSourceTileUrl(styleId, sourceId, template, request));
                 tileJson.set("tiles", tiles);
                 return ResponseEntity.ok()
                         .cacheControl(CacheControl.noCache().cachePrivate())
@@ -347,9 +347,9 @@ public class TileProxyController {
         return null;
     }
 
-    private String styleSourceTileUrl(Long styleId, String sourceId, String tileUrl) {
+    private String styleSourceTileUrl(Long styleId, String sourceId, String tileUrl, HttpServletRequest request) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
+        return RequestHelper.getBaseUrl(request) + contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
