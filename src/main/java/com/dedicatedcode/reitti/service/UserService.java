@@ -123,7 +123,7 @@ public class UserService {
         if (userSettings.getHomeLatitude() == null && userSettings.getHomeLongitude() == null) {
             userSettings = addRandomHomeLocation(userSettings);
         }
-
+        setDefaultMapStyle(createdUser);
         saveDefaultVisitDetectionParameters(createdUser);
         saveDefaultTransportationModeDetectionParameters(createdUser);
         userSettingsJdbcService.save(userSettings);

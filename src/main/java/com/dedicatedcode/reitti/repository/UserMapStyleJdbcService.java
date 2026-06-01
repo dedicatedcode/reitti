@@ -183,10 +183,8 @@ public class UserMapStyleJdbcService {
 
     @Transactional
     @CacheEvict(cacheNames = {"mapStyleJson", "mapStyles"}, allEntries = true)
-    public void delete(User user, long id) {
-        // Prevent deletion of default styles (they are not owned by any user anyway)
-        jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ? AND id = ?", user.getId(), id);
-        jdbcTemplate.update(
-                "UPDATE user_map_style_settings SET active_style_id = (SELECT CAST(id AS TEXT) FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?", id);
+    public void delete(long id) {
+        jdbcTemplate.update("UPDATE user_map_style_settings SET active_style_id = (SELECT id FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?", id);
+        jdbcTemplate.update("DELETE FROM user_map_styles WHERE id = ?", id);
     }
 }

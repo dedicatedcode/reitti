@@ -52,7 +52,7 @@ public class MapStylesSettingsController {
     }
 
     @GetMapping("/clear")
-    public String clearStyles(@AuthenticationPrincipal User user, Model model) {
+    public String clearStyles() {
         return "settings/map-styles :: empty-form-state";
     }
 
@@ -218,7 +218,7 @@ public class MapStylesSettingsController {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
         }
 
-        this.userMapStyleJdbcService.delete(user, id);
+        this.userMapStyleJdbcService.delete(id);
         return getPage(user, model);
     }
 
