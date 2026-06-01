@@ -51,7 +51,10 @@
                                 </span>
                             </td>
                             <td th:text="#{'map.settings.dialog.map-styles.map-type.' + ${style.mapType()}}">Vector</td>
-                            <td><span th:unless="${style.editable()}" th:text="#{map.settings.dialog.map-styles.table.shared}"></span></td>
+                            <td>
+                                <span th:unless="${style.custom()}" th:text="#{map.settings.dialog.map-styles.table.default}">Managed by reitti</span>
+                                <span th:unless="${style.editable() || !style.custom()}" th:text="#{map.settings.dialog.map-styles.table.shared}"></span>
+                            </td>
                             <td>
                                     <button th:if="${style.id() != activeMapStyleId}" class="btn"
                                             th:hx-post="@{/settings/map-styles/activate(id=${style.id()})}"

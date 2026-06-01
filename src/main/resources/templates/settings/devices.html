@@ -99,7 +99,7 @@
 
                 <div class="settings-card" id="device-form-container">
                     <form th:fragment="device-edit-form" 
-                          th:hx-post="${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}"
+                          th:hx-post="@{${device != null ? '/settings/devices/' + device.id() : '/settings/devices'}}"
                           hx-target="#devices" hx-swap="innerHTML" method="post" class="device-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{${device != null ? 'devices.edit.title' : 'devices.add.title'}}">Add New Device</h3>
                         <div class="form-group">
