@@ -24,7 +24,7 @@ public record UserMapStyle(
 
     public MapStyleConfigDTO toDto(User user) {
         return new MapStyleConfigDTO(
-                id + "",
+                id,
                 name(),
                 mapType(),
                 styleInputType(),

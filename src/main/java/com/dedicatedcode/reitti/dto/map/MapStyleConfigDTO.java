@@ -4,7 +4,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 
 public record MapStyleConfigDTO(
-        String id,
+        Long id,
         String label,
         String mapType,
         String styleInputType,
