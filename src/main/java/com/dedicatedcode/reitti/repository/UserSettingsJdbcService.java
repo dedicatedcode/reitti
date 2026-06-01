@@ -35,7 +35,6 @@ public class UserSettingsJdbcService {
         Timestamp newestData = rs.getTimestamp("latest_data");
         return new UserSettings(
                 userId,
-                rs.getBoolean("prefer_colored_map"),
                 Language.valueOf(rs.getString("selected_language")),
                 UnitSystem.valueOf(rs.getString("unit_system")),
                 rs.getDouble("home_lat"),
@@ -67,9 +66,8 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, prefer_colored_map, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, time_mode, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, time_mode, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                                      userSettings.getUserId(),
-                                     userSettings.isPreferColoredMap(),
                                      userSettings.getSelectedLanguage().name(),
                                      userSettings.getUnitSystem().name(),
                                      userSettings.getHomeLatitude(),
@@ -85,8 +83,7 @@ public class UserSettingsJdbcService {
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET prefer_colored_map = ?, selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, time_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
-                    userSettings.isPreferColoredMap(),
+                    "UPDATE user_settings SET selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, time_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.getSelectedLanguage().name(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),

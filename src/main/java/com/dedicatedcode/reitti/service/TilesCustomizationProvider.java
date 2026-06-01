@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
+@Deprecated(forRemoval = true)
 public class TilesCustomizationProvider {
     private final UserSettingsDTO.TilesCustomizationDTO tilesConfiguration;
 
@@ -14,7 +15,8 @@ public class TilesCustomizationProvider {
             @Value("${reitti.ui.tiles.default.service}") String defaultService,
             @Value("${reitti.ui.tiles.default.attribution}") String defaultAttribution,
             @Value("${reitti.ui.tiles.custom.service:}") String customService,
-            @Value("${reitti.ui.tiles.custom.attribution:}") String customAttribution, ContextPathHolder contextPathHolder) {
+            @Value("${reitti.ui.tiles.custom.attribution:}") String customAttribution,
+            ContextPathHolder contextPathHolder) {
         String serviceUrl;
         if (StringUtils.hasText(customService)) {
             serviceUrl = customService;

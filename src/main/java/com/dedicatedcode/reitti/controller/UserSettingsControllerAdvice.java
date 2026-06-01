@@ -50,8 +50,7 @@ public class UserSettingsControllerAdvice {
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false,
-                                       Language.EN,
+            return new UserSettingsDTO(Language.EN,
                                        Locale.ENGLISH.toLanguageTag(),
                                        Instant.now(),
                                        UnitSystem.METRIC,
@@ -80,8 +79,7 @@ public class UserSettingsControllerAdvice {
                 latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             }
             Language selectedLanguage = dbSettings.getSelectedLanguage();
-            return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
-                                       selectedLanguage,
+            return new UserSettingsDTO(selectedLanguage,
                                        selectedLanguage.getLocale().toLanguageTag(),
                                        latestData,
                                        dbSettings.getUnitSystem(),
@@ -97,8 +95,7 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getColor());
         }
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false,
-                                   Language.EN,
+        return new UserSettingsDTO(Language.EN,
                                    Locale.ENGLISH.toLanguageTag(),
                                    Instant.now(),
                                    UnitSystem.METRIC,
@@ -114,6 +111,7 @@ public class UserSettingsControllerAdvice {
                                    DEFAULT_COLOR);
 
     }
+
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {
         List<String> grantedRoles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();

@@ -124,7 +124,7 @@
                 const tilesUrl = window.userSettings.tiles.service;
                 const tilesAttribution = window.userSettings.tiles.attribution;
                 
-                const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+                const tileLayer = L.tileLayer.grayscale;
                 tileLayer(tilesUrl, {
                     maxZoom: 19,
                     attribution: tilesAttribution
@@ -146,7 +146,7 @@
                 const tilesUrl = window.userSettings.tiles.service;
                 const tilesAttribution = window.userSettings.tiles.attribution;
                 
-                const tileLayer = window.userSettings?.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+                const tileLayer = L.tileLayer.grayscale;
                 tileLayer(tilesUrl, {
                     maxZoom: 19,
                     attribution: tilesAttribution

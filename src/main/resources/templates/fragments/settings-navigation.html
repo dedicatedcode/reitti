@@ -55,6 +55,12 @@
            th:title="#{settings.transportation-modes.description}"
            th:text="#{settings.transportation-modes}">Transportion Modes</a>
 
+        <a th:href="@{/settings/map-styles}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'map-styles'} ? 'active' : ''"
+           th:title="#{settings.map.styles.description}"
+           th:text="#{settings.map.styles}">Map Styles</a>
+
         <a th:href="@{/settings/geocode-services}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
