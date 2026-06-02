@@ -13,16 +13,17 @@ public class MqttIntegration {
     private final String password;
     private final PayloadType payloadType;
     private final boolean enabled;
+    private final Long deviceId;
     private final Instant createdAt;
     private final Instant updatedAt;
     private final Instant lastUsed;
     private final Long version;
 
     public static MqttIntegration empty() {
-        return new MqttIntegration(null, null, 0, false, null, null, null, null, null, false, null, null, null, null);
+        return new MqttIntegration(null, null, 0, false, null, null, null, null, null, false, null, null, null, null, null);
     }
     
-    public MqttIntegration(Long id, String host, int port, boolean useTLS, String identifier, String topic, String username, String password, PayloadType payloadType, boolean enabled, Instant createdAt, Instant updatedAt, Instant lastUsed, Long version) {
+    public MqttIntegration(Long id, String host, int port, boolean useTLS, String identifier, String topic, String username, String password, PayloadType payloadType, boolean enabled, Long deviceId, Instant createdAt, Instant updatedAt, Instant lastUsed, Long version) {
         this.id = id;
         this.host = host;
         this.port = port;
@@ -33,6 +34,7 @@ public class MqttIntegration {
         this.password = password;
         this.payloadType = payloadType;
         this.enabled = enabled;
+        this.deviceId = deviceId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.lastUsed = lastUsed;
@@ -75,6 +77,10 @@ public class MqttIntegration {
         return payloadType;
     }
 
+    public Long getDeviceId() {
+        return deviceId;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -96,58 +102,62 @@ public class MqttIntegration {
     }
 
     public MqttIntegration withId(Long id) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withHost(String host) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withPort(int port) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withUseTLS(boolean useTLS) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withIdentifier(String identifier) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withTopic(String topic) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withUsername(String username) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withPassword(String password) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withPayloadType(PayloadType payloadType) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withEnabled(boolean enabled) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withCreatedAt(Instant createdAt) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withUpdatedAt(Instant updatedAt) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withLastUsed(Instant lastUsed) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
+    }
+
+    public MqttIntegration withDeviceId(Long deviceId) {
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 
     public MqttIntegration withVersion(Long version) {
-        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, createdAt, updatedAt, lastUsed, version);
+        return new MqttIntegration(id, host, port, useTLS, identifier, topic, username, password, payloadType, enabled, deviceId, createdAt, updatedAt, lastUsed, version);
     }
 }

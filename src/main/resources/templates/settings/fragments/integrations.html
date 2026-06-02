@@ -36,7 +36,7 @@
         <div style="margin-top: 24px;"><strong th:text="#{integrations.mobile.help.title}">Need Help?</strong></div>
         <p style="color: var(--color-text-white)">
             <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
-            <a href="https://www.dedicatedcode.com/projects/reitti/configurations/mobile-app-integration/"
+            <a href="https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/"
                target="_blank"
                rel="noopener noreferrer"
                style="color: var(--color-highlight);"
@@ -215,14 +215,24 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                th:value="${ownTracksRecorderIntegration?.authPassword}">
                         <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
                     </div>
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="reittiDevice" th:text="#{integrations.owntracks.recorder.reittiDevice}">Reitti Device</label>
+                        <select id="reittiDevice" name="reittiDeviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${ownTracksRecorderIntegration != NULL && device.id() == ownTracksRecorderIntegration?.reittiDeviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.owntracks.recorder.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="reittiDeviceId" th:value="${devices.get(0).id()}">
 
-                    <div class="form-group">
-                        <label>
+                    <div class="form-group slide-reveal-container">
                             <input type="checkbox"
                                    name="enabled"
+                                   id="recorderEnabled"
                                    value="true"
                                    th:checked="${ownTracksRecorderIntegration?.enabled}">
-                            <span th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                        <label for="recorderEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
                         </label>
                     </div>
 
@@ -350,14 +360,15 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                th:placeholder="#{integrations.mqtt.port.placeholder}"
                                th:value="${mqttIntegration?.port}">
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox"
-                                   id="mqttUseTLS"
-                                   name="mqtt_useTLS"
-                                   value="true"
-                                   th:checked="${mqttIntegration?.useTLS}">
-                            <span th:text="#{integrations.mqtt.useTLS}">User TLS?</span>
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                               id="mqttUseTLS"
+                               name="mqtt_useTLS"
+                               value="true"
+                               th:checked="${mqttIntegration?.useTLS}">
+                        <label for="mqttUseTLS" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.mqtt.useTLS}">User TLS?</span>
                         </label>
                     </div>
                     <div class="form-group">
@@ -409,13 +420,24 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         </select>
                         <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox"
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="mqttDevice" th:text="#{integrations.mqtt.reittiDevice}">Reitti Device</label>
+                        <select id="mqttDevice" name="mqtt_deviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${mqttIntegration != NULL && device.id() == mqttIntegration?.deviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.mqtt.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="mqtt_deviceId" th:value="${devices.get(0).id()}">
+
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                                   id="mqttEnabled"
                                    name="mqtt_enabled"
                                    value="true"
                                    th:checked="${mqttIntegration?.enabled}">
-                            <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
+                        <label for="mqttEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
                         </label>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -545,24 +567,28 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                    th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
                         </div>
 
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox"
-                                       name="useBestGuessLocation"
-                                       value="true"
-                                       th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
-                                <span th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox"
+                                   name="useBestGuessLocation"
+                                   id="immichUseBestGuessLocation"
+                                   value="true"
+                                   th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
+                            <label for="immichUseBestGuessLocation" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span  class="label-text" th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
                             </label>
                             <small th:text="#{integrations.immich.useBestGuessLocation.description}">When enabled, Reitti will match photos without location data to the closest location on the map.</small>
 
                         </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox"
-                                       name="enabled"
-                                       value="true"
-                                       th:checked="${hasIntegration && immichIntegration.enabled}">
-                                <span th:text="#{integrations.immich.enabled}">Enable Integration</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox"
+                                   name="enabled"
+                                   id="immichEnabled"
+                                   value="true"
+                                   th:checked="${hasIntegration && immichIntegration.enabled}">
+                            <label for="immichEnabled" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{integrations.immich.enabled}">Enable Integration</span>
                             </label>
                         </div>
 

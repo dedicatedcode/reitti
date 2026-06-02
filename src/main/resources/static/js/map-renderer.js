@@ -11,16 +11,6 @@ class MapRenderer {
         ];
     }
 
-    static dispatchMapStylesChanged(activeStyleId = null) {
-        document.dispatchEvent(new CustomEvent('mapStylesChanged', {
-            detail: {
-                activeStyleId,
-                styles: MapRenderer.getMapStyles()
-            }
-        }));
-    }
-
-    //Todo: this should be moved into the MapLibreMapStyleService
     static getMapStyleValue(mapStyle) {
         if (mapStyle?.mapType === 'vector') {
             if (mapStyle?.styleInputType === 'url') {

@@ -104,6 +104,8 @@
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
     --color-text-gray: #c0c0c0;
+    --color-warn: #ffcbab;
+    --color-error: #ffb4ab;
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);

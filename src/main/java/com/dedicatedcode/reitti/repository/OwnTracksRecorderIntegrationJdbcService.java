@@ -33,13 +33,13 @@ public class OwnTracksRecorderIntegrationJdbcService {
                 rs.getString("device_id"),
                 rs.getString("auth_username"),
                 rs.getString("auth_password"),
-                rs.getBoolean("enabled"),
-                lastSuccessfulFetch, rs.getLong("version"));
+                rs.getLong("reitti_device_id"),
+                rs.getBoolean("enabled"), lastSuccessfulFetch, rs.getLong("version"));
     };
 
     public Optional<OwnTracksRecorderIntegration> findByUser(User user) {
         try {
-            String sql = "SELECT id, base_url, username, device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version FROM owntracks_recorder_integration WHERE user_id = ?";
+            String sql = "SELECT id, base_url, username, device_id, reitti_device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version FROM owntracks_recorder_integration WHERE user_id = ?";
             OwnTracksRecorderIntegration integration = jdbcTemplate.queryForObject(sql, rowMapper, user.getId());
             return Optional.ofNullable(integration);
         } catch (EmptyResultDataAccessException e) {
@@ -48,7 +48,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     public OwnTracksRecorderIntegration save(User user, OwnTracksRecorderIntegration integration) {
-        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO owntracks_recorder_integration (base_url, username, device_id, reitti_device_id, enabled, auth_username, auth_password, last_successful_fetch, user_id, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -56,16 +56,17 @@ public class OwnTracksRecorderIntegrationJdbcService {
             ps.setString(1, integration.getBaseUrl());
             ps.setString(2, integration.getUsername());
             ps.setString(3, integration.getDeviceId());
-            ps.setBoolean(4, integration.isEnabled());
-            ps.setString(5, integration.getAuthUsername());
-            ps.setString(6, integration.getAuthPassword());
+            ps.setLong(4, integration.getReittiDeviceId());
+            ps.setBoolean(5, integration.isEnabled());
+            ps.setString(6, integration.getAuthUsername());
+            ps.setString(7, integration.getAuthPassword());
             if (integration.getLastSuccessfulFetch() != null) {
-                ps.setTimestamp(7, java.sql.Timestamp.from(integration.getLastSuccessfulFetch()));
+                ps.setTimestamp(8, java.sql.Timestamp.from(integration.getLastSuccessfulFetch()));
             } else {
-                ps.setTimestamp(7, null);
+                ps.setTimestamp(8, null);
             }
-            ps.setLong(8, user.getId());
-            ps.setLong(9, 1L); // Initial version
+            ps.setLong(9, user.getId());
+            ps.setLong(10, 1L); // Initial version
             return ps;
         }, keyHolder);
 
@@ -74,12 +75,13 @@ public class OwnTracksRecorderIntegrationJdbcService {
     }
 
     public OwnTracksRecorderIntegration update(OwnTracksRecorderIntegration integration) {
-        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, enabled = ?, auth_username = ?, auth_password = ?, last_successful_fetch = ?, version = version + 1 WHERE id = ? AND version = ?";
+        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, reitti_device_id = ?, enabled = ?, auth_username = ?, auth_password = ?, last_successful_fetch = ?, version = version + 1 WHERE id = ? AND version = ?";
         
         int rowsAffected = jdbcTemplate.update(sql,
                 integration.getBaseUrl(),
                 integration.getUsername(),
                 integration.getDeviceId(),
+                integration.getReittiDeviceId(),
                 integration.isEnabled(),
                 integration.getAuthUsername(),
                 integration.getAuthPassword(),

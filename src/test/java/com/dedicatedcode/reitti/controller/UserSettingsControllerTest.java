@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.IntegrationTest;
-import com.dedicatedcode.reitti.model.Language;
-import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
@@ -32,6 +31,9 @@ public class UserSettingsControllerTest {
 
     @Autowired
     private UserJdbcService userJdbcService;
+
+    @Autowired
+    private UserService userService;
 
     private MockMvc mockMvc;
 
@@ -48,12 +50,7 @@ public class UserSettingsControllerTest {
     }
 
     private User createTestUser(String username, String displayName, String password) {
-        User user = new User()
-                .withUsername(username)
-                .withDisplayName(displayName)
-                .withPassword(password)
-                .withRole(Role.USER);
-        return userJdbcService.createUser(user);
+        return this.userService.createNewUser(username, displayName, password, Role.USER, UnitSystem.METRIC, Language.EN, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, "#e2e2e2");
     }
 
     @Test

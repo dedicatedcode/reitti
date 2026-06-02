@@ -29,16 +29,12 @@
                     <span th:text="${errorMessage}">Error message</span>
                 </div>
 
-                <div class="settings-card" th:if="${devices.isEmpty()}">
-                    <p th:text="#{devices.no.devices}">No devices were found. Create one to get started.</p>
-                </div>
-
                 <div class="settings-card" th:if="${!devices.isEmpty()}">
                     <table>
                         <thead>
                         <tr>
                             <th th:text="#{devices.table.name}">Name</th>
-                            <th th:text="#{devices.table.enabled}">Enabled</th>
+                            <th th:text="#{devices.table.status}">Status</th>
                             <th th:text="#{devices.table.showOnMap}">Show on Map</th>
                             <th th:text="#{devices.table.created}">Created</th>
                             <th th:text="#{devices.table.actions}">Actions</th>
@@ -48,11 +44,15 @@
                         <tr th:each="device : ${devices}">
                             <td> <span class="color-swatch" th:style="'margin-right: 8px; background-color: ' + ${device.color()}"></span><span th:text="${device.name()}"></span></td>
                             <td>
-                                <span th:if="${device.enabled()}">
+                                <span th:if="${device.defaultDevice()}">
+                                    <i class="lni lni-flag-1"></i>
+                                    <span th:text="#{devices.status.default}">Default</span>
+                                </span>
+                                <span th:if="${!device.defaultDevice() && device.enabled()}">
                                     <i class="lni lni-check"></i>
                                     <span th:text="#{devices.status.enabled}">Enabled</span>
                                 </span>
-                                <span th:unless="${device.enabled()}" style="color: red;">
+                                <span th:unless="${device.enabled()}" style="color: var(--color-warn);">
                                     <i class="lni lni-xmark"></i>
                                     <span th:text="#{devices.status.disabled}">Disabled</span>
                                 </span>
@@ -62,7 +62,7 @@
                                     <i class="lni lni-check"></i>
                                     <span th:text="#{common.choice.yes}">Yes</span>
                                 </span>
-                                <span th:unless="${device.showOnMap()}" style="color: red;">
+                                <span th:unless="${device.showOnMap()}">
                                     <i class="lni lni-xmark"></i>
                                     <span th:text="#{common.choice.no}">No</span>
                                 </span>
@@ -84,13 +84,21 @@
                                         th:text="${device.enabled() ? #messages.msg('common.choice.disable') : #messages.msg('common.choice.enable')}">
                                     Toggle
                                 </button>
-
-                                <button class="btn btn-danger"
+                                <button th:unless="${device.defaultDevice()}"
+                                        class="btn"
+                                        th:attr="hx-post=@{/settings/devices/{id}/set-default(id=${device.id()})}, hx-confirm=#{devices.default.confirm}"
+                                        hx-target="#devices"
+                                        hx-swap="innerHTML"
+                                        th:text="#{devices.actions.set-default}">Set as Default
+                                </button>
+                                <button th:unless="${device.defaultDevice()}"
+                                        class="btn btn-danger"
                                         th:attr="hx-post=@{/settings/devices/{id}/delete(id=${device.id()})}, hx-confirm=#{devices.delete.confirm}"
                                         hx-target="#devices"
                                         hx-swap="innerHTML"
                                         th:text="#{form.delete}">Delete
                                 </button>
+
                             </td>
                         </tr>
                         </tbody>

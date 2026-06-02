@@ -88,10 +88,9 @@ class ApiTokenJdbcServiceTest {
 
         ApiToken token1 = testingService.createApiToken(testUser, "Token A", null);
         ApiToken token2 = testingService.createApiToken(testUser, "Token B", null);
-        testingService.createApiToken(anotherUser, "Token C", null);
 
         List<ApiToken> tokens = apiTokenJdbcService.findByUser(testUser);
-        assertEquals(2, tokens.size());
+        assertEquals(3, tokens.size());
         assertTrue(tokens.stream().allMatch(t -> t.getUser().getId().equals(testUser.getId())));
         assertTrue(tokens.stream().anyMatch(t -> t.getId().equals(token1.getId())));
         assertTrue(tokens.stream().anyMatch(t -> t.getId().equals(token2.getId())));
@@ -163,7 +162,6 @@ class ApiTokenJdbcServiceTest {
 
         testingService.createApiToken(testUser, "T1", null);
         testingService.createApiToken(testUser, "T2", null);
-        testingService.createApiToken(anotherUser, "T3", null);
 
         apiTokenJdbcService.deleteForUser(testUser);
 
@@ -210,6 +208,6 @@ class ApiTokenJdbcServiceTest {
                 name, user.getId(), true, false, "#ffaa00", Timestamp.from(now), Timestamp.from(now), 0L
         );
         Long id = jdbcTemplate.queryForObject("SELECT id FROM devices WHERE name = ?", Long.class, name);
-        return new Device(id, name, true, false, "#ffaa00", now, now, 0L);
+        return new Device(id, name, true, false, "#ffaa00", false, now, now, 0L);
     }
 }

@@ -67,11 +67,11 @@ public class FileImportController {
 
     @PostMapping("/gpx")
     public String importGpx(@RequestParam("files") MultipartFile[] files,
-                            @RequestParam(required = false, name = "device") Long deviceId,
+                            @RequestParam("device") Long deviceId,
                             Authentication authentication,
                             Model model) {
         User user = (User) authentication.getPrincipal();
-        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
         if (files.length == 0) {
             model.addAttribute("uploadErrorMessage", "No files selected");
@@ -124,11 +124,11 @@ public class FileImportController {
 
     @PostMapping("/google-records")
     public String importGoogleRecords(@RequestParam("file") MultipartFile file,
-                                      @RequestParam(required = false, name = "device") Long deviceId,
+                                      @RequestParam(name = "device") Long deviceId,
                                       Authentication authentication,
                                       Model model) {
         User user = (User) authentication.getPrincipal();
-        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
@@ -159,11 +159,11 @@ public class FileImportController {
 
     @PostMapping("/google-timeline-android")
     public String importGoogleTimelineAndroid(@RequestParam("file") MultipartFile file,
-                                              @RequestParam(required = false, name = "device") Long deviceId,
+                                              @RequestParam(name = "device") Long deviceId,
                                               Authentication authentication,
                                               Model model) {
         User user = (User) authentication.getPrincipal();
-        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
@@ -194,11 +194,11 @@ public class FileImportController {
 
     @PostMapping("/google-timeline-ios")
     public String importGoogleTimelineIOS(@RequestParam("file") MultipartFile file,
-                                          @RequestParam(required = false, name = "device") Long deviceId,
+                                          @RequestParam("device") Long deviceId,
                                           Authentication authentication,
                                           Model model) {
         User user = (User) authentication.getPrincipal();
-        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (file.isEmpty() || file.getOriginalFilename() == null) {
@@ -229,11 +229,11 @@ public class FileImportController {
 
     @PostMapping("/geojson")
     public String importGeoJson(@RequestParam("files") MultipartFile[] files,
-                                @RequestParam(required = false, name = "device") Long deviceId,
+                                @RequestParam("device") Long deviceId,
                                 Authentication authentication,
                                 Model model) {
         User user = (User) authentication.getPrincipal();
-        Device device = deviceId != null ? this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new) : null;
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
         if (files.length == 0) {

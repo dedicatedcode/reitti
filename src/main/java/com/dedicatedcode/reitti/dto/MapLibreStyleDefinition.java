@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.Serializable;
 
 public record MapLibreStyleDefinition(
-    String id,
+    Long id,
     String label,
     String mapType,
     String styleInputType,

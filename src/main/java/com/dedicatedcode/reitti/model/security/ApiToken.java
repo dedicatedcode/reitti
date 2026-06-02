@@ -71,4 +71,8 @@ public class ApiToken {
     public ApiToken withLastUsedAt(Instant lastUsedAt) {
         return new ApiToken(this.id, this.token, this.user, this.device, this.name, this.createdAt, lastUsedAt);
     }
+
+    public ApiToken withDevice(Device device) {
+        return new ApiToken(this.id, this.token, this.user, device, this.name, this.createdAt, this.lastUsedAt);
+    }
 }

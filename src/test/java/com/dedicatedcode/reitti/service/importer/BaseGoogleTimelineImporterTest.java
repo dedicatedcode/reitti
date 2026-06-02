@@ -30,7 +30,7 @@ class BaseGoogleTimelineImporterTest {
     @Test
     void shouldParseNewGoogleTakeOutFileFromAndroid() {
         User user = testingService.admin();
-        Device device = null;
+        Device device = this.testingService.findDefaultDevice(user);
         Map<String, Object> result = googleTimelineImporter.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user, device, "/data/google/timeline_from_android_randomized.json");
 
         assertTrue(result.containsKey("success"));

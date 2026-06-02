@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -28,7 +29,7 @@ class GoogleAndroidTimelineImporterTest {
                                                                                         jobScheduler,
                                                                                         0);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user, null, "timeline_from_android_randomized.json");
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_android_randomized.json"), user, mock(Device.class), "timeline_from_android_randomized.json");
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));

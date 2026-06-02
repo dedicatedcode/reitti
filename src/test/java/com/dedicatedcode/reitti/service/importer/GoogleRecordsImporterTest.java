@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ class GoogleRecordsImporterTest {
     private ProcessedVisitJdbcService processedVisitJdbcService;
     @Autowired
     private TestingService testingService;
+
     private User user;
 
     @BeforeEach
@@ -31,7 +33,8 @@ class GoogleRecordsImporterTest {
 
     @Test
     void shouldParseOldFormat() {
-        Map<String, Object> result = googleRecordsImporter.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user, null, "Records.json");
+        Device device = this.testingService.findDefaultDevice(user);
+        Map<String, Object> result = googleRecordsImporter.importGoogleRecords(getClass().getResourceAsStream("/data/google/Records.json"), user, device, "Records.json");
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));

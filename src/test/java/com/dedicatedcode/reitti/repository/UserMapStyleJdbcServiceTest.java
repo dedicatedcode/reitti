@@ -27,7 +27,7 @@ class UserMapStyleJdbcServiceTest {
     @Test
     void shouldCreateAndFindStyleByUser() {
         User user = testingService.randomUser();
-        UserMapStyle style = createTestStyle(user, null);
+        UserMapStyle style = createTestStyle(user, false);
 
         UserMapStyle saved = service.save(user, style);
         assertNotNull(saved.id());
@@ -41,7 +41,7 @@ class UserMapStyleJdbcServiceTest {
     @Test
     void shouldUpdateStyleOwnedByUser() {
         User user = testingService.randomUser();
-        UserMapStyle style = createTestStyle(user, null);
+        UserMapStyle style = createTestStyle(user, false);
         UserMapStyle saved = service.save(user, style);
 
         UserMapStyle updated = new UserMapStyle(
@@ -66,10 +66,10 @@ class UserMapStyleJdbcServiceTest {
     @Test
     void shouldDeleteStyleOwnedByUser() {
         User user = testingService.randomUser();
-        UserMapStyle style = createTestStyle(user, null);
+        UserMapStyle style = createTestStyle(user, false);
         UserMapStyle saved = service.save(user, style);
 
-        service.delete(user, saved.id());
+        service.delete(saved.id());
 
         Optional<UserMapStyle> found = service.findById(user, saved.id());
         assertFalse(found.isPresent());
@@ -113,11 +113,12 @@ class UserMapStyleJdbcServiceTest {
         User user = testingService.randomUser();
 
         Long defaultStyleId = service.getActiveStyleId(user);
-        Optional<UserMapStyle> defualtStle = this.service.findById(user, defaultStyleId);
-        assertTrue(defualtStle.isPresent());
-        assertEquals("Reitti", defualtStle.get().name());
+        Optional<UserMapStyle> defaultStyle = this.service.findById(user, defaultStyleId);
+        assertTrue(defaultStyle.isPresent());
+        assertEquals("Reitti", defaultStyle.get().name());
 
-        Long newActiveId = 123L;
+        Long newActiveId = createTestStyle(user, true).id();
+
         service.setActiveStyleId(user, newActiveId);
 
         assertThat(service.getActiveStyleId(user))
@@ -128,42 +129,36 @@ class UserMapStyleJdbcServiceTest {
     void shouldResetActiveStyleOnDeletion() {
         User user = testingService.randomUser();
 
-        createTestStyle(user, 123L, true);
-        createTestStyle(testingService.admin(), 124L, true);
+        UserMapStyle userStyle = createTestStyle(user, false);
+        UserMapStyle adminStyle = createTestStyle(testingService.admin(), true);
 
         Long defaultStyleId = service.getActiveStyleId(user);
-        Optional<UserMapStyle> defualtStle = this.service.findById(user, defaultStyleId);
-        assertTrue(defualtStle.isPresent());
-        assertEquals("Reitti", defualtStle.get().name());
+        Optional<UserMapStyle> defaultStyle = this.service.findById(user, defaultStyleId);
+        assertTrue(defaultStyle.isPresent());
+        assertEquals("Reitti", defaultStyle.get().name());
 
-        Long newActiveId = 123L;
-        service.setActiveStyleId(user, newActiveId);
-        assertThat(service.getActiveStyleId(user)).isEqualTo(newActiveId);
+        service.setActiveStyleId(user, userStyle.id());
+        assertThat(service.getActiveStyleId(user)).isEqualTo(userStyle.id());
 
-        this.service.delete(user, 123L);
+        this.service.delete(userStyle.id());
         assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
 
-        this.service.setActiveStyleId(testingService.admin(), 124L);
-        this.service.delete(testingService.admin(), 124L);
+        this.service.setActiveStyleId(user, adminStyle.id());
+        this.service.delete(adminStyle.id());
         assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
 
     }
 
     @Test
     void deletingNonExistentStyleDoesNotThrow() {
-        User user = testingService.randomUser();
-        assertDoesNotThrow(() -> service.delete(user, 9999L));
+        assertDoesNotThrow(() -> service.delete(9999L));
     }
 
     // ------------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------------
 
-    private UserMapStyle createTestStyle(User user, Long id) {
-        return createTestStyle(user, id, false);
-    }
-
-    private UserMapStyle createTestStyle(User user, Long id, boolean defaultStyle) {
+    private UserMapStyle createTestStyle(User user, boolean shared) {
         MapStyleDataSource dataSource = new MapStyleDataSource(
                 "test-source",
                 "tile",
@@ -177,8 +172,8 @@ class UserMapStyleJdbcServiceTest {
                 false
         );
         MapStyleVectorOptions vectorOptions = new MapStyleVectorOptions(null, null, null);
-        return new UserMapStyle(
-                id,
+        UserMapStyle mapStyle = new UserMapStyle(
+                null,
                 user.getId(),
                 "Test Style",
                 "raster",
@@ -189,8 +184,10 @@ class UserMapStyleJdbcServiceTest {
                 dataSource,
                 vectorOptions,
                 false,
-                defaultStyle,
+                shared,
                 0L
         );
+
+        return this.service.save(user, mapStyle);
     }
 }

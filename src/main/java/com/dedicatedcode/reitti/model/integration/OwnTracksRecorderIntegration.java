@@ -10,21 +10,23 @@ public class OwnTracksRecorderIntegration {
     private final String deviceId;
     private final String authUsername;
     private final String authPassword;
+    private final Long reittiDeviceId;
     private final boolean enabled;
     private final Instant lastSuccessfulFetch;
     private final Long version;
 
-    public OwnTracksRecorderIntegration(String baseUrl, String username, String deviceId, boolean enabled, String authUsername, String authPassword) {
-        this(null, baseUrl, username, deviceId, authPassword, authUsername, enabled, null, null);
+    public OwnTracksRecorderIntegration(String baseUrl, String username, String deviceId, boolean enabled, String authUsername, String authPassword, Long reittiDeviceId) {
+        this(null, baseUrl, username, deviceId, authPassword, authUsername, reittiDeviceId, enabled, null, null);
     }
 
-    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, String authUsername, String authPassword, boolean enabled, Instant lastSuccessfulFetch, Long version) {
+    public OwnTracksRecorderIntegration(Long id, String baseUrl, String username, String deviceId, String authUsername, String authPassword, Long reittiDeviceId, boolean enabled, Instant lastSuccessfulFetch, Long version) {
         this.id = id;
         this.baseUrl = baseUrl;
         this.username = username;
         this.deviceId = deviceId;
         this.authUsername = authUsername;
         this.authPassword = authPassword;
+        this.reittiDeviceId = reittiDeviceId;
         this.enabled = enabled;
         this.lastSuccessfulFetch = lastSuccessfulFetch;
         this.version = version;
@@ -54,6 +56,10 @@ public class OwnTracksRecorderIntegration {
         return authPassword;
     }
 
+    public Long getReittiDeviceId() {
+        return reittiDeviceId;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -67,18 +73,22 @@ public class OwnTracksRecorderIntegration {
     }
 
     public OwnTracksRecorderIntegration withEnabled(boolean enabled) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, enabled, this.lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, reittiDeviceId, enabled, this.lastSuccessfulFetch, this.version);
     }
 
     public OwnTracksRecorderIntegration withId(Long id) {
-        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, this.lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, reittiDeviceId, this.enabled, this.lastSuccessfulFetch, this.version);
     }
 
     public OwnTracksRecorderIntegration withVersion(Long version) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, this.lastSuccessfulFetch, version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, reittiDeviceId, this.enabled, this.lastSuccessfulFetch, version);
     }
 
     public OwnTracksRecorderIntegration withLastSuccessfulFetch(Instant lastSuccessfulFetch) {
-        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, this.enabled, lastSuccessfulFetch, this.version);
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, reittiDeviceId, this.enabled, lastSuccessfulFetch, this.version);
+    }
+
+    public OwnTracksRecorderIntegration withReittiDeviceId(Long reittiDeviceId) {
+        return new OwnTracksRecorderIntegration(this.id, this.baseUrl, this.username, this.deviceId, this.authUsername, this.authPassword, reittiDeviceId, this.enabled, this.lastSuccessfulFetch, this.version);
     }
 }
