@@ -50,7 +50,8 @@ public class TestingService {
     private Scheduler scheduler;
 
     public void importData(User user, String path) {
-        importData(user, null, path);
+        Device device = findDefaultDevice(user);
+        importData(user, device, path);
     }
     public void importData(User user, Device device, String path) {
         InputStream is = getClass().getResourceAsStream(path);
@@ -146,6 +147,7 @@ public class TestingService {
                 true,
                 true,
                 "#3e3e3e",
+                false,
                 now,
                 now,
                 1L
@@ -154,5 +156,9 @@ public class TestingService {
         ApiToken apiToken = new ApiToken(user, saved.name(), saved);
         this.apiTokenJdbcService.save(apiToken);
         return saved;
+    }
+
+    public Device findDefaultDevice(User user) {
+        return this.deviceJdbcService.getAll(user).stream().filter(Device::defaultDevice).findFirst().orElseThrow();
     }
 }

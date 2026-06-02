@@ -84,6 +84,7 @@ public class DeviceSettingsController {
                     enabled,
                     showOnMap,
                     color,
+                    false,
                     now,
                     now,
                     1L
@@ -106,6 +107,7 @@ public class DeviceSettingsController {
                                @AuthenticationPrincipal User user,
                                @RequestParam String name,
                                @RequestParam String color,
+                               @RequestParam(required = false, defaultValue = "false") boolean defaultDevice,
                                @RequestParam(required = false, defaultValue = "false") boolean enabled,
                                @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
@@ -123,6 +125,7 @@ public class DeviceSettingsController {
                     enabled,
                     showOnMap,
                     color,
+                    defaultDevice,
                     existingDevice.createdAt(),
                     Instant.now(),
                     existingDevice.version() + 1
@@ -156,6 +159,7 @@ public class DeviceSettingsController {
                     !device.enabled(),
                     device.showOnMap(),
                     device.color(),
+                    device.defaultDevice(),
                     device.createdAt(),
                     Instant.now(),
                     device.version() + 1
@@ -182,8 +186,12 @@ public class DeviceSettingsController {
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
-            deviceJdbcService.delete(deviceToDelete, user);
-            model.addAttribute("successMessage", i18n.translate("message.success.device.deleted"));
+            if (deviceToDelete.defaultDevice()) {
+                model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion.default"));
+            } else {
+                deviceJdbcService.delete(deviceToDelete, user);
+                model.addAttribute("successMessage", i18n.translate("message.success.device.deleted"));
+            }
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion", e.getMessage()));
         }

@@ -2,11 +2,13 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -36,6 +38,7 @@ public class IntegrationsSettingsController {
     private final ContextPathHolder contextPathHolder;
     private final ApiTokenService apiTokenService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
     private final DynamicMqttProvider mqttProvider;
@@ -45,7 +48,7 @@ public class IntegrationsSettingsController {
 
     public IntegrationsSettingsController(ContextPathHolder contextPathHolder,
                                           ApiTokenService apiTokenService,
-                                          RawLocationPointJdbcService rawLocationPointJdbcService,
+                                          RawLocationPointJdbcService rawLocationPointJdbcService, DeviceJdbcService deviceJdbcService,
                                           ImmichIntegrationService immichIntegrationService,
                                           OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                                           DynamicMqttProvider mqttProvider,
@@ -55,6 +58,7 @@ public class IntegrationsSettingsController {
         this.contextPathHolder = contextPathHolder;
         this.apiTokenService = apiTokenService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.mqttProvider = mqttProvider;
@@ -253,9 +257,10 @@ public class IntegrationsSettingsController {
     }
 
     @PostMapping("/owntracks-recorder-integration/load-historical")
-    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, RedirectAttributes redirectAttributes, HttpServletRequest request) {
+    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, @RequestParam("device") Long deviceId,  RedirectAttributes redirectAttributes, HttpServletRequest request) {
         try {
-            ownTracksRecorderIntegrationService.loadHistoricalData(currentUser);
+            Device device = this.deviceJdbcService.find(currentUser, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            ownTracksRecorderIntegrationService.loadHistoricalData(currentUser, device);
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.load.historical.success"));
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
@@ -329,6 +334,7 @@ public class IntegrationsSettingsController {
             @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
+            @RequestParam(name = "mqtt_device") Long deviceId,
             @RequestParam(name = "mqtt_username", required = false) String username,
             @RequestParam(name = "mqtt_password", required = false) String password,
             @RequestParam(name = "mqtt_payloadType") PayloadType payloadType) {
@@ -371,7 +377,7 @@ public class IntegrationsSettingsController {
                                                                                                                                     password,
                                                                                                                                     payloadType,
                                                                                                                                     true,
-                                                                                                                                    null,
+                                                                                                                                    deviceId, null,
                                                                                                                                     null,
                                                                                                                                     null,
                                                                                                                                     null));

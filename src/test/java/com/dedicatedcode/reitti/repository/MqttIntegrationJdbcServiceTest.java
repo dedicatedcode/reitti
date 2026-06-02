@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
@@ -24,11 +25,13 @@ class MqttIntegrationJdbcServiceTest {
     private TestingService testingService;
 
     private User testUser;
+    private Device device;
 
     @BeforeEach
     void setUp() {
         // Create a test user
         testUser = testingService.randomUser();
+        device = testingService.findDefaultDevice(testUser);
     }
 
     @Test
@@ -40,7 +43,7 @@ class MqttIntegrationJdbcServiceTest {
 
     @Test
     void save_whenCreatingNewIntegration_persistsSuccessfully() {
-        MqttIntegration integration = createTestIntegration();
+        MqttIntegration integration = createTestIntegration(device);
         
         MqttIntegration saved = mqttIntegrationJdbcService.save(testUser, integration);
         
@@ -62,7 +65,7 @@ class MqttIntegrationJdbcServiceTest {
 
     @Test
     void findByUser_afterSaving_returnsIntegration() {
-        MqttIntegration integration = createTestIntegration();
+        MqttIntegration integration = createTestIntegration(device);
         MqttIntegration saved = mqttIntegrationJdbcService.save(testUser, integration);
         
         Optional<MqttIntegration> found = mqttIntegrationJdbcService.findByUser(testUser);
@@ -75,7 +78,7 @@ class MqttIntegrationJdbcServiceTest {
 
     @Test
     void save_whenUpdatingExistingIntegration_updatesSuccessfully() {
-        MqttIntegration integration = createTestIntegration();
+        MqttIntegration integration = createTestIntegration(device);
         MqttIntegration saved = mqttIntegrationJdbcService.save(testUser, integration);
         
         MqttIntegration updated = new MqttIntegration(
@@ -89,6 +92,7 @@ class MqttIntegrationJdbcServiceTest {
                 "updatedpass",
                 PayloadType.OWNTRACKS,
                 false,
+                saved.getDeviceId(),
                 saved.getCreatedAt(),
                 saved.getUpdatedAt(),
                 saved.getLastUsed(),
@@ -111,7 +115,7 @@ class MqttIntegrationJdbcServiceTest {
 
     @Test
     void save_whenUpdatingWithStaleVersion_throwsOptimisticLockException() {
-        MqttIntegration integration = createTestIntegration();
+        MqttIntegration integration = createTestIntegration(device);
         MqttIntegration saved = mqttIntegrationJdbcService.save(testUser, integration);
         
         // Create an update with stale version
@@ -126,6 +130,7 @@ class MqttIntegrationJdbcServiceTest {
                 "stalepass",
                 PayloadType.OWNTRACKS,
                 true,
+                saved.getDeviceId(),
                 saved.getCreatedAt(),
                 saved.getUpdatedAt(),
                 saved.getLastUsed(),
@@ -139,7 +144,7 @@ class MqttIntegrationJdbcServiceTest {
 
     @Test
     void findByUser_withDifferentUser_returnsEmpty() {
-        MqttIntegration integration = createTestIntegration();
+        MqttIntegration integration = createTestIntegration(device);
         mqttIntegrationJdbcService.save(testUser, integration);
 
         User otherUser = testingService.randomUser();
@@ -148,7 +153,7 @@ class MqttIntegrationJdbcServiceTest {
         assertThat(result).isEmpty();
     }
 
-    private MqttIntegration createTestIntegration() {
+    private MqttIntegration createTestIntegration(Device device) {
         return new MqttIntegration(
                 null,
                 "mqtt.example.com",
@@ -160,6 +165,7 @@ class MqttIntegrationJdbcServiceTest {
                 "testpass",
                 PayloadType.OWNTRACKS,
                 true,
+                device.id(),
                 null,
                 null,
                 null,

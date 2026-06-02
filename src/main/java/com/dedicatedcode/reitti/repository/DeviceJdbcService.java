@@ -28,6 +28,7 @@ public class DeviceJdbcService {
             rs.getBoolean("enabled"),
             rs.getBoolean("show_on_map"),
             rs.getString("color"),
+            rs.getBoolean("default_device"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant(),
             rs.getLong("version")
@@ -43,8 +44,8 @@ public class DeviceJdbcService {
 
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO devices (user_id, name, color, enabled, show_on_map, created_at, updated_at, version) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                    "INSERT INTO devices (user_id, name, color, enabled, show_on_map, default_device, created_at, updated_at, version) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, user.getId());
@@ -52,9 +53,10 @@ public class DeviceJdbcService {
             ps.setString(3, device.color());
             ps.setBoolean(4, device.enabled());
             ps.setBoolean(5, device.showOnMap());
-            ps.setTimestamp(6, Timestamp.from(device.createdAt()));
-            ps.setTimestamp(7, Timestamp.from(device.updatedAt()));
-            ps.setLong(8, 1L);
+            ps.setBoolean(6, device.defaultDevice());
+            ps.setTimestamp(7, Timestamp.from(device.createdAt()));
+            ps.setTimestamp(8, Timestamp.from(device.updatedAt()));
+            ps.setLong(9, 1L);
             return ps;
         }, keyHolder);
 
@@ -65,6 +67,7 @@ public class DeviceJdbcService {
                 device.enabled(),
                 device.showOnMap(),
                 device.color(),
+                device.defaultDevice(),
                 device.createdAt(),
                 device.updatedAt(),
                 1L
@@ -74,10 +77,11 @@ public class DeviceJdbcService {
     @CacheEvict(value = "devices", allEntries = true)
     public Device update(Device device, User user) {
         int updated = jdbcTemplate.update(
-                "UPDATE devices SET name = ?, color = ?, enabled = ?, show_on_map = ?, updated_at = ?, version = version + 1 " +
+                "UPDATE devices SET name = ?, color = ?, default_device = ?, enabled = ?, show_on_map = ?, updated_at = ?, version = version + 1 " +
                         "WHERE id = ? AND user_id = ?",
                 device.name(),
                 device.color(),
+                device.defaultDevice(),
                 device.enabled(),
                 device.showOnMap(),
                 Timestamp.from(Instant.now()),
@@ -95,6 +99,7 @@ public class DeviceJdbcService {
                 device.enabled(),
                 device.showOnMap(),
                 device.color(),
+                device.defaultDevice(),
                 device.createdAt(),
                 Instant.now(),
                 device.version() + 1
@@ -145,5 +150,14 @@ public class DeviceJdbcService {
                 deviceRowMapper,
                 user.getId(), deviceId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    public void deleteForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM devices WHERE user_id = ?", user.getId());
+    }
+
+    public Device getDefaultDevice(User user) {
+        List<Device> defaultDevices = this.jdbcTemplate.query("SELECT * FROM devices WHERE user_id = ? AND default_device = TRUE", deviceRowMapper, user.getId());
+        return defaultDevices.stream().findFirst().orElseThrow(() -> new IllegalStateException("No default device found for user " + user.getId() + ". This should never happen."));
     }
 }

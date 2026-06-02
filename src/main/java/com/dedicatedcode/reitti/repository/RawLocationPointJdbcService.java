@@ -87,21 +87,6 @@ public class RawLocationPointJdbcService {
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    @SuppressWarnings("DataFlowIssue")
-    public long countByUserAndTimestampBetweenOrderByTimestampAsc(
-            User user, Instant startTime, Instant endTime, boolean includeSynthetic) {
-        StringBuilder sql = new StringBuilder()
-                .append("SELECT COUNT(*)")
-                .append("FROM raw_location_points rlp ")
-                .append("WHERE rlp.user_id = ? ");
-        if (!includeSynthetic) {
-            sql.append("AND rlp.synthetic = false ");
-        }
-        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ");
-        return jdbcTemplate.queryForObject(sql.toString(), Long.class,
-                                  user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
-    }
-
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, int limit, int offset) {
         String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
                 "FROM raw_location_points rlp " +

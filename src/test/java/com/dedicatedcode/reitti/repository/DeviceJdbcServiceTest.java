@@ -36,6 +36,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -46,25 +47,13 @@ class DeviceJdbcServiceTest {
         List<Device> found = deviceJdbcService.getAll(user);
 
         // Then
-        assertThat(found).hasSize(1);
-        Device foundDevice = found.getFirst();
+        assertThat(found).hasSize(2);
+        Device foundDevice = found.stream().filter(d -> d.id().equals(saved.id())).findAny().orElseThrow();
         assertThat(foundDevice.id()).isEqualTo(saved.id());
         assertThat(foundDevice.name()).isEqualTo("Test Device");
         assertThat(foundDevice.color()).isEqualTo("#FF5733");
         assertThat(foundDevice.enabled()).isTrue();
         assertThat(foundDevice.showOnMap()).isTrue();
-    }
-
-    @Test
-    void shouldReturnEmptyListWhenNoDeviceFound() {
-        // Given
-        User user = testingService.randomUser();
-
-        // When
-        List<Device> found = deviceJdbcService.getAll(user);
-
-        // Then
-        assertThat(found).isEmpty();
     }
 
     @Test
@@ -77,6 +66,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -89,6 +79,7 @@ class DeviceJdbcServiceTest {
                 false,
                 false,
                 "#00FF00",
+                false,
                 saved.createdAt(),
                 saved.updatedAt(),
                 saved.version()
@@ -99,8 +90,8 @@ class DeviceJdbcServiceTest {
         List<Device> found = deviceJdbcService.getAll(user);
 
         // Then
-        assertThat(found).hasSize(1);
-        Device foundDevice = found.getFirst();
+        assertThat(found).hasSize(2);
+        Device foundDevice = found.stream().filter(d -> d.id().equals(saved.id())).findFirst().orElseThrow();
         assertThat(foundDevice.name()).isEqualTo("Updated Name");
         assertThat(foundDevice.color()).isEqualTo("#00FF00");
         assertThat(foundDevice.enabled()).isFalse();
@@ -118,6 +109,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -129,7 +121,7 @@ class DeviceJdbcServiceTest {
         List<Device> found = deviceJdbcService.getAll(user);
 
         // Then
-        assertThat(found).isEmpty();
+        assertThat(found).size().isEqualTo(1);
     }
 
     @Test
@@ -142,6 +134,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -152,6 +145,7 @@ class DeviceJdbcServiceTest {
                 false,
                 true,
                 "#00FF00",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -163,20 +157,8 @@ class DeviceJdbcServiceTest {
         List<Device> allEnabled = deviceJdbcService.getAllEnabled(user);
 
         // Then
-        assertThat(allEnabled).hasSize(1);
+        assertThat(allEnabled).hasSize(2);
         assertThat(allEnabled.getFirst().name()).isEqualTo("Enabled Device");
-    }
-
-    @Test
-    void shouldReturnEmptyListWhenNoEnabledDeviceFound() {
-        // Given
-        User user = testingService.randomUser();
-
-        // When
-        List<Device> found = deviceJdbcService.getAllEnabled(user);
-
-        // Then
-        assertThat(found).isEmpty();
     }
 
     @Test
@@ -189,6 +171,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null
@@ -217,6 +200,7 @@ class DeviceJdbcServiceTest {
                 true,
                 true,
                 "#FF5733",
+                false,
                 Instant.now(),
                 Instant.now(),
                 null

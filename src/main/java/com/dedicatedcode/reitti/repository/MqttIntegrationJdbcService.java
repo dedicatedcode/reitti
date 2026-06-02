@@ -27,7 +27,7 @@ public class MqttIntegrationJdbcService {
 
     public Optional<MqttIntegration> findByUser(User user) {
         String sql = """
-            SELECT id, user_id, host, port, use_tls, identifier, topic, username, password,
+            SELECT id, user_id, host, port, use_tls, identifier, topic, username, password, device_id,
                    payload_type, enabled, created_at, updated_at, last_used, version
             FROM mqtt_integrations
             WHERE user_id = ?
@@ -48,8 +48,8 @@ public class MqttIntegrationJdbcService {
     private MqttIntegration create(User user, MqttIntegration integration) {
         String sql = """
             INSERT INTO mqtt_integrations (user_id, host, port, use_tls, identifier, topic, username, password,
-                                         payload_type, enabled, created_at, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                         payload_type, enabled, created_at, device_id, version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -68,7 +68,8 @@ public class MqttIntegrationJdbcService {
             ps.setString(9, integration.getPayloadType().name());
             ps.setBoolean(10, integration.isEnabled());
             ps.setTimestamp(11, Timestamp.from(now));
-            ps.setLong(12, 1L);
+            ps.setLong(12, integration.getDeviceId());
+            ps.setLong(13, 1L);
             return ps;
         }, keyHolder);
         
@@ -84,6 +85,7 @@ public class MqttIntegrationJdbcService {
                 integration.getPassword(),
                 integration.getPayloadType(),
                 integration.isEnabled(),
+                integration.getDeviceId(),
                 now,
                 null,
                 null,
@@ -94,7 +96,7 @@ public class MqttIntegrationJdbcService {
     private MqttIntegration update(MqttIntegration integration) {
         String sql = """
             UPDATE mqtt_integrations
-            SET host = ?, port = ?, use_tls = ?, identifier = ?, topic = ?, username = ?, password = ?,
+            SET host = ?, port = ?, use_tls = ?, identifier = ?, topic = ?, username = ?, password = ?, device_id = ?,
                 payload_type = ?, enabled = ?, updated_at = ?, version = version + 1
             WHERE id = ? AND version = ?
             """;
@@ -108,6 +110,7 @@ public class MqttIntegrationJdbcService {
             integration.getTopic(),
             integration.getUsername(),
             integration.getPassword(),
+            integration.getDeviceId(),
             integration.getPayloadType().name(),
             integration.isEnabled(),
             Timestamp.from(now),
@@ -130,6 +133,7 @@ public class MqttIntegrationJdbcService {
                 integration.getPassword(),
                 integration.getPayloadType(),
                 integration.isEnabled(),
+                integration.getDeviceId(),
                 integration.getCreatedAt(),
                 now,
                 integration.getLastUsed(),
@@ -158,6 +162,7 @@ public class MqttIntegrationJdbcService {
                     rs.getString("password"),
                     PayloadType.valueOf(rs.getString("payload_type")),
                     rs.getBoolean("enabled"),
+                    rs.getLong("device_id"),
                     rs.getTimestamp("created_at").toInstant(),
                     updatedAt != null ? updatedAt.toInstant() : null,
                     lastUsed != null ? lastUsed.toInstant() : null,

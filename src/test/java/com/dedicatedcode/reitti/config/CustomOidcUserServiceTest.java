@@ -50,6 +50,7 @@ public class CustomOidcUserServiceTest {
     @MockitoBean
     private RestTemplate restTemplate;
 
+
     private CustomOidcUserService customOidcUserService;
 
     private static final String ISSUER = "https://localhost";
@@ -65,9 +66,9 @@ public class CustomOidcUserServiceTest {
 
         // Clear any existing test data
         userJdbcService.findByExternalId(EXTERNAL_ID).ifPresent(user -> 
-            userJdbcService.deleteUser(user.getId()));
+            userService.deleteUser(user));
         userJdbcService.findByUsername(PREFERRED_USERNAME).ifPresent(user -> 
-            userJdbcService.deleteUser(user.getId()));
+            userService.deleteUser(user));
     }
 
     @Test

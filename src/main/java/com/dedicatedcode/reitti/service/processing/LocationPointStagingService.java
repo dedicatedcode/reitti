@@ -80,7 +80,7 @@ public class LocationPointStagingService {
                 ps.setObject(1, partitionKey);
                 ps.setTimestamp(2, Timestamp.from(point.getTimestamp()));
                 ps.setLong(3, user.getId());
-                ps.setObject(4, device != null ? device.id() : null);
+                ps.setObject(4, device.id());
                 ps.setDouble(5, point.getLongitude());
                 ps.setDouble(6, point.getLatitude());
 

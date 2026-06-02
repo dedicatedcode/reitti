@@ -204,14 +204,13 @@ public class OwnTracksRecorderIntegrationService {
 
     }
 
-    public void loadHistoricalData(User user) {
+    public void loadHistoricalData(User user, Device device) {
         Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
         
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
             throw new IllegalStateException("No enabled OwnTracks Recorder integration found for user");
         }
 
-        Device device = null;
         OwnTracksRecorderIntegration integration = integrationOpt.get();
         String partitionKey = UUID.randomUUID().toString();
         this.stagingService.ensurePartitionExists(partitionKey);
