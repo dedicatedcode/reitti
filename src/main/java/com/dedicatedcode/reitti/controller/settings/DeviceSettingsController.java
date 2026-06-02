@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public class DeviceSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("defaultColors", getDefaultColors());
         model.addAttribute("devices", deviceJdbcService.getAll(user).stream()
-                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), d.enabled(), d.showOnMap(), 
+                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), d.enabled(), d.showOnMap(), d.defaultDevice(),
                         adjustInstant(d.createdAt(), timezone), adjustInstant(d.updatedAt(), timezone)))
                 .toList());
         return "settings/devices";
@@ -62,7 +63,7 @@ public class DeviceSettingsController {
         model.addAttribute("defaultColors", getDefaultColors());
         model.addAttribute("selectedColor", device.color());
         model.addAttribute("device", new DeviceDTO(device.id(), device.name(), device.color(),
-                device.enabled(), device.showOnMap(),
+                                                   device.enabled(), device.showOnMap(), device.defaultDevice(),
                 adjustInstant(device.createdAt(), timezone), adjustInstant(device.updatedAt(), timezone)));
         
         return "settings/devices :: device-edit-form";
@@ -107,7 +108,6 @@ public class DeviceSettingsController {
                                @AuthenticationPrincipal User user,
                                @RequestParam String name,
                                @RequestParam String color,
-                               @RequestParam(required = false, defaultValue = "false") boolean defaultDevice,
                                @RequestParam(required = false, defaultValue = "false") boolean enabled,
                                @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
@@ -125,7 +125,7 @@ public class DeviceSettingsController {
                     enabled,
                     showOnMap,
                     color,
-                    defaultDevice,
+                    existingDevice.defaultDevice(),
                     existingDevice.createdAt(),
                     Instant.now(),
                     existingDevice.version() + 1
@@ -147,12 +147,7 @@ public class DeviceSettingsController {
                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                               Model model) {
         try {
-            List<Device> devices = deviceJdbcService.getAll(user);
-            Device device = devices.stream()
-                    .filter(d -> d.id().equals(deviceId))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Device not found"));
-
+            Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
             Device updatedDevice = new Device(
                     device.id(),
                     device.name(),
@@ -175,16 +170,37 @@ public class DeviceSettingsController {
         return "settings/devices :: devices-content";
     }
 
+    @PostMapping("/{deviceId}/set-default")
+    @Transactional
+    public String setToDefault(@PathVariable Long deviceId,
+                              @AuthenticationPrincipal User user,
+                              @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                              Model model) {
+        try {
+
+            Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            Device oldDefaultDevice = this.deviceJdbcService.getDefaultDevice(user);
+
+            oldDefaultDevice = oldDefaultDevice.withDefaultDevice(false);
+            device = device.withDefaultDevice(true);
+            this.deviceJdbcService.update(oldDefaultDevice, user);
+            this.deviceJdbcService.update(device, user);
+            model.addAttribute("successMessage", i18n.translate("message.success.device.default-device", device.name()));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", i18n.translate("message.error.device.toggle", e.getMessage()));
+        }
+
+        addDevicesToModel(user, timezone, model);
+
+        return "settings/devices :: devices-content";
+    }
+
     @PostMapping("/{deviceId}/delete")
     public String deleteDevice(@PathVariable Long deviceId, @AuthenticationPrincipal User user,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                Model model) {
         try {
-            List<Device> devices = deviceJdbcService.getAll(user);
-            Device deviceToDelete = devices.stream()
-                    .filter(d -> d.id().equals(deviceId))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            Device deviceToDelete = this.deviceJdbcService.find(user, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
             if (deviceToDelete.defaultDevice()) {
                 model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion.default"));
@@ -196,7 +212,6 @@ public class DeviceSettingsController {
             model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion", e.getMessage()));
         }
 
-        // Get updated device list and add to model
         addDevicesToModel(user, timezone, model);
 
         // Return the devices-content fragment
@@ -204,13 +219,14 @@ public class DeviceSettingsController {
     }
 
     public record DeviceDTO(Long id, String name, String color, boolean enabled, boolean showOnMap,
+                            boolean defaultDevice,
                             LocalDateTime createdAt, LocalDateTime updatedAt) {
     }
 
     private void addDevicesToModel(User user, ZoneId timezone, Model model) {
         List<Device> devices = deviceJdbcService.getAll(user);
         model.addAttribute("devices", devices.stream()
-                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), d.enabled(), d.showOnMap(),
+                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), d.enabled(), d.showOnMap(), d.defaultDevice(),
                         adjustInstant(d.createdAt(), timezone), adjustInstant(d.updatedAt(), timezone)))
                 .toList());
         model.addAttribute("defaultColors", getDefaultColors());
