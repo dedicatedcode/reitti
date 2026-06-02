@@ -396,7 +396,7 @@ public class MapLibreMapStylesService {
     }
 
     private MapLibreStyleDefinition buildStyleDefinition(UserMapStyle style) {
-        String styleId = String.valueOf(style.id());
+        Long styleId = style.id();
         String contextPath = contextPathHolder.getContextPath();
 
         return new MapLibreStyleDefinition(
