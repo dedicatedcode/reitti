@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
+import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -48,6 +49,9 @@ class UserServiceTest {
 
     @Autowired
     private TransportModeOverrideJdbcService transportModeOverrideJdbcService;
+
+    @Autowired
+    private OwnTracksRecorderIntegrationJdbcService ownTracksRecorderIntegrationJdbcService;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -217,6 +221,14 @@ class UserServiceTest {
         this.significantPlaceOverrideJdbcService.insertOverride(user, significantPlace);
 
         this.transportModeOverrideJdbcService.addTransportModeOverride(user, TransportMode.WALKING, Instant.now().minus(10, ChronoUnit.MINUTES), Instant.now());
+        this.ownTracksRecorderIntegrationJdbcService.save(user,new OwnTracksRecorderIntegration(
+                "http://localhost",
+                "daniel",
+                "1111",
+                true,
+                null,
+                null,
+                1L));
         // When
         userService.deleteUser(user);
 
@@ -226,5 +238,6 @@ class UserServiceTest {
 
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_map_style_settings WHERE user_id = ?", Integer.class, user.getId()));
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM mqtt_integrations WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM owntracks_recorder_integration WHERE user_id = ?", Integer.class, user.getId()));
     }
 }

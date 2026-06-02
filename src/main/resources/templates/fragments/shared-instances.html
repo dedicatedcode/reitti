@@ -127,14 +127,15 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox"
+                <div class="form-group slide-reveal-container">
+                    <input type="checkbox"
                                id="reittiEnabled"
                                name="enabled"
                                value="true"
                                checked>
-                        <span th:text="#{integrations.reitti.enabled}">Enable Integration</span>
+                    <label for="reittiEnabled" class="slide-reveal">
+                        <span class="slide-box"></span>
+                        <span class="label-text" th:text="#{integrations.reitti.enabled}">Enable Integration</span>
                     </label>
                 </div>
 

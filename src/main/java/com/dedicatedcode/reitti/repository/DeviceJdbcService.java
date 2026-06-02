@@ -117,7 +117,7 @@ public class DeviceJdbcService {
 
     public List<Device> getAll(User user) {
         return jdbcTemplate.query(
-                "SELECT * FROM devices WHERE user_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM devices WHERE user_id = ? ORDER BY default_device DESC, name",
                 deviceRowMapper,
                 user.getId()
         );
@@ -125,7 +125,7 @@ public class DeviceJdbcService {
 
     public List<Device> getAllEnabled(User user) {
         return jdbcTemplate.query(
-                "SELECT * FROM devices WHERE user_id = ? AND enabled = TRUE ORDER BY created_at DESC",
+                "SELECT * FROM devices WHERE user_id = ? AND enabled = TRUE ORDER BY default_device DESC, name",
                 deviceRowMapper,
                 user.getId()
         );

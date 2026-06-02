@@ -85,3 +85,8 @@ UPDATE mqtt_integrations SET device_id = d.id FROM devices d WHERE d.user_id = m
 ALTER TABLE mqtt_integrations ALTER COLUMN device_id SET NOT NULL;
 ALTER TABLE mqtt_integrations ADD CONSTRAINT fk_device_id FOREIGN KEY (device_id) REFERENCES devices(id);
 
+-- Step 10: add device to owntracks recorder integrations
+ALTER TABLE owntracks_recorder_integration ADD COLUMN reitti_device_id BIGINT;
+UPDATE owntracks_recorder_integration SET reitti_device_id = d.id FROM devices d WHERE d.user_id = owntracks_recorder_integration.user_id AND d.default_device = TRUE AND reitti_device_id IS NULL;
+ALTER TABLE owntracks_recorder_integration ALTER COLUMN reitti_device_id SET NOT NULL;
+ALTER TABLE owntracks_recorder_integration ADD CONSTRAINT fk_device_id FOREIGN KEY (reitti_device_id) REFERENCES devices(id);

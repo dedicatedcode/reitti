@@ -158,7 +158,7 @@ class DeviceJdbcServiceTest {
 
         // Then
         assertThat(allEnabled).hasSize(2);
-        assertThat(allEnabled.getFirst().name()).isEqualTo("Enabled Device");
+        assertThat(allEnabled.get(1).name()).isEqualTo("Enabled Device");
     }
 
     @Test

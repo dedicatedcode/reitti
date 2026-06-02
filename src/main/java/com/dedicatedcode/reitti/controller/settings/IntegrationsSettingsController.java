@@ -101,6 +101,7 @@ public class IntegrationsSettingsController {
         }
 
         model.addAttribute("selectedToken", tokenToUse);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(currentUser).stream().toList());
         model.addAttribute("tokens", tokens);
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
@@ -217,10 +218,12 @@ public class IntegrationsSettingsController {
                                                    @RequestParam(defaultValue = "false") boolean enabled,
                                                    @RequestParam String authUsername,
                                                    @RequestParam String authPassword,
+                                                   @RequestParam Long reittiDeviceId,
                                                    @AuthenticationPrincipal User currentUser,
                                                    RedirectAttributes redirectAttributes) {
         try {
-            ownTracksRecorderIntegrationService.saveIntegration(currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
+            Device device = this.deviceJdbcService.find(currentUser, reittiDeviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            ownTracksRecorderIntegrationService.saveIntegration(currentUser, device, baseUrl, username, authUsername, authPassword, deviceId, enabled);
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.config.saved"));
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.config.error", e.getMessage()));
@@ -257,10 +260,9 @@ public class IntegrationsSettingsController {
     }
 
     @PostMapping("/owntracks-recorder-integration/load-historical")
-    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, @RequestParam("device") Long deviceId,  RedirectAttributes redirectAttributes, HttpServletRequest request) {
+    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser,  RedirectAttributes redirectAttributes, HttpServletRequest request) {
         try {
-            Device device = this.deviceJdbcService.find(currentUser, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
-            ownTracksRecorderIntegrationService.loadHistoricalData(currentUser, device);
+            ownTracksRecorderIntegrationService.loadHistoricalData(currentUser);
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.load.historical.success"));
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
@@ -279,6 +281,7 @@ public class IntegrationsSettingsController {
             @RequestParam(name = "mqtt_username", required = false) String username,
             @RequestParam(name = "mqtt_password", required = false) String password,
             @RequestParam(name = "mqtt_payloadType") PayloadType payloadType,
+            @RequestParam(name = "mqtt_deviceId") Long deviceId,
             @RequestParam(name = "mqtt_enabled",defaultValue = "false") boolean enabled,
             RedirectAttributes redirectAttributes) {
 
@@ -293,7 +296,11 @@ public class IntegrationsSettingsController {
             if (port < 1 || port > 65535) {
                 redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.port_range"));
                 return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+            }
 
+            if (this.deviceJdbcService.find(user, deviceId).isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.unknown_device"));
+                return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
             }
 
             MqttIntegration mqttIntegration = this.mqttIntegrationJdbcService.findByUser(user).orElse(MqttIntegration.empty());
@@ -307,6 +314,7 @@ public class IntegrationsSettingsController {
                     .withUsername(username)
                     .withPassword(password)
                     .withPayloadType(payloadType)
+                    .withDeviceId(deviceId)
                     .withEnabled(enabled);
             mqttIntegrationJdbcService.save(user, updatedIntegration);
             if (wasEnabled && !updatedIntegration.isEnabled()) {
@@ -334,7 +342,6 @@ public class IntegrationsSettingsController {
             @RequestParam(name = "mqtt_useTLS", defaultValue = "false") boolean useTLS,
             @RequestParam(name = "mqtt_identifier") String identifier,
             @RequestParam(name = "mqtt_topic") String topic,
-            @RequestParam(name = "mqtt_device") Long deviceId,
             @RequestParam(name = "mqtt_username", required = false) String username,
             @RequestParam(name = "mqtt_password", required = false) String password,
             @RequestParam(name = "mqtt_payloadType") PayloadType payloadType) {
@@ -377,7 +384,8 @@ public class IntegrationsSettingsController {
                                                                                                                                     password,
                                                                                                                                     payloadType,
                                                                                                                                     true,
-                                                                                                                                    deviceId, null,
+                                                                                                                                    null,
+                                                                                                                                    null,
                                                                                                                                     null,
                                                                                                                                     null,
                                                                                                                                     null));

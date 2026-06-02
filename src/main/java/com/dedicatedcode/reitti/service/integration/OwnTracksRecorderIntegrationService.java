@@ -5,13 +5,14 @@ import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.OwnTracksRecorderIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
-import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ public class OwnTracksRecorderIntegrationService {
     
     private final OwnTracksRecorderIntegrationJdbcService jdbcService;
     private final UserJdbcService userJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final RestTemplate restTemplate;
     private final LocationPointStagingService stagingService;
     private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
@@ -48,11 +50,14 @@ public class OwnTracksRecorderIntegrationService {
 
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
                                                UserJdbcService userJdbcService,
+                                               DeviceJdbcService deviceJdbcService,
                                                LocationPointStagingService stagingService,
                                                Task<PromotionJobHandler.PromotionTaskData> promotionTask,
-                                               JobSchedulingService jobSchedulingService, LocationBatchingService locationBatchingService) {
+                                               JobSchedulingService jobSchedulingService,
+                                               LocationBatchingService locationBatchingService) {
         this.jdbcService = jdbcService;
         this.userJdbcService = userJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.stagingService = stagingService;
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
@@ -67,7 +72,6 @@ public class OwnTracksRecorderIntegrationService {
         List<User> allUsers = userJdbcService.findAll();
         int processedIntegrations = 0;
         int totalLocationPoints = 0;
-        Device device = null;
 
         for (User user : allUsers) {
             Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
@@ -77,6 +81,7 @@ public class OwnTracksRecorderIntegrationService {
             }
             
             OwnTracksRecorderIntegration integration = integrationOpt.get();
+            Device device = this.deviceJdbcService.find(user, integration.getReittiDeviceId()).orElseThrow();
             processedIntegrations++;
             
             try {
@@ -136,7 +141,7 @@ public class OwnTracksRecorderIntegrationService {
         return jdbcService.findByUser(user);
     }
 
-    public OwnTracksRecorderIntegration saveIntegration(User user, String baseUrl, String username, String authUsername, String authPassword, String deviceId, boolean enabled) {
+    public OwnTracksRecorderIntegration saveIntegration(User user, Device device, String baseUrl, String username, String authUsername, String authPassword, String deviceId, boolean enabled) {
         // Validate inputs
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
             throw new IllegalArgumentException("Base URL cannot be empty");
@@ -165,8 +170,8 @@ public class OwnTracksRecorderIntegrationService {
                     deviceId.trim(),
                     authUsername,
                     authPassword,
-                    enabled,
-                    existing.getLastSuccessfulFetch(), existing.getVersion());
+                    device.id(),
+                    enabled, existing.getLastSuccessfulFetch(), existing.getVersion());
             return jdbcService.update(updated);
         } else {
             OwnTracksRecorderIntegration newIntegration = new OwnTracksRecorderIntegration(
@@ -175,7 +180,8 @@ public class OwnTracksRecorderIntegrationService {
                     deviceId.trim(),
                     enabled,
                     authUsername,
-                    authPassword
+                    authPassword,
+                    device.id()
             );
             return jdbcService.save(user, newIntegration);
         }
@@ -204,7 +210,7 @@ public class OwnTracksRecorderIntegrationService {
 
     }
 
-    public void loadHistoricalData(User user, Device device) {
+    public void loadHistoricalData(User user) {
         Optional<OwnTracksRecorderIntegration> integrationOpt = jdbcService.findByUser(user);
         
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
@@ -212,6 +218,7 @@ public class OwnTracksRecorderIntegrationService {
         }
 
         OwnTracksRecorderIntegration integration = integrationOpt.get();
+        Device device = this.deviceJdbcService.find(user, integration.getReittiDeviceId()).orElseThrow();
         String partitionKey = UUID.randomUUID().toString();
         this.stagingService.ensurePartitionExists(partitionKey);
         UUID parentJobId = jobSchedulingService.createParentJob(
@@ -251,7 +258,7 @@ public class OwnTracksRecorderIntegrationService {
                         }
                         
                         if (!validPoints.isEmpty()) {
-                            this.stagingService.insertBatch(partitionKey, user, null, validPoints);
+                            this.stagingService.insertBatch(partitionKey, user, device, validPoints);
                             totalLocationPoints += validPoints.size();
                             logger.debug("Loaded {} location points for user {} from month {}", 
                                        validPoints.size(), user.getUsername(), month);
@@ -260,7 +267,6 @@ public class OwnTracksRecorderIntegrationService {
                 } catch (Exception e) {
                     logger.error("Failed to load data for user {} from month {}: {}", 
                                user.getUsername(), month, e.getMessage(), e);
-                    // Continue with other months
                 }
             }
 
