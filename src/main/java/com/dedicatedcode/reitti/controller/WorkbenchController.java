@@ -32,11 +32,4 @@ public class WorkbenchController {
 
         return "workbench";
     }
-
-    @PostMapping("/commit")
-    public String workbenchPost(@AuthenticationPrincipal User user,
-                                @RequestBody WorkbenchCommitRequest request,
-                                Model model) {
-        return "redirect:/workbench";
-    }
 }

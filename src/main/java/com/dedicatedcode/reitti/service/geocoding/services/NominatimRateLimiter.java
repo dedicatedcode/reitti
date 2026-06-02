@@ -10,13 +10,6 @@ public class NominatimRateLimiter {
     private static final long ONE_SECOND_MS = 1000;
 
     /**
-     * Checks if Nominatim is available right now without waiting.
-     */
-    public boolean isAvailableNow() {
-        return (System.currentTimeMillis() - lastRequestTime.get()) >= ONE_SECOND_MS;
-    }
-
-    /**
      * Attempts to acquire a slot. If a second has passed, updates the timestamp and returns true.
      * If not, returns false (caller must wait or skip).
      */
@@ -25,7 +18,6 @@ public class NominatimRateLimiter {
         long last = lastRequestTime.get();
         
         if (now - last >= ONE_SECOND_MS) {
-            // Atomic Compare-And-Set to ensure thread safety without heavy synchronized blocks
             return lastRequestTime.compareAndSet(last, now);
         }
         return false;
@@ -42,11 +34,10 @@ public class NominatimRateLimiter {
 
             if (timePassed >= ONE_SECOND_MS) {
                 if (lastRequestTime.compareAndSet(last, now)) {
-                    return; // Successfully acquired!
+                    return;
                 }
             } else {
                 try {
-                    // Sleep for the remaining fraction of the second
                     Thread.sleep(ONE_SECOND_MS - timePassed);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
