@@ -150,6 +150,37 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 </div>
             </div>
         </details>
+        <details data-section="colota" th:attr="open=${openSection == 'colota' ? 'open' : null}">
+            <summary><span th:text="#{integrations.colota.title}">📍 Colota Setup</span></summary>
+            <div>
+                <p th:text="#{integrations.colota.description}">Overland is a GPS logger for iOS that sends location data in GeoJSON format.</p>
+                <p>
+                    <strong th:text="#{integrations.homepage}">Homepage:</strong>
+                    <a href="https://colota.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-highlight)">https://colota.app/</a>
+                </p>
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:text="#{integrations.colota.step1}">Install Colota</li>
+                        <li th:utext="#{integrations.colota.step2}">Open Colota and go to the <strong>Settings > API Settings</strong></li>
+                        <li th:utext="#{integrations.colota.step3}">Select the <strong>Reitti template</strong></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.colota.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.colota.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li><span th:utext="#{integrations.colota.step5}">Set HTTP Header to:</span>
+<pre>
+X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
+</pre>
+
+                        </li>
+                        <li th:utext="#{integrations.colota.step6}">Configure your tracking settings</li>
+                    </ol>
+                </div>
+                <div th:if="${hasToken}">
+                    <div><a id="colota-config-link" class="btn" th:text="#{integrations.colota.configure}">Configure Colota</a></div>
+                    <div><small th:text="#{integrations.colota.configure.description}">This will configure Colota to send data to this reitti instance.</small></div>
+                </div>
+            </div>
+        </details>
         <details data-section="owntracks-recorder" th:attr="open=${openSection == 'owntracks-recorder' ? 'open' : null}">
             <summary><span th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</span></summary>
             <div>
@@ -671,10 +702,12 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
             const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
             const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
+            const colotaConfig = generateColotaConfig(currentToken, serverUrl);
 
             document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
             document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
             document.getElementById('overland-config-link').href = overlandConfigUrl;
+            document.getElementById('colota-config-link').href = 'colota:///setup?' + colotaConfig;
 
             if (tokenSelect) {
                 tokenSelect.addEventListener('change', function () {
@@ -684,10 +717,13 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                     const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
                     const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
                     const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
+                    const colotaConfig = generateColotaConfig(currentToken, serverUrl);
 
                     document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
                     document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
                     document.getElementById('overland-config-link').href = overlandConfigUrl;
+                    document.getElementById('colota-config-link').href = 'colota:///setup?' + colotaConfig;
+
                 });
             }
 
@@ -712,6 +748,19 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 const encodedUrl = encodeURIComponent(ingestUrl);
                 return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
             }
+
+            function generateColotaConfig(token, serverUrl) {
+                const json = JSON.stringify({
+                    "endpoint": serverUrl + window.contextPath + '/api/v1/ingest/gpslogger',
+                    "apiTemplate": "reitti",
+                    "httpMethod": "POST",
+                    "customHeaders": {
+                        "X-API-TOKEN": token
+                    }
+                });
+                return btoa(json);
+            }
+
             const detailsElements = document.querySelectorAll('details');
             detailsElements.forEach(details => {
                 details.addEventListener('toggle', function() {
