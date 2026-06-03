@@ -5,7 +5,7 @@ CREATE TEMP TABLE tmp_default_style_ids (id BIGINT, name TEXT);
 
 WITH inserted AS (
     INSERT INTO user_map_styles (name, user_id, map_type, style_input_type, style_json, default_style, shared, proxy_tiles)
-        VALUES ('Reitti', 1, 'vector', 'json', '{
+        VALUES ('Reitti', (SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1), 'vector', 'json', '{
   "version": 8,
   "name": "Bright Faded",
   "metadata": {
@@ -6220,7 +6220,7 @@ INSERT INTO tmp_default_style_ids (id, name) SELECT id, name FROM inserted;
 
 WITH inserted AS (
     INSERT INTO user_map_styles (name, user_id, map_type, style_input_type, style_json, default_style, shared, proxy_tiles)
-        VALUES ('Reitti (Colored)', 1, 'vector', 'json', '{
+        VALUES ('Reitti (Colored)', (SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1), 'vector', 'json', '{
   "version": 8,
   "name": "Bright",
   "metadata": {
