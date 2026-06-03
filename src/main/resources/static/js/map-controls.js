@@ -61,12 +61,9 @@ class MapControls {
 
     _setup() {
         this.mapStyleSelect.addEventListener('change', () => {
-            this._updateCapabilitiesUI(this.mapStyleSelect.value);
-            MapRenderer.setActiveMapStyleId(this.mapStyleSelect.value);
-            this.emit('selectionChanged', this.getState());
-        });
-        document.addEventListener('mapStylesChanged', (event) => {
-            this.refreshMapStyleOptions(event.detail?.activeStyleId);
+            const newValue = parseInt(this.mapStyleSelect.value);
+            this._updateCapabilitiesUI(newValue);
+            MapRenderer.setActiveMapStyleId(newValue);
             this.emit('selectionChanged', this.getState());
         });
 
@@ -186,7 +183,7 @@ class MapControls {
             .find(s => s.id === window.reittiActiveMapStyleId);
         const caps = activeStyle ? activeStyle.capabilities || {} : {};
         return {
-            mapStyleId: this.mapStyleSelect.value,
+            mapStyleId: activeStyle.id,
             is3d: this.toggle3dBtn.classList.contains('active'),
             renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
             renderBuildings: caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
@@ -194,6 +191,7 @@ class MapControls {
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
         };
     }
+
     refreshMapStyleOptions(preferredStyleId = null) {
         const mapStyles = MapRenderer.getMapStyles();
         const storedMapStyleId = preferredStyleId || MapRenderer.getActiveMapStyleId();
