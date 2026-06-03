@@ -66,13 +66,13 @@ public class WorkbenchService {
         log.debug("Handling patches for user [{}] and [{}] patches", user.getUsername(), patches.size());
         patches.stream().sorted(Comparator.comparing(PatchDto::getSeq))
                 .forEachOrdered(patchDto -> {
-                    Device device = patchDto.getDeviceId() != null ? this.deviceJdbcService.find(user, Long.valueOf(patchDto.getDeviceId())).orElseThrow() : null;
+                    Device device = this.deviceJdbcService.find(user, Long.valueOf(patchDto.getDeviceId())).orElseThrow();
                     Instant start = Instant.ofEpochMilli(patchDto.gettStart());
                     Instant end = Instant.ofEpochMilli(patchDto.gettEnd());
                     JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                             .user(user)
                             .jobType(JobType.TIMELINE_STITCHING)
-                            .friendlyName(i18n.translate("jobs.timeline_stitching.friendly_name", device == null ? "Default" : device.name(), start, end)).build();
+                            .friendlyName(i18n.translate("jobs.timeline_stitching.friendly_name", device.name(), start, end)).build();
                     this.jobSchedulingService.enqueueTask(patchDeviceOntoTimelineTask,
                                                           new PatchDeviceOntoTimelineJob.TaskData(user, device, start, end).withParentJobId(parentJob),
                                                           metadata);
@@ -101,7 +101,7 @@ public class WorkbenchService {
 
     private void scheduleUpdateJob(User user, UUID parentJob, List<DeviceTimeRange> affectedTimeRange) {
         for (DeviceTimeRange deviceTimeRange : affectedTimeRange) {
-            Device device = deviceTimeRange.deviceId() == null ? null : this.deviceJdbcService.find(user, deviceTimeRange.deviceId()).orElseThrow();
+            Device device = this.deviceJdbcService.find(user, deviceTimeRange.deviceId()).orElseThrow();
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
                     .jobType(JobType.LOCATION_DATA_CLEANUP)

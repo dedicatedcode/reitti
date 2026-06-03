@@ -104,7 +104,8 @@
     --color-background-dark-light: #5c5c5c;
     --color-text-white: #e3e3e3;
     --color-text-gray: #c0c0c0;
-    --color-warn: #ffcbab;
+    --color-text-black: #2e2e2e;
+    --color-warn: #ffeeab;
     --color-error: #ffb4ab;
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
     --memories-header-height: 550px;
@@ -579,6 +580,16 @@ a.btn-default,
 .btn.btn-danger:disabled {
     background: #917575;
     font-weight: normal;
+}
+
+.btn.btn-warning {
+    color: var(--color-text-black);
+    border-color: var(--color-text-black);
+    background: var(--color-warn);
+}
+
+.btn.btn-warning:disabled {
+    backdrop-filter: saturate(10%);
 }
 
 fieldset {

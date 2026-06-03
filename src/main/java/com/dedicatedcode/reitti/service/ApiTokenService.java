@@ -51,4 +51,8 @@ public class ApiTokenService {
     public void trackUsage(String token, String requestPath, String remoteIp) {
         this.apiTokenJdbcService.trackUsage(token, requestPath, remoteIp);
     }
+
+    public Optional<ApiToken> getTokenById(User user, Long id) {
+        return this.apiTokenJdbcService.findById(id);
+    }
 }

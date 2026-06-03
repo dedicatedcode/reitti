@@ -33,7 +33,7 @@ public record UserMapStyle(
                 styleInput(),
                 !defaultStyle,
                 shared(),
-                userId().equals(user.getId()) && !defaultStyle,
+                !defaultStyle && userId().equals(user.getId()),
                 dataSource(),
                 vectorOptions());
     }

@@ -93,6 +93,9 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
 
         for (GeocodeService service : availableServices) {
+            if (service.getType() == GeocoderType.NOMINATIM) {
+                nominatimRateLimiter.acquireBlockingly();
+            }
             List<GeocodeResult> serviceResults = performGeocode(service, latitude, longitude, significantPlace, true);
             if (!serviceResults.isEmpty()) {
                 results.computeIfAbsent(service.getType(), _ -> new ArrayList<>())
@@ -169,7 +172,6 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     private List<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
         try {
             String response = callService(service, latitude, longitude);
-
             List<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && !geocodeResult.isEmpty()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(
