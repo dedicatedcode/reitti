@@ -12,3 +12,5 @@ WHERE NOT EXISTS (
     FROM api_tokens at
     WHERE at.device_id = d.id
 );
+
+create index api_token_usages_at_token_id_index on api_token_usages (at desc, token_id asc);

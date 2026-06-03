@@ -52,9 +52,28 @@
                             <td th:text="${#temporals.format(token.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
                             <td th:text="${token.lastUsedAt() != null ? #temporals.format(token.lastUsedAt(), 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
                             <td>
-                                <span th:if="${token.deviceId() != null}" class="token-device-linked">
-                                    <a th:href="@{/settings/devices}" class="btn btn-secondary" th:text="#{tokens.link.to.device}">View Device</a>
-                                </span>
+                                <th:block  th:if="${token.deviceId() != null && devices.size() > 1}">
+                                    <span class="token-device-linked">
+                                        <a th:href="@{/settings/devices}" class="btn" th:text="#{tokens.link.to.device}">View Device</a>
+                                    </span>
+                                    <span class="token-device-linked">
+                                        <button class="btn btn-warning"
+                                                th:attr="hx-post=@{/settings/api-tokens/{id}/detach/{deviceId}(id=${token.id()},deviceId=${token.deviceId()})}, hx-confirm=#{tokens.detach.confirm(${token.deviceName()})}"
+                                                hx-target="#api-tokens"
+                                                hx-vals='js:{"timezone": getUserTimezone()}'
+                                                hx-swap="innerHTML"
+                                                th:text="#{tokens.link.device.detach(${token.deviceName()})}">View Device</button>
+                                    </span>
+                                </th:block>
+
+                                <th:block th:if="${token.deviceId() == null && devices.size() > 1}">
+                                    <button class="btn btn-primary"
+                                            th:attr="hx-get=@{/settings/api-tokens/{id}/link-form(id=${token.id()})}"
+                                            hx-target="closest td"
+                                            hx-swap="innerHTML"
+                                            hx-vals='js:{"timezone": getUserTimezone()}'
+                                    th:text="#{tokens.link.device.attach}">Link to Device</button>
+                                </th:block>
                                 <span th:unless="${token.deviceId() != null}">
                                     <button class="btn btn-danger"
                                             th:attr="hx-post=@{/settings/api-tokens/{id}/delete(id=${token.id()})}, hx-confirm=#{tokens.delete.confirm}"
