@@ -93,6 +93,9 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
 
         for (GeocodeService service : availableServices) {
+            if (service.getType() == GeocoderType.NOMINATIM) {
+                nominatimRateLimiter.acquireBlockingly();
+            }
             List<GeocodeResult> serviceResults = performGeocode(service, latitude, longitude, significantPlace, true);
             if (!serviceResults.isEmpty()) {
                 results.computeIfAbsent(service.getType(), _ -> new ArrayList<>())
