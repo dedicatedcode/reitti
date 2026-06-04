@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.dto;
 
+import com.dedicatedcode.reitti.model.devices.Device;
+
 import java.util.List;
 
 public record UserTimelineData(
@@ -12,5 +14,6 @@ public record UserTimelineData(
         String rawLocationPointsUrl,
         String processedVisitsUrl,
         String mapMetaDataUrl,
-        String mapStreamDataUrl) {
+        String mapStreamDataUrl,
+        List<Device> devices) {
 }
