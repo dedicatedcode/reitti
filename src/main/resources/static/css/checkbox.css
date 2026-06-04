@@ -9,6 +9,7 @@
     user-select: none;
     border-radius: 8px;
     transition: background 0.2s ease;
+    margin: 0;
 }
 
 .slide-reveal:hover {
@@ -17,7 +18,7 @@
 
 .slide-reveal .slide-box {
     position: relative;
-    width: 18px;
+    min-width: 18px;
     height: 18px;
     border: 2px solid var(--color-highlight);
     border-radius: 4px;

@@ -482,10 +482,45 @@
         mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
     }
 
-    function showUserMenu(userHeader) {
-
+    function toggleDeviceMenu(btn) {
+        const container = btn.closest('.device-toggle-container');
+        const menu = container.querySelector('.device-menu');
+        menu.classList.toggle('hidden');
     }
-    function followUser(userHeader) {
+
+    function toggleDeviceVisibility(checkbox) {
+        const userId = checkbox.dataset.userId;
+        const deviceId = checkbox.dataset.deviceId;
+        const visible = checkbox.checked;
+
+        // Store preference
+        const key = `deviceVisibility_${userId}`;
+        const prefs = JSON.parse(localStorage.getItem(key) || '{}');
+        localStorage.setItem(key, JSON.stringify(prefs));
+
+        // Update map renderer
+        if (mapRenderer && mapRenderer.setDeviceVisibility) {
+            mapRenderer.setDeviceVisibility(userId, deviceId, visible);
+        }
+    }
+
+    function restoreDeviceVisibility() {
+        document.querySelectorAll('.device-checkbox').forEach(checkbox => {
+            const userId = checkbox.dataset.userId;
+            const deviceId = checkbox.dataset.deviceId;
+            const key = `deviceVisibility_${userId}`;
+            const prefs = JSON.parse(localStorage.getItem(key) || '{}');
+            if (prefs === false) {
+                checkbox.checked = false;
+                // Also update map renderer
+                if (mapRenderer && mapRenderer.setDeviceVisibility) {
+                    mapRenderer.setDeviceVisibility(userId, deviceId, false);
+                }
+            }
+        });
+    }
+    function followUser(btn) {
+        const userHeader = btn.closest('.user-header');
         const badge = userHeader.querySelector('.user-follow-badge');
         const wasSelected = badge.classList.contains('active');
         document.querySelectorAll('.user-header .user-follow-badge').forEach(element => {
@@ -730,8 +765,12 @@
         if (localStorage.getItem('followedUser')) {
             const followedUserId = localStorage.getItem('followedUser');
             const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${followedUserId}"] .user-follow-badge`);
+            const followedCheckbox = document.querySelectorAll(`.user-header[data-user-id="${followedUserId}"] .user-follow-checkbox`);
+
             if (followedBadge) {
                 followedBadge.forEach(badge => badge.classList.add('active'));
+                followedCheckbox.forEach(cb => cb.checked = 'true');
+
                 mapRenderer.setSelectedManager(followedUserId);
             } else {
                 console.warn(`User with ID ${followedUserId} not found in the DOM. Will drop it from local storage.`);

@@ -899,7 +899,6 @@ tr:hover {
 .divider {
     display: flex;
     align-items: center;
-    font-size: 1.3rem;
     color: var(--color-highlight);
     font-weight: 500;
     margin: 20px 0;
@@ -2089,21 +2088,19 @@ button:disabled {
 .user-follow-badge {
     opacity: 0;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     aspect-ratio: 1;
     display: inline-block;
     position: absolute;
     right: 0;
-    bottom: 24px;
-    border: 2px solid var(--color-background-dark-light);
-    background: #FFFBF3;
+    border: 2px solid var(--color-highlight);
+    background: var(--color-background-dark);
     transition: opacity 0.3s ease-in-out;
-    color: var(--color-background-dark);
-    font-size: 1.2rem;
-    line-height: 1.9rem;
+    color: var(--color-highlight);
+    font-size: 1rem;
     box-shadow: var(--box-shadow);
-    filter: brightness(1.1);
+    top: 0;
 }
 
 .user-follow-badge.active {
@@ -2222,7 +2219,7 @@ button:disabled {
     left: 0;
     right: 0;
     height: 1px;
-    background-color: #ddd;
+    background: linear-gradient(to right, transparent, var(--color-highlight) 20%, var(--color-highlight) 80%, transparent);
     z-index: 1;
 }
 
@@ -2569,3 +2566,63 @@ button:disabled {
 .hidden {
     display: none;
 }
+
+.device-menu .device-icon {
+    height: 24px;
+    min-width: 12px;
+    display: inline-block;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
+.device-toggle-container {
+    position: absolute;
+    display: inline-block;
+    bottom: 24px;
+    right: 0;
+}
+
+.device-toggle-btn {
+    border-radius: 8px;
+    width: 25px;
+    height: 18px;
+    background: var(--color-background-dark);
+    padding: 0;
+    margin: 0;
+    border-width: 2px;
+}
+
+.device-toggle-btn:hover {
+    color: var(--color-highlight, #fff);
+}
+
+.device-menu {
+    position: absolute;
+    z-index: 500;
+    min-width: 300px;
+    background: var(--color-background-dark, #1e1e1e);
+    border: 1px solid var(--color-highlight, #444);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.device-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.device-item:hover {
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+}
+
+.device-name {
+    font-size: 13px;
+    color: var(--color-text-white);
+}
+
