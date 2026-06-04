@@ -508,9 +508,9 @@ class GpsDataManager {
         this.totalActivity = cumulative;
     }
 
-    getDisplayTimestamp(linearProgres, useWarp = false) {
+    getDisplayTimestamp(linearProgres, useWarp = false, aggregate = false) {
         // 1. If warping is disabled, return linear time immediately
-        if (!useWarp || !this.activityWeights || this.activityWeights.length === 0) {
+        if (aggregate || !useWarp || !this.activityWeights || this.activityWeights.length === 0) {
             const totalTime = this.maxTimestamp - this.minTimestamp;
             return this.minTimestamp + (linearProgress * totalTime);
         }

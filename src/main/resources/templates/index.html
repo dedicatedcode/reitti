@@ -372,9 +372,11 @@
         const manager = gpsDataManagers[0];
 
         // Calculate linear progress (0 → 1) over the full loop
+
         const totalLoopTime = parseFloat(timelineControl.getMaxOffset()) / timeMultiplier;
         const activityPerSecond = manager.totalActivity / totalLoopTime;
         linearProgress += (deltaTime * activityPerSecond) / manager.totalActivity;
+
         if (linearProgress >= 1) {
             linearProgress -= 1; // loop back to start
         }
@@ -382,17 +384,15 @@
         const warp = document.getElementById('speed-selector').value === 'adaptive';
         let adaptedOffset;
         if (manager && typeof manager.getDisplayTimestamp === 'function') {
-            const adaptedTimestamp = manager.getDisplayTimestamp(linearProgress, warp);
             const minTs = manager.minTimestamp;
             if (timelineControl.aggregate) {
                 // aggregate mode: timestamp is seconds-of-day (0–86400)
-                adaptedOffset = adaptedTimestamp;
+                adaptedOffset = linearProgress * 86400;
             } else {
+                const adaptedTimestamp = manager.getDisplayTimestamp(linearProgress, warp, timelineControl.aggregate);
                 adaptedOffset = adaptedTimestamp - minTs;
             }
-
         } else {
-            // Fallback: linear offset (manager not ready or missing method)
             adaptedOffset = linearProgress * parseFloat(timelineControl.getMaxOffset());
         }
         // Apply the adapted offset to the slider and the map
