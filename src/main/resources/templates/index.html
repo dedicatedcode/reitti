@@ -154,7 +154,8 @@
                 <option value="1" th:text="#{map.time-control.speed.normal}">Normal (1x)</option>
                 <option value="60" th:text="#{map.time-control.speed.fast}">Fast (60x)</option>
                 <option value="3600" th:text="#{map.time-control.speed.super_fast}">Super Fast (3600x)</option>
-                <option value="auto" selected th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
+                <option value="auto" th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
+                <option value="adaptive" selected th:text="#{map.time-control.speed.adaptive}">Adaptive</option>
             </select>
         </div>
     </div>
@@ -349,38 +350,55 @@
         }
     }
 
+    let linearProgress = 0;
+
     function animate(now) {
         if (!isPlaying) return;
         if (lastFrameTime === null) {
-            lastFrameTime = now; // Capture the start time
-            animationId = requestAnimationFrame(animate); // Request next frame
-            return; // Exit early without moving the slider
+            lastFrameTime = now;
+            animationId = requestAnimationFrame(animate);
+            return;
         }
-        // 1. Calculate how much real time has passed since the last frame
-        // 'now' is provided automatically by requestAnimationFrame
-        const deltaTime = (now - lastFrameTime) / 1000; // convert ms to seconds
-        lastFrameTime = now; // Update for the next frame
 
-        // 2. Logic to prevent "jumps" (e.g., if the user changes tabs)
+        const deltaTime = (now - lastFrameTime) / 1000; // seconds
+        lastFrameTime = now;
+
+        // Prevent large jumps (e.g., tab switching)
         if (deltaTime > 0.1) {
             animationId = requestAnimationFrame(animate);
             return;
         }
 
-        // 3. Advance the slider
-        let step = timeMultiplier * deltaTime;
-        let newValue = parseFloat(timelineControl.getOffset()) + step;
+        const manager = gpsDataManagers[0];
 
-        // 4. Loop logic
-        if (newValue > parseFloat(timelineControl.getMaxOffset())) {
-            newValue = 0;
+        // Calculate linear progress (0 → 1) over the full loop
+
+        const totalLoopTime = parseFloat(timelineControl.getMaxOffset()) / timeMultiplier;
+        const activityPerSecond = manager.totalActivity / totalLoopTime;
+        linearProgress += (deltaTime * activityPerSecond) / manager.totalActivity;
+
+        if (linearProgress >= 1) {
+            linearProgress -= 1; // loop back to start
         }
 
-        // 5. Update UI and Map
-        timelineControl.setOffset(newValue);
+        const warp = document.getElementById('speed-selector').value === 'adaptive';
+        let adaptedOffset;
+        if (manager && typeof manager.getDisplayTimestamp === 'function') {
+            const minTs = manager.minTimestamp;
+            if (timelineControl.aggregate) {
+                // aggregate mode: timestamp is seconds-of-day (0–86400)
+                adaptedOffset = linearProgress * 86400;
+            } else {
+                const adaptedTimestamp = manager.getDisplayTimestamp(linearProgress, warp, timelineControl.aggregate);
+                adaptedOffset = adaptedTimestamp - minTs;
+            }
+        } else {
+            adaptedOffset = linearProgress * parseFloat(timelineControl.getMaxOffset());
+        }
+        // Apply the adapted offset to the slider and the map
+        timelineControl.setOffset(adaptedOffset);
         mapRenderer.updateViewState(createViewState([]));
 
-        // 6. Request the next frame
         animationId = requestAnimationFrame(animate);
     }
 
@@ -980,7 +998,7 @@
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
 
         document.getElementById('speed-selector').onchange = function(e) {
-            if (e.target.value === 'auto') {
+            if (e.target.value === 'auto' || e.target.value === 'adapative') {
                 calculateTimelineMultiplier();
             } else {
                 timeMultiplier = parseInt(e.target.value);

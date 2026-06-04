@@ -22,6 +22,8 @@ class GpsDataManager {
         this.bounds = null;
         this._dataCache = {};
         this.lastLocation = null;
+        this.activityWeights = [0];
+        this.totalActivity = 0;
     }
 
     async loadFixed(onProgress) {
@@ -145,7 +147,7 @@ class GpsDataManager {
 
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
-
+            this._computeActivityWeights();
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
             if (this.config.map.visitsUrl) {
@@ -450,6 +452,105 @@ class GpsDataManager {
         if (onProgress) onProgress(this.cleanedCursor, this.cleanedCursor, 'bundling');
     }
 
+    _computeActivityWeights() {
+        const weights = [0];
+        let cumulative = 0;
+
+        // --- DYNAMIC PACING ---
+        const visitWeight = 0.1;     // Faster visit "skip"
+        const tripWeight = 0.6;      // Steady cruising speed
+
+        const sortedRanges = this.visits.flatMap(p => p.activeRanges)
+            .sort((a, b) => a.start - b.start);
+
+        for (let i = 1; i < this.cleanedCursor; i++) {
+            const idx = i * 6;
+            const tsCurrent = this.cleanedBuffer[idx + 3];
+            const dt = tsCurrent - this.cleanedBuffer[(i - 1) * 6 + 3];
+
+            if (dt <= 0) { weights.push(cumulative); continue; }
+
+            const currentVisit = sortedRanges.find(r => tsCurrent >= r.start && tsCurrent <= r.end);
+            let factor = tripWeight;
+
+            if (currentVisit) {
+                factor = visitWeight;
+            } else {
+                // Find the trip boundaries
+                const prevVisit = sortedRanges.find(r => r.end < tsCurrent);
+                const nextVisit = sortedRanges.find(r => r.start > tsCurrent);
+                const tripStart = prevVisit ? prevVisit.end : (tsCurrent - 3600);
+                const tripEnd = nextVisit ? nextVisit.start : (tsCurrent + 3600);
+                const tripDuration = tripEnd - tripStart;
+
+                // Proportional Buffer: 15% of the trip duration, capped at 300 seconds
+                const buffer = Math.min(tripDuration * 0.15, 300);
+
+                // Arrival Ramp (Slow down 15% before arrival)
+                if (nextVisit && (nextVisit.start - tsCurrent) <= buffer) {
+                    const progress = 1 - ((nextVisit.start - tsCurrent) / buffer);
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = tripWeight - (smooth * (tripWeight - visitWeight));
+                }
+                // Departure Ramp (Speed up 15% after leaving)
+                else if (prevVisit && (tsCurrent - prevVisit.end) <= buffer) {
+                    const progress = (tsCurrent - prevVisit.end) / buffer;
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = visitWeight + (smooth * (tripWeight - visitWeight));
+                }
+            }
+
+            cumulative += (dt * factor);
+            weights.push(cumulative);
+        }
+
+        this.activityWeights = weights;
+        this.totalActivity = cumulative;
+    }
+
+    getDisplayTimestamp(linearProgres, useWarp = false, aggregate = false) {
+        // 1. If warping is disabled, return linear time immediately
+        if (aggregate || !useWarp || !this.activityWeights || this.activityWeights.length === 0) {
+            const totalTime = this.maxTimestamp - this.minTimestamp;
+            return this.minTimestamp + (linearProgress * totalTime);
+        }
+
+        // 1. Map linear animation progress (0 -> 1) to our custom Activity Space
+        const targetWeight = linearProgress * this.totalActivity;
+
+        // 2. Perform a Binary Search to find which data segment contains this weight
+        let low = 0;
+        let high = this.activityWeights.length - 1;
+        let floorIndex = 0;
+
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            if (this.activityWeights[mid] <= targetWeight) {
+                floorIndex = mid;
+                low = mid + 1; // Look upper
+            } else {
+                high = mid - 1; // Look lower
+            }
+        }
+
+        // Boundary check: if we are at the very end of the data
+        if (floorIndex >= this.activityWeights.length - 1) {
+            return this.cleanedBuffer[(this.activityWeights.length - 1) * 6 + 3];
+        }
+
+        // 3. Get the two bounding weights and their corresponding real-world timestamps
+        const w0 = this.activityWeights[floorIndex];
+        const w1 = this.activityWeights[floorIndex + 1];
+
+        const t0 = this.cleanedBuffer[floorIndex * 6 + 3];
+        const t1 = this.cleanedBuffer[(floorIndex + 1) * 6 + 3];
+
+        // 4. Smoothly interpolate between the two timestamps for sub-frame accuracy
+        if (w1 === w0) return t0;
+        const segmentProgress = (targetWeight - w0) / (w1 - w0);
+
+        return t0 + segmentProgress * (t1 - t0);
+    }
     _hexToRgb(hex) {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return [r, g, b];

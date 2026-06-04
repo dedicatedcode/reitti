@@ -698,16 +698,6 @@ class MapRenderer {
         }
     }
 
-    _awaitStyleLoaded(func) {
-        if (this.map.isStyleLoaded()) {
-            func();
-        } else {
-            this.map.once('style.load', () => {
-                func()
-            });
-        }
-    }
-
     _updateLayers() {
 
         const allLayers = [];
@@ -715,7 +705,6 @@ class MapRenderer {
         if (this.viewState.renderTerrain) {
             allLayers.push(this.terrainLayer);
         }
-
 
         this.gpsDataManagers.forEach(manager => {
             const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
