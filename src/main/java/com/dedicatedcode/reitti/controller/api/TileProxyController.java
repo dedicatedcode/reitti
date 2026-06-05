@@ -51,31 +51,27 @@ public class TileProxyController {
     private final HttpClient httpClient;
     private final String tileCacheUrl;
     private final boolean tileCacheEnabled;
+    private final String defaultTileService;
+    private final String customTileService;
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final MapLibreMapStylesService mapLibreMapStylesService;
     private final ContextPathHolder contextPathHolder;
 
-    // Maps source names to internal paths and coordinate ordering
-    private record SourceConfig(String path, boolean swapXY, String contentType) {}
     private record TileSource(String tileJsonUrl, List<String> tileUrlTemplates, boolean proxyTiles) {}
-
-    private static final Map<String, SourceConfig> SOURCES = Map.of(
-        "raster", new SourceConfig("/osm/", false, MediaType.IMAGE_PNG_VALUE),
-        "osm", new SourceConfig("/osm/", false, "application/x-protobuf"),
-        "vector", new SourceConfig("/vector/", false, "application/x-protobuf"),
-        "terrain", new SourceConfig("/terrain/", false, "image/webp"),
-        "satellite", new SourceConfig("/satellite/", true, "image/jpeg")
-    );
 
     public TileProxyController(
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
+            @Value("${reitti.ui.tiles.default.service}") String defaultTileService,
+            @Value("${reitti.ui.tiles.custom.service:}") String customTileService,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
             MapLibreMapStylesService mapLibreMapStylesService,
             ContextPathHolder contextPathHolder) {
         this.tileCacheUrl = tileCacheUrl;
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
+        this.defaultTileService = defaultTileService;
+        this.customTileService = customTileService;
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
@@ -86,9 +82,31 @@ public class TileProxyController {
                 .build();
     }
 
-    /**
-     * Serves the complete MapLibre style JSON (with runtime sources and optionally proxied URLs).
-     */
+    @GetMapping("/{z}/{x}/{y}.png")
+    public ResponseEntity<byte[]> getTileLegacy(
+            @PathVariable int z,
+            @PathVariable int x,
+            @PathVariable int y) {
+
+        String template = StringUtils.hasText(customTileService) ? customTileService : defaultTileService;
+        if (!StringUtils.hasText(template)) {
+            return ResponseEntity.notFound().build();
+        }
+        String upstreamTileUrl = template
+                .replace("{z}", String.valueOf(z))
+                .replace("{x}", String.valueOf(x))
+                .replace("{y}", String.valueOf(y));
+        URI upstreamTileUri = URI.create(upstreamTileUrl);
+        log.trace("Fetching custom tile: {}", upstreamTileUri);
+
+        if (this.tileCacheEnabled) {
+            String tileUrl = tileCacheUrl + "/custom/";
+            return fetchTile(tileUrl, MediaType.IMAGE_PNG_VALUE, "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+        } else {
+            return fetchTile(upstreamTileUrl, MediaType.IMAGE_PNG_VALUE, "custom");
+        }
+    }
+
     @GetMapping("/styles/{styleId}/style.json")
     public ResponseEntity<JsonNode> getStyleJson(
             @AuthenticationPrincipal User user,
@@ -274,6 +292,7 @@ public class TileProxyController {
 
     private HttpResponse<byte[]> fetchRaw(String url, Map<String, String> extraHeaders) throws Exception {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .header("User-Agent", "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)")
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate")
