@@ -42,6 +42,8 @@ class TileProxyControllerTest {
 
         controller = new TileProxyController(
                 "",                        // tileCacheUrl (empty => caching disabled)
+                null,
+                null,
                 objectMapper,
                 userMapStyleJdbcService,
                 mapLibreMapStylesService,
