@@ -17,13 +17,13 @@
 
 .place-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     top: 0;
     position: absolute;
     flex-grow: 0;
     align-items: start;
     gap: 8px;
-    right: -48px;
+    right: 0;
     text-shadow: none;
 
 }

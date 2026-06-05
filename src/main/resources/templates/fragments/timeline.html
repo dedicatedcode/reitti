@@ -13,18 +13,53 @@
         loading ...
     </div>
 
-    <div class="user-timeline-selection" th:fragment="user-selection" th:if="${timelineData.users != null && timelineData.users.size() > 1}">
+    <div class="user-timeline-selection" th:fragment="user-selection" th:if="${showUserSelection}">
         <div th:title="${userData.displayName}" th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
              class="user-header"
              th:classappend="${iterStat.first} ? 'active' : ''"
              th:data-user-id="${userData.userId}"
-             onDblClick="followUser(this)"
              onclick="selectUser(this)">
                 <img th:src="@{${userData.userAvatarUrl}}"
                      th:alt="${userData.avatarFallback}"
                      class="avatar">
                 <div th:text="${userData.displayName}" class="username">Username</div>
-            <span class="user-follow-badge"><i class="lni lni-locked-1"> </i></span>
+            <span class="user-follow-badge"><i class="lni lni-location-arrow-right"> </i></span>
+            <div class="device-toggle-container">
+                <button class="device-toggle-btn" onclick="event.stopPropagation(); toggleDeviceMenu(this)"
+                        th:title="#{timeline.devices.toggle.title}">
+                    <i class="lni lni-menu-meatballs-1"></i>
+                </button>
+                <div class="device-menu hidden">
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox" class="user-follow-checkbox"
+                               th:id="${'user-follow-' + userData.userId}"
+                               onchange="followUser(this)">
+                        <label th:for="${'user-follow-' + userData.userId}" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{timeline.user.follow}">Follow user</span>
+                        </label>
+                    </div>
+                    <div class="divider left" th:text="#{timeline.devices.divider}">Devices</div>
+                    <div th:each="device : ${userData.devices}" class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                               th:id="${'device-' + userData.userId + '-' + device.id()}"
+                               class="device-checkbox"
+                               th:data-user-id="${userData.userId}"
+                               th:data-device-id="${device.id()}"
+                               th:data-device-color="${device.color()}"
+                               th:data-device-metadata-url="${device.metadataUrl()}"
+                               th:data-device-stream-url="${device.streamUrl()}"
+                               onchange="toggleDeviceVisibility(this)">
+                        <label th:for="${'device-' + userData.userId + '-' + device.id()}" class="slide-reveal"
+                               onclick="event.stopPropagation()">
+                            <span class="slide-box"></span>
+                            <span class="device-icon" th:style="'background-color: ' + ${device.color()}"></span>
+
+                            <span class="label-text" th:text="${device.name()}">Device Name</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"

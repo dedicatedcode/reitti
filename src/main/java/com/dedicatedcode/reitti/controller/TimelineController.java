@@ -1,15 +1,17 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.dto.DeviceTimelineData;
 import com.dedicatedcode.reitti.dto.TimelineData;
 import com.dedicatedcode.reitti.dto.TimelineEntry;
 import com.dedicatedcode.reitti.dto.UserTimelineData;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
-import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
@@ -17,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -36,29 +37,34 @@ public class TimelineController {
 
     private final AvatarService avatarService;
     private final ReittiIntegrationService reittiIntegrationService;
+    private final DeviceJdbcService deviceJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final TimelineService timelineService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TransportModeService transportModeService;
     private final TripJdbcService tripJdbcService;
+    private final DataCleanupService dataCleanupService;
 
     @Autowired
     public TimelineController(UserJdbcService userJdbcService,
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService,
+                              DeviceJdbcService deviceJdbcService,
                               UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
-                              TripJdbcService tripJdbcService) {
+                              TripJdbcService tripJdbcService, DataCleanupService dataCleanupService) {
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
+        this.deviceJdbcService = deviceJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.timelineService = timelineService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.transportModeService = transportModeService;
         this.tripJdbcService = tripJdbcService;
+        this.dataCleanupService = dataCleanupService;
     }
 
     @GetMapping("/content/range")
@@ -98,6 +104,7 @@ public class TimelineController {
         model.addAttribute("timezone", timezone);
         model.addAttribute("isRange", true);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
+        model.addAttribute("showUserSelection", timelineData.users().size() > 1 || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
         return "fragments/timeline :: timeline-content";
     }
 
@@ -106,10 +113,19 @@ public class TimelineController {
         Instant endOfRange = endDate.plusDays(1).atStartOfDay(timezone).toInstant().minusMillis(1);
 
         List<TimelineEntry> currentUserEntries;
+        List<DeviceTimelineData> enabledDevices;
         if (loadTimeline && (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS"))) {
             currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
+            enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap)
+                    .map(d -> new DeviceTimelineData(d.id(),
+                                                     d.name(),
+                                                     d.color(),
+                                                     String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
+                                                     String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
+                    .toList();
         } else {
             currentUserEntries = Collections.emptyList();
+            enabledDevices = Collections.emptyList();
         }
 
         UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
@@ -120,6 +136,7 @@ public class TimelineController {
         String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
+
         return new UserTimelineData(user.getId() + "",
                                     user.getDisplayName(),
                                     currentUserInitials,
@@ -129,7 +146,8 @@ public class TimelineController {
                                     null,
                                     currentUserProcessedVisitsUrl,
                                     mapMetaDataUrl,
-                                    mapStreamDataUrl);
+                                    mapStreamDataUrl,
+                                    enabledDevices);
     }
 
     @GetMapping("/user-selection")
@@ -152,6 +170,7 @@ public class TimelineController {
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
         model.addAttribute("timelineData", timelineData);
+        model.addAttribute("showUserSelection", timelineData.users().size() > 1);
         return "fragments/user-selection :: user-selection";
     }
 
@@ -223,7 +242,8 @@ public class TimelineController {
                                                     currentUserRawLocationPointsUrl,
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
-                                                    mapStreamDataUrl);
+                                                    mapStreamDataUrl,
+                                                    Collections.emptyList());
                     });
                 })
                 .filter(Optional::isPresent)

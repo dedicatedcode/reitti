@@ -689,7 +689,8 @@ public class ReittiIntegrationService {
                                     null,
                                     String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                     mapMetaDataUrl,
-                                    mapStreamDataUrl);
+                                    mapStreamDataUrl,
+                                    Collections.emptyList());
     }
 
 }

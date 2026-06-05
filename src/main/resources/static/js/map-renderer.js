@@ -717,9 +717,10 @@ class MapRenderer {
                     const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
                     const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
                     const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
+                    const layerData = manager.getLayerData(buffer, this.viewState.aggregated);
                     allLayers.push(new deck.PathLayer({
                         id: `paths-static-fixed-${layerKey}`,
-                        data: manager.getLayerData(buffer, this.viewState.aggregated),
+                        data: layerData,
                         positionFormat: 'XYZ',
                         getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
                         getWidth: this.deckParams.trips.staticPathWidth,
@@ -746,12 +747,12 @@ class MapRenderer {
                         // SHADOW TRIP (Animated)
                         allLayers.push(new deck.TripsLayer({
                             id: `trips-shadow-${layerKey}`,
-                            data: manager.getLayerData(buffer, this.viewState.aggregated),
+                            data: layerData,
                             positionFormat: 'XYZ',
-                            getColor: [255, 255, 255],
+                            getColor: manager.color,
                             opacity: this.deckParams.trips.shadowOpacity,
                             widthMinPixels: this.deckParams.trips.shadowWidth,
-                            trailLength: calculatedTrail * 1.2,
+                            trailLength: calculatedTrail,
                             visibility: this.viewState.animating,
                             currentTime: this.viewState.currentTime,
                             capRounded: true,
@@ -768,15 +769,14 @@ class MapRenderer {
                             }
                         }));
 
-                        // CORE TRIP (Animated)
                         allLayers.push(new deck.TripsLayer({
                             id: `trips-core-${layerKey}`,
-                            data: manager.getLayerData(buffer, this.viewState.aggregated),
+                            data: layerData,
                             positionFormat: 'XYZ',
-                            getColor: manager.color,
+                            getColor: [255, 255, 255, 100],
                             opacity: this.deckParams.trips.cometOpacity * this.viewState.animating,
                             widthMinPixels: this.deckParams.trips.cometWidth,
-                            trailLength: calculatedTrail,
+                            trailLength: calculatedTrail * 1.2,
                             currentTime: this.viewState.currentTime,
                             capRounded: true,
                             jointRounded: true,
@@ -1037,6 +1037,38 @@ class MapRenderer {
         ];
     }
 
+    _calculatePosition(d, currentTime) {
+            const timeBuffer = d.attributes.getTimestamps.value;
+            const pathBuffer = d.attributes.getPath.value;
+
+            // 1. Derive total points directly from the buffer size
+            const stride = 6;
+            const totalPoints = timeBuffer.length / stride;
+            const timeIndex = this.viewState.aggregated ? 5 : 3;
+
+            let bestIdx = 0;
+
+            // 2. Iterate based on the physical size of the buffer
+            for (let i = 0; i < totalPoints; i++) {
+                // Calculate timestamp position
+                const time = timeBuffer[i * stride + timeIndex];
+
+                // Safety: If the buffer has gaps or invalid data, skip
+                if (time === undefined || isNaN(time)) continue;
+
+                if (time <= currentTime) {
+                    bestIdx = i;
+                } else {
+                    // Once we hit the future, stop searching
+                    break;
+                }
+            }
+
+            const offset = bestIdx * stride;
+            const pos = [pathBuffer[offset], pathBuffer[offset + 1], pathBuffer[offset + 2]];
+
+            return pos;
+    }
     async _waitForIdle() {
         if (this.map.loaded() && !this.map.isMoving()) {
             return; // Already idle, resolve immediately
@@ -1382,8 +1414,7 @@ class MapRenderer {
             terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
         });
 
-        // We must trigger a re-render of the deck.gl overlay
-        this._rerenderOverlays(); // We'll modify _updateLayers to include the highlight
+        this._rerenderOverlays();
 
         // Calculate and return the bounds
         const bounds = new maplibregl.LngLatBounds();
