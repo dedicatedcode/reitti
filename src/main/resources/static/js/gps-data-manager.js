@@ -52,7 +52,6 @@ class GpsDataManager {
     }
 
     async load(startUTC, endUTC, onProgress) {
-        // 1. Check if we already have this data in memory
         if (this.loadingState === 'complete' &&
             startUTC >= this.minTimestamp &&
             endUTC <= this.maxTimestamp) {
@@ -184,69 +183,61 @@ class GpsDataManager {
         }
 
         let payload;
+        const thresholdSec = 300; // 5 minutes.
 
         if (mode === 'bundled') {
             const stride = 20;
-            const usedLength = this.cleanedCursor * 5;
+            const strideFloats = 5; // 20 bytes / 4 bytes per float
+            const timeIndex = isAggregate ? 4 : 2; // Byte offset 16/4 or 8/4
+            const usedLength = this.cleanedCursor * strideFloats;
             const trimmed = this.snappedBuffer.subarray(0, usedLength);
+
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cleanedCursor, strideFloats, timeIndex, thresholdSec
+            );
+
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cleanedCursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 2,
-                        stride: stride,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: stride,
-                        offset: isAggregate ? 16 : 8
-                    }
+                    getPath: { value: trimmed, size: 2, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 16 : 8 }
                 }
             };
         } else if (mode === 'cleaned') {
-            const usedLength = this.cleanedCursor * 6;
+            const stride = 24;
+            const strideFloats = 6;
+            const timeIndex = isAggregate ? 5 : 3;
+            const usedLength = this.cleanedCursor * strideFloats;
             const trimmed = this.cleanedBuffer.subarray(0, usedLength);
+
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cleanedCursor, strideFloats, timeIndex, thresholdSec
+            );
+
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cleanedCursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 3,
-                        stride: 24,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: 24,
-                        offset: isAggregate ? 20 : 12
-                    }
+                    getPath: { value: trimmed, size: 3, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 20 : 12 }
                 }
             };
         } else if (mode === 'raw') {
-            const usedLength = this.cursor * 6;
+            const stride = 24;
+            const strideFloats = 6;
+            const timeIndex = isAggregate ? 5 : 3;
+            const usedLength = this.cursor * strideFloats;
             const trimmed = this.buffer.subarray(0, usedLength);
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cursor, strideFloats, timeIndex, thresholdSec
+            );
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 3,
-                        stride: 24,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: 24,
-                        offset: isAggregate ? 20 : 12
-                    }
+                    getPath: { value: trimmed, size: 3, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 20 : 12 }
                 }
             };
         }
@@ -257,6 +248,37 @@ class GpsDataManager {
         };
 
         return payload;
+    }
+
+    _getBinaryIndices(buffer, pointCount, strideFloats, timeIndex, thresholdSec) {
+        // If continuous is true, or no points, return single path
+        if (this.config.continuous || pointCount === 0) {
+            return {
+                length: 1,
+                startIndices: new Uint32Array([0, pointCount])
+            };
+        }
+
+        const indices = [0];
+
+        // Scan buffer for time gaps
+        for (let i = 0; i < pointCount - 1; i++) {
+            const t1 = buffer[i * strideFloats + timeIndex];
+            const t2 = buffer[(i + 1) * strideFloats + timeIndex];
+
+            // If the gap exceeds the threshold, break the line at i+1
+            if (Math.abs(t2 - t1) > thresholdSec) {
+                indices.push(i + 1);
+            }
+        }
+
+        // Always push the final vertex count as required by deck.gl
+        indices.push(pointCount);
+
+        return {
+            length: indices.length - 1,
+            startIndices: new Uint32Array(indices)
+        };
     }
 
     async _streamPoints(onProgress, signal) {
@@ -453,12 +475,18 @@ class GpsDataManager {
     }
 
     _computeActivityWeights() {
+        if (!this.visits || this.visits.length === 0) {
+            this.activityWeights = [0];
+            this.totalActivity = 0;
+            return;
+        }
+
         const weights = [0];
         let cumulative = 0;
 
         // --- DYNAMIC PACING ---
-        const visitWeight = 0.1;     // Faster visit "skip"
-        const tripWeight = 0.6;      // Steady cruising speed
+        const visitWeight = 0.05;     // Faster visit "skip"
+        const tripWeight = 1;      // Steady cruising speed
 
         const sortedRanges = this.visits.flatMap(p => p.activeRanges)
             .sort((a, b) => a.start - b.start);
@@ -483,8 +511,7 @@ class GpsDataManager {
                 const tripEnd = nextVisit ? nextVisit.start : (tsCurrent + 3600);
                 const tripDuration = tripEnd - tripStart;
 
-                // Proportional Buffer: 15% of the trip duration, capped at 300 seconds
-                const buffer = Math.min(tripDuration * 0.15, 300);
+                const buffer = Math.min(tripDuration * 0.30, 600);
 
                 // Arrival Ramp (Slow down 15% before arrival)
                 if (nextVisit && (nextVisit.start - tsCurrent) <= buffer) {
@@ -509,7 +536,6 @@ class GpsDataManager {
     }
 
     getDisplayTimestamp(linearProgres, useWarp = false, aggregate = false) {
-        // 1. If warping is disabled, return linear time immediately
         if (aggregate || !useWarp || !this.activityWeights || this.activityWeights.length === 0) {
             const totalTime = this.maxTimestamp - this.minTimestamp;
             return this.minTimestamp + (linearProgress * totalTime);
@@ -551,8 +577,11 @@ class GpsDataManager {
 
         return t0 + segmentProgress * (t1 - t0);
     }
+
     _hexToRgb(hex) {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return [r, g, b];
     }
+
+
 }

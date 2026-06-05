@@ -15,5 +15,5 @@ public record UserTimelineData(
         String processedVisitsUrl,
         String mapMetaDataUrl,
         String mapStreamDataUrl,
-        List<Device> devices) {
+        List<DeviceTimelineData> devices) {
 }

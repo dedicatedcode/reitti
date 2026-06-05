@@ -1,11 +1,10 @@
 package com.dedicatedcode.reitti.controller.api.v2;
 
 import com.dedicatedcode.reitti.dto.MapMetadata;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoJsonExportService;
 import com.dedicatedcode.reitti.service.StreamingRawLocationPointJdbcService;
 import org.springframework.http.HttpHeaders;
@@ -33,18 +32,25 @@ import java.util.concurrent.CompletableFuture;
 public class LocationApiController {
 
     private final UserJdbcService userJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final RawLocationPointJdbcService jdbcService;
+    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final GeoJsonExportService geoJsonExportService;
     private final StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService;
 
     public LocationApiController(UserJdbcService userJdbcService,
+                                 DeviceJdbcService deviceJdbcService,
                                  UserSharingJdbcService userSharingJdbcService,
-                                 RawLocationPointJdbcService jdbcService, GeoJsonExportService geoJsonExportService,
+                                 RawLocationPointJdbcService jdbcService,
+                                 SourceLocationPointJdbcService sourceLocationPointJdbcService,
+                                 GeoJsonExportService geoJsonExportService,
                                  StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService) {
         this.userJdbcService = userJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.jdbcService = jdbcService;
+        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.geoJsonExportService = geoJsonExportService;
         this.streamingRawLocationPointJdbcService = streamingRawLocationPointJdbcService;
     }
@@ -61,6 +67,21 @@ public class LocationApiController {
         return this.jdbcService.getMetadata(userToFetchDataFrom, startInstant, endInstant);
     }
 
+    @GetMapping("/metadata/{userId}/device/{deviceId}")
+    public MapMetadata getForDevice(@AuthenticationPrincipal User user,
+                           @PathVariable Long userId,
+                           @PathVariable Long deviceId,
+                           @RequestParam String start,
+                           @RequestParam String end,
+                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
+        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+        Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+
+        Instant startInstant = parseInstant(start, timezone, false);
+        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
+        return this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, startInstant, endInstant);
+    }
+
     @GetMapping(value = "/stream/{userId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<ResponseBodyEmitter> stream(
             @AuthenticationPrincipal User user,
@@ -73,7 +94,38 @@ public class LocationApiController {
 
         CompletableFuture.runAsync(() -> {
             try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom.getId(), parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+            } catch (Exception e) {
+                if (e.getCause() instanceof java.io.IOException) {
+                    try { emitter.complete(); } catch (Exception ignored) {}
+                } else {
+                    try { emitter.completeWithError(e); } catch (Exception ignored) {}
+                }
+            }
+        });
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                .header(HttpHeaders.CONTENT_ENCODING, "identity")
+                .body(emitter);
+    }
+
+    @GetMapping(value = "/stream/{userId}/device/{deviceId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<ResponseBodyEmitter> streamForDevice(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long userId,
+            @PathVariable Long deviceId,
+            @RequestParam String start,
+            @RequestParam String end,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
+        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+        Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, device, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
             } catch (Exception e) {
                 if (e.getCause() instanceof java.io.IOException) {
                     try { emitter.complete(); } catch (Exception ignored) {}

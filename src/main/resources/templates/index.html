@@ -256,6 +256,7 @@
         updateAvatarsVisibility();
         handleAutoTodaySelectionTimer(autoUpdateMode)
     })
+
     const mapControls = new MapControls('map-controls-section');
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
@@ -286,6 +287,7 @@
             startAnimation();
         }
     };
+
     function updateAvatarsVisibility() {
         const isAutoUpdate = Boolean(liveModeController && liveModeController.isActive());
 
@@ -319,6 +321,7 @@
         // Only show avatars for managers with data inside today
         mapRenderer.enableAvatars(todayStart, todayEnd);
     }
+
     function startAnimation() {
         isPlaying = true;
         playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
@@ -436,6 +439,52 @@
         }
     }
 
+    function loadGpsData(requestedStart, requestedEnd) {
+        const RENDER_CHUNK_SIZE = 50000;
+        const completedManagers = new Set();
+
+        gpsDataManagers.forEach((gpsDataManager, index) => {
+            let lastRenderedPointCount = 0;
+            gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
+
+                switch (stage) {
+                    case 'metadata':
+                        updateStatus("Fetching metadata...", 10, 100);
+
+                        break;
+                    case 'streaming':
+                        updateStatus("Loading point {0} / {1}", current, total);
+                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
+                            lastRenderedPointCount = current;
+                            requestAnimationFrame(() => {
+                                mapRenderer.updateViewState(createViewState());
+                            });
+                        }
+                        break;
+                    case 'bundling':
+                        updateStatus("Optimizing routes: {0} / {1} points", current, total);
+                        break;
+                    case 'complete':
+                        lastRenderedPointCount = 0;
+                        const aggregateToggle = document.getElementById('aggregate-toggle');
+                        timelineControl.setup({
+                            aggregate: aggregateToggle ? aggregateToggle.checked : false,
+                            minTimestamp: gpsDataManager.minTimestamp,
+                            maxTimestamp: gpsDataManager.maxTimestamp,
+                        })
+                        calculateTimelineMultiplier();
+                        updateStatus("Finished processing {1} points", current, total);
+                        mapRenderer.updateViewState(createViewState());
+                        completedManagers.add(index);
+                        if (completedManagers.size === gpsDataManagers.length) {
+                            mapRenderer.finishedLoading();
+                        }
+
+                }
+            });
+        });
+    }
+
     function fadeOutOverlay(overlay) {
         setTimeout(() => {
             overlay.style.transition = 'opacity 1s ease';
@@ -488,37 +537,61 @@
         menu.classList.toggle('hidden');
     }
 
+    function enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl) {
+        const config = {
+            id: `${userId}_${deviceId}`,
+            respectBounds: true,
+            color: color,
+            map: {
+                metaDataUrl: metaDataUrl,
+                streamUrl: streamUrl,
+            },
+            continuous: false
+        };
+        gpsDataManagers.push(new GpsDataManager(config, window.userSettings, getUserTimezone()));
+    }
+
     function toggleDeviceVisibility(checkbox) {
         const userId = checkbox.dataset.userId;
         const deviceId = checkbox.dataset.deviceId;
+        const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
+        const streamUrl = checkbox.dataset.deviceStreamUrl;
+        const color = checkbox.dataset.deviceColor;
         const visible = checkbox.checked;
 
-        // Store preference
-        const key = `deviceVisibility_${userId}`;
-        const prefs = JSON.parse(localStorage.getItem(key) || '{}');
-        localStorage.setItem(key, JSON.stringify(prefs));
+        const key = `deviceVisibility_${userId}_${deviceId}`;
+        localStorage.setItem(key, visible);
 
-        // Update map renderer
-        if (mapRenderer && mapRenderer.setDeviceVisibility) {
-            mapRenderer.setDeviceVisibility(userId, deviceId, visible);
+        if (visible) {
+            enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
+        } else {
+            const index = gpsDataManagers.findIndex(manager => manager.id === `${userId}_${deviceId}`);
+            if (index !== -1) {
+                gpsDataManagers.splice(index, 1);
+            }
         }
+        mapRenderer.setGpsDataManagers(gpsDataManagers);
+        const params = getTimelineParams();
+        loadGpsData(params.startDateUtcSeconds, params.endDateUtcSeconds);
     }
 
     function restoreDeviceVisibility() {
         document.querySelectorAll('.device-checkbox').forEach(checkbox => {
             const userId = checkbox.dataset.userId;
             const deviceId = checkbox.dataset.deviceId;
-            const key = `deviceVisibility_${userId}`;
-            const prefs = JSON.parse(localStorage.getItem(key) || '{}');
-            if (prefs === false) {
-                checkbox.checked = false;
-                // Also update map renderer
-                if (mapRenderer && mapRenderer.setDeviceVisibility) {
-                    mapRenderer.setDeviceVisibility(userId, deviceId, false);
-                }
+            const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
+            const streamUrl = checkbox.dataset.deviceStreamUrl;
+            const color = checkbox.dataset.deviceColor;
+            const key = `deviceVisibility_${userId}_${deviceId}`;
+            const enabled = localStorage.getItem(key) === 'true';
+            if (enabled) {
+                checkbox.checked = true;
+                enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
+
             }
         });
     }
+
     function followUser(btn) {
         const userHeader = btn.closest('.user-header');
         const badge = userHeader.querySelector('.user-follow-badge');
@@ -687,60 +760,6 @@
             link.setAttribute('href', url.toString());
         });
     }
-    function loadTimelineData(requestedStart, requestedEnd) {
-        console.log('loadTimelineData', requestedStart, requestedEnd);
-        gpsDataManagers = [];
-        const RENDER_CHUNK_SIZE = 50000;
-        const completedManagers = new Set();
-
-        userConfigs.forEach(config => {
-            const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
-            gpsDataManagers.push(gpsDataManager)
-        });
-
-
-        mapRenderer.setGpsDataManagers(gpsDataManagers);
-        gpsDataManagers.forEach((gpsDataManager, index) => {
-            let lastRenderedPointCount = 0;
-            gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
-
-                switch (stage) {
-                    case 'metadata':
-                        updateStatus("Fetching metadata...", 10, 100);
-
-                        break;
-                    case 'streaming':
-                        updateStatus("Loading point {0} / {1}", current, total);
-                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
-                            lastRenderedPointCount = current;
-                            requestAnimationFrame(() => {
-                                mapRenderer.updateViewState(createViewState());
-                            });
-                        }
-                        break;
-                    case 'bundling':
-                        updateStatus("Optimizing routes: {0} / {1} points", current, total);
-                        break;
-                    case 'complete':
-                        lastRenderedPointCount = 0;
-                        const aggregateToggle = document.getElementById('aggregate-toggle');
-                        timelineControl.setup({
-                            aggregate: aggregateToggle ? aggregateToggle.checked : false,
-                            minTimestamp: gpsDataManager.minTimestamp,
-                            maxTimestamp: gpsDataManager.maxTimestamp,
-                        })
-                        calculateTimelineMultiplier();
-                        updateStatus("Finished processing {1} points", current, total);
-                        mapRenderer.updateViewState(createViewState());
-                        completedManagers.add(index);
-                        if (completedManagers.size === gpsDataManagers.length) {
-                            mapRenderer.finishedLoading();
-                        }
-
-                }
-            });
-        });
-    }
 
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
         liveModeController.enterLiveMode();
@@ -803,7 +822,8 @@
                         metaDataUrl: container.dataset.locationMetadataUrl,
                         streamUrl: container.dataset.locationStreamUrl,
                         visitsUrl: container.dataset.processedVisitsUrl
-                    }
+                    },
+                    continuous: true
                 };
                 configs.push(config);
             });
@@ -813,6 +833,7 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
+                gpsDataManagers = [];
                 updateFollowedUser();
                 stopAnimation();
 
@@ -842,7 +863,14 @@
                     maxTimestamp: params.endDateUtcSeconds,
                     aggregate: aggregateToggle ? aggregateToggle.checked : false
                 });
-                loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
+
+                userConfigs.forEach(config => {
+                    const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
+                    gpsDataManagers.push(gpsDataManager)
+                });
+                restoreDeviceVisibility()
+                mapRenderer.setGpsDataManagers(gpsDataManagers);
+                loadGpsData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {

@@ -1,7 +1,9 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
@@ -15,10 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -183,4 +187,51 @@ public class SourceLocationPointJdbcService {
                 geometryFactory.createPoint(new Coordinate(lng, lat)).toString()
                 , id, user.getId());
     }
+
+    public MapMetadata getMetadata(User user, Device device, Instant start, Instant end) {
+
+        String sql = """
+                SELECT
+                  EXTRACT(EPOCH FROM MIN(timestamp)) as min_ts,
+                  EXTRACT(EPOCH FROM MAX(timestamp)) as max_ts,
+                  COUNT(*) as total_count,
+                  ST_YMin(ST_Extent(geom)) as min_lat,
+                  ST_YMax(ST_Extent(geom)) as max_lat,
+                  ST_XMin(ST_Extent(geom)) as min_lng,
+                  ST_XMax(ST_Extent(geom)) as max_lng
+                FROM raw_location_points
+                WHERE user_id = ?
+                  AND timestamp >= ? AND timestamp < ?
+                """;
+        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
+                rs.getLong("min_ts"),
+                rs.getLong("max_ts"),
+                rs.getLong("total_count"),
+                rs.getDouble("min_lat"),
+                rs.getDouble("max_lat"),
+                rs.getDouble("min_lng"),
+                rs.getDouble("max_lng"),
+                this.findLatest(user, device).map(latestPoint -> {
+                    LocationPoint locationPoint = new LocationPoint();
+                    locationPoint.setTimestamp(latestPoint.getTimestamp());
+                    locationPoint.setLatitude(latestPoint.getLatitude());
+                    locationPoint.setLongitude(latestPoint.getLongitude());
+                    locationPoint.setAccuracyMeters(latestPoint.getAccuracyMeters());
+                    locationPoint.setElevationMeters(latestPoint.getElevationMeters());
+                    return locationPoint;
+                })
+        ), user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public Optional<SourceLocationPoint> findLatest(User user, Device device) {
+        String sql = """
+                SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, status, invalid
+                FROM raw_source_points rlp
+                WHERE rlp.user_id = ? AND rlp.device_id = ?
+                ORDER BY rlp.timestamp DESC LIMIT 1""";
+        List<SourceLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), device.id());
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+
 }

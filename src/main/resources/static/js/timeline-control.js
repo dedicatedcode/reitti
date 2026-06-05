@@ -157,7 +157,6 @@ class TimelineControl {
     }
 
     show() {
-        debugger
         this.timeline.classList.remove('hidden');
         if (!this.timedisplay.classList.contains('hidden')) {
             this.timedisplay.classList.add('hidden');

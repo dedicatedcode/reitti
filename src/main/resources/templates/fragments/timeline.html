@@ -42,18 +42,20 @@
                     <div class="divider left" th:text="#{timeline.devices.divider}">Devices</div>
                     <div th:each="device : ${userData.devices}" class="form-group slide-reveal-container">
                         <input type="checkbox"
-                               th:id="${'device-' + userData.userId + '-' + device.id}"
+                               th:id="${'device-' + userData.userId + '-' + device.id()}"
                                class="device-checkbox"
                                th:data-user-id="${userData.userId}"
-                               th:data-device-id="${device.id}"
-                               th:data-device-name="${device.name}"
+                               th:data-device-id="${device.id()}"
+                               th:data-device-color="${device.color()}"
+                               th:data-device-metadata-url="${device.metadataUrl()}"
+                               th:data-device-stream-url="${device.streamUrl()}"
                                onchange="toggleDeviceVisibility(this)">
-                        <label th:for="${'device-' + userData.userId + '-' + device.id}" class="slide-reveal"
+                        <label th:for="${'device-' + userData.userId + '-' + device.id()}" class="slide-reveal"
                                onclick="event.stopPropagation()">
                             <span class="slide-box"></span>
-                            <span class="device-icon" th:style="'background-color: ' + ${device.color}"></span>
+                            <span class="device-icon" th:style="'background-color: ' + ${device.color()}"></span>
 
-                            <span class="label-text" th:text="${device.name}">Device Name</span>
+                            <span class="label-text" th:text="${device.name()}">Device Name</span>
                         </label>
                     </div>
                 </div>
