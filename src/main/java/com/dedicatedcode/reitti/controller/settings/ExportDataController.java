@@ -2,11 +2,9 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
 import com.dedicatedcode.reitti.service.TimeUtil;
@@ -39,16 +37,16 @@ import java.util.List;
 @RequestMapping("/settings/export-data")
 public class ExportDataController {
     
-    private final SourceLocationPointJdbcService rawLocationPointJdbcService;
+    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final DeviceJdbcService deviceJdbcService;
     private final GpxExportService gpxExportService;
     private final boolean dataManagementEnabled;
 
-    public ExportDataController(SourceLocationPointJdbcService rawLocationPointJdbcService,
+    public ExportDataController(SourceLocationPointJdbcService sourceLocationPointJdbcService,
                                 DeviceJdbcService deviceJdbcService,
                                 GpxExportService gpxExportService,
                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
         this.gpxExportService = gpxExportService;
         this.dataManagementEnabled = dataManagementEnabled;
@@ -88,9 +86,9 @@ public class ExportDataController {
         model.addAttribute("endDate", end);
         
         // Get raw location points for the date range
-        List<SourceLocationPoint> allPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true, page, size);
+        List<SourceLocationPoint> allPoints = sourceLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true, page, size);
         
-        long totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetween(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true);
+        long totalElements = sourceLocationPointJdbcService.countByUserAndTimestampBetween(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true);
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         List<DataLine> paginatedData = allPoints.stream()
