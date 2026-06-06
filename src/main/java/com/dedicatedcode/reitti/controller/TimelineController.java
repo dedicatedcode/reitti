@@ -11,7 +11,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
-import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
@@ -43,7 +42,6 @@ public class TimelineController {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TransportModeService transportModeService;
     private final TripJdbcService tripJdbcService;
-    private final DataCleanupService dataCleanupService;
 
     @Autowired
     public TimelineController(UserJdbcService userJdbcService,
@@ -54,7 +52,7 @@ public class TimelineController {
                               TimelineService timelineService,
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
-                              TripJdbcService tripJdbcService, DataCleanupService dataCleanupService) {
+                              TripJdbcService tripJdbcService) {
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
@@ -64,7 +62,6 @@ public class TimelineController {
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.transportModeService = transportModeService;
         this.tripJdbcService = tripJdbcService;
-        this.dataCleanupService = dataCleanupService;
     }
 
     @GetMapping("/content/range")
