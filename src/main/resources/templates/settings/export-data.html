@@ -44,7 +44,6 @@
                                     hx-include="#startDate, #endDate, #pageSizeSelect"
                                     hx-indicator="#loading-indicator"
                                     hx-vals='js:{"timezone": getUserTimezone()}'>
-                                <option value="default" selected th:data-color="${userSettings.timelineColor()}" th:text="#{workbench.device.default.label}">Default</option>
                                 <option th:each="device : ${devices}" th:data-color="${device.color()}" th:value="${device.id()}" value="garmin" th:text="${device.name()}">Garmin Fenix 7</option>
                                 <option value="gopro" th:remove="all">GoPro Hero 12</option>
                                 <option value="null" th:remove="all">Phone</option>

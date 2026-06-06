@@ -177,13 +177,21 @@ public class ApiTokenJdbcService {
     private ApiTokenUsage mapRowToApiUsage(ResultSet rs, int rowNum) throws SQLException {
         return new ApiTokenUsage(rs.getString("token"),
                 rs.getString("name"),
+                rs.getString("device_name"),
                 rs.getTimestamp("at").toInstant(),
                 rs.getString("endpoint"),
                 rs.getString("ip"));
     }
 
     public List<ApiTokenUsage> getUsages(User user, int maxRows) {
-        return this.jdbcTemplate.query("SELECT t.token, t.name,  t.device_id, au.at, au.endpoint, au.ip FROM api_tokens t RIGHT JOIN api_token_usages au on t.id = au.token_id WHERE t.user_id = ? ORDER BY au.at DESC LIMIT ?", this::mapRowToApiUsage, user.getId(), maxRows);
+        return this.jdbcTemplate.query("""
+                                               SELECT t.token, t.name,  t.device_id, au.at, au.endpoint, au.ip, d.name as device_name
+                                               FROM api_tokens t
+                                                   RIGHT JOIN api_token_usages au on t.id = au.token_id 
+                                                   RIGHT JOIN devices d on t.device_id = d.id 
+                                               WHERE t.user_id = ? 
+                                               ORDER BY au.at DESC LIMIT ?""",
+                                       this::mapRowToApiUsage, user.getId(), maxRows);
     }
 
     public void trackUsage(String token, String requestPath, String remoteIp) {

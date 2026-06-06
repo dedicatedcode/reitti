@@ -109,6 +109,7 @@
                             <thead>
                             <tr>
                                 <th th:text="#{tokens.usage.table.token}">Token</th>
+                                <th th:text="#{tokens.usage.table.device}">Device</th>
                                 <th th:text="#{tokens.usage.table.timestamp}">Timestamp</th>
                                 <th th:text="#{tokens.usage.table.endpoint}">Endpoint</th>
                                 <th th:text="#{tokens.usage.table.ip}">IP Address</th>
@@ -117,6 +118,7 @@
                             <tbody>
                             <tr th:each="usage : ${recentUsages}">
                                 <td th:text="${usage.name()}"></td>
+                                <td th:text="${usage.device()}"></td>
                                 <td th:text="${#temporals.format(usage.at(), 'yyyy-MM-dd HH:mm:ss')}"></td>
                                 <td th:text="${usage.endpoint()}"></td>
                                 <td th:text="${usage.ip()}"></td>

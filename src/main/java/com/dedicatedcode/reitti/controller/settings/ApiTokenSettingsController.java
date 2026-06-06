@@ -60,7 +60,7 @@ public class ApiTokenSettingsController {
                                  Model model) {
         model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10)
                 .stream()
-                .map(t -> new ApiTokenUsageDTO(t.token(), t.name(), adjustInstant(t.at(), timezone), t.endpoint(), t.ip()))
+                .map(t -> new ApiTokenUsageDTO(t.token(), t.name(), t.device(), adjustInstant(t.at(), timezone), t.endpoint(), t.ip()))
                 .toList());
         model.addAttribute("maxUsagesToShow", 10);
         return "settings/api-tokens :: api-token-usages";
@@ -207,7 +207,7 @@ public class ApiTokenSettingsController {
 
     public record ApiTokenDto(Long id, Long deviceId, String deviceName, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
 
-    public record ApiTokenUsageDTO(String token, String name, LocalDateTime at, String endpoint, String ip) {
+    public record ApiTokenUsageDTO(String token, String name, String device, LocalDateTime at, String endpoint, String ip) {
     }
 
     private String getMessage(String key, Object... args) {
