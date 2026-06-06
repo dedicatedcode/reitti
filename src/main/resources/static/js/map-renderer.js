@@ -130,6 +130,18 @@ class MapRenderer {
         this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
         this.element.classList.add('is-loading');
+        this.TERRAIN_PROFILES = {
+            // Mapbox/MapTiler standard: (R * 256 * 256 + G * 256 + B) * 0.1 - 10000
+            MAPTILER: {
+                decoder: { rScaler: 6553.6, gScaler: 25.6, bScaler: 0.1, offset: -10000 },
+                scale: 1.5
+            },
+            // Terrarium: (R * 256 + G + B / 256) - 32768
+            TERRARIUM: {
+                decoder: { rScaler: 256, gScaler: 1, bScaler: 1 / 256, offset: -32768 },
+                scale: 1.5
+            }
+        };
         const defaultViewConfig = {
             fitConfig: {
                 padding: {
@@ -716,7 +728,7 @@ class MapRenderer {
                 } else {
                     const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
                     const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
-                    const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
+                    const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension({elevationLayerId: 'terrain-loader'})] : [];
                     const layerData = manager.getLayerData(buffer, this.viewState.aggregated);
                     allLayers.push(new deck.PathLayer({
                         id: `paths-static-fixed-${layerKey}`,
@@ -1263,25 +1275,32 @@ class MapRenderer {
         const terrainSourceId = this._getStyleCapabilities().terrainSourceId;
         if (!terrainSourceId) return null;
 
-        // 1. Try reading directly from the loaded Style JSON (Instant, no waiting)
         const style = this.map.getStyle();
-        if (style && style.sources && style.sources[terrainSourceId]) {
+        if (style?.sources?.[terrainSourceId]) {
             const sourceDef = style.sources[terrainSourceId];
+            const profile = this._detectProfile(sourceDef);
+
             if (sourceDef.tiles && sourceDef.tiles.length > 0) {
-                return sourceDef.tiles[0];
+                return { type: 'template', value: sourceDef.tiles[0], profile: profile };
             }
+
             if (sourceDef.url) {
-                return sourceDef.url;
+                return { type: 'manifest', value: sourceDef.url, profile: profile };
             }
         }
-
-        const source = this.map.getSource(terrainSourceId);
-        if (source && source.tiles && source.tiles.length > 0) {
-            return source.tiles[0];
-        }
-
-        return null; // Return null safely if nothing found
+        return null;
     }
+
+    _detectProfile(sourceDef) {
+        if (sourceDef.encoding === 'terrarium') return this.TERRAIN_PROFILES.TERRARIUM;
+
+        // Fallback based on attribution/name
+        const attr = (sourceDef.attribution || "").toLowerCase();
+        if (attr.includes("maptiler")) return this.TERRAIN_PROFILES.MAPTILER;
+
+        return this.TERRAIN_PROFILES.TERRARIUM;
+    }
+
 
     async _switchTerrainLayer(enable) {
         this._ensureStyleCompatibilityLayers();
@@ -1298,32 +1317,45 @@ class MapRenderer {
 
         if (enable) {
             // Get URL safely
-            const terrainUrl = this._extractTerrainUrl();
+            let terrainData = this._extractTerrainUrl();
 
-            if (!terrainUrl) {
+            if (!terrainData) {
                 console.warn("Terrain source definition not found in style.");
                 return;
+            }
+
+            let finalTileUrl;
+            let elevationScale = 1.5;
+
+            // Handle the two types detected
+            if (terrainData.type === 'manifest') {
+                const response = await fetch(terrainData.value);
+                const tileJson = await response.json();
+                terrainData.profile = this._detectProfile(tileJson);
+                finalTileUrl = tileJson.tiles[0];
+                // Dynamically set scale if provided in TileJSON
+                elevationScale = tileJson.scale ? parseFloat(tileJson.scale) : 1.5;
+            } else {
+                finalTileUrl = terrainData.value;
             }
 
             if (hasHillshading) {
                 this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'visible');
             }
 
-            // Create DeckGL layer
             this.terrainLayer = new deck.TerrainLayer({
                 id: 'terrain-loader',
-                elevationData: terrainUrl,
-                elevationDecoder: {
-                    rScaler: 256,
-                    gScaler: 1,
-                    bScaler: 1 / 256,
-                    offset: -32768
-                },
+                elevationData: finalTileUrl,
+                elevationDecoder: terrainData.profile.decoder,
                 minZoom: 0,
                 maxZoom: 14,
-                elevationScale: 1.5,
+                elevationScale: elevationScale,
                 operation: 'terrain',
-                loadOptions: { fetch: { priority: 'high' } }
+                loadOptions: {
+                    terrain: {
+                        maxRequests: 6
+                    },
+                    fetch: { priority: 'high' } }
             });
 
             // Set MapLibre terrain
