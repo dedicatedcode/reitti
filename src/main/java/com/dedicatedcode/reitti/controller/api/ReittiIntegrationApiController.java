@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.dto.SubscriptionRequest;
 import com.dedicatedcode.reitti.dto.SubscriptionResponse;
-import com.dedicatedcode.reitti.dto.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
 import com.dedicatedcode.reitti.model.NotificationData;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;

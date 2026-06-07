@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.dto.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;

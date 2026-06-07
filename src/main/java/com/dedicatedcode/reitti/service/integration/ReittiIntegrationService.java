@@ -1,6 +1,8 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
+import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.integration.ReittiIntegration;

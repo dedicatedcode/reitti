@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.dto;
+package com.dedicatedcode.reitti.dto.timeline;
 
 import java.util.List;
 

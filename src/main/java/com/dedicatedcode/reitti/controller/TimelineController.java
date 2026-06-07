@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.DeviceTimelineData;
-import com.dedicatedcode.reitti.dto.TimelineData;
-import com.dedicatedcode.reitti.dto.TimelineEntry;
-import com.dedicatedcode.reitti.dto.UserTimelineData;
+import com.dedicatedcode.reitti.dto.timeline.DeviceTimelineData;
+import com.dedicatedcode.reitti.dto.timeline.TimelineData;
+import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;

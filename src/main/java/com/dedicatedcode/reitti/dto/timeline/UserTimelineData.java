@@ -1,6 +1,4 @@
-package com.dedicatedcode.reitti.dto;
-
-import com.dedicatedcode.reitti.model.devices.Device;
+package com.dedicatedcode.reitti.dto.timeline;
 
 import java.util.List;
 
