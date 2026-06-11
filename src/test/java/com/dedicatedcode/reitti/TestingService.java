@@ -143,6 +143,10 @@ public class TestingService {
     }
 
     public SignificantPlace newSignificantPlace(User user) {
+        return newSignificantPlace(user, 53.48278089848833, 9.32412809124706);
+    }
+
+    public SignificantPlace newSignificantPlace(User user, double latitude, double longitude) {
         return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
     }
 
