@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
-import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -92,7 +92,7 @@ public class ReittiIntegrationService {
                     log.debug("Fetching user timeline data range for [{}] from {} to {}", integration, startDate, endDate);
                     try {
                         RemoteUser remoteUser = handleRemoteUser(integration);
-                        List<TimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
+                        List<SingleTimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
 
                         return buildUserTimelineData(startDate, endDate, userTimezone, integration, remoteUser, timelineEntries);
                     } catch (RequestFailedException e) {
@@ -142,7 +142,7 @@ public class ReittiIntegrationService {
         }
     }
 
-    public Optional<AvatarService.AvatarData> getAvatar(User user, Long integrationId) {
+    public Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
         Map<String, Object> result;
         try {
             result = jdbcTemplate.queryForMap(
@@ -367,7 +367,7 @@ public class ReittiIntegrationService {
         return integration;
     }
 
-    private List<TimelineEntry> loadTimeLineEntriesRange(ReittiIntegration integration, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) throws RequestFailedException, RequestTemporaryFailedException {
+    private List<SingleTimelineEntry> loadTimeLineEntriesRange(ReittiIntegration integration, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) throws RequestFailedException, RequestTemporaryFailedException {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-API-TOKEN", integration.getToken());
@@ -377,8 +377,8 @@ public class ReittiIntegrationService {
                 integration.getUrl() + "api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}" :
                 integration.getUrl() + "/api/v1/reitti-integration/timeline?startDate={startDate}&endDate={endDate}&timezone={timezone}";
 
-        ParameterizedTypeReference<List<TimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
-        ResponseEntity<List<TimelineEntry>> remoteResponse = restTemplate.exchange(
+        ParameterizedTypeReference<List<SingleTimelineEntry>> typeRef = new ParameterizedTypeReference<>() {};
+        ResponseEntity<List<SingleTimelineEntry>> remoteResponse = restTemplate.exchange(
                 timelineUrl,
                 HttpMethod.GET,
                 entity,
@@ -676,7 +676,7 @@ public class ReittiIntegrationService {
     }
 
 
-    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<TimelineEntry> timelineEntries) {
+    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<SingleTimelineEntry> timelineEntries) {
         integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
 
         String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);

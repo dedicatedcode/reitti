@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.dto.timeline.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -45,7 +45,7 @@ public class TimelineService {
         this.i18n = i18n;
     }
 
-    public List<TimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
+    public List<SingleTimelineEntry> buildTimelineEntries(User user, String previewId, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
         List<ProcessedVisit> processedVisits = previewProcessedVisitJdbcService.findByUserAndTimeOverlap(user, previewId, startOfDay, endOfDay);
         List<Trip> trips = previewTripJdbcService.findByUserAndTimeOverlap(user, previewId, startOfDay, endOfDay);
 
@@ -59,7 +59,7 @@ public class TimelineService {
         }
     }
 
-    public List<TimelineEntry> buildTimelineEntries(User user, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
+    public List<SingleTimelineEntry> buildTimelineEntries(User user, ZoneId userTimeZone, LocalDate selectedDate, Instant startOfDay, Instant endOfDay, boolean ownData) {
 
         List<ProcessedVisit> processedVisits = processedVisitJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
         List<Trip> trips = tripJdbcService.findByUserAndTimeOverlap(user, startOfDay, endOfDay);
@@ -77,16 +77,16 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<TimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings, boolean ownData) throws JsonProcessingException {
-        List<TimelineEntry> entries = new ArrayList<>();
+    private List<SingleTimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings, boolean ownData) throws JsonProcessingException {
+        List<SingleTimelineEntry> entries = new ArrayList<>();
 
         for (ProcessedVisit visit : processedVisits) {
             SignificantPlace place = visit.getPlace();
             if (place != null) {
-                TimelineEntry entry = new TimelineEntry();
+                SingleTimelineEntry entry = new SingleTimelineEntry();
                 entry.setId("visit-" + visit.getId());
                 entry.setResourceId(visit.getId());
-                entry.setType(TimelineEntry.Type.VISIT);
+                entry.setType(SingleTimelineEntry.Type.VISIT);
                 entry.setPlace(place);
                 entry.setStartTime(visit.getStartTime());
                 entry.setStartTimezone(visit.getPlace().getTimezone());
@@ -102,10 +102,10 @@ public class TimelineService {
 
         // Add trips to timeline
         for (Trip trip : trips) {
-            TimelineEntry entry = new TimelineEntry();
+            SingleTimelineEntry entry = new SingleTimelineEntry();
             entry.setId("trip-" + trip.getId());
             entry.setResourceId(trip.getId());
-            entry.setType(TimelineEntry.Type.TRIP);
+            entry.setType(SingleTimelineEntry.Type.TRIP);
             entry.setStartTime(trip.getStartTime());
             entry.setStartTimezone(trip.getStartVisit().getPlace().getTimezone());
             entry.setEndTime(trip.getEndTime());
@@ -130,7 +130,7 @@ public class TimelineService {
             entries.add(entry);
         }
 
-        entries.sort(Comparator.comparing(TimelineEntry::getStartTime));
+        entries.sort(Comparator.comparing(SingleTimelineEntry::getStartTime));
 
         return entries;
     }
