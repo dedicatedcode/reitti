@@ -143,11 +143,20 @@ public class TestingService {
     }
 
     public SignificantPlace newSignificantPlace(User user) {
-        return newSignificantPlace(user, 53.48278089848833, 9.32412809124706);
+        return newSignificantPlace(user, 53.48278089848833, 9.32412809124706, null);
     }
 
-    public SignificantPlace newSignificantPlace(User user, double latitude, double longitude) {
-        return this.significantPlaceJdbcService.create(user, SignificantPlace.create(53.48278089848833, 9.32412809124706));
+    public SignificantPlace newSignificantPlace(User user, String name) {
+        return newSignificantPlace(user, 53.48278089848833, 9.32412809124706, name);
+    }
+
+    public SignificantPlace newSignificantPlace(User user, double latitude, double longitude, String name) {
+        SignificantPlace significantPlace = this.significantPlaceJdbcService.create(user, SignificantPlace.create(latitude, longitude));
+        if (name != null) {
+            return this.significantPlaceJdbcService.update(significantPlace.withName(name));
+        } else {
+            return significantPlace;
+        }
     }
 
     public ApiToken createApiToken(User user, String name, Device device) {
@@ -194,7 +203,14 @@ public class TestingService {
         return this.processedVisitRepository.findById(keyHolder.getKey().longValue()).orElseThrow();
     }
 
-    public Trip createTrip(User user, ProcessedVisit startVisit, ProcessedVisit endVisit, Instant start, Instant end) {
+    public Trip createTrip(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
+        return createTrip(user, startVisit, endVisit, TransportMode.UNKNOWN);
+    }
+
+    public Trip createTrip(User user, ProcessedVisit startVisit, ProcessedVisit endVisit, TransportMode transportMode) {
+        Instant start = startVisit.getEndTime();
+        Instant end = endVisit.getStartTime();
+
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(
@@ -207,7 +223,7 @@ public class TestingService {
             ps.setLong(4, duration);
             ps.setDouble(5, 0.0);
             ps.setDouble(6, 0.0);
-            ps.setString(7, TransportMode.UNKNOWN.name());
+            ps.setString(7, transportMode.name());
             ps.setLong(8, startVisit.getId());
             ps.setLong(9, endVisit.getId());
             ps.setString(10, "{}");

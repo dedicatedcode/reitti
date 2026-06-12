@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.model.metadata.Mood;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.I18nService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -13,21 +15,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAdjusters;
-import java.time.temporal.WeekFields;
+import java.time.temporal.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class TimelineOverviewStatisticsService {
 
+    private static final Logger log = LoggerFactory.getLogger(TimelineOverviewStatisticsService.class);
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final I18nService i18nService;
     private final ContextPathHolder contextPathHolder;
@@ -41,10 +38,10 @@ public class TimelineOverviewStatisticsService {
     public List<GroupedTimelineEntry> load(User user, Instant start, Instant end, ZoneId userTimezone) {
 
         Duration duration = Duration.between(start, end.plus(1, ChronoUnit.SECONDS));
-        String granularity = duration.toDays() >= 365 ? "month" : "week";
+        Granularity granularity = duration.toDays() >= 365 ? Granularity.MONTHLY : Granularity.WEEKLY;
 
         MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("granularity", granularity)
+                .addValue("granularity", granularity.getSqlValue())
                 .addValue("timezone", userTimezone.toString())
                 .addValue("userId", user.getId())
                 .addValue("start", Timestamp.from(start))
@@ -88,7 +85,7 @@ public class TimelineOverviewStatisticsService {
 
         List<Map<String, Object>> tripMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
                                                                                                   SELECT
-                                                                                                      DATE_TRUNC(:granularity, t.start_time AT TIME ZONE :timezone) AT TIME ZONE 'UTC' AS time_bucket,
+                                                                                                      DATE_TRUNC(:granularity, t.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
                                                                                                       t.transport_mode_inferred AS name,
                                                                                                       lm.metadata->>'mood' AS mood,
                                                                                                       SUM(t.duration_seconds)::BIGINT AS duration_seconds,
@@ -100,6 +97,7 @@ public class TimelineOverviewStatisticsService {
                                                                                                       FROM location_metadata lm
                                                                                                       WHERE lm.user_id = :userId
                                                                                                         AND lm.time_range && TSTZRANGE(t.start_time, t.end_time)
+                                                                                                        AND lm.context_type = 'TRIP'
                                                                                                         AND lm.metadata->>'mood' IS NOT NULL
                                                                                                       ORDER BY UPPER(lm.time_range * TSTZRANGE(t.start_time, t.end_time))
                                                                                                              - LOWER(lm.time_range * TSTZRANGE(t.start_time, t.end_time)) DESC
@@ -107,13 +105,14 @@ public class TimelineOverviewStatisticsService {
                                                                                                   ) lm ON TRUE
                                                                                                   WHERE t.user_id = :userId
                                                                                                     AND t.start_time >= :start AND t.start_time <= :end
+                                                                                                    AND t.start_time < t.end_time
                                                                                                   GROUP BY 1, 2, 3
                                                                                                   ORDER BY time_bucket;
                                                                                                   """, params);
 
         List<Map<String, Object>> visitMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
                                                                                                    SELECT
-                                                                                                       DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE 'UTC' AS time_bucket,
+                                                                                                       DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
                                                                                                        lm.metadata->>'mood' AS mood,
                                                                                                        SUM(v.duration_seconds)::BIGINT AS duration_seconds,
                                                                                                        COUNT(*) AS mood_count
@@ -123,6 +122,7 @@ public class TimelineOverviewStatisticsService {
                                                                                                        FROM location_metadata lm
                                                                                                        WHERE lm.user_id = :userId
                                                                                                          AND lm.time_range && TSTZRANGE(v.start_time, v.end_time)
+                                                                                                         AND lm.context_type = 'VISIT'
                                                                                                          AND lm.metadata->>'mood' IS NOT NULL
                                                                                                        ORDER BY UPPER(lm.time_range * TSTZRANGE(v.start_time, v.end_time))
                                                                                                               - LOWER(lm.time_range * TSTZRANGE(v.start_time, v.end_time)) DESC
@@ -130,6 +130,7 @@ public class TimelineOverviewStatisticsService {
                                                                                                    ) lm ON TRUE
                                                                                                    WHERE v.user_id = :userId
                                                                                                      AND v.start_time >= :start AND v.start_time <= :end
+                                                                                                     AND v.start_time < v.end_time
                                                                                                    GROUP BY 1, 2
                                                                                                    ORDER BY time_bucket;
                                                                                                    """, params);
@@ -137,7 +138,7 @@ public class TimelineOverviewStatisticsService {
 
         List<Map<String, Object>> visitCountsPerSlice = this.jdbcTemplate.queryForList("""
                                                                                                SELECT
-                                                                                                   DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE 'UTC' AS time_bucket,
+                                                                                                   DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
                                                                                                    lm.metadata->>'mood' AS mood,
                                                                                                    v.id,
                                                                                                    s.id AS place_id,
@@ -150,6 +151,7 @@ public class TimelineOverviewStatisticsService {
                                                                                                    FROM location_metadata lm
                                                                                                    WHERE lm.user_id = :userId
                                                                                                      AND lm.time_range && TSTZRANGE(v.start_time, v.end_time)
+                                                                                                     AND lm.context_type = 'VISIT'
                                                                                                      AND lm.metadata->>'mood' IS NOT NULL
                                                                                                    ORDER BY UPPER(lm.time_range * TSTZRANGE(v.start_time, v.end_time))
                                                                                                           - LOWER(lm.time_range * TSTZRANGE(v.start_time, v.end_time)) DESC
@@ -162,13 +164,27 @@ public class TimelineOverviewStatisticsService {
                                                                                                ORDER BY time_bucket;
                                                                                                """, params);
 
+        List<Map<String, Object>> visits = this.jdbcTemplate.queryForList("""
+                                                                                  SELECT
+                                                                                      DATE_TRUNC(:granularity, pv.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
+                                                                                      sp.name AS place_name,
+                                                                                      COUNT(pv.id) AS amount
+                                                                                  FROM processed_visits pv
+                                                                                  LEFT JOIN significant_places sp ON pv.place_id = sp.id
+                                                                                  WHERE pv.user_id = :userId
+                                                                                    AND pv.start_time >= :start
+                                                                                    AND pv.start_time <= :end
+                                                                                  GROUP BY 1, 2
+                                                                                  ORDER BY time_bucket, amount DESC;
+                                                                                  """, params);
+        Locale locale = LocaleContextHolder.getLocale();
         List<GroupedTimelineEntry> entries = new ArrayList<>();
 
         Map<LocalDate, List<Map<String, Object>>> splitTrips = splitupIntoDays(start, userTimezone, granularity, allTripsByLower);
         Map<LocalDate, List<Map<String, Object>>> splitVisits = splitupIntoDays(start, userTimezone, granularity, allVisitsByLower);
 
-        Map<LocalDate, Long> amountOfTrips = calculateTrips(userTimezone, allVisitsByLower);
-        Map<LocalDate, Long> amountOfPlaces = calculateDistinctPlaces(userTimezone, params);
+        Map<LocalDate, Long> amountOfTrips = calculateAmountPerSlice(granularity, userTimezone, locale, allTripsByLower);
+        Map<LocalDate, Long> amountOfPlaces = calculateAmountPerSlice(granularity, userTimezone, locale, visits);
 
         Map<LocalDate, Map<TransportMode, List<GroupedTimelineEntry.TransportModePart>>> transportModeData = calculateTransportModeData(userTimezone, tripMoodCountsPerSlice);
         Map<LocalDate, Map<String, List<GroupedTimelineEntry.VisitPart>>> visitsMoodDurationData = calculateVisitsDataPerPlace(userTimezone, visitCountsPerSlice);
@@ -179,43 +195,49 @@ public class TimelineOverviewStatisticsService {
         Set<LocalDate> allExistingGroupKeys = extractKeys(splitTrips, splitVisits, transportModeData, visitMoods, tripMoods);
 
         List<LocalDate> sortedKeys = allExistingGroupKeys.stream().sorted().toList();
-        Locale locale = LocaleContextHolder.getLocale();
 
         for (LocalDate sortedKey : sortedKeys) {
-            LocalDate endDate = granularity.equals("month") ? sortedKey.withDayOfMonth(sortedKey.lengthOfMonth()) : sortedKey.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1);
-            List<Map<String, Object>> tripsPerDay = splitTrips.get(sortedKey);
-            List<Map<String, Object>> visitsPerDay = splitVisits.get(sortedKey);
+            LocalDate endDate = granularity == Granularity.MONTHLY ? sortedKey.withDayOfMonth(sortedKey.lengthOfMonth()) : sortedKey.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1);
+            List<Map<String, Object>> tripsPerSegment = splitTrips.get(sortedKey);
+            List<Map<String, Object>> visitsPerSegment = splitVisits.get(sortedKey);
             List<GroupedTimelineEntry.OverviewEntry> overviewEntries = new ArrayList<>();
-            for (int i = 0; i < visitsPerDay.size(); i++) {
-                LocalDate day = visitsPerDay.get(i).get("time_bucket") != null ? ((Timestamp) visitsPerDay.get(i).get("time_bucket")).toInstant().atZone(userTimezone).toLocalDate() : null;
-                long dailyAmountOfVisits = visitsPerDay.get(i).get("amount") != null ? (long) visitsPerDay.get(i).get("amount") : 0;
-                long dailyAmountOfTrips = tripsPerDay.get(i).get("amount") != null ? (long) tripsPerDay.get(i).get("amount") : 0;
+            for (int i = 0; i < visitsPerSegment.size(); i++) {
+                LocalDate day = visitsPerSegment.get(i).get("time_bucket") != null ? ((Timestamp) visitsPerSegment.get(i).get("time_bucket")).toInstant().atZone(userTimezone).toLocalDate() : null;
+                long dailyAmountOfVisits = visitsPerSegment.get(i).get("amount") != null ? (long) visitsPerSegment.get(i).get("amount") : 0;
+                long dailyAmountOfTrips = tripsPerSegment.get(i).get("amount") != null ? (long) tripsPerSegment.get(i).get("amount") : 0;
                 overviewEntries.add(new GroupedTimelineEntry.OverviewEntry(day, dailyAmountOfVisits, dailyAmountOfTrips));
+            }
+
+            if (overviewEntries.stream().mapToLong(o -> o.visits() + o.trips()).sum() == 0) {
+                log.debug("Skipping empty timeline entry for {}", sortedKey);
+                continue;
             }
 
             Map<TransportMode, List<GroupedTimelineEntry.TransportModePart>> transportModeListMap = transportModeData.getOrDefault(sortedKey, Collections.emptyMap());
             List<GroupedTimelineEntry.TransportEntry> transportEntries = new ArrayList<>();
-            List<GroupedTimelineEntry.VisitEntry> visitEntries = new ArrayList<>();
             transportModeListMap.forEach((transportMode, transportModeParts) -> transportEntries.add(new GroupedTimelineEntry.TransportEntry(transportMode, transportModeParts)));
 
+
             Map<String, List<GroupedTimelineEntry.VisitPart>> visitMoodDurationMap = visitsMoodDurationData.getOrDefault(sortedKey, Collections.emptyMap());
+            List<GroupedTimelineEntry.VisitEntry> visitEntries = new ArrayList<>();
             visitMoodDurationMap.forEach((placeName, visitMoodDurationParts) -> visitEntries.add(new GroupedTimelineEntry.VisitEntry(placeName, visitMoodDurationParts)));
 
             String name;
             String subheadline;
-            if (granularity.equals("month")) {
+            if (granularity == Granularity.MONTHLY) {
                 name = sortedKey.format(DateTimeFormatter.ofPattern("MMMM yyyy").withLocale(locale));
             } else {
                 name = i18nService.translate("timeline.grouped.headline.weekly", sortedKey.get(WeekFields.of(locale).weekOfYear()));
             }
-            LocalDate rangeEnd = granularity.equals("month") ?
+            LocalDate rangeEnd = granularity == Granularity.MONTHLY ?
                     sortedKey.withDayOfMonth(1).plusMonths(1).minusDays(1) :
                     sortedKey.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1).minusDays(1);
             subheadline = i18nService.translate("js.common.time-range", sortedKey.format(DateTimeFormatter.ofPattern("dd.MM").withLocale(locale)), rangeEnd.format(DateTimeFormatter.ofPattern("dd.MM.yyyy").withLocale(locale)));
             entries.add(new GroupedTimelineEntry(UUID.randomUUID(),
                                                  name,
                                                  subheadline,
-                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s?endDate=%s", sortedKey.atStartOfDay(), endDate), overviewEntries,
+                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s?endDate=%s", sortedKey.atStartOfDay(), endDate),
+                                                 overviewEntries,
                                                  amountOfPlaces.get(sortedKey),
                                                  amountOfTrips.get(sortedKey),
                                                  visitMoods.get(sortedKey),
@@ -284,7 +306,7 @@ public class TimelineOverviewStatisticsService {
 
         for (LocalDate localDate : byGranularity.keySet()) {
             Map<String, List<GroupedTimelineEntry.VisitPart>> parts = new HashMap<>();
-            Map<String, List<Map<String, Object>>> byDateAndName = byGranularity.get(localDate).stream().collect(Collectors.groupingBy(t -> (String) t.get("place_name")));
+            Map<String, List<Map<String, Object>>> byDateAndName = byGranularity.get(localDate).stream().collect(Collectors.groupingBy(t -> t.get("place_name") != null ? (String) t.get("place_name") : ""));
 
             for (String placeName : byDateAndName.keySet()) {
                 List<Map<String, Object>> partValues = byDateAndName.get(placeName);
@@ -295,32 +317,24 @@ public class TimelineOverviewStatisticsService {
                     String cleaned = StringUtils.hasText(placeName) ? placeName : null;
                     String moodValue = (String) partValue.get("mood");
                     Mood mood = moodValue != null ? Mood.valueOf(moodValue) : null;
-                    parts.computeIfAbsent(cleaned, s -> new ArrayList<>()).add(new GroupedTimelineEntry.VisitPart(placeId, cleaned, mood, duration, (double) duration / (double) totalDuration));
+                    parts.computeIfAbsent(cleaned, _ -> new ArrayList<>()).add(new GroupedTimelineEntry.VisitPart(placeId, cleaned, mood, duration, (double) duration / (double) totalDuration));
                 }
+            }
+            if (!parts.isEmpty()) {
+                result.put(localDate, parts);
             }
         }
         return result;
     }
 
-
-    private Map<LocalDate, Long> calculateDistinctPlaces(ZoneId userTimezone, MapSqlParameterSource params) {
-        List<Map<String, Object>> visits = this.jdbcTemplate.queryForList("""
-                                                                                  SELECT
-                                                                                          DATE_TRUNC(:granularity, pv.start_time AT TIME ZONE :timezone) AT TIME ZONE 'UTC' AS time_bucket,
-                                                                                          sp.name AS place_name,
-                                                                                          COUNT(pv.id) AS amount
-                                                                                      FROM processed_visits pv
-                                                                                      LEFT JOIN significant_places sp ON pv.place_id = sp.id
-                                                                                      WHERE pv.user_id = :userId
-                                                                                        AND pv.start_time >= :start
-                                                                                        AND pv.start_time <= :end
-                                                                                      GROUP BY 1, 2
-                                                                                      ORDER BY time_bucket, amount DESC;""", params);
-
-        Map<LocalDate, List<Map<String, Object>>> timeBucket = visits.stream()
+    private Map<LocalDate, Long> calculateAmountPerSlice(Granularity granularity, ZoneId userTimezone, Locale locale, List<Map<String, Object>> entries) {
+        TemporalAdjuster temporalAdjuster = granularity == Granularity.WEEKLY ?
+                TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY) :
+                TemporalAdjusters.firstDayOfMonth();
+        Map<LocalDate, List<Map<String, Object>>> timeBucket = entries.stream()
                 .collect(Collectors.groupingBy(
                         t -> ((Timestamp) t.get("time_bucket")).toInstant().atZone(userTimezone).toLocalDate()
-                                .with(TemporalAdjusters.firstDayOfMonth())
+                                .with(temporalAdjuster)
                 ));
         Map<LocalDate, Long> timeBucketMap = new HashMap<>();
         for (LocalDate localDate : timeBucket.keySet()) {
@@ -329,38 +343,38 @@ public class TimelineOverviewStatisticsService {
         return timeBucketMap;
     }
 
-    private Map<LocalDate, Long> calculateTrips(ZoneId userTimezone, List<Map<String, Object>> allTripsByLower) {
-        Map<LocalDate, List<Map<String, Object>>> timeBucket = allTripsByLower.stream()
-                .collect(Collectors.groupingBy(
-                        // Primary key: Start of the Month
-                        t -> ((Timestamp) t.get("time_bucket")).toInstant().atZone(userTimezone).toLocalDate()
-                                .with(TemporalAdjusters.firstDayOfMonth()))
-                );
-
-        Map<LocalDate, Long> timeBucketMap = new HashMap<>();
-        for (LocalDate localDate : timeBucket.keySet()) {
-            timeBucketMap.put(localDate, timeBucket.get(localDate).stream().mapToLong(t -> (Long) t.get("amount")).sum());
-        }
-        return timeBucketMap;
-    }
-
-    private static Map<LocalDate, List<Map<String, Object>>> splitupIntoDays(Instant start, ZoneId userTimezone, String safeGranularity, List<Map<String, Object>> allTripsByLower) {
+    private Map<LocalDate, List<Map<String, Object>>> splitupIntoDays(Instant start, ZoneId userTimezone, Granularity safeGranularity, List<Map<String, Object>> allTripsByLower) {
         LocalDate current = start.atZone(userTimezone).toLocalDate();
-        LocalDate currentSlotStart = safeGranularity.equals("month") ? current.withDayOfMonth(1) : current.with(ChronoField.DAY_OF_WEEK, 1);
-        LocalDate currentSlotEnd = safeGranularity.equals("month") ? current.withDayOfMonth(1).plusMonths(1) : current.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1);
+        LocalDate currentSlotStart = safeGranularity == Granularity.MONTHLY ? current.withDayOfMonth(1) : current.with(ChronoField.DAY_OF_WEEK, 1);
+        LocalDate currentSlotEnd = safeGranularity == Granularity.MONTHLY ? current.withDayOfMonth(1).plusMonths(1) : current.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1);
         Map<LocalDate, List<Map<String, Object>>> splitTrips = new HashMap<>();
         splitTrips.put(currentSlotStart, new ArrayList<>());
 
         for (Map<String, Object> stringObjectMap : allTripsByLower) {
             Timestamp timeBucket = (Timestamp) stringObjectMap.get("time_bucket");
-            if (!currentSlotEnd.isAfter(timeBucket.toInstant().atZone(userTimezone).toLocalDate())) {
+            LocalDate currentTimeDay = timeBucket.toLocalDateTime().toLocalDate();
+            if (!currentTimeDay.isBefore(currentSlotEnd)) {
                 currentSlotStart = currentSlotEnd;
-                currentSlotEnd = safeGranularity.equals("month") ? currentSlotEnd.plusMonths(1) : currentSlotEnd.plusWeeks(1);
+                currentSlotEnd = safeGranularity == Granularity.MONTHLY ? currentSlotEnd.plusMonths(1) : currentSlotEnd.plusWeeks(1);
             }
-            splitTrips.computeIfAbsent(currentSlotStart, l -> new ArrayList<>()).add(stringObjectMap);
+            splitTrips.computeIfAbsent(currentSlotStart, _ -> new ArrayList<>()).add(stringObjectMap);
 
         }
         return splitTrips;
     }
 
+    private enum Granularity {
+        WEEKLY("week"),
+        MONTHLY("month");
+
+        private final String sqlValue;
+
+        Granularity(String sqlValue) {
+            this.sqlValue = sqlValue;
+        }
+
+        public String getSqlValue() {
+            return sqlValue;
+        }
+    }
 }

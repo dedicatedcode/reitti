@@ -48,7 +48,7 @@ class MetadataApiControllerTest {
         Instant end = Instant.parse("2025-01-01T11:00:00Z");
 
         visit = testingService.createVisit(user, place, start, end);
-        trip = testingService.createTrip(user, visit, visit, start, end);
+        trip = testingService.createTrip(user, visit, visit);
     }
 
     @AfterEach
