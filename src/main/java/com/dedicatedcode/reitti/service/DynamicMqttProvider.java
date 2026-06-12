@@ -53,6 +53,7 @@ public class DynamicMqttProvider {
     public void reconnectAllOnStartup() {
         this.userJdbcService.getAllUsers()
                 .forEach(user -> this.repository.findByUser(user)
+                        .filter(MqttIntegration::isEnabled)
                         .ifPresent(config -> connectClient(user, config)));
     }
 

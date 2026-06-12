@@ -1098,6 +1098,69 @@ tr:hover {
     text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
 }
 
+.timeline-container .aggregated-entry .overview-container {
+    display: flex;
+    gap: 1rem;
+    padding: 16px;
+}
+
+.timeline-container .aggregated-entry .amount-overview {
+    display: flex;
+    gap: 1rem;
+    text-align: center;
+    padding-top: 24px;
+}
+
+.timeline-container .aggregated-entry .activity-overview {
+    border-right: 1px solid var(--color-highlight);
+    padding-right: 8px;
+}
+
+.timeline-container .aggregated-entry .amount-overview .overview-icon {
+    font-size: 2rem;
+    color: var(--color-highlight);
+}
+
+.timeline-container .aggregated-entry .amount-overview .overview-amount {
+    font-size: 2rem;
+}
+
+.timeline-container .aggregated-entry .headline .overview-link {
+    color: white;
+    text-decoration: navajowhite;
+    border-bottom: 1px solid var(--color-highlight);
+    display: flex;
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    padding: 4px 16px;
+}
+
+.timeline-container .aggregated-entry .headline .overview-link .overview-name {
+    flex-grow: 1;
+}
+
+.timeline-container .aggregated-entry {
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    box-shadow: var(--box-shadow);
+    padding: 0;
+    color: #fff;
+    left: 24px;
+    margin-bottom: 24px;
+    text-shadow: 0 0 0 white, 2px 2px 0 #24201c, 1px 1px 0 #171414;
+
+}
+
+.timeline-container .aggregated-entry .sub-headline {
+    margin-bottom: 8px;
+    color: var(--color-text-gray);
+    font-size: 1.1rem;
+    padding: 4px 16px;
+}
+
 .htmx-indicator {
     display: none;
 }
@@ -1448,6 +1511,14 @@ body.auto-update-mode .today-fab {
 
 .text-align-left {
     text-align: left;
+}
+
+.text-align-center {
+    text-align: center;
+}
+
+.text-gray {
+    color: var(--color-text-gray);
 }
 
 /* Settings Page Styles */

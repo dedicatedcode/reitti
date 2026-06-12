@@ -3,7 +3,7 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.dto.ReittiRemoteInfo;
 import com.dedicatedcode.reitti.dto.SubscriptionRequest;
 import com.dedicatedcode.reitti.dto.SubscriptionResponse;
-import com.dedicatedcode.reitti.dto.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.NotificationData;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -60,10 +60,10 @@ public class ReittiIntegrationApiController {
     }
 
     @GetMapping("/timeline")
-    public List<TimelineEntry> getTimeline(@AuthenticationPrincipal User user,
-                                           @RequestParam String startDate,
-                                           @RequestParam String endDate,
-                                           @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+    public List<SingleTimelineEntry> getTimeline(@AuthenticationPrincipal User user,
+                                                 @RequestParam String startDate,
+                                                 @RequestParam String endDate,
+                                                 @RequestParam(required = false, defaultValue = "UTC") String timezone) {
 
         ZoneId userTimezone = ZoneId.of(timezone);
 

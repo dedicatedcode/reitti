@@ -1,15 +1,13 @@
-package com.dedicatedcode.reitti.dto;
+package com.dedicatedcode.reitti.dto.timeline;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 
+import java.sql.Time;
 import java.time.Instant;
 import java.time.ZoneId;
 
-/**
- * Inner class to represent timeline entries for the template
- */
-public class TimelineEntry {
+public class SingleTimelineEntry implements TimelineEntry {
 
     public enum Type {VISIT, TRIP;}
 
@@ -30,7 +28,6 @@ public class TimelineEntry {
     private TransportMode transportMode;
     private boolean editable;
 
-    // Getters and setters
     public String getId() {
         return id;
     }

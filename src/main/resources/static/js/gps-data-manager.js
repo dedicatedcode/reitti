@@ -476,106 +476,151 @@ class GpsDataManager {
 
     _computeActivityWeights() {
         if (!this.visits || this.visits.length === 0) {
-            this.activityWeights = [0];
+            this.activityWeights = new Float64Array([0]);
             this.totalActivity = 0;
             return;
         }
 
-        const weights = [0];
+        const visitWeight = 0.05;
+        const tripWeight = 1.0;
+        const bufferFactor = 0.30;
+        const maxBuffer = 600;
+
+        // === CACHE SORTED RANGES (huge win) ===
+        const currentHash = this._computeVisitsHash();
+        if (!this._sortedVisitRanges || this._visitsHash !== currentHash) {
+            this._sortedVisitRanges = this.visits
+                .flatMap(p => p.activeRanges || [])
+                .sort((a, b) => a.start - b.start);
+            this._visitsHash = currentHash;
+        }
+
+        const ranges = this._sortedVisitRanges;
+        const n = this.cleanedCursor;
+
+        const weights = new Float64Array(n);
+        weights[0] = 0;
+
         let cumulative = 0;
+        let rangeIdx = 0;
+        let lastPrevRange = null;
 
-        // --- DYNAMIC PACING ---
-        const visitWeight = 0.05;     // Faster visit "skip"
-        const tripWeight = 1;      // Steady cruising speed
+        for (let i = 1; i < n; i++) {
+            const tsPrev = this.cleanedBuffer[(i - 1) * 6 + 3];
+            const tsCurr = this.cleanedBuffer[i * 6 + 3];
+            const dt = tsCurr - tsPrev;
 
-        const sortedRanges = this.visits.flatMap(p => p.activeRanges)
-            .sort((a, b) => a.start - b.start);
+            if (dt <= 0) {
+                weights[i] = cumulative;
+                continue;
+            }
 
-        for (let i = 1; i < this.cleanedCursor; i++) {
-            const idx = i * 6;
-            const tsCurrent = this.cleanedBuffer[idx + 3];
-            const dt = tsCurrent - this.cleanedBuffer[(i - 1) * 6 + 3];
+            while (rangeIdx < ranges.length && ranges[rangeIdx].end < tsCurr) {
+                lastPrevRange = ranges[rangeIdx];
+                rangeIdx++;
+            }
 
-            if (dt <= 0) { weights.push(cumulative); continue; }
-
-            const currentVisit = sortedRanges.find(r => tsCurrent >= r.start && tsCurrent <= r.end);
             let factor = tripWeight;
+            let inVisit = false;
 
-            if (currentVisit) {
-                factor = visitWeight;
-            } else {
-                // Find the trip boundaries
-                const prevVisit = sortedRanges.find(r => r.end < tsCurrent);
-                const nextVisit = sortedRanges.find(r => r.start > tsCurrent);
-                const tripStart = prevVisit ? prevVisit.end : (tsCurrent - 3600);
-                const tripEnd = nextVisit ? nextVisit.start : (tsCurrent + 3600);
-                const tripDuration = tripEnd - tripStart;
-
-                const buffer = Math.min(tripDuration * 0.30, 600);
-
-                // Arrival Ramp (Slow down 15% before arrival)
-                if (nextVisit && (nextVisit.start - tsCurrent) <= buffer) {
-                    const progress = 1 - ((nextVisit.start - tsCurrent) / buffer);
-                    const smooth = progress * progress * (3 - 2 * progress);
-                    factor = tripWeight - (smooth * (tripWeight - visitWeight));
-                }
-                // Departure Ramp (Speed up 15% after leaving)
-                else if (prevVisit && (tsCurrent - prevVisit.end) <= buffer) {
-                    const progress = (tsCurrent - prevVisit.end) / buffer;
-                    const smooth = progress * progress * (3 - 2 * progress);
-                    factor = visitWeight + (smooth * (tripWeight - visitWeight));
+            for (let j = rangeIdx; j < ranges.length; j++) {
+                const r = ranges[j];
+                if (r.start > tsCurr) break;
+                if (tsCurr >= r.start && tsCurr <= r.end) {
+                    inVisit = true;
+                    factor = visitWeight;
+                    break;
                 }
             }
 
-            cumulative += (dt * factor);
-            weights.push(cumulative);
+            if (!inVisit) {
+                let prevEnd = tsCurr - 3600;
+                let nextStart = tsCurr + 3600;
+
+                if (lastPrevRange && lastPrevRange.end < tsCurr) {
+                    prevEnd = lastPrevRange.end;
+                } else {
+                    for (let j = rangeIdx - 1; j >= 0; j--) {
+                        if (ranges[j].end < tsCurr) {
+                            prevEnd = ranges[j].end;
+                            lastPrevRange = ranges[j];
+                            break;
+                        }
+                    }
+                }
+
+                for (let j = rangeIdx; j < ranges.length; j++) {
+                    if (ranges[j].start > tsCurr) {
+                        nextStart = ranges[j].start;
+                        break;
+                    }
+                }
+
+                const tripDuration = nextStart - prevEnd;
+                const buffer = Math.min(tripDuration * bufferFactor, maxBuffer);
+
+                const distToNext = nextStart - tsCurr;
+                const distToPrev = tsCurr - prevEnd;
+
+                if (distToNext >= 0 && distToNext <= buffer) {
+                    const progress = 1 - (distToNext / buffer);
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = tripWeight - smooth * (tripWeight - visitWeight);
+                } else if (distToPrev >= 0 && distToPrev <= buffer) {
+                    const progress = distToPrev / buffer;
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = visitWeight + smooth * (tripWeight - visitWeight);
+                }
+            }
+
+            cumulative += dt * factor;
+            weights[i] = cumulative;
         }
 
         this.activityWeights = weights;
         this.totalActivity = cumulative;
     }
 
-    getDisplayTimestamp(linearProgres, useWarp = false, aggregate = false) {
-        if (aggregate || !useWarp || !this.activityWeights || this.activityWeights.length === 0) {
-            const totalTime = this.maxTimestamp - this.minTimestamp;
-            return this.minTimestamp + (linearProgress * totalTime);
-        }
-
-        // 1. Map linear animation progress (0 -> 1) to our custom Activity Space
-        const targetWeight = linearProgress * this.totalActivity;
-
-        // 2. Perform a Binary Search to find which data segment contains this weight
-        let low = 0;
-        let high = this.activityWeights.length - 1;
-        let floorIndex = 0;
-
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            if (this.activityWeights[mid] <= targetWeight) {
-                floorIndex = mid;
-                low = mid + 1; // Look upper
-            } else {
-                high = mid - 1; // Look lower
+    _computeVisitsHash() {
+        let hash = 17;
+        for (const visit of this.visits) {
+            for (const r of visit.activeRanges || []) {
+                hash = (hash * 31 + Math.imul(Math.floor(r.start), 0x85ebca6b)) | 0;
+                hash = (hash * 31 + Math.imul(Math.floor(r.end),   0xc2b2ae35)) | 0;
             }
         }
+        return hash >>> 0;
+    }
 
-        // Boundary check: if we are at the very end of the data
-        if (floorIndex >= this.activityWeights.length - 1) {
-            return this.cleanedBuffer[(this.activityWeights.length - 1) * 6 + 3];
+    getDisplayTimestamp(linearProgress, useWarp = false, aggregate = false) {
+        if (aggregate || !useWarp || !this.activityWeights?.length) {
+            const total = this.maxTimestamp - this.minTimestamp;
+            return this.minTimestamp + linearProgress * total;
         }
 
-        // 3. Get the two bounding weights and their corresponding real-world timestamps
-        const w0 = this.activityWeights[floorIndex];
-        const w1 = this.activityWeights[floorIndex + 1];
+        const target = linearProgress * this.totalActivity;
+        const weights = this.activityWeights;
+        let low = 0;
+        let high = weights.length - 1;
 
-        const t0 = this.cleanedBuffer[floorIndex * 6 + 3];
-        const t1 = this.cleanedBuffer[(floorIndex + 1) * 6 + 3];
+        while (low <= high) {
+            const mid = (low + high) >> 1;
+            if (weights[mid] <= target) low = mid + 1;
+            else high = mid - 1;
+        }
 
-        // 4. Smoothly interpolate between the two timestamps for sub-frame accuracy
+        const i = Math.max(0, low - 1);
+        if (i >= weights.length - 1) {
+            return this.cleanedBuffer[(weights.length - 1) * 6 + 3];
+        }
+
+        const w0 = weights[i];
+        const w1 = weights[i + 1];
+        const t0 = this.cleanedBuffer[i * 6 + 3];
+        const t1 = this.cleanedBuffer[(i + 1) * 6 + 3];
+
         if (w1 === w0) return t0;
-        const segmentProgress = (targetWeight - w0) / (w1 - w0);
-
-        return t0 + segmentProgress * (t1 - t0);
+        return t0 + ((target - w0) / (w1 - w0)) * (t1 - t0);
     }
 
     _hexToRgb(hex) {

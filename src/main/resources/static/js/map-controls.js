@@ -184,6 +184,12 @@ class MapControls {
         }
     }
 
+    mountTo(newContainer) {
+        if (newContainer && this.rootElement) {
+            newContainer.appendChild(this.rootElement);
+        }
+    }
+
     getState() {
         const activeStyle = MapRenderer.getMapStyles()
             .find(s => s.id === window.reittiActiveMapStyleId);

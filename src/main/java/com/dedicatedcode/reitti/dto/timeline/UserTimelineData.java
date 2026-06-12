@@ -1,6 +1,4 @@
-package com.dedicatedcode.reitti.dto;
-
-import com.dedicatedcode.reitti.model.devices.Device;
+package com.dedicatedcode.reitti.dto.timeline;
 
 import java.util.List;
 
@@ -10,7 +8,7 @@ public record UserTimelineData(
         String avatarFallback,
         String userAvatarUrl,
         String baseColor,
-        List<TimelineEntry> entries,
+        List<? extends TimelineEntry> entries,
         String rawLocationPointsUrl,
         String processedVisitsUrl,
         String mapMetaDataUrl,
