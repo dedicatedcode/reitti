@@ -552,44 +552,14 @@
         gpsDataManagers.push(new GpsDataManager(config, window.userSettings, getUserTimezone()));
     }
 
-    function toggleDeviceVisibility(checkbox) {
-        const userId = checkbox.dataset.userId;
-        const deviceId = checkbox.dataset.deviceId;
-        const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
-        const streamUrl = checkbox.dataset.deviceStreamUrl;
-        const color = checkbox.dataset.deviceColor;
-        const visible = checkbox.checked;
-
-        const key = `deviceVisibility_${userId}_${deviceId}`;
-        localStorage.setItem(key, visible);
-
-        if (visible) {
-            enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
-        } else {
-            const index = gpsDataManagers.findIndex(manager => manager.id === `${userId}_${deviceId}`);
-            if (index !== -1) {
-                gpsDataManagers.splice(index, 1);
-            }
-        }
-        mapRenderer.setGpsDataManagers(gpsDataManagers);
-        const params = getTimelineParams();
-        loadGpsData(params.startDateUtcSeconds, params.endDateUtcSeconds);
-    }
-
     function restoreDeviceVisibility() {
-        document.querySelectorAll('.device-checkbox').forEach(checkbox => {
+        document.querySelectorAll('.device-header').forEach(checkbox => {
             const userId = checkbox.dataset.userId;
             const deviceId = checkbox.dataset.deviceId;
             const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
             const streamUrl = checkbox.dataset.deviceStreamUrl;
             const color = checkbox.dataset.deviceColor;
-            const key = `deviceVisibility_${userId}_${deviceId}`;
-            const enabled = localStorage.getItem(key) === 'true';
-            if (enabled) {
-                checkbox.checked = true;
-                enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
-
-            }
+            enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
         });
     }
 
@@ -611,6 +581,12 @@
             mapRenderer.setSelectedManager(null);
             localStorage.removeItem('followedUser');
         }
+    }
+
+    function selectDevice(userHeader) {
+        const userId = userHeader.getAttribute('data-user-id');
+        const deviceId = userHeader.getAttribute('data-device-id');
+        mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
     }
 
     function selectUser(userHeader) {

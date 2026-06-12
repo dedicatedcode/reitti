@@ -2140,6 +2140,7 @@ button:disabled {
     padding: 48px;
 }
 
+.device-header,
 .user-header {
     position: relative;
     pointer-events: all;
@@ -2150,6 +2151,7 @@ button:disabled {
     text-align: center;
 }
 
+.device-header .username,
 .user-header .username {
     overflow: hidden;
     white-space: nowrap;
