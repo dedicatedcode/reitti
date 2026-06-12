@@ -236,7 +236,7 @@ public class TimelineOverviewStatisticsService {
             entries.add(new GroupedTimelineEntry(UUID.randomUUID(),
                                                  name,
                                                  subheadline,
-                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s?endDate=%s", sortedKey.atStartOfDay(), endDate),
+                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s&endDate=%s", sortedKey, endDate),
                                                  overviewEntries,
                                                  amountOfPlaces.get(sortedKey),
                                                  amountOfTrips.get(sortedKey),
