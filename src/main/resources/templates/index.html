@@ -614,27 +614,23 @@
     }
 
     function selectUser(userHeader) {
-        // Remove active class from all user headers
         document.querySelectorAll('.user-header').forEach(header => {
             header.classList.remove('active');
         });
 
-        // Add active class to clicked user header
         userHeader.classList.add('active');
 
-        // Get the user ID from the clicked header
         const userId = userHeader.getAttribute('data-user-id');
 
-        // Hide all user timeline sections
         document.querySelectorAll('.user-timeline-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // Show the corresponding user timeline section
         const targetSection = document.querySelector(`.user-timeline-section[data-user-id="${userId}"]`);
         if (targetSection) {
             targetSection.classList.add('active');
         }
+        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
     }
 
     function updateUrlWithDate(currentDateRange) {
