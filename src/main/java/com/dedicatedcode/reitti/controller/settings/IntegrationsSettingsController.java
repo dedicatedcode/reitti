@@ -68,9 +68,7 @@ public class IntegrationsSettingsController {
     }
 
     @GetMapping
-    public String getPage(@AuthenticationPrincipal User user,
-                          HttpServletRequest request,
-                          Model model) {
+    public String getPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "integrations");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -83,7 +81,7 @@ public class IntegrationsSettingsController {
                                          HttpServletRequest request,
                                          Model model,
                                          @RequestParam(required = false) String openSection) {
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        List<ApiToken> tokens = getUsableTokens(currentUser);
 
         // Determine the token to use
         String tokenToUse = null;
@@ -133,6 +131,10 @@ public class IntegrationsSettingsController {
 
 
         return "settings/fragments/integrations :: integrations-content";
+    }
+
+    private List<ApiToken> getUsableTokens(User currentUser) {
+        return apiTokenService.getTokensForUser(currentUser).stream().filter(t -> t.getDevice() != null).toList();
     }
 
     private String calculateServerUrl(HttpServletRequest request) {

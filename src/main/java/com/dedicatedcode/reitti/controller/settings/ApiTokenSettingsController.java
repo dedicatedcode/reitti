@@ -24,6 +24,8 @@ import static com.dedicatedcode.reitti.service.TimeUtil.adjustInstant;
 @Controller
 @RequestMapping("/settings/api-tokens")
 public class ApiTokenSettingsController {
+    private static final int MAX_TOKEN_USAGES = 10;
+
     private final ApiTokenService apiTokenService;
     private final ApiTokenJdbcService apiTokenJdbcService;
     private final DeviceJdbcService deviceJdbcService;
@@ -46,11 +48,10 @@ public class ApiTokenSettingsController {
     public String getPage(@AuthenticationPrincipal User user,
                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                           Model model) {
-        addTokensToModel(user, timezone, model);
+        addCommonAttributes(timezone, user, model);
         model.addAttribute("activeSection", "api-tokens");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
         return "settings/api-tokens";
     }
 
@@ -78,12 +79,7 @@ public class ApiTokenSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.token.creation", e.getMessage()));
         }
 
-        addTokensToModel(user, timezone, model);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("maxUsagesToShow", 10);
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-
-        // Return the api-tokens-content fragment
+        addCommonAttributes(timezone, user, model);
         return "settings/api-tokens :: api-tokens-content";
     }
 
@@ -112,12 +108,7 @@ public class ApiTokenSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
         }
 
-        addTokensToModel(user, timezone, model);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-        model.addAttribute("maxUsagesToShow", 10);
-
-        // Return the api-tokens-content fragment
+        addCommonAttributes(timezone, user, model);
         return "settings/api-tokens :: api-tokens-content";
     }
 
@@ -145,13 +136,7 @@ public class ApiTokenSettingsController {
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
         }
-
-        addTokensToModel(user, timezone, model);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-        model.addAttribute("maxUsagesToShow", 10);
-
-        // Return the api-tokens-content fragment
+        addCommonAttributes(timezone, user, model);
         return "settings/api-tokens :: api-tokens-content";
     }
 
@@ -174,12 +159,7 @@ public class ApiTokenSettingsController {
     public String tokensContent(@AuthenticationPrincipal User user,
                                 @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                 Model model) {
-        addTokensToModel(user, timezone, model);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-        model.addAttribute("maxUsagesToShow", 10);
-
-        // Return the api-tokens-content fragment
+        addCommonAttributes(timezone, user, model);
         return "settings/api-tokens :: api-tokens-content";
     }
 
@@ -196,13 +176,16 @@ public class ApiTokenSettingsController {
             model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));
         }
 
-        addTokensToModel(user, timezone, model);
-        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, 10));
-        model.addAttribute("maxUsagesToShow", 10);
-        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-
-        // Return the api-tokens-content fragment
+        addCommonAttributes(timezone, user, model);
         return "settings/api-tokens :: api-tokens-content";
+    }
+
+    private void addCommonAttributes(ZoneId timezone, User user, Model model) {
+        model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
+                .map(t -> toDto(timezone, t)).toList());
+        model.addAttribute("recentUsages", apiTokenService.getRecentUsagesForUser(user, MAX_TOKEN_USAGES));
+        model.addAttribute("maxUsagesToShow", MAX_TOKEN_USAGES);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
     }
 
     public record ApiTokenDto(Long id, Long deviceId, String deviceName, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
@@ -212,10 +195,6 @@ public class ApiTokenSettingsController {
 
     private String getMessage(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
-    }
-    private void addTokensToModel(User user, ZoneId timezone, Model model) {
-        model.addAttribute("tokens", apiTokenService.getTokensForUser(user).stream()
-                .map(t -> toDto(timezone, t)).toList());
     }
 
     private static ApiTokenDto toDto(ZoneId timezone, ApiToken t) {
