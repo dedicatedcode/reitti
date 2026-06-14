@@ -185,12 +185,13 @@ public class ApiTokenJdbcService {
 
     public List<ApiTokenUsage> getUsages(User user, int maxRows) {
         return this.jdbcTemplate.query("""
-                                               SELECT t.token, t.name,  t.device_id, au.at, au.endpoint, au.ip, d.name as device_name
-                                               FROM api_tokens t
-                                                   RIGHT JOIN api_token_usages au on t.id = au.token_id 
-                                                   RIGHT JOIN devices d on t.device_id = d.id 
-                                               WHERE t.user_id = ? 
-                                               ORDER BY au.at DESC LIMIT ?""",
+                                        SELECT t.token, t.name,  t.device_id, au.at, au.endpoint, au.ip, d.name as device_name
+                                        FROM api_token_usages au
+                                                 LEFT JOIN api_tokens t ON t.id = au.token_id
+                                                 LEFT JOIN devices d ON t.device_id = d.id
+                                        WHERE t.user_id = ?
+                                        ORDER BY au.at DESC LIMIT ?;
+                                        """,
                                        this::mapRowToApiUsage, user.getId(), maxRows);
     }
 

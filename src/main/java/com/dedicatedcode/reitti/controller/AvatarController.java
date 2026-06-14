@@ -24,13 +24,22 @@ public class AvatarController {
     @GetMapping("/{userId}")
     public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId) {
         Optional<AvatarService.AvatarData> avatarData = avatarService.getAvatarByUserId(userId);
-        
         if (avatarData.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Avatar not found");
         }
+        return serveBinary(avatarData.get());
+    }
 
-        AvatarService.AvatarData avatar = avatarData.get();
-        
+    @GetMapping("/{userId}/{deviceId}")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId, @PathVariable Long deviceId) {
+        Optional<AvatarService.AvatarData> avatarData = avatarService.getAvatarDeviceId(userId, deviceId);
+        if (avatarData.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Avatar not found");
+        }
+        return serveBinary(avatarData.get());
+    }
+
+    private static ResponseEntity<byte[]> serveBinary(AvatarService.AvatarData avatar) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(avatar.mimeType()));
         headers.setContentLength(avatar.imageData().length);

@@ -127,6 +127,8 @@ public class TimelineController {
             enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap)
                     .map(d -> new DeviceTimelineData(d.id(),
                                                      d.name(),
+                                                     this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
+                                                     this.avatarService.generateInitials(d.name()),
                                                      d.color(),
                                                      String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
                                                      String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
