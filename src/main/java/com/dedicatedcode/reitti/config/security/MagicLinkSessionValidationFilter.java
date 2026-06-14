@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.config;
+package com.dedicatedcode.reitti.config.security;
 
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;

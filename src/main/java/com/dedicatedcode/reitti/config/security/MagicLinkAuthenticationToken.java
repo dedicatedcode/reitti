@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.config;
+package com.dedicatedcode.reitti.config.security;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;

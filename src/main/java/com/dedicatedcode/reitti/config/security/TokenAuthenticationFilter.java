@@ -1,6 +1,8 @@
-package com.dedicatedcode.reitti.config;
+package com.dedicatedcode.reitti.config.security;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.FilterChain;
@@ -33,16 +35,17 @@ public class TokenAuthenticationFilter extends BaseTokenAuthenticationFilter {
         }
 
         if(authHeader != null) {
-            Optional<User> user = apiTokenService.getUserByToken(authHeader);
+            Optional<ApiToken> tokenOpt = apiTokenService.getToken(authHeader);
 
-            if (user.isPresent()) {
-                User authenticatedUser = user.get().withRole(Role.API_ACCESS);
-                UsernamePasswordAuthenticationToken authenticationToken =
-                    new UsernamePasswordAuthenticationToken(
-                        authenticatedUser, 
-                        null,
-                        authenticatedUser.getAuthorities()
-                    );
+            if (tokenOpt.isPresent()) {
+                ApiToken token = tokenOpt.get();
+                User authenticatedUser = token.getUser().withRole(Role.API_ACCESS);
+                Device authenticatedDevice = token.getDevice();
+
+                UserDeviceAuthenticationToken authenticationToken = new UserDeviceAuthenticationToken(
+                        authenticatedUser,
+                        authenticatedDevice
+                );
 
                 trackApiTokenUsage(request, authHeader);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
