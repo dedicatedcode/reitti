@@ -45,11 +45,46 @@ public class AvatarService {
         }
     }
 
+    @Cacheable(value = "avatarData", key = "#userId + '_' + #deviceId")
+    public Optional<AvatarData> getAvatarDeviceId(Long userId, Long deviceId) {
+        try {
+            Map<String, Object> result = jdbcTemplate.queryForMap(
+                    "SELECT mime_type, binary_data, updated_at FROM device_avatars WHERE user_id = ? AND device_id = ?",
+                    userId, deviceId
+            );
+
+            String contentType = (String) result.get("mime_type");
+            long updatedAt = ((Timestamp) result.get("updated_at")).getTime();
+            byte[] imageData = (byte[]) result.get("binary_data");
+
+            return Optional.of(new AvatarData(contentType, imageData, updatedAt));
+
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
     public Optional<AvatarInfo> getInfo(Long userId) {
         try {
             Map<String, Object> result = jdbcTemplate.queryForMap(
                     "SELECT updated_at FROM user_avatars WHERE user_id = ?",
                     userId
+            );
+
+            long updatedAt = ((Timestamp) result.get("updated_at")).getTime();
+
+            return Optional.of(new AvatarInfo(updatedAt));
+
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<AvatarInfo> getInfo(Long userId, Long deviceId) {
+        try {
+            Map<String, Object> result = jdbcTemplate.queryForMap(
+                    "SELECT updated_at FROM device_avatars WHERE user_id = ? AND device_id = ?",
+                    userId, deviceId
             );
 
             long updatedAt = ((Timestamp) result.get("updated_at")).getTime();
@@ -73,10 +108,28 @@ public class AvatarService {
                 imageData
         );
     }
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "#userId + '_' + #deviceId")
+    public void updateAvatar(Long userId, Long deviceId, String contentType, byte[] imageData) {
+
+        jdbcTemplate.update("DELETE FROM device_avatars WHERE user_id = ? AND device_id = ?", userId, deviceId);
+        jdbcTemplate.update(
+                "INSERT INTO device_avatars (user_id, device_id, mime_type, binary_data) " +
+                        "VALUES (?, ?, ?, ?) ",
+                userId,
+                deviceId,
+                contentType,
+                imageData
+        );
+    }
 
     @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "{#userId}")
     public void deleteAvatar(Long userId) {
         this.jdbcTemplate.update("DELETE FROM user_avatars WHERE user_id = ?", userId);
+    }
+
+    @CacheEvict(value = {"avatarThumbnails", "avatarData"}, key = "#userId + '_' + #deviceId")
+    public void deleteAvatar(Long userId, Long deviceId) {
+        this.jdbcTemplate.update("DELETE FROM device_avatars WHERE user_id = ? AND device_id = ?", userId, deviceId);
     }
 
     public String generateInitials(String displayName) {
@@ -118,6 +171,23 @@ public class AvatarService {
                 return output.toByteArray();
             } catch (IOException e) {
                 log.error("Failed to generate thumbnail for avatar of user [{}]", userId, e);
+                return null;
+            }
+        });
+    }
+
+    @Cacheable(value = "avatarThumbnails", key = "{#userId, #deviceId, #width, #height}")
+    public Optional<byte[]> getAvatarThumbnail(Long userId, Long deviceId, int width, int height) {
+        return getAvatarDeviceId(userId, deviceId).map(avatarData -> {
+            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                Thumbnails.of(new ByteArrayInputStream(avatarData.imageData()))
+                    .size(width, height)
+                    .outputFormat(avatarData.mimeType().contains("png") ? "png" : "jpg")
+                    .outputQuality(0.75)
+                    .toOutputStream(output);
+                return output.toByteArray();
+            } catch (IOException e) {
+                log.error("Failed to generate thumbnail for avatar of user [{}] and device [{}]", userId, deviceId, e);
                 return null;
             }
         });

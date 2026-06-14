@@ -51,7 +51,8 @@
                  th:data-device-metadata-url="${device.metadataUrl()}"
                  th:data-device-stream-url="${device.streamUrl()}"
                  onclick="selectDevice(this)">
-                <img th:alt="${device.name()}"
+                <img th:src="@{${device.avatarUrl}}"
+                     th:alt="${device.avatarFallback}"
                      class="avatar">
                 <div th:text="${device.name()}" class="username">Username</div>
             </div>
