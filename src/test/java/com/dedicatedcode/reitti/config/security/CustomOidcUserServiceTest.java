@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.config;
+package com.dedicatedcode.reitti.config.security;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Role;

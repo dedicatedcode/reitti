@@ -35,7 +35,8 @@ class MetadataApiControllerTest {
     private JdbcTemplate jdbcTemplate;
 
     private User user;
-    private ProcessedVisit visit;
+    private ProcessedVisit visit1;
+    private ProcessedVisit visit2;
     private Trip trip;
 
     @BeforeEach
@@ -44,11 +45,10 @@ class MetadataApiControllerTest {
         authenticate(user);
 
         SignificantPlace place = testingService.newSignificantPlace(user);
-        Instant start = Instant.parse("2025-01-01T10:00:00Z");
-        Instant end = Instant.parse("2025-01-01T11:00:00Z");
 
-        visit = testingService.createVisit(user, place, start, end);
-        trip = testingService.createTrip(user, visit, visit);
+        visit1 = testingService.createVisit(user, place, Instant.parse("2025-01-01T10:00:00Z"), Instant.parse("2025-01-01T11:00:00Z"));
+        visit2 = testingService.createVisit(user, place, Instant.parse("2025-01-01T14:00:00Z"), Instant.parse("2025-01-01T16:00:00Z"));
+        trip = testingService.createTrip(user, visit1, visit2);
     }
 
     @AfterEach
@@ -92,7 +92,7 @@ class MetadataApiControllerTest {
 
     @Test
     void postMetadataForVisitCreatesAndReturnsJson() throws Exception {
-        mockMvc.perform(post("/api/v2/metadata/visit/{id}", visit.getId())
+        mockMvc.perform(post("/api/v2/metadata/visit/{id}", visit1.getId())
                                 .param("reason", "groceries"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reason").value("groceries"));

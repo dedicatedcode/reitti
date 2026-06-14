@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.config;
+package com.dedicatedcode.reitti.config.security;
 
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.http.HttpServletRequest;

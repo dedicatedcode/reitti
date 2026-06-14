@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -54,10 +55,12 @@ class OwntracksIngestionApiControllerIntegrationTest {
 
     private User testUser;
     private User sharedUser;
+    private Device device;
 
     @BeforeEach
     void setUp() {
         testUser = testingService.randomUser();
+        device = testingService.findDefaultDevice(testUser);
         sharedUser = testingService.randomUser();
 
         // Create sharing relationship - sharedUser shares with testUser
@@ -80,8 +83,8 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
-                        .contentType(MediaType.APPLICATION_JSON)
+                            .with(user(new DeviceTokenUser(testUser, device)))
+                            .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
@@ -99,7 +102,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
+                        .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
@@ -123,7 +126,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
+                        .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
@@ -158,7 +161,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class),any(Device.class),  any(LocationPoint.class));
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
+                        .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
                 .andExpect(status().isOk())
@@ -183,7 +186,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/owntracks")
-                        .with(user(testUser))
+                        .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidPayload))
                 .andExpect(status().isOk());

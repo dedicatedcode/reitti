@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
@@ -40,12 +41,15 @@ public class GpxApiController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal User user,
+    public ResponseEntity<StreamingResponseBody> exportGpx(@AuthenticationPrincipal DeviceTokenUser user,
                                                            @RequestParam(required = false) Long device,
                                                           @RequestParam LocalDate start,
                                                           @RequestParam LocalDate end) {
         try {
-            Device requestedDevice = device == null ? null : this.deviceJdbcService.find(user, device).orElseThrow(IllegalArgumentException::new);
+            Device requestedDevice = device == null ? user.getDevice().orElse(null) : this.deviceJdbcService.find(user, device).orElseThrow(IllegalArgumentException::new);
+            if (requestedDevice == null) {
+                throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+            }
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     gpxExportService.generateGpxContentStreaming(user,
@@ -74,8 +78,9 @@ public class GpxApiController {
                 });
         }
     }
+
     @PostMapping("/import")
-    public ResponseEntity<Map<String, Object>> importGpx(@AuthenticationPrincipal User user,
+    public ResponseEntity<Map<String, Object>> importGpx(@AuthenticationPrincipal DeviceTokenUser user,
                                                          @RequestParam(required = false) Long device,
                                                          @RequestParam("file") MultipartFile file) {
         Map<String, Object> response = new HashMap<>();
@@ -94,7 +99,7 @@ public class GpxApiController {
             }
             Device requestedDevice;
             if (device == null) {
-                requestedDevice = null;
+                requestedDevice = user.getDevice().orElse(null);
             } else {
                 requestedDevice = this.deviceJdbcService.find(user, device).orElse(null);
                 if (requestedDevice == null) {
@@ -103,7 +108,9 @@ public class GpxApiController {
                     return ResponseEntity.badRequest().body(response);
                 }
             }
-
+            if (requestedDevice == null) {
+                throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+            }
             try (InputStream inputStream = file.getInputStream()) {
                 Map<String, Object> result = gpxImporter.importGpx(inputStream, user, requestedDevice, file.getOriginalFilename());
                 

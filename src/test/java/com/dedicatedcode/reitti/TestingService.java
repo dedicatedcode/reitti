@@ -64,6 +64,7 @@ public class TestingService {
         Device device = findDefaultDevice(user);
         importData(user, device, path);
     }
+
     public void importData(User user, Device device, String path) {
         InputStream is = getClass().getResourceAsStream(path);
         if (path.endsWith(".gpx")) {
@@ -137,6 +138,7 @@ public class TestingService {
         importData(user, path);
         awaitDataImport(100);
     }
+
     public void importAndProcess(User user, Device device, String path) {
         importData(user, device, path);
         awaitDataImport(100);
