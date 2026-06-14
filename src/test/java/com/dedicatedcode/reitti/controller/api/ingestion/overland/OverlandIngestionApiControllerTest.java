@@ -2,6 +2,8 @@ package com.dedicatedcode.reitti.controller.api.ingestion.overland;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,10 +27,12 @@ class OverlandIngestionApiControllerTest {
     @Autowired
     private TestingService testingService;
     private User testUser;
+    private Device device;
 
     @BeforeEach
     void setUp() {
         testUser = testingService.randomUser();
+        device = testingService.findDefaultDevice(testUser);
     }
 
 
@@ -54,7 +58,7 @@ class OverlandIngestionApiControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/overland")
-                        .with(user(testUser))
+                                .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(overlandPayload))
                 .andExpect(status().isOk())
@@ -83,7 +87,7 @@ class OverlandIngestionApiControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/overland")
-                        .with(user(testUser))
+                                .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(overlandPayload))
                 .andExpect(status().isOk())
@@ -100,7 +104,7 @@ class OverlandIngestionApiControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/ingest/overland")
-                        .with(user(testUser))
+                                .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(overlandPayload))
                 .andExpect(status().isOk())
