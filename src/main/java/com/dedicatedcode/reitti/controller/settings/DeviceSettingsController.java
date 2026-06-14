@@ -290,7 +290,7 @@ public class DeviceSettingsController {
                 this.avatarService.updateAvatar(userId, deviceId, contentType, imageData);
 
             } catch (IOException e) {
-                model.addAttribute("avatarError", i18n.translate("users.avatar.error.generic", e.getMessage()));
+                model.addAttribute("avatarError", i18n.translate("devices.avatar.error.generic", e.getMessage()));
             }
         }
     }
