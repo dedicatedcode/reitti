@@ -1748,7 +1748,7 @@ function setupMapInteractions() {
                     pushAction({
                         type: 'move',
                         shortDesc: t('workbench.action.move.multi.short_description', [n]),
-                        desc: t('workbench.action.move.single.description', [n, deltaM.toFixed(1)]),
+                        desc: t('workbench.action.move.multi.description', [n, deltaM.toFixed(1)]),
                         payload: {count: n, points: movedEntries, deltaMeters: +deltaM.toFixed(2)},
                         _inverse: {group: inverseGroup}
                     });
