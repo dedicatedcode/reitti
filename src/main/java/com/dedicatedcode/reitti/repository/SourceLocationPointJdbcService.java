@@ -199,8 +199,9 @@ public class SourceLocationPointJdbcService {
                   ST_YMax(ST_Extent(geom)) as max_lat,
                   ST_XMin(ST_Extent(geom)) as min_lng,
                   ST_XMax(ST_Extent(geom)) as max_lng
-                FROM raw_location_points
+                FROM raw_source_points
                 WHERE user_id = ?
+                  AND device_id = ?
                   AND timestamp >= ? AND timestamp < ?
                 """;
         return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new MapMetadata(
@@ -220,7 +221,7 @@ public class SourceLocationPointJdbcService {
                     locationPoint.setElevationMeters(latestPoint.getElevationMeters());
                     return locationPoint;
                 })
-        ), user.getId(), Timestamp.from(start), Timestamp.from(end));
+        ), user.getId(), device.id(), Timestamp.from(start), Timestamp.from(end));
     }
 
     public Optional<SourceLocationPoint> findLatest(User user, Device device) {
