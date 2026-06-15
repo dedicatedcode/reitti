@@ -458,6 +458,7 @@
                         if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
                             lastRenderedPointCount = current;
                             requestAnimationFrame(() => {
+                                mapRenderer._refitBounds();
                                 mapRenderer.updateViewState(createViewState());
                             });
                         }
@@ -535,6 +536,11 @@
     function toggleDeviceMenu(btn) {
         const container = btn.closest('.device-toggle-container');
         const menu = container.querySelector('.device-menu');
+        document.querySelectorAll('.device-menu:not(.hidden)').forEach(m => {
+            if (m !== menu) {
+                m.classList.add('hidden');
+            }
+        });
         menu.classList.toggle('hidden');
     }
 
@@ -584,6 +590,14 @@
     }
 
     function selectDevice(userHeader) {
+        document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.device-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        userHeader.classList.add('active');
+
         const userId = userHeader.getAttribute('data-user-id');
         const deviceId = userHeader.getAttribute('data-device-id');
         mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
@@ -591,6 +605,9 @@
 
     function selectUser(userHeader) {
         document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.device-header').forEach(header => {
             header.classList.remove('active');
         });
 

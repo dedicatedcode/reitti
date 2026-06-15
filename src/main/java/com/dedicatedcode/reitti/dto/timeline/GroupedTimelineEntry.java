@@ -8,6 +8,11 @@ import java.util.*;
 
 public record GroupedTimelineEntry(UUID syntheticId, String name, String subHeadline, String href, List<OverviewEntry> overview, Long visits, Long trips, List<MoodValue> visitMoods, List<MoodValue> tripMoods, List<TransportEntry> transportEntries, List<VisitEntry> visitEntries) implements TimelineEntry {
 
+    @Override
+    public boolean isAggregated() {
+        return true;
+    }
+
     public record OverviewEntry(LocalDate slot, Long visits, Long trips) {
     }
 

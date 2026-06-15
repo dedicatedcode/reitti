@@ -2144,6 +2144,7 @@ button:disabled {
 .user-header {
     position: relative;
     pointer-events: all;
+    cursor: pointer;
     color: white;
     font-family: var(--serif-font);
     font-weight: normal;
@@ -2180,6 +2181,7 @@ button:disabled {
     opacity: 1;
 }
 
+.device-header.active .avatar,
 .user-header.active .avatar {
     border: 2px solid var(--color-highlight);
     box-shadow: 0 8px 25px rgba(245, 222, 179, 0.3);

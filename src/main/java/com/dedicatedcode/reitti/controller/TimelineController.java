@@ -81,8 +81,6 @@ public class TimelineController {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
             }
         }
-        boolean shouldAggregate = Duration.between(startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay()).toDays() > 14;
-
         List<UserTimelineData> allUsersData = new ArrayList<>();
 
         User user = userJdbcService.findByUsername(principal.getName())
@@ -105,7 +103,6 @@ public class TimelineController {
         model.addAttribute("timezone", timezone);
         model.addAttribute("isRange", true);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
-        model.addAttribute("isAggregated", shouldAggregate);
         model.addAttribute("showUserSelection", timelineData.users().size() > 1 || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
 
         return "fragments/timeline :: timeline-content";
@@ -124,15 +121,20 @@ public class TimelineController {
             } else {
                 currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
             }
-            enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap)
-                    .map(d -> new DeviceTimelineData(d.id(),
-                                                     d.name(),
-                                                     this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
-                                                     this.avatarService.generateInitials(d.name()),
-                                                     d.color(),
-                                                     String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
-                                                     String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
-                    .toList();
+            if (this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap).count() < 2) {
+                enabledDevices = Collections.emptyList();
+            } else {
+                enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream()
+                        .filter(Device::showOnMap)
+                        .map(d -> new DeviceTimelineData(d.id(),
+                                                         d.name(),
+                                                         this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
+                                                         this.avatarService.generateInitials(d.name()),
+                                                         d.color(),
+                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
+                                                         String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
+                        .toList();
+            }
         } else {
             currentUserEntries = Collections.emptyList();
             enabledDevices = Collections.emptyList();

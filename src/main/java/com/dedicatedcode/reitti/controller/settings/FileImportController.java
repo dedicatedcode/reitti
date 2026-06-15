@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.importer.*;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -18,7 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/settings/import")
@@ -83,29 +86,21 @@ public class FileImportController {
         StringBuilder errorMessages = new StringBuilder();
 
         for (MultipartFile file : files) {
-            if (file.isEmpty() || file.getOriginalFilename() == null) {
-                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is empty. ");
-                continue;
-            }
+            if (validateFile(file, errorMessages, "gpx")) {
+                try (InputStream inputStream = file.getInputStream()) {
+                    Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user, device, file.getOriginalFilename());
 
-            if (!file.getOriginalFilename().endsWith(".gpx")) {
-                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is not a GPX file. ");
-                continue;
-            }
-
-            try (InputStream inputStream = file.getInputStream()) {
-                Map<String, Object> result = this.gpxImporter.importGpx(inputStream, user, device, file.getOriginalFilename());
-
-                if ((Boolean) result.get("success")) {
-                    totalProcessed += (Integer) result.get("pointsReceived");
-                    successCount++;
-                } else {
+                    if ((Boolean) result.get("success")) {
+                        totalProcessed += (Integer) result.get("pointsReceived");
+                        successCount++;
+                    } else {
+                        errorMessages.append("Error processing ").append(file.getOriginalFilename()).append(": ")
+                                .append(result.get("error")).append(". ");
+                    }
+                } catch (IOException e) {
                     errorMessages.append("Error processing ").append(file.getOriginalFilename()).append(": ")
-                            .append(result.get("error")).append(". ");
+                            .append(e.getMessage()).append(". ");
                 }
-            } catch (IOException e) {
-                errorMessages.append("Error processing ").append(file.getOriginalFilename()).append(": ")
-                        .append(e.getMessage()).append(". ");
             }
         }
 
@@ -131,13 +126,9 @@ public class FileImportController {
         Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
-        if (file.isEmpty() || file.getOriginalFilename() == null) {
-            model.addAttribute("uploadErrorMessage", "File is empty");
-            return "settings/import-data :: file-upload-content";
-        }
-
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
+        StringBuilder errorMessages = new StringBuilder();
+        if (!validateFile(file, errorMessages, "json")) {
+            model.addAttribute("uploadErrorMessage", errorMessages.toString());
             return "settings/import-data :: file-upload-content";
         }
 
@@ -166,13 +157,9 @@ public class FileImportController {
         Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
-        if (file.isEmpty() || file.getOriginalFilename() == null) {
-            model.addAttribute("uploadErrorMessage", "File is empty");
-            return "settings/import-data :: file-upload-content";
-        }
-
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
+        StringBuilder errorMessages = new StringBuilder();
+        if (!validateFile(file, errorMessages, "json")) {
+            model.addAttribute("uploadErrorMessage", errorMessages.toString());
             return "settings/import-data :: file-upload-content";
         }
 
@@ -201,13 +188,9 @@ public class FileImportController {
         Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
         model.addAttribute("devices", this.deviceJdbcService.getAll(user));
 
-        if (file.isEmpty() || file.getOriginalFilename() == null) {
-            model.addAttribute("uploadErrorMessage", "File is empty");
-            return "settings/import-data :: file-upload-content";
-        }
-
-        if (!file.getOriginalFilename().endsWith(".json")) {
-            model.addAttribute("uploadErrorMessage", "Only JSON files are supported");
+        StringBuilder errorMessages = new StringBuilder();
+        if (!validateFile(file, errorMessages, "json")) {
+            model.addAttribute("uploadErrorMessage", errorMessages.toString());
             return "settings/import-data :: file-upload-content";
         }
 
@@ -246,17 +229,12 @@ public class FileImportController {
         StringBuilder errorMessages = new StringBuilder();
 
         for (MultipartFile file : files) {
-            if (file.isEmpty()) {
-                errorMessages.append("File ").append(file.getOriginalFilename()).append(" is empty. ");
+            if (!validateFile(file, errorMessages, "json", "geojson")) {
+                model.addAttribute("uploadErrorMessage", errorMessages.toString());
                 continue;
             }
 
             String filename = file.getOriginalFilename();
-            if (filename == null || (!filename.endsWith(".geojson") && !filename.endsWith(".json"))) {
-                errorMessages.append("File ").append(filename).append(" is not a GeoJSON file. ");
-                continue;
-            }
-
             try (InputStream inputStream = file.getInputStream()) {
                 Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, device, filename);
 
@@ -274,9 +252,9 @@ public class FileImportController {
         }
 
         if (successCount > 0) {
-            String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points";
+            String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points.";
             if (!errorMessages.isEmpty()) {
-                message += ". Errors: " + errorMessages;
+                message += " Errors: " + errorMessages;
             }
             model.addAttribute("uploadSuccessMessage", message);
         } else {
@@ -284,6 +262,21 @@ public class FileImportController {
         }
 
         return "settings/import-data :: file-upload-content";
+    }
+
+
+    private boolean validateFile(MultipartFile file, StringBuilder errorMessages, String... expectedExtension) {
+        if (file.isEmpty() || file.getOriginalFilename() == null) {
+            errorMessages.append(i18n.translate("upload.error.file.empty", file.getOriginalFilename()));
+            return false;
+        }
+
+        if (Arrays.stream(expectedExtension).noneMatch(ext -> file.getOriginalFilename().toLowerCase().endsWith(ext.toLowerCase()))) {
+            errorMessages.append(i18n.translate("upload.error.file.wrong_extension", file.getOriginalFilename(), String.join(",", expectedExtension)));
+            return false;
+        }
+
+        return true;
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

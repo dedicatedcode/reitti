@@ -109,7 +109,8 @@ public class GpxApiController {
                 }
             }
             if (requestedDevice == null) {
-                throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+                response.put("error", "Token has no device attached. Please use another token or attach a device to it.");
+                return ResponseEntity.badRequest().body(response);
             }
             try (InputStream inputStream = file.getInputStream()) {
                 Map<String, Object> result = gpxImporter.importGpx(inputStream, user, requestedDevice, file.getOriginalFilename());
