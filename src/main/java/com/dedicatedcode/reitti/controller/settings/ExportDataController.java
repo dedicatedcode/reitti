@@ -108,7 +108,7 @@ public class ExportDataController {
     }
 
     private Device findDevice(User user, String deviceId) {
-        if (!StringUtils.hasText(deviceId) || deviceId.equals("default") ) {
+        if (!StringUtils.hasText(deviceId) ) {
             return null;
         } else {
             return deviceJdbcService.find(user, Long.valueOf(deviceId)).orElseThrow(IllegalArgumentException::new);
