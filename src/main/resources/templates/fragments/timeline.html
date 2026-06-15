@@ -74,322 +74,318 @@
             No timeline data available for this user.
         </div>
 
-        <div th:if="${isAggregated}">
-            <div class="timeline-entry aggregated-entry"
-                 th:each="entry : ${userData?.entries}">
-                <div class="headline">
-                    <a th:href="@{${entry.href()}}" class="overview-link">
-                        <span class="overview-name" th:text="${entry.name()}">Jan 2019</span>
-                        <span>&gt;</span>
-                    </a>
-                </div>
-                <div class="sub-headline" th:text="${entry.subHeadline()}"></div>
-                <div class="overview-container">
-                    <div class="activity-overview" style="height: 160px; width: 100%; max-width: 360px;">
-                        <div th:text="#{timeline.grouped.activity-overview.headline}" class="text-align-center text-gray">Activity Overview</div>
-                        <canvas th:id="${'overview-' + entry.syntheticId}" class="activity-overview-chart"></canvas>
-                    </div>
-                    <div class="amount-overview">
-                        <div class="amount-places-overview">
-                            <div class="overview-icon"><i class="lni lni-map-marker-5"></i></div>
-                            <div class="overview-description" th:text="#{timeline.grouped.amount-overview.places}">Visited Places</div>
-                            <div class="overview-amount" th:text="${entry.visits()}">1</div>
-                        </div>
-                        <div class="amount-trips-overview">
-                            <div class="overview-icon"><i class="lni lni-bus-1"></i></div>
-                            <div class="overview-description" th:text="#{timeline.grouped.amount-overview.trips}">Journeys</div>
-                            <div class="overview-amount" th:text="${entry.trips()}">1</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="amount-distance-overview" style="position: relative; height: 100px; width: 100%">
-                    <canvas style="margin-left: 16px; margin-right: 16px" th:id="${'transport-' + entry.syntheticId}" class="activity-overview-chart"></canvas>
-                </div>
-                <script th:inline="javascript">
-                    new function () {
-                        const id = /*[[${entry.syntheticId}]]*/ [];
-                        const dayOverviewData = /*[[${entry.overview}]]*/ [];
-                        const tripOverviewData = /*[[${entry.transportEntries}]]*/ [];
-
-                        const overviewChartId = `overview-${id}`
-                        const transportChartId = `transport-${id}`
-
-                        new Chart(overviewChartId, {
-                            type: 'line',
-                            data: {
-                                datasets: [
-                                    {
-                                        label: 'Visits',
-                                        data: dayOverviewData,
-                                        parsing: { xAxisKey: 'slot', yAxisKey: 'visits' },
-                                        fill: true,
-                                        backgroundColor: 'rgba(54, 162, 235, 0.15)',
-                                        borderColor: 'rgb(54, 162, 235)',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        pointHoverRadius: 4,
-                                        tension: 0.4
-                                    },
-                                    {
-                                        label: 'Trips',
-                                        data: dayOverviewData,
-                                        parsing: { xAxisKey: 'slot', yAxisKey: 'trips' },
-                                        fill: true,
-                                        backgroundColor: 'rgba(249, 115, 22, 0.05)',
-                                        borderColor: 'rgb(249, 115, 22)',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        pointHoverRadius: 4,
-                                        tension: 0.4
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: { display: false },
-                                    tooltip: {
-                                        mode: 'index',
-                                        intersect: false,
-                                        backgroundColor: 'rgba(30, 30, 36, 0.85)',
-                                        titleColor: '#fff',
-                                        bodyColor: '#fff',
-                                        padding: 10,
-                                        borderRadius: 8
-                                    },
-                                    title: { display: false },
-                                    subtitle: { display: false }
-                                },
-                                scales: {
-                                    x: {
-                                        grid: { display: false },
-                                        border: { display: false },
-                                        ticks: {
-                                            color: 'rgba(255, 255, 255, 0.6)',
-                                            font: { size: 11 },
-                                            maxRotation: 0,
-                                            autoSkip: true,
-                                            maxTicksLimit: 4,
-                                            callback: function(val, index) {
-                                                const rawDateStr = dayOverviewData[index]?.slot;
-                                                if (!rawDateStr) return '';
-
-                                                const date = new Date(rawDateStr);
-                                                return date.getDate();
-                                            }
-                                        }
-                                    },
-                                    y: {
-                                        min: 0,
-                                        suggestedMax: 5,
-                                        stacked: false,
-                                        grid: {
-                                            display: false // Entfernt horizontale Gitterlinien komplett
-                                        },
-                                        border: {
-                                            display: false // Entfernt die linke Achsenlinie
-                                        },
-                                        ticks: {
-                                            display: false
-                                        },
-                                        display: false,
-                                        afterFit: function(scaleInstance) {
-                                            scaleInstance.width = 0; // Zwingt die Y-Achsenbreite auf exakt 0 Pixel
-                                        },
-                                    }
-                                }
-                            }
-                        });
-
-
-                        function getColorByMood(mood) {
-                            switch (mood) {
-                                case 'HAPPY':
-                                    return '#4ade80';
-                                case 'RELAXED':
-                                    return '#60a5fa';
-                                case 'ADVENTUROUS':
-                                    return '#a78bfa';
-                                case 'TIRED':
-                                    return '#9ca3af';
-                                case 'STRESSED':
-                                    return '#f87171';
-                                default:
-                                    return '#F5DEB3FF';
-                            }
-                        }
-                        const endDotPlugin = {
-                            id: 'endDotPlugin',
-                            afterDatasetDraw(chart, args) {
-                                if (args.index !== chart.data.datasets.length - 1) return;
-
-                                const { ctx, chartArea } = chart;
-                                const meta = chart.getDatasetMeta(args.index);
-
-                                meta.data.forEach((bar, index) => {
-                                    if (bar.hidden || bar.width === 0) return;
-
-                                    // Y-Mitte des aktuellen Balkens
-                                    const y = bar.y + (bar.height / 2);
-
-                                    ctx.save();
-
-                                    const durationText = totalDurationsFormatted[index];
-                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                                    ctx.font = 'normal 13px sans-serif';
-                                    ctx.textBaseline = 'middle';
-                                    ctx.textAlign = 'right';
-
-                                    ctx.fillText(durationText, chart.width - 5, y);
-                                    ctx.restore();
-                                });
-                            }
-                        };
-
-                        const processedData = tripOverviewData
-                            .map(item => {
-                                const totalSeconds = item.parts.reduce((sum, part) => sum + part.durationSeconds, 0);
-                                return {...item, totalSeconds};
-                            })
-                            .sort((a, b) => b.totalSeconds - a.totalSeconds); // Höchste Dauer nach oben
-
-                        const totalDurationsFormatted = processedData.map(item => {
-                            const hours = item.totalSeconds / 3600;
-                            return `${hours.toFixed(1)}h`;
-                        });
-                        const labels = processedData.map(item => item.transportMode);
-                        const maxParts = Math.max(...processedData.map(item => item.parts.length));
-                        const datasets = [];
-
-                        for (let i = 0; i < maxParts; i++) {
-                            const dataPoints = [];
-                            const backgroundColors = [];
-
-                            processedData.forEach(item => {
-                                const part = item.parts[i];
-                                if (part) {
-                                    dataPoints.push(part.durationSeconds / 3600);
-                                    backgroundColors.push(getColorByMood(part.mood));
-                                } else {
-                                    dataPoints.push(0);
-                                    backgroundColors.push('rgba(0,0,0,0)');
-                                }
-                            });
-
-                            datasets.push({
-                                data: dataPoints,
-                                backgroundColor: backgroundColors,
-                                stack: 'TransportStack',
-                                barPercentage: 0.55,
-                                borderRadius: 20,
-                                borderSkipped: false,
-                                categoryPercentage: 1.0
-                            });
-                        }
-
-                        new Chart(transportChartId, {
-                            type: 'bar',
-                            data: {
-                                labels: labels,
-                                datasets: datasets
-                            },
-                            plugins: [endDotPlugin],
-                            options: {
-                                indexAxis: 'y',
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                layout: {
-                                    padding: {
-                                        right: 50
-                                    }
-                                },
-                                plugins: {
-                                    legend: { display: false },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                const hours = context.raw.toFixed(2);
-                                                return ` Dauer: ${hours} Std.`;
-                                            }
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    x: {
-                                        stacked: true,
-                                        display: false,
-                                        grid: {display: false}
-                                    },
-                                    y: {
-                                        stacked: true,
-                                        grid: {display: false},
-                                        border: {display: false},
-                                        ticks: {
-                                            color: '#ffffff',
-                                            font: {
-                                                size: 14,
-                                                weight: 'normal'
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        });
-
-                    }()
-                </script>
+        <th:block  th:each="entry : ${userData?.entries}">
+        <div th:if="${entry.aggregated}" class="timeline-entry aggregated-entry">
+            <div class="headline">
+                <a th:href="@{${entry.href()}}" class="overview-link">
+                    <span class="overview-name" th:text="${entry.name()}">Jan 2019</span>
+                    <span>&gt;</span>
+                </a>
             </div>
+            <div class="sub-headline" th:text="${entry.subHeadline()}"></div>
+            <div class="overview-container">
+                <div class="activity-overview" style="height: 160px; width: 100%; max-width: 360px;">
+                    <div th:text="#{timeline.grouped.activity-overview.headline}" class="text-align-center text-gray">Activity Overview</div>
+                    <canvas th:id="${'overview-' + entry.syntheticId}" class="activity-overview-chart"></canvas>
+                </div>
+                <div class="amount-overview">
+                    <div class="amount-places-overview">
+                        <div class="overview-icon"><i class="lni lni-map-marker-5"></i></div>
+                        <div class="overview-description" th:text="#{timeline.grouped.amount-overview.places}">Visited Places</div>
+                        <div class="overview-amount" th:text="${entry.visits()}">1</div>
+                    </div>
+                    <div class="amount-trips-overview">
+                        <div class="overview-icon"><i class="lni lni-bus-1"></i></div>
+                        <div class="overview-description" th:text="#{timeline.grouped.amount-overview.trips}">Journeys</div>
+                        <div class="overview-amount" th:text="${entry.trips()}">1</div>
+                    </div>
+                </div>
+            </div>
+            <div class="amount-distance-overview" style="position: relative; height: 100px; width: 100%">
+                <canvas style="margin-left: 16px; margin-right: 16px" th:id="${'transport-' + entry.syntheticId}" class="activity-overview-chart"></canvas>
+            </div>
+            <script th:inline="javascript">
+                new function () {
+                    const id = /*[[${entry.syntheticId}]]*/ [];
+                    const dayOverviewData = /*[[${entry.overview}]]*/ [];
+                    const tripOverviewData = /*[[${entry.transportEntries}]]*/ [];
+
+                    const overviewChartId = `overview-${id}`
+                    const transportChartId = `transport-${id}`
+
+                    new Chart(overviewChartId, {
+                        type: 'line',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Visits',
+                                    data: dayOverviewData,
+                                    parsing: { xAxisKey: 'slot', yAxisKey: 'visits' },
+                                    fill: true,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.15)',
+                                    borderColor: 'rgb(54, 162, 235)',
+                                    borderWidth: 2,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'Trips',
+                                    data: dayOverviewData,
+                                    parsing: { xAxisKey: 'slot', yAxisKey: 'trips' },
+                                    fill: true,
+                                    backgroundColor: 'rgba(249, 115, 22, 0.05)',
+                                    borderColor: 'rgb(249, 115, 22)',
+                                    borderWidth: 2,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                    tension: 0.4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: 'rgba(30, 30, 36, 0.85)',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    padding: 10,
+                                    borderRadius: 8
+                                },
+                                title: { display: false },
+                                subtitle: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    border: { display: false },
+                                    ticks: {
+                                        color: 'rgba(255, 255, 255, 0.6)',
+                                        font: { size: 11 },
+                                        maxRotation: 0,
+                                        autoSkip: true,
+                                        maxTicksLimit: 4,
+                                        callback: function(val, index) {
+                                            const rawDateStr = dayOverviewData[index]?.slot;
+                                            if (!rawDateStr) return '';
+
+                                            const date = new Date(rawDateStr);
+                                            return date.getDate();
+                                        }
+                                    }
+                                },
+                                y: {
+                                    min: 0,
+                                    suggestedMax: 5,
+                                    stacked: false,
+                                    grid: {
+                                        display: false // Entfernt horizontale Gitterlinien komplett
+                                    },
+                                    border: {
+                                        display: false // Entfernt die linke Achsenlinie
+                                    },
+                                    ticks: {
+                                        display: false
+                                    },
+                                    display: false,
+                                    afterFit: function(scaleInstance) {
+                                        scaleInstance.width = 0; // Zwingt die Y-Achsenbreite auf exakt 0 Pixel
+                                    },
+                                }
+                            }
+                        }
+                    });
+
+
+                    function getColorByMood(mood) {
+                        switch (mood) {
+                            case 'HAPPY':
+                                return '#4ade80';
+                            case 'RELAXED':
+                                return '#60a5fa';
+                            case 'ADVENTUROUS':
+                                return '#a78bfa';
+                            case 'TIRED':
+                                return '#9ca3af';
+                            case 'STRESSED':
+                                return '#f87171';
+                            default:
+                                return '#F5DEB3FF';
+                        }
+                    }
+                    const endDotPlugin = {
+                        id: 'endDotPlugin',
+                        afterDatasetDraw(chart, args) {
+                            if (args.index !== chart.data.datasets.length - 1) return;
+
+                            const { ctx, chartArea } = chart;
+                            const meta = chart.getDatasetMeta(args.index);
+
+                            meta.data.forEach((bar, index) => {
+                                if (bar.hidden || bar.width === 0) return;
+
+                                // Y-Mitte des aktuellen Balkens
+                                const y = bar.y + (bar.height / 2);
+
+                                ctx.save();
+
+                                const durationText = totalDurationsFormatted[index];
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                                ctx.font = 'normal 13px sans-serif';
+                                ctx.textBaseline = 'middle';
+                                ctx.textAlign = 'right';
+
+                                ctx.fillText(durationText, chart.width - 5, y);
+                                ctx.restore();
+                            });
+                        }
+                    };
+
+                    const processedData = tripOverviewData
+                        .map(item => {
+                            const totalSeconds = item.parts.reduce((sum, part) => sum + part.durationSeconds, 0);
+                            return {...item, totalSeconds};
+                        })
+                        .sort((a, b) => b.totalSeconds - a.totalSeconds); // Höchste Dauer nach oben
+
+                    const totalDurationsFormatted = processedData.map(item => {
+                        const hours = item.totalSeconds / 3600;
+                        return `${hours.toFixed(1)}h`;
+                    });
+                    const labels = processedData.map(item => item.transportMode);
+                    const maxParts = Math.max(...processedData.map(item => item.parts.length));
+                    const datasets = [];
+
+                    for (let i = 0; i < maxParts; i++) {
+                        const dataPoints = [];
+                        const backgroundColors = [];
+
+                        processedData.forEach(item => {
+                            const part = item.parts[i];
+                            if (part) {
+                                dataPoints.push(part.durationSeconds / 3600);
+                                backgroundColors.push(getColorByMood(part.mood));
+                            } else {
+                                dataPoints.push(0);
+                                backgroundColors.push('rgba(0,0,0,0)');
+                            }
+                        });
+
+                        datasets.push({
+                            data: dataPoints,
+                            backgroundColor: backgroundColors,
+                            stack: 'TransportStack',
+                            barPercentage: 0.55,
+                            borderRadius: 20,
+                            borderSkipped: false,
+                            categoryPercentage: 1.0
+                        });
+                    }
+
+                    new Chart(transportChartId, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: datasets
+                        },
+                        plugins: [endDotPlugin],
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: {
+                                    right: 50
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const hours = context.raw.toFixed(2);
+                                            return ` Dauer: ${hours} Std.`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                    display: false,
+                                    grid: {display: false}
+                                },
+                                y: {
+                                    stacked: true,
+                                    grid: {display: false},
+                                    border: {display: false},
+                                    ticks: {
+                                        color: '#ffffff',
+                                        font: {
+                                            size: 14,
+                                            weight: 'normal'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                }()
+            </script>
         </div>
+            <div th:unless="${entry.aggregated}" th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
+                 th:data-id="${entry.id}"
+                 th:data-lat="${entry.place?.latitudeCentroid}"
+                 th:data-lng="${entry.place?.longitudeCentroid}"
+                 th:data-start="${entry.startTime}"
+                 th:data-end="${entry.endTime}"
+                 th:data-user-id="${userData.userId}">
+                <th:block th:fragment="timeline-entry">
+                    <!-- Entry Description -->
+                    <div class="entry-description">
+                        <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
+                            <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
+                            <div th:if="${entry.editable}" class="place-actions">
+                                <a class="lni lni-pencil-1 edit-icon"
+                                   th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"></a>
+                                <a class="lni lni-file-multiple edit-icon"
+                                   th:hx-get="@{/metadata/visit/{id}(id=${entry.resourceId})}"
+                                   hx-target="#metadata-overlay-content"
+                                   hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
+                                   hx-swap="innerHTML"
+                                   hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
+                            </div>
+                        </div>
 
-        <div th:unless="${isAggregated}" th:each="entry : ${userData?.entries}"
-             th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
-             th:data-id="${entry.id}"
-             th:data-lat="${entry.place?.latitudeCentroid}"
-             th:data-lng="${entry.place?.longitudeCentroid}"
-             th:data-start="${entry.startTime}"
-             th:data-end="${entry.endTime}"
-             th:data-user-id="${userData.userId}">
-            <th:block th:fragment="timeline-entry">
-                <!-- Entry Description -->
-                <div class="entry-description">
-                    <div th:if="${entry.type.name() == 'VISIT'}" class="place-name-container">
-                        <span class="place-name" th:text="${entry.place?.name ?: 'Unknown Place'}">Place Name</span>
-                        <div th:if="${entry.editable}" class="place-actions">
-                            <a class="lni lni-pencil-1 edit-icon"
-                               th:href="@{/settings/places/{id}/edit(id=${entry.place?.id})}"></a>
-                            <a class="lni lni-file-multiple edit-icon"
-                               th:hx-get="@{/metadata/visit/{id}(id=${entry.resourceId})}"
-                               hx-target="#metadata-overlay-content"
-                               hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
-                               hx-swap="innerHTML"
-                               hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
+                        <!-- Trip description -->
+                        <div th:if="${entry.type.name() == 'TRIP'}" class="place-name-container">
+                            <span class="place-name" th:text="#{timeline.trip}">Trip</span>
+                            <div th:if="${entry.editable}" class="place-actions">
+                                <i class="lni lni-pencil-1 edit-icon"
+                                   th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
+                                   th:hx-target="${'#trip-transport-mode-container_' + entry.resourceId}"
+                                   hx-swap="outerHTML"></i>
+                                <a class="lni lni-file-multiple edit-icon"
+                                   th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
+                                   hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
+                                   hx-target="#metadata-overlay-content"
+                                   hx-swap="innerHTML"
+                                   hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Trip description -->
-                    <div th:if="${entry.type.name() == 'TRIP'}" class="place-name-container">
-                        <span class="place-name" th:text="#{timeline.trip}">Trip</span>
-                        <div th:if="${entry.editable}" class="place-actions">
-                            <i class="lni lni-pencil-1 edit-icon"
-                               th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
-                               th:hx-target="${'#trip-transport-mode-container_' + entry.resourceId}"
-                               hx-swap="outerHTML"></i>
-                            <a class="lni lni-file-multiple edit-icon"
-                               th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
-                               hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
-                               hx-target="#metadata-overlay-content"
-                               hx-swap="innerHTML"
-                               hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
-                        </div>
+                    <!-- Type -->
+                    <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
+                        <span th:text="#{${entry.place.type.messageKey}}">Home</span>
                     </div>
-                </div>
-                <!-- Type -->
-                <div class="entry-time" th:if="${entry.type.name() == 'VISIT'}">
-                    <span th:text="#{${entry.place.type.messageKey}}">Home</span>
-                </div>
-                <!-- Duration and Distance -->
-                <span class="entry-duration">
+                    <!-- Duration and Distance -->
+                    <span class="entry-duration">
                     <span th:if="${entry.type.name() == 'VISIT'}">
                         <span th:text="#{timeline.duration}">Duration</span>:
                         <span th:text="${entry.formattedDuration}">1h 30m</span>
@@ -405,17 +401,19 @@
                     </span>
                 </span>
 
-                <!-- Time -->
-                <div class="entry-time">
+                    <!-- Time -->
+                    <div class="entry-time">
                     <span th:if="${timeDisplayMode.name() == 'GEO_LOCAL'}"
                           th:text="${entry.formattedLocalTimeRange}"
                           th:title="|#{timeline.time.your}: ${entry.formattedTimeRange}|">09:00 - 10:30</span>
-                    <span th:if="${timeDisplayMode.name() == 'DEFAULT'}"
-                          th:text="${entry.formattedTimeRange}"
-                          th:title="|#{timeline.time.local}: ${entry.formattedLocalTimeRange}|">09:00 - 10:30</span>
-                </div>
-            </th:block>
-        </div>
+                        <span th:if="${timeDisplayMode.name() == 'DEFAULT'}"
+                              th:text="${entry.formattedTimeRange}"
+                              th:title="|#{timeline.time.local}: ${entry.formattedLocalTimeRange}|">09:00 - 10:30</span>
+                    </div>
+                </th:block>
+            </div>
+
+        </th:block>
     </div>
 </div>
 </body>

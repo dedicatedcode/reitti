@@ -81,8 +81,6 @@ public class TimelineController {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
             }
         }
-        boolean shouldAggregate = Duration.between(startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay()).toDays() > 14;
-
         List<UserTimelineData> allUsersData = new ArrayList<>();
 
         User user = userJdbcService.findByUsername(principal.getName())
@@ -105,7 +103,6 @@ public class TimelineController {
         model.addAttribute("timezone", timezone);
         model.addAttribute("isRange", true);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
-        model.addAttribute("isAggregated", shouldAggregate);
         model.addAttribute("showUserSelection", timelineData.users().size() > 1 || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
 
         return "fragments/timeline :: timeline-content";

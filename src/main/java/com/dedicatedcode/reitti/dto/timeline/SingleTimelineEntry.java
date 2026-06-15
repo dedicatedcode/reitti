@@ -155,4 +155,9 @@ public class SingleTimelineEntry implements TimelineEntry {
     public void setEditable(boolean editable) {
         this.editable = editable;
     }
+
+    @Override
+    public boolean isAggregated() {
+        return false;
+    }
 }

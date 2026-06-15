@@ -458,6 +458,7 @@
                         if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
                             lastRenderedPointCount = current;
                             requestAnimationFrame(() => {
+                                mapRenderer._refitBounds();
                                 mapRenderer.updateViewState(createViewState());
                             });
                         }
@@ -535,6 +536,11 @@
     function toggleDeviceMenu(btn) {
         const container = btn.closest('.device-toggle-container');
         const menu = container.querySelector('.device-menu');
+        document.querySelectorAll('.device-menu:not(.hidden)').forEach(m => {
+            if (m !== menu) {
+                m.classList.add('hidden');
+            }
+        });
         menu.classList.toggle('hidden');
     }
 
