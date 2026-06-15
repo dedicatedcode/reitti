@@ -49,7 +49,6 @@
                             <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
                                 <label for="gpx-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="gpx-device-select">
-                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
                                     <option th:each="device : ${devices}"
                                             th:value="${device.id}"
                                             th:text="${device.name}">Device Name</option>
@@ -84,7 +83,6 @@
                             <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
                                 <label for="geojson-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="geojson-device-select">
-                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
                                     <option th:each="device : ${devices}"
                                             th:value="${device.id}"
                                             th:text="${device.name}">Device Name</option>
@@ -117,7 +115,6 @@
                             <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
                                 <label for="timeline-android-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="timeline-android-device-select">
-                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
                                     <option th:each="device : ${devices}"
                                             th:value="${device.id}"
                                             th:text="${device.name}">Device Name</option>
@@ -150,7 +147,6 @@
                             <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
                                 <label for="timeline-ios-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="timeline-ios-device-select">
-                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
                                     <option th:each="device : ${devices}"
                                             th:value="${device.id}"
                                             th:text="${device.name}">Device Name</option>
@@ -182,7 +178,6 @@
                             <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
                                 <label for="records-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="records-device-select">
-                                    <option value="" th:text="#{upload.select.main_device}">Main Device (no device)</option>
                                     <option th:each="device : ${devices}"
                                             th:value="${device.id}"
                                             th:text="${device.name}">Device Name</option>
