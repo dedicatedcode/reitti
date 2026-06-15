@@ -124,15 +124,20 @@ public class TimelineController {
             } else {
                 currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
             }
-            enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap)
-                    .map(d -> new DeviceTimelineData(d.id(),
-                                                     d.name(),
-                                                     this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
-                                                     this.avatarService.generateInitials(d.name()),
-                                                     d.color(),
-                                                     String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
-                                                     String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
-                    .toList();
+            if (this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap).count() < 2) {
+                enabledDevices = Collections.emptyList();
+            } else {
+                enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream()
+                        .filter(Device::showOnMap)
+                        .map(d -> new DeviceTimelineData(d.id(),
+                                                         d.name(),
+                                                         this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
+                                                         this.avatarService.generateInitials(d.name()),
+                                                         d.color(),
+                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
+                                                         String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
+                        .toList();
+            }
         } else {
             currentUserEntries = Collections.emptyList();
             enabledDevices = Collections.emptyList();
