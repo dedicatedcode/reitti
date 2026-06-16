@@ -65,7 +65,7 @@ public class DeviceSettingsController {
         model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
         model.addAttribute("devices", deviceJdbcService.getAll(user).stream()
                 .map(d -> new DeviceDTO(d.id(), d.name(), d.color(),
-                                        createAvatarUrl(user, d), avatarService.generateInitials(d.name()), d.enabled(), d.showOnMap(), d.defaultDevice(),
+                                        createAvatarUrl(user, d), avatarService.generateInitials(d.name()), d.enabled(), d.showOnMap(), d.showAvatarOnMap(), d.defaultDevice(),
                         adjustInstant(d.createdAt(), timezone), adjustInstant(d.updatedAt(), timezone)))
                 .toList());
         return "settings/devices";
@@ -88,7 +88,7 @@ public class DeviceSettingsController {
         model.addAttribute("device",
                            new DeviceDTO(device.id(), device.name(), device.color(),
                                          createAvatarUrl(user, device), avatarService.generateInitials(device.name()),
-                                         device.enabled(), device.showOnMap(), device.defaultDevice(),
+                                         device.enabled(), device.showOnMap(), device.showAvatarOnMap(), device.defaultDevice(),
                                          adjustInstant(device.createdAt(), timezone), adjustInstant(device.updatedAt(), timezone)));
         boolean hasAvatar = this.avatarService.getInfo(user.getId(), device.id()).isPresent();
         model.addAttribute("hasAvatar", hasAvatar);
@@ -102,8 +102,8 @@ public class DeviceSettingsController {
                                @RequestParam String color,
                                @RequestParam(required = false, defaultValue = "false") boolean enabled,
                                @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
+                               @RequestParam(required = false, defaultValue = "false") boolean showAvatarOnMap,
                                @RequestParam(required = false) String defaultAvatar,
-                               @RequestParam(required = false) String removeAvatar,
                                @RequestParam(required = false) MultipartFile avatar,
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                Model model) {
@@ -114,6 +114,7 @@ public class DeviceSettingsController {
                     name,
                     enabled,
                     showOnMap,
+                    showAvatarOnMap,
                     color,
                     false,
                     now,
@@ -148,6 +149,7 @@ public class DeviceSettingsController {
                                @RequestParam String color,
                                @RequestParam(required = false, defaultValue = "false") boolean enabled,
                                @RequestParam(required = false, defaultValue = "false") boolean showOnMap,
+                               @RequestParam(required = false, defaultValue = "false") boolean showAvatarOnMap,
                                @RequestParam(required = false) String defaultAvatar,
                                @RequestParam(required = false) String removeAvatar,
                                @RequestParam(required = false) MultipartFile avatar,
@@ -165,6 +167,7 @@ public class DeviceSettingsController {
                     name,
                     enabled,
                     showOnMap,
+                    showAvatarOnMap,
                     color,
                     existingDevice.defaultDevice(),
                     existingDevice.createdAt(),
@@ -205,6 +208,7 @@ public class DeviceSettingsController {
                     device.name(),
                     !device.enabled(),
                     device.showOnMap(),
+                    device.showAvatarOnMap(),
                     device.color(),
                     device.defaultDevice(),
                     device.createdAt(),
@@ -335,7 +339,9 @@ public class DeviceSettingsController {
     }
 
     public record DeviceDTO(Long id, String name, String color, String avatarUrl, String avatarFallback,
-                            boolean enabled, boolean showOnMap,
+                            boolean enabled,
+                            boolean showOnMap,
+                            boolean showAvatar,
                             boolean defaultDevice,
                             LocalDateTime createdAt, LocalDateTime updatedAt) {
     }
@@ -343,7 +349,7 @@ public class DeviceSettingsController {
     private void addDevicesToModel(User user, ZoneId timezone, Model model) {
         List<Device> devices = deviceJdbcService.getAll(user);
         model.addAttribute("devices", devices.stream()
-                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), createAvatarUrl(user, d), avatarService.generateInitials(d.name()), d.enabled(), d.showOnMap(), d.defaultDevice(),
+                .map(d -> new DeviceDTO(d.id(), d.name(), d.color(), createAvatarUrl(user, d), avatarService.generateInitials(d.name()), d.enabled(), d.showOnMap(), d.showAvatarOnMap(), d.defaultDevice(),
                         adjustInstant(d.createdAt(), timezone), adjustInstant(d.updatedAt(), timezone)))
                 .toList());
         model.addAttribute("defaultColors", getDefaultColors());

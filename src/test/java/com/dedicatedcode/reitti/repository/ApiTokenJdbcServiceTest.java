@@ -208,6 +208,6 @@ class ApiTokenJdbcServiceTest {
                 name, user.getId(), true, false, "#ffaa00", Timestamp.from(now), Timestamp.from(now), 0L
         );
         Long id = jdbcTemplate.queryForObject("SELECT id FROM devices WHERE name = ?", Long.class, name);
-        return new Device(id, name, true, false, "#ffaa00", false, now, now, 0L);
+        return new Device(id, name, true, false, false, "#ffaa00", false, now, now, 0L);
     }
 }

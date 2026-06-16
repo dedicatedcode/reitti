@@ -630,7 +630,7 @@ class MapRenderer {
                 }
             }
 
-            if (latestLocation && userConfig) {
+            if (latestLocation && userConfig?.showAvatar) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID
                     latestLocation.latitude, 
@@ -1574,7 +1574,6 @@ class MapRenderer {
      */
     updateAvatarPositions() {
         const activeUserIds = new Set();
-
         // Update existing markers or create new ones
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;

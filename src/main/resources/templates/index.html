@@ -306,8 +306,6 @@
         // Normal mode: only show avatars if the selected date is today
         const today = getCurrentLocalDate(); // e.g. "2023-06-01"
         const selectedStart = currentDateRange?.startDate;
-        // Assume selected date is today if startDate equals today or if range includes today?
-        // Simpler: only when the selected date (single day) is today.
         const isSingleToday = selectedStart === today && (!currentDateRange?.endDate || currentDateRange.endDate === today);
 
         if (!isSingleToday) {
@@ -315,11 +313,9 @@
             return;
         }
 
-        // Compute today's range in UTC seconds
         const todayStart = Math.floor(new Date(today + 'T00:00:00').getTime());
         const todayEnd = todayStart + 86400000; // 24 hours
 
-        // Only show avatars for managers with data inside today
         mapRenderer.enableAvatars(todayStart, todayEnd);
     }
 
@@ -544,11 +540,15 @@
         menu.classList.toggle('hidden');
     }
 
-    function enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl) {
+    function enableDeviceGpsDataManager(userId, deviceId, displayName, color, avatarUrl, avatarFallback, showAvatar, metaDataUrl, streamUrl) {
         const config = {
             id: `${userId}_${deviceId}`,
             respectBounds: true,
             color: color,
+            avatarUrl: avatarUrl,
+            avatarFallback: avatarFallback,
+            showAvatar: showAvatar,
+            displayName: displayName,
             map: {
                 metaDataUrl: metaDataUrl,
                 streamUrl: streamUrl,
@@ -562,10 +562,14 @@
         document.querySelectorAll('.device-header').forEach(checkbox => {
             const userId = checkbox.dataset.userId;
             const deviceId = checkbox.dataset.deviceId;
+            const displayName = checkbox.dataset.displayName;
             const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
             const streamUrl = checkbox.dataset.deviceStreamUrl;
             const color = checkbox.dataset.deviceColor;
-            enableDeviceGpsDataManager(userId, deviceId, color, metaDataUrl, streamUrl);
+            const avatarUrl = checkbox.dataset.avatarUrl;
+            const avatarFallback = checkbox.dataset.avatarFallback;
+            const showAvatar = checkbox.dataset.showAvatar;
+            enableDeviceGpsDataManager(userId, deviceId, displayName, color, avatarUrl, avatarFallback, showAvatar, metaDataUrl, streamUrl);
         });
     }
 
@@ -807,6 +811,7 @@
                     color: container.dataset.baseColor,
                     avatarUrl: container.dataset.userAvatarUrl,
                     avatarFallback: container.dataset.avatarFallback,
+                    showAvatar: true,
                     displayName: container.dataset.displayName,
                     map: {
                         metaDataUrl: container.dataset.locationMetadataUrl,

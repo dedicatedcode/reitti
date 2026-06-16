@@ -130,6 +130,7 @@ public class TimelineController {
                                                          d.name(),
                                                          this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
                                                          this.avatarService.generateInitials(d.name()),
+                                                         d.enabled(),
                                                          d.color(),
                                                          String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
                                                          String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))

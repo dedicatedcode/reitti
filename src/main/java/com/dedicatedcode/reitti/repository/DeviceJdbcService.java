@@ -27,6 +27,7 @@ public class DeviceJdbcService {
             rs.getString("name"),
             rs.getBoolean("enabled"),
             rs.getBoolean("show_on_map"),
+            rs.getBoolean("show_avatar_on_map"),
             rs.getString("color"),
             rs.getBoolean("default_device"),
             rs.getTimestamp("created_at").toInstant(),
@@ -44,8 +45,8 @@ public class DeviceJdbcService {
 
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO devices (user_id, name, color, enabled, show_on_map, default_device, created_at, updated_at, version) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                    "INSERT INTO devices (user_id, name, color, enabled, show_on_map, show_avatar_on_map, default_device, created_at, updated_at, version) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, user.getId());
@@ -53,10 +54,11 @@ public class DeviceJdbcService {
             ps.setString(3, device.color());
             ps.setBoolean(4, device.enabled());
             ps.setBoolean(5, device.showOnMap());
-            ps.setBoolean(6, device.defaultDevice());
-            ps.setTimestamp(7, Timestamp.from(device.createdAt()));
-            ps.setTimestamp(8, Timestamp.from(device.updatedAt()));
-            ps.setLong(9, 1L);
+            ps.setBoolean(6, device.showAvatarOnMap());
+            ps.setBoolean(7, device.defaultDevice());
+            ps.setTimestamp(8, Timestamp.from(device.createdAt()));
+            ps.setTimestamp(9, Timestamp.from(device.updatedAt()));
+            ps.setLong(10, 1L);
             return ps;
         }, keyHolder);
 
@@ -66,6 +68,7 @@ public class DeviceJdbcService {
                 device.name(),
                 device.enabled(),
                 device.showOnMap(),
+                device.showAvatarOnMap(),
                 device.color(),
                 device.defaultDevice(),
                 device.createdAt(),
@@ -77,13 +80,14 @@ public class DeviceJdbcService {
     @CacheEvict(value = "devices", allEntries = true)
     public Device update(Device device, User user) {
         int updated = jdbcTemplate.update(
-                "UPDATE devices SET name = ?, color = ?, default_device = ?, enabled = ?, show_on_map = ?, updated_at = ?, version = version + 1 " +
+                "UPDATE devices SET name = ?, color = ?, default_device = ?, enabled = ?, show_on_map = ?, show_avatar_on_map = ?, updated_at = ?, version = version + 1 " +
                         "WHERE id = ? AND user_id = ?",
                 device.name(),
                 device.color(),
                 device.defaultDevice(),
                 device.enabled(),
                 device.showOnMap(),
+                device.showAvatarOnMap(),
                 Timestamp.from(Instant.now()),
                 device.id(),
                 user.getId()
@@ -98,6 +102,7 @@ public class DeviceJdbcService {
                 device.name(),
                 device.enabled(),
                 device.showOnMap(),
+                device.showAvatarOnMap(),
                 device.color(),
                 device.defaultDevice(),
                 device.createdAt(),

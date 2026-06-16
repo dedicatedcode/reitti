@@ -185,6 +185,13 @@
                                 <span class="label-text" th:text="#{devices.showOnMap.label}">Show on Map</span>
                             </label>
                         </div>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="showAvatar" id="deviceShowAvatar" th:checked="${device?.showAvatar() != false}">
+                            <label data-testid="showAvatarCheckbox" for="deviceShowAvatar" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{devices.showAvatar.label}">Show on Map</span>
+                            </label>
+                        </div>
                         <div class="form-group">
                             <h3 th:text="#{devices.avatar.label}">Profile Picture</h3>
 

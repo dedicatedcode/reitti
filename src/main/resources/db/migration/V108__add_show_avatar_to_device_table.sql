@@ -1,0 +1,1 @@
+ALTER TABLE devices ADD COLUMN show_avatar_on_map BOOLEAN DEFAULT TRUE;
