@@ -11,12 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -24,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class UserSseEmitterService implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
     private final ReittiIntegrationService reittiIntegrationService;
-    private final Map<User, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+    private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
     public UserSseEmitterService(ReittiIntegrationService reittiIntegrationService) {
         this.reittiIntegrationService = reittiIntegrationService;
@@ -32,7 +27,7 @@ public class UserSseEmitterService implements SmartLifecycle {
 
     public SseEmitter addEmitter(User user) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        userEmitters.computeIfAbsent(user, _ -> new CopyOnWriteArraySet<>()).add(emitter);
+        userEmitters.computeIfAbsent(user.getId(), _ -> new CopyOnWriteArraySet<>()).add(emitter);
         emitter.onCompletion(() -> {
             log.debug("SSE connection completed for user: [{}]", user);
             removeEmitter(user, emitter);
@@ -53,12 +48,12 @@ public class UserSseEmitterService implements SmartLifecycle {
         } catch (IOException e) {
             log.error("Unable to send initial event for user [{}]", user, e);
         }
-        log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user).size());
+        log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
         return emitter;
     }
 
     public void sendEventToUser(User user, SSEEvent eventData) {
-        Set<SseEmitter> emitters = userEmitters.get(user);
+        Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
                 try {
@@ -74,14 +69,14 @@ public class UserSseEmitterService implements SmartLifecycle {
     }
 
     private void removeEmitter(User user, SseEmitter emitter) {
-        Set<SseEmitter> emitters = userEmitters.get(user);
+        Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             emitters.remove(emitter);
             if (emitters.isEmpty()) {
-                    userEmitters.remove(user);
+                    userEmitters.remove(user.getId());
                     reittiIntegrationService.unsubscribeFromIntegrations(user);
                 }
-            log.info("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.containsKey(user) ? userEmitters.get(user).size() : 0);
+            log.info("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
         }
     }
 
@@ -106,6 +101,7 @@ public class UserSseEmitterService implements SmartLifecycle {
         public TaskData(User user, SSEEvent eventData) {
             this(user, eventData, null,  null);
         }
+
         public TaskData(User user, SSEEvent eventData, UUID jobId, UUID parentJobId) {
             super(jobId, parentJobId);
             this.user = user;

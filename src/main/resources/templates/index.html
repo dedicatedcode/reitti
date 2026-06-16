@@ -1193,13 +1193,11 @@
         }
     }
 
-    // Metadata Overlay
     function openMetadataOverlay() {
         document.getElementById('metadata-overlay').classList.remove('hidden');
     }
     function closeMetadataOverlay() {
         document.getElementById('metadata-overlay').classList.add('hidden');
-        // Optionally clear the content to stop any pending requests
         document.getElementById('metadata-overlay-content').innerHTML = '';
     }
     document.addEventListener('keydown', function(e) {

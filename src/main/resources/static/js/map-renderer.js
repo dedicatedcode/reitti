@@ -630,7 +630,7 @@ class MapRenderer {
                 }
             }
 
-            if (latestLocation && userConfig?.showAvatar) {
+            if (latestLocation && userConfig?.showAvatar && this.avatarMarkers.get(manager.id) == null) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID
                     latestLocation.latitude, 
@@ -1049,38 +1049,6 @@ class MapRenderer {
         ];
     }
 
-    _calculatePosition(d, currentTime) {
-            const timeBuffer = d.attributes.getTimestamps.value;
-            const pathBuffer = d.attributes.getPath.value;
-
-            // 1. Derive total points directly from the buffer size
-            const stride = 6;
-            const totalPoints = timeBuffer.length / stride;
-            const timeIndex = this.viewState.aggregated ? 5 : 3;
-
-            let bestIdx = 0;
-
-            // 2. Iterate based on the physical size of the buffer
-            for (let i = 0; i < totalPoints; i++) {
-                // Calculate timestamp position
-                const time = timeBuffer[i * stride + timeIndex];
-
-                // Safety: If the buffer has gaps or invalid data, skip
-                if (time === undefined || isNaN(time)) continue;
-
-                if (time <= currentTime) {
-                    bestIdx = i;
-                } else {
-                    // Once we hit the future, stop searching
-                    break;
-                }
-            }
-
-            const offset = bestIdx * stride;
-            const pos = [pathBuffer[offset], pathBuffer[offset + 1], pathBuffer[offset + 2]];
-
-            return pos;
-    }
     async _waitForIdle() {
         if (this.map.loaded() && !this.map.isMoving()) {
             return; // Already idle, resolve immediately
@@ -1505,9 +1473,7 @@ class MapRenderer {
         const marker = new maplibregl.Marker({
             element: container,
             anchor: 'center'
-        })
-            .setLngLat([lng, lat])
-            .addTo(this.map);
+        }).setLngLat([lng, lat]).addTo(this.map);
 
         // Store additional data with the marker for updates
         marker._avatarData = {
@@ -1673,6 +1639,7 @@ class MapRenderer {
      */
     removeAvatarMarkers() {
         this.avatarMarkers.forEach(marker => {
+            debugger
             marker.remove();
         });
         this.avatarMarkers.clear();

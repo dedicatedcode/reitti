@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.NotificationData;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
@@ -14,6 +15,7 @@ import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.TimeRange;
 import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,7 @@ public class UserNotificationService {
     public void newTrips(User user, List<Trip> trips) {
         newTrips(user,  trips, null);
     }
+
     public void newTrips(User user, List<Trip> trips, String previewId) {
         SSEType eventType = SSEType.TRIPS;
         log.debug("New trips for user [{}]", user.getId());
@@ -86,6 +89,16 @@ public class UserNotificationService {
         notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
     }
+
+    public void newLocationData(User user, Device device, TimeRange timeRange) {
+        SSEType eventType = SSEType.RAW_DATA;
+        log.debug("New RawLocationPoints for user [{}] and device [{}]", user.getId(), device.id());
+        Set<LocalDate> dates = calculateAffectedDates(timeRange);
+        sendToQueue(user, dates, eventType, null);
+        notifyOtherUsers(user, eventType, dates);
+        notifyReittiSubscriptions(user, eventType, dates);
+    }
+
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
@@ -139,5 +152,19 @@ public class UserNotificationService {
             return result;
         }
     }
+
+
+    private Set<LocalDate> calculateAffectedDates(TimeRange timeRange) {
+        Set<LocalDate> result = new HashSet<>();
+        if (timeRange != null && timeRange.start() != null && timeRange.end() != null) {
+            LocalDate startDate = timeRange.start().atZone(ZoneId.of("Z")).toLocalDate();
+            LocalDate endDate = timeRange.end().atZone(ZoneId.of("Z")).toLocalDate();
+            LocalDate current = startDate;
+            while (!current.isAfter(endDate)) {
+                result.add(current);
+                current = current.plusDays(1);
+            }
+        }
+        return result;    }
 
 }

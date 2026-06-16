@@ -209,7 +209,6 @@ class LiveModeController {
     }
 
     _scheduleTimelineReload(eventData) {
-        // Add event to pending events
         this.pendingEvents.push(eventData);
 
         if (this.firstEventTime === null) {
