@@ -1020,7 +1020,8 @@
                     } else {
                         element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
                     }
-                    element.classList.remove('hidden')                }
+                    element.classList.remove('hidden')
+                }
             }
         });
 
@@ -1048,7 +1049,7 @@
                 endDate: window.horizontalDatePicker.formatDate(endDate)
             };
             updateUrlWithDate(currentDateRange);
-            // Trigger HTMX reload of timeline
+            updateTodayFabVisibility();
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
         });
 
