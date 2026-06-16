@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
@@ -22,14 +23,18 @@ public class PromotionJobHandler {
     private final LocationPointStagingService stagingService;
     private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository metadataRepository;
+    private final UserNotificationService userNotificationService;
     private final Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask;
 
     public PromotionJobHandler(LocationPointStagingService stagingService,
-                               JobSchedulingService jobSchedulingService, JobMetadataRepository metadataRepository,
+                               JobSchedulingService jobSchedulingService,
+                               JobMetadataRepository metadataRepository,
+                               UserNotificationService userNotificationService,
                                Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask) {
         this.stagingService = stagingService;
         this.jobSchedulingService = jobSchedulingService;
         this.metadataRepository = metadataRepository;
+        this.userNotificationService = userNotificationService;
         this.locationDataCleanupTask = locationDataCleanupTask;
     }
 
@@ -49,6 +54,7 @@ public class PromotionJobHandler {
         metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
 
         if (promote > 0) {
+            this.userNotificationService.newLocationData(user, data.device, timeRange);
             JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
                     .user(user)
                     .jobType(JobType.LOCATION_DATA_CLEANUP)

@@ -124,6 +124,7 @@
     <div class="time" id="auto-update-time"></div>
 </div>
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
+
 <div class="timeline">
     <div class="timeline-container"
          th:hx-get="@{/timeline/content/range}"
@@ -133,6 +134,7 @@
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
 </div>
+
 <div id="auto-update-user-selection" th:hx-get="@{/timeline/user-selection}" class="hidden"
      hx-trigger="dateChanged  from:body"
      hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}">
@@ -575,18 +577,31 @@
 
     function followUser(btn) {
         const userHeader = btn.closest('.user-header');
+        const rawUserId = userHeader.getAttribute('data-user-id');
         const badge = userHeader.querySelector('.user-follow-badge');
         const wasSelected = badge.classList.contains('active');
+
+        // Deselect all badges
         document.querySelectorAll('.user-header .user-follow-badge').forEach(element => {
             element.classList.remove('active');
         });
 
-        const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${userHeader.dataset.userId}"] .user-follow-badge`);
+        // Uncheck all checkboxes
+        document.querySelectorAll('.user-follow-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
 
         if (!wasSelected) {
+            // Check every checkbox that belongs to this user
+            document.querySelectorAll(`.user-follow-checkbox[data-user-id="${rawUserId}"]`).forEach(cb => {
+                cb.checked = true;
+            });
+            const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${userHeader.dataset.userId}"] .user-follow-badge`);
+            // Activate all badges for this user
             followedBadge.forEach(badge => badge.classList.add('active'));
-            mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
-            localStorage.setItem('followedUser', userHeader.getAttribute('data-user-id'));
+
+            mapRenderer.setSelectedManager(rawUserId);
+            localStorage.setItem('followedUser', rawUserId);
         } else {
             mapRenderer.setSelectedManager(null);
             localStorage.removeItem('followedUser');
@@ -1020,7 +1035,8 @@
                     } else {
                         element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
                     }
-                    element.classList.remove('hidden')                }
+                    element.classList.remove('hidden')
+                }
             }
         });
 
@@ -1048,7 +1064,7 @@
                 endDate: window.horizontalDatePicker.formatDate(endDate)
             };
             updateUrlWithDate(currentDateRange);
-            // Trigger HTMX reload of timeline
+            updateTodayFabVisibility();
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
         });
 
@@ -1177,13 +1193,11 @@
         }
     }
 
-    // Metadata Overlay
     function openMetadataOverlay() {
         document.getElementById('metadata-overlay').classList.remove('hidden');
     }
     function closeMetadataOverlay() {
         document.getElementById('metadata-overlay').classList.add('hidden');
-        // Optionally clear the content to stop any pending requests
         document.getElementById('metadata-overlay-content').innerHTML = '';
     }
     document.addEventListener('keydown', function(e) {

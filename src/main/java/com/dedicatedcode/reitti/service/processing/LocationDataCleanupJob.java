@@ -56,7 +56,7 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 1,4, "Density normalization started ...");
         TimeRange densityTimeRange = excessDensityHandler.handleExcess(user, device, new TimeRange(start, end));
         this.metadataRepository.updateProgress(jobId, 2,4, "Update user data started ...");
-        userSettingsJdbcService.updateNewestData(user, end);
+        this.userSettingsJdbcService.updateNewestData(user, end);
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device.defaultDevice()) {

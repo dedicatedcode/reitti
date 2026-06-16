@@ -34,6 +34,7 @@
                         <div class="slide-reveal-container">
                             <input type="checkbox" class="user-follow-checkbox"
                                    th:id="${'user-follow-' + userData.userId}"
+                                   th:data-user-id="${userData.userId}"
                                    onchange="followUser(this)">
                             <label th:for="${'user-follow-' + userData.userId}" class="slide-reveal">
                                 <span class="slide-box"></span>

@@ -2104,11 +2104,18 @@ button:disabled {
 
 .user-timeline-selection {
     padding-left: 42px;
+    line-height: 1.5rem;
 }
 
+#auto-update-user-selection .device-header,
 #auto-update-user-selection .user-header {
     text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
 }
+
+#auto-update-user-selection .device-menu {
+    top: -54px;
+}
+
 #auto-update-user-selection .user-header i {
     text-shadow: none;
 }
