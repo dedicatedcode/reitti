@@ -114,31 +114,14 @@ public class TimelineController {
         boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
 
         List<? extends TimelineEntry> currentUserEntries;
-        List<DeviceTimelineData> enabledDevices;
         if (loadTimeline && (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS"))) {
             if (shouldAggregate) {
                 currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone);
             } else {
                 currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
             }
-            if (this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap).count() < 2) {
-                enabledDevices = Collections.emptyList();
-            } else {
-                enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream()
-                        .filter(Device::showOnMap)
-                        .map(d -> new DeviceTimelineData(d.id(),
-                                                         d.name(),
-                                                         this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
-                                                         this.avatarService.generateInitials(d.name()),
-                                                         d.enabled(),
-                                                         d.color(),
-                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
-                                                         String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId())))
-                        .toList();
-            }
         } else {
             currentUserEntries = Collections.emptyList();
-            enabledDevices = Collections.emptyList();
         }
 
         UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
@@ -150,6 +133,22 @@ public class TimelineController {
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
 
+        List<DeviceTimelineData> enabledDevices = Collections.emptyList();
+        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
+            if (this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap).count() >= 2) {
+                enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream()
+                        .filter(Device::showOnMap)
+                        .map(d -> new DeviceTimelineData(d.id(),
+                                                         d.name(),
+                                                         this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
+                                                         this.avatarService.generateInitials(d.name()),
+                                                         d.enabled(),
+                                                         d.color(),
+                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
+                                                         loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId()) : null))
+                        .toList();
+            }
+        }
         return new UserTimelineData(user.getId() + "",
                                     user.getDisplayName(),
                                     currentUserInitials,
