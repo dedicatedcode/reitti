@@ -29,7 +29,7 @@ public class ApiTokenJdbcService {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version,
-                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
+                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.show_avatar_on_map as device_show_avatar_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             LEFT JOIN devices d ON at.device_id = d.id
@@ -47,7 +47,7 @@ public class ApiTokenJdbcService {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version,
-                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
+                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.show_avatar_on_map as device_show_avatar_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             LEFT JOIN devices d ON at.device_id = d.id
@@ -61,7 +61,7 @@ public class ApiTokenJdbcService {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.version as user_version,
-                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
+                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.show_avatar_on_map as device_show_avatar_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             LEFT JOIN devices d ON at.device_id = d.id
@@ -156,6 +156,7 @@ public class ApiTokenJdbcService {
                     rs.getString("device_name"),
                     rs.getBoolean("device_enabled"),
                     rs.getBoolean("device_show_on_map"),
+                    rs.getBoolean("device_show_avatar_on_map"),
                     rs.getString("device_color"),
                     rs.getBoolean("default_device"),
                     rs.getTimestamp("device_created_at").toInstant(),

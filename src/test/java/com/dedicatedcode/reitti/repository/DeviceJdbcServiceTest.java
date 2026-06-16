@@ -35,6 +35,7 @@ class DeviceJdbcServiceTest {
                 "Test Device",
                 true,
                 true,
+                true,
                 "#FF5733",
                 false,
                 Instant.now(),
@@ -65,6 +66,7 @@ class DeviceJdbcServiceTest {
                 "Original Name",
                 true,
                 true,
+                true,
                 "#FF5733",
                 false,
                 Instant.now(),
@@ -76,6 +78,7 @@ class DeviceJdbcServiceTest {
         Device updatedDevice = new Device(
                 saved.id(),
                 "Updated Name",
+                false,
                 false,
                 false,
                 "#00FF00",
@@ -96,6 +99,7 @@ class DeviceJdbcServiceTest {
         assertThat(foundDevice.color()).isEqualTo("#00FF00");
         assertThat(foundDevice.enabled()).isFalse();
         assertThat(foundDevice.showOnMap()).isFalse();
+        assertThat(foundDevice.showAvatarOnMap()).isFalse();
         assertThat(foundDevice.version()).isEqualTo(saved.version() + 1);
     }
 
@@ -106,6 +110,7 @@ class DeviceJdbcServiceTest {
         Device device = new Device(
                 null,
                 "To Delete",
+                true,
                 true,
                 true,
                 "#FF5733",
@@ -133,6 +138,7 @@ class DeviceJdbcServiceTest {
                 "Enabled Device",
                 true,
                 true,
+                true,
                 "#FF5733",
                 false,
                 Instant.now(),
@@ -143,6 +149,7 @@ class DeviceJdbcServiceTest {
                 null,
                 "Disabled Device",
                 false,
+                true,
                 true,
                 "#00FF00",
                 false,
@@ -168,6 +175,7 @@ class DeviceJdbcServiceTest {
         Device device = new Device(
                 null,
                 "Token Device",
+                true,
                 true,
                 true,
                 "#FF5733",
@@ -197,6 +205,7 @@ class DeviceJdbcServiceTest {
         Device device = new Device(
                 null,
                 "Some Device",
+                true,
                 true,
                 true,
                 "#FF5733",

@@ -211,7 +211,7 @@ class DeviceSettingsControllerTest {
     }
 
     private Device createDevice(String name, String color) {
-        Device device = new Device(null, name, true, true, color, false,
+        Device device = new Device(null, name, true, true, true, color, false,
                                    java.time.Instant.now(), java.time.Instant.now(), 1L);
         return deviceJdbcService.save(device, admin);
     }

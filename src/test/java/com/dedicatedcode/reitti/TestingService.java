@@ -172,6 +172,7 @@ public class TestingService {
                 "test-device_" + UUID.randomUUID(),
                 true,
                 true,
+                true,
                 "#3e3e3e",
                 false,
                 now,

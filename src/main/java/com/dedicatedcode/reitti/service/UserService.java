@@ -93,7 +93,7 @@ public class UserService {
 
     private void createDefaultDeviceForUser(User createdUser) {
         ApiToken token = this.apiTokenService.createToken(createdUser, "Default");
-        Device saved = this.deviceJdbcService.save(new Device(null, "Default", true, true, "#f1ba63", true, Instant.now(), Instant.now(), 0L), createdUser);
+        Device saved = this.deviceJdbcService.save(new Device(null, "Default", true, true, true, "#f1ba63", true, Instant.now(), Instant.now(), 0L), createdUser);
         token = token.withDevice(saved);
         this.apiTokenJdbcService.save(token);
     }
