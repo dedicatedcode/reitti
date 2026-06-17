@@ -801,6 +801,12 @@ tr:hover {
     opacity: 1;
 }
 
+.form-description {
+    color: var(--color-text-white);
+    font-size: 0.9em;
+    margin-top: 5px;
+    font-style: italic;
+}
 
 /* Alerts */
 .alert {
