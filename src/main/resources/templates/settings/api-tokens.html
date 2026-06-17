@@ -52,7 +52,7 @@
                             <td th:text="${#temporals.format(token.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
                             <td th:text="${token.lastUsedAt() != null ? #temporals.format(token.lastUsedAt(), 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
                             <td>
-                                <th:block  th:if="${token.deviceId() != null && devices.size() > 1}">
+                                <th:block  th:if="${token.deviceId() != null}">
                                     <span class="token-device-linked">
                                         <a th:href="@{/settings/devices}" class="btn" th:text="#{tokens.link.to.device}">View Device</a>
                                     </span>
@@ -66,7 +66,7 @@
                                     </span>
                                 </th:block>
 
-                                <th:block th:if="${token.deviceId() == null && devices.size() > 1}">
+                                <th:block th:if="${token.deviceId() == null}">
                                     <button class="btn btn-primary"
                                             th:attr="hx-get=@{/settings/api-tokens/{id}/link-form(id=${token.id()})}"
                                             hx-target="closest td"

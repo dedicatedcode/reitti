@@ -23,7 +23,9 @@ public class ApiTokenService {
 
 
     public Optional<ApiToken> getToken(String token) {
-        return this.apiTokenJdbcService.findByToken(token);
+        return this.apiTokenJdbcService
+                .findByToken(token)
+                .map(this::updateLastUsed);
     }
 
     public Optional<User> getUserByToken(String token) {
