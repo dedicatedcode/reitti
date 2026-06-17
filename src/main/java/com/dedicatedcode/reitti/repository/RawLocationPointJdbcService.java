@@ -330,9 +330,9 @@ public class RawLocationPointJdbcService {
     public List<RawLocationPoint> findSimplifiedRouteForPeriod(
             User user,
             Instant startTime,
-            Instant endTime,
-            int maxPoints) {
+            Instant endTime) {
 
+        int maxPoints = 10000;
         // Calculate sampling interval based on time range and desired point count
         Duration period = Duration.between(startTime, endTime);
         long intervalMinutes = Math.max(1, period.toMinutes() / maxPoints);
