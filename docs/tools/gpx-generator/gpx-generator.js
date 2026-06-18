@@ -5,6 +5,7 @@ const TRACK_COLORS = [
 ];
 
 let tracks = [];            // { id, name, points:[ {lat,lng,originalLat,originalLng,timestamp,elevation,accuracy} ], color, collapsed, startTime }
+window.tracks = tracks;
 let currentTrackIndex = 0;
 let editModeEnabled = false;
 window.editModeEnabled = editModeEnabled;
@@ -126,6 +127,13 @@ function initMap() {
   map.on('mouseleave', 'points-circle', () => {
     map.getCanvas().style.cursor = '';
   });
+
+  // expose for tool integration
+  window.reittiMap = map;
+  window.gpxOnMapClick = onMapClick;
+  window.gpxOnMapMouseDown = onMapMouseDown;
+  window.gpxOnMapMouseUp = onMapMouseUp;
+  window.gpxOnMapMouseMove = onMapMouseMove;
 }
 
 function emptyFC() { return { type:'FeatureCollection', features:[] }; }
@@ -582,7 +590,7 @@ function togglePaintMode() {
 }
 function updatePaintButton() {
   const btn = document.getElementById('btnPaintMode');
-  if (!paintMode) btn.textContent = '🎨 Paint';
+  if (!paintMode) btn.textContent = ' 🎨 Paint';
   else if (paintActive) btn.textContent = '⏸ Painting';
   else btn.textContent = '▶ Paint Ready';
   btn.classList.toggle('active', paintMode);

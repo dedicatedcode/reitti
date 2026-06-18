@@ -509,7 +509,7 @@
 
     // selected‑point source data builder
     function updateSelectedPointsSource() {
-      const map = window.map;
+      const map = window.reittiMap || window.map; // fallback to DOM element just in case
       if (!map || !map.getSource || !map.getSource('selected-points')) return;
       const features = [];
       const set = window.selectedPoints;
@@ -530,6 +530,8 @@
 
     // ----- wire everything after map is available -----
     function initToolLayer(map) {
+      const overlay = document.getElementById('boxSelectOverlay');
+
       // selected‑points source & layer
       map.addSource('selected-points', {
         type: 'geojson',
@@ -547,13 +549,22 @@
         }
       });
 
+      // ---- capture original GPX handlers ----
+      const origClick = window.gpxOnMapClick || null;
+      const origDown  = window.gpxOnMapMouseDown || null;
+      const origUp    = window.gpxOnMapMouseUp || null;
+      const origMove  = window.gpxOnMapMouseMove || null;
+
+      if (origClick) map.off('click', origClick);
+      if (origDown)  map.off('mousedown', origDown);
+      if (origUp)    map.off('mouseup', origUp);
+      if (origMove)  map.off('mousemove', origMove);
+
       // ----- replace default click handler -----
-      const origClick = window.onMapClick;
-      map.off('click', origClick);
       map.on('click', function(e) {
         if (!window.editModeEnabled) {
           // view mode – keep original behaviour (pin, info)
-          origClick(e);
+          if (origClick) origClick(e);
           return;
         }
 
@@ -589,23 +600,17 @@
 
         // add point only when the "add point" tool is active
         if (window.currentTool === 'addpoint') {
-          origClick(e);
+          if (origClick) origClick(e);
         }
       });
 
       // ----- replace mousedown / mouseup / mousemove for drag & box select -----
-      const origDown = window.onMapMouseDown;
-      const origUp   = window.onMapMouseUp;
-      const origMove = window.onMapMouseMove;
-
-      map.off('mousedown', origDown);
-      map.off('mouseup',   origUp);
-      map.off('mousemove', origMove);
-
-      const overlay = document.getElementById('boxSelectOverlay');
-
       map.on('mousedown', function(e) {
-        if (!window.editModeEnabled) return;
+        if (!window.editModeEnabled) {
+          // delegate to original view‑mode drag handler
+          if (origDown) origDown(e);
+          return;
+        }
 
         // box‑select drag start
         if (window.currentTool === 'boxselect') {
@@ -634,28 +639,14 @@
         }
       });
 
-      map.on('mousemove', function(e) {
-        // box select rectangle
-        if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
-          const startPx = map.project(window.__boxStart);
-          const currPx  = map.project(e.lngLat);
-          const x = Math.min(startPx.x, currPx.x);
-          const y = Math.min(startPx.y, currPx.y);
-          const w = Math.abs(currPx.x - startPx.x);
-          const h = Math.abs(currPx.y - startPx.y);
-          overlay.style.left   = x + 'px';
-          overlay.style.top    = y + 'px';
-          overlay.style.width  = w + 'px';
-          overlay.style.height = h + 'px';
+      map.on('mouseup', function(e) {
+        if (!window.editModeEnabled) {
+          if (origUp) origUp(e);
+          return;
         }
 
-        // always delegate to original mousemove (preview, point‑hover etc.)
-        if (typeof origMove === 'function') origMove(e);
-      });
-
-      map.on('mouseup', function(e) {
         // finish box select
-        if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
+        if (window.__boxStart && window.currentTool === 'boxselect') {
           overlay.style.display = 'none';
           const sx = parseFloat(overlay.style.left) || 0;
           const sy = parseFloat(overlay.style.top) || 0;
@@ -681,17 +672,39 @@
         }
 
         // finish point drag
-        if (window.dragPoint && window.editModeEnabled) {
+        if (window.dragPoint) {
           // point already updated in real‑time by mousemove
           window.dragPoint = null;
           map.dragPan.enable();
         }
       });
+
+      map.on('mousemove', function(e) {
+        // box select rectangle
+        if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
+          const startPx = map.project(window.__boxStart);
+          const currPx  = map.project(e.lngLat);
+          const x = Math.min(startPx.x, currPx.x);
+          const y = Math.min(startPx.y, currPx.y);
+          const w = Math.abs(currPx.x - startPx.x);
+          const h = Math.abs(currPx.y - startPx.y);
+          overlay.style.left   = x + 'px';
+          overlay.style.top    = y + 'px';
+          overlay.style.width  = w + 'px';
+          overlay.style.height = h + 'px';
+        }
+
+        // always delegate to original mousemove (preview, point‑hover etc.)
+        if (typeof origMove === 'function') origMove(e);
+      });
+
+      // initial button visibility
+      updateToolButtonsVisibility();
     }
 
     // initialise once the map object exists
     function boot() {
-      const map = window.map;
+      const map = window.reittiMap;
       if (!map) return;
       function run() {
         if (map.loaded()) {
@@ -699,18 +712,17 @@
         } else {
           map.on('load', function() { initToolLayer(map); });
         }
-        // initial button visibility
         updateToolButtonsVisibility();
       }
       run();
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-      if (window.map) {
+      if (window.reittiMap) {
         boot();
       } else {
         var intv = setInterval(function() {
-          if (window.map) { clearInterval(intv); boot(); }
+          if (window.reittiMap) { clearInterval(intv); boot(); }
         }, 50);
       }
     });
