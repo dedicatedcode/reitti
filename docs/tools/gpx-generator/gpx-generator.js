@@ -7,6 +7,7 @@ const TRACK_COLORS = [
 let tracks = [];            // { id, name, points:[ {lat,lng,originalLat,originalLng,timestamp,elevation,accuracy} ], color, collapsed, startTime }
 let currentTrackIndex = 0;
 let editModeEnabled = false;
+window.editModeEnabled = editModeEnabled;
 let paintMode = false;
 let paintActive = false;
 let lastPaintTime = 0;
@@ -869,6 +870,7 @@ function downloadFile(content, filename, mime) {
 // ---- additional control functions -----------------------------------------
 function toggleEditMode() {
   editModeEnabled = !editModeEnabled;
+  window.editModeEnabled = editModeEnabled;
   const btn = document.getElementById('btnEditMode');
   btn.classList.toggle('active', editModeEnabled);
   btn.textContent = editModeEnabled ? '✎ Edit (on)' : '✎ Edit';
