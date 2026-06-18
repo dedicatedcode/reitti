@@ -690,7 +690,7 @@ label {
     box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
 }
 
-input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
+input[type="text"], input[type="password"], input[type="url"], input[type="number"], input[type="date"], input[type="datetime-local"], select, textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
