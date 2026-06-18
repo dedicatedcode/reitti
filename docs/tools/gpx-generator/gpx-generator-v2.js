@@ -222,7 +222,7 @@ function showPointInfo(props) {
     <div class="sel-info-row"><span class="k">Elev</span><span class="v">${props.elevation ? props.elevation.toFixed(1)+'m' : '-'}</span></div>
     <div class="sel-info-row"><span class="k">Acc</span><span class="v">${props.accuracy ? props.accuracy+'m' : '-'}</span></div>
     <div class="sel-info-actions">
-      <button class="btn sel-info-btn" onclick="deletePointFromInfo(${props.trackIndex},${props.pointIndex})">Delete</button>
+      <button class="btn btn-danger sel-info-btn" onclick="deletePointFromInfo(${props.trackIndex},${props.pointIndex})">Delete</button>
       <button class="btn sel-info-btn" onclick="centerOnPoint(${props.lat},${props.lng})">Center</button>
     </div>`;
 
