@@ -67,6 +67,27 @@ function initMap() {
       'line-width': 2,
       'line-dasharray': [4,2]
     }});
+
+    // Ensure overlays are visible above the map
+    const drawer = document.getElementById('gpxDrawer');
+    if (drawer) {
+      drawer.style.position = 'fixed';
+      drawer.style.zIndex = '50';
+      drawer.style.bottom = '12px';
+      drawer.style.left = '50%';
+      drawer.style.transform = 'translateX(-50%)';
+      drawer.style.maxWidth = '800px';
+      drawer.style.width = 'auto';
+    }
+
+    const pointInfo = document.getElementById('pointInfo');
+    if (pointInfo) pointInfo.style.zIndex = '60';
+
+    const pointsPanel = document.getElementById('pointsPanel');
+    if (pointsPanel) pointsPanel.style.zIndex = '40';
+
+    const mapCanvas = document.querySelector('#map .maplibregl-canvas');
+    if (mapCanvas) mapCanvas.style.zIndex = '0';
   });
 
   map.on('click', onMapClick);
@@ -102,11 +123,8 @@ function onMapClick(e) {
 
 function onMapMouseMove(e) {
   if (!map.loaded()) return;
-  if (paintMode && paintActive) {
-    lastMouseLngLat = e.lngLat;
-    return;
-  }
-  // preview line – guard against sources not yet loaded
+
+  // preview line
   const previewSource = map.getSource('preview');
   if (editModeEnabled && !paintMode) {
     const track = tracks[currentTrackIndex];
@@ -125,11 +143,16 @@ function onMapMouseMove(e) {
   } else {
     if (previewSource) previewSource.setData(emptyFC());
   }
-  // point hover → info panel (does not require sources)
-  const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
-  if (features.length) {
-    const f = features[0];
-    showPointInfo(f.properties);
+
+  // point hover – guard against layer not yet existing
+  if (map.getLayer('points-circle')) {
+    const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+    if (features.length) {
+      const f = features[0];
+      showPointInfo(f.properties);
+    } else {
+      hidePointInfo();
+    }
   } else {
     hidePointInfo();
   }
@@ -443,11 +466,11 @@ function handleGPXFiles(event) {
   event.target.value = '';
 }
 
-// Import GPX – same logic as before, but using addPoint with skipNoise/skipStops
+// Import GPX – group points by day and create separate tracks
 function parseAndImportGPX(content, filename) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(content,'text/xml');
-  const points = [];
+  const allPoints = [];
   doc.querySelectorAll('trkpt').forEach(pt => {
     const lat = parseFloat(pt.getAttribute('lat'));
     const lng = parseFloat(pt.getAttribute('lon'));
@@ -456,25 +479,50 @@ function parseAndImportGPX(content, filename) {
     let ts = new Date();
     if (timeEl) ts = new Date(timeEl.textContent) || ts;
     const ele = parseFloat(pt.querySelector('ele')?.textContent || '0');
-    points.push({lat,lng,timestamp:ts, elevation:ele});
+    allPoints.push({lat,lng,timestamp:ts, elevation:ele});
   });
-  if (!points.length) return;
-  points.sort((a,b)=>a.timestamp-b.timestamp);
-  // reuse first empty track if exists
-  let track = null;
-  if (tracks.length && tracks[0].points.length===0) {
-    track = tracks[0];
-    track.name = filename.replace('.gpx','');
-    track.startTime = points[0].timestamp;
-  } else {
-    track = createNewTrack(filename.replace('.gpx',''), points[0].timestamp);
-  }
-  points.forEach(p => addPoint(p.lat,p.lng,{
-    timestamp:p.timestamp, elevation:p.elevation,
-    skipNoise:true, skipStops:true, skipTimeUpdate:true, skipDayChangeCheck:true,
-  }));
+  if (!allPoints.length) return;
+  allPoints.sort((a,b)=>a.timestamp-b.timestamp);
+
+  // group by date
+  const days = {};
+  allPoints.forEach(p => {
+    const dateStr = p.timestamp.toISOString().split('T')[0];
+    if (!days[dateStr]) days[dateStr] = [];
+    days[dateStr].push(p);
+  });
+
+  const sortedDates = Object.keys(days).sort();
   const bounds = new maplibregl.LngLatBounds();
-  points.forEach(p => bounds.extend([p.lng,p.lat]));
+
+  sortedDates.forEach((dateStr, idx) => {
+    const dayPoints = days[dateStr];
+    dayPoints.sort((a,b)=>a.timestamp-b.timestamp);
+    const trackName = `${filename.replace('.gpx','')} - ${dateStr}`;
+
+    let track;
+    // reuse the first empty track for the very first day, otherwise create a new track
+    if (idx === 0 && tracks.length && tracks[0].points.length === 0) {
+      track = tracks[0];
+      track.name = trackName;
+      track.startTime = dayPoints[0].timestamp;
+    } else {
+      track = createNewTrack(trackName, dayPoints[0].timestamp);
+    }
+
+    dayPoints.forEach(p => {
+      addPoint(p.lat, p.lng, {
+        timestamp: p.timestamp,
+        elevation: p.elevation,
+        skipNoise: true,
+        skipStops: true,
+        skipTimeUpdate: true,
+        skipDayChangeCheck: true
+      });
+      bounds.extend([p.lng, p.lat]);
+    });
+  });
+
   map.fitBounds(bounds, {padding:40});
   updateAllLayers();
   updatePointsList();
