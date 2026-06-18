@@ -273,6 +273,16 @@
     #aboutModal .about-description a {
       font-weight: 600;
     }
+
+    /* box select overlay */
+    #boxSelectOverlay {
+      position: absolute;
+      border: 2px dashed rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.15);
+      pointer-events: none;
+      display: none;
+      z-index: 5;
+    }
   </style>
 </head>
 <body style="background: var(--bg); color: var(--ink);">
@@ -284,10 +294,9 @@
       <img src="/img/logo.svg" alt="Polku logo" height="24" style="vertical-align:middle;">
       <span style="font-weight:700; font-size:15px;">Polku</span>
     </a>
-    <button class="head-btn active" id="btnEditMode" onclick="toggleEditMode()">✎ Edit</button>
-    <button class="btn head-btn" data-tool="inspect" title="Inspect">Inspect</button>
-    <button class="btn head-btn" data-tool="select" title="Select">Select</button>
-    <button class="btn head-btn" data-tool="boxselect" title="Box select">Box</button>
+    <button class="head-btn active" id="btnEditMode" onclick="handleEditToggle()">✎ Edit</button>
+    <button class="btn head-btn" id="btnSelect" data-tool="select" title="Select" style="display:none" onclick="setTool('select')">Select</button>
+    <button class="btn head-btn" id="btnBoxSelect" data-tool="boxselect" title="Box select" style="display:none" onclick="setTool('boxselect')">Box</button>
     <div class="sep"></div>
     <button class="head-btn" onclick="document.getElementById('gpxFileInput').click()">📂 Import</button>
     <button class="head-btn" onclick="exportAll()">💾 Export</button>
@@ -297,7 +306,9 @@
   </div>
 </div>
 
-<div id="map" style="position:absolute; inset:0; top:50px; left:0; right:0; bottom:0;"></div>
+<div id="map" style="position:absolute; inset:0; top:50px; left:0; right:0; bottom:0;">
+  <div id="boxSelectOverlay"></div>
+</div>
 
 <!-- floating point info -->
 <div id="pointInfo" class="floating selection-info" style="display:none">
@@ -432,6 +443,252 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function() {
+    // ---------------------------------------------------------------
+    // Tool integration – runs after gpx-generator.js has initialised
+    // ---------------------------------------------------------------
+
+    // helpers
+    function getPointId(trackIdx, pointIdx) { return trackIdx + '-' + pointIdx; }
+
+    // selected set & tool state
+    window.selectedPoints = new Set();
+    window.currentTool = null;   // 'select' | 'boxselect'
+
+    const btnSelect = document.getElementById('btnSelect');
+    const btnBoxSelect = document.getElementById('btnBoxSelect');
+
+    function updateToolButtonsVisibility() {
+      const visible = window.editModeEnabled;
+      if (btnSelect) btnSelect.style.display = visible ? '' : 'none';
+      if (btnBoxSelect) btnBoxSelect.style.display = visible ? '' : 'none';
+    }
+
+    // wrap the original edit toggle so we can show/hide tool buttons
+    window.handleEditToggle = function() {
+      if (typeof window.toggleEditMode === 'function') {
+        window.toggleEditMode();
+      }
+      updateToolButtonsVisibility();
+    };
+
+    // active tool switching
+    window.setTool = function(tool) {
+      window.currentTool = tool;
+      if (btnSelect) btnSelect.classList.toggle('active', tool === 'select');
+      if (btnBoxSelect) btnBoxSelect.classList.toggle('active', tool === 'boxselect');
+      // hide box overlay when leaving box mode
+      if (tool !== 'boxselect') {
+        const ov = document.getElementById('boxSelectOverlay');
+        if (ov) ov.style.display = 'none';
+        window.__boxStart = null;
+      }
+    };
+
+    // selected‑point source data builder
+    function updateSelectedPointsSource() {
+      const map = window.map;
+      if (!map || !map.getSource || !map.getSource('selected-points')) return;
+      const features = [];
+      const set = window.selectedPoints;
+      const tracks = window.tracks || [];
+      tracks.forEach((track, ti) => {
+        track.points.forEach((p, pi) => {
+          if (set.has(getPointId(ti, pi))) {
+            features.push({
+              type: 'Feature',
+              properties: {},
+              geometry: { type: 'Point', coordinates: [p.lng, p.lat] }
+            });
+          }
+        });
+      });
+      map.getSource('selected-points').setData({ type: 'FeatureCollection', features });
+    }
+
+    // ----- wire everything after map is available -----
+    function initToolLayer(map) {
+      // selected‑points source & layer
+      map.addSource('selected-points', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+        id: 'selected-points-circle',
+        type: 'circle',
+        source: 'selected-points',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#f2c470',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#333'
+        }
+      });
+
+      // ----- replace default click handler -----
+      const origClick = window.onMapClick;
+      map.off('click', origClick);
+      map.on('click', function(e) {
+        if (!window.editModeEnabled) {
+          // view mode – keep original behaviour (pin, info)
+          origClick(e);
+          return;
+        }
+
+        if (window.currentTool === 'select') {
+          const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+          if (features.length) {
+            const f = features[0];
+            const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
+            if (window.selectedPoints.has(id)) {
+              window.selectedPoints.delete(id);
+            } else {
+              window.selectedPoints.add(id);
+            }
+            updateSelectedPointsSource();
+            e.preventDefault();
+            return;
+          }
+          // click on empty area → clear selection
+          window.selectedPoints.clear();
+          updateSelectedPointsSource();
+          return;
+        }
+
+        if (window.currentTool === 'boxselect') {
+          // handled by drag (mouseup) – ignore
+          return;
+        }
+
+        // default edit behaviour (add point)
+        origClick(e);
+      });
+
+      // ----- replace mousedown / mouseup / mousemove for drag & box select -----
+      const origDown = window.onMapMouseDown;
+      const origUp   = window.onMapMouseUp;
+      const origMove = window.onMapMouseMove;
+
+      map.off('mousedown', origDown);
+      map.off('mouseup',   origUp);
+      map.off('mousemove', origMove);
+
+      const overlay = document.getElementById('boxSelectOverlay');
+
+      map.on('mousedown', function(e) {
+        if (!window.editModeEnabled) return;
+
+        // box‑select drag start
+        if (window.currentTool === 'boxselect') {
+          window.__boxStart = e.lngLat;
+          overlay.style.display = 'block';
+          overlay.style.left = '0px';
+          overlay.style.top  = '0px';
+          overlay.style.width  = '0px';
+          overlay.style.height = '0px';
+          map.dragPan.disable();
+          e.preventDefault();
+          return;
+        }
+
+        // drag a point (only when edit mode is on)
+        const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+        if (features.length) {
+          const f = features[0];
+          window.dragPoint = {
+            trackIndex: f.properties.trackIndex,
+            pointIndex: f.properties.pointIndex
+          };
+          window.dragOccurred = false;
+          map.dragPan.disable();
+          e.preventDefault();
+        }
+      });
+
+      map.on('mousemove', function(e) {
+        // box select rectangle
+        if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
+          const startPx = map.project(window.__boxStart);
+          const currPx  = map.project(e.lngLat);
+          const x = Math.min(startPx.x, currPx.x);
+          const y = Math.min(startPx.y, currPx.y);
+          const w = Math.abs(currPx.x - startPx.x);
+          const h = Math.abs(currPx.y - startPx.y);
+          overlay.style.left   = x + 'px';
+          overlay.style.top    = y + 'px';
+          overlay.style.width  = w + 'px';
+          overlay.style.height = h + 'px';
+        }
+
+        // always delegate to original mousemove (preview, point‑hover etc.)
+        if (typeof origMove === 'function') origMove(e);
+      });
+
+      map.on('mouseup', function(e) {
+        // finish box select
+        if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
+          overlay.style.display = 'none';
+          const sx = parseFloat(overlay.style.left) || 0;
+          const sy = parseFloat(overlay.style.top) || 0;
+          const sw = parseFloat(overlay.style.width) || 0;
+          const sh = parseFloat(overlay.style.height) || 0;
+          const nw = map.unproject([sx, sy]);
+          const se = map.unproject([sx + sw, sy + sh]);
+          const bounds = new maplibregl.LngLatBounds(nw, se);
+
+          window.selectedPoints.clear();
+          const tracks = window.tracks || [];
+          tracks.forEach((track, ti) => {
+            track.points.forEach((p, pi) => {
+              if (bounds.contains([p.lng, p.lat])) {
+                window.selectedPoints.add(getPointId(ti, pi));
+              }
+            });
+          });
+          updateSelectedPointsSource();
+          window.__boxStart = null;
+          map.dragPan.enable();
+          return;
+        }
+
+        // finish point drag
+        if (window.dragPoint && window.editModeEnabled) {
+          // point already updated in real‑time by mousemove
+          window.dragPoint = null;
+          map.dragPan.enable();
+        }
+      });
+    }
+
+    // initialise once the map object exists
+    function boot() {
+      const map = window.map;
+      if (!map) return;
+      function run() {
+        if (map.loaded()) {
+          initToolLayer(map);
+        } else {
+          map.on('load', function() { initToolLayer(map); });
+        }
+        // initial button visibility
+        updateToolButtonsVisibility();
+      }
+      run();
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      if (window.map) {
+        boot();
+      } else {
+        var intv = setInterval(function() {
+          if (window.map) { clearInterval(intv); boot(); }
+        }, 50);
+      }
+    });
+  })();
+</script>
 
 </body>
 </html>
