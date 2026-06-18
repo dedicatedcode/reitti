@@ -641,7 +641,6 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 11px 18px;
     border-bottom: 1px solid var(--panel-line);
     flex-shrink: 0;
 }

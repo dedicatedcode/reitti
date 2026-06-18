@@ -1,809 +1,435 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX Test Data Generator - Create and Edit GPS Tracks</title>
-    <meta name="description" content="Interactive GPX track generator and editor. Create realistic GPS test data with customizable speed, elevation, and timing. Perfect for testing location-based applications.">
-    <meta name="keywords" content="GPX, GPS, track generator, test data, location testing, GPS simulation, route planning">
-    <meta name="author" content="Reitti Project">
-    <meta property="og:title" content="GPX Test Data Generator">
-    <meta property="og:description" content="Interactive tool to create and edit GPX tracks for testing location-based applications">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="GPX Test Data Generator">
-    <meta name="twitter:description" content="Interactive tool to create and edit GPX tracks for testing location-based applications">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/css/lineicons.css" />
-    <link rel="stylesheet" href="/css/reitti-style.css" />
-    <style>
-        /* Additional styles specific to GPX generator */
-        .container {
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .main-content {
-            display: flex;
-            height: calc(100vh - 160px);
-            min-height: 500px;
-        }
-        
-        .map-container {
-            flex: 3;
-            position: relative;
-        }
-        
-        #map {
-            height: 100%;
-            width: 100%;
-        }
-        
-        .points-panel {
-            flex: 1;
-            min-width: 350px;
-            border-left: 1px solid var(--color-highlight);
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .points-header {
-            padding: 15px 20px;
-            background-color: var(--color-background-dark);
-            border-bottom: 1px solid var(--color-highlight);
-            font-weight: 600;
-            font-size: 16px;
-            color: var(--color-highlight);
-        }
-        
-        .points-summary {
-            padding: 12px 20px;
-            background-color: var(--color-background-dark-light);
-            border-bottom: 1px solid var(--color-highlight-transparent);
-            font-size: 13px;
-            color: var(--color-text-white);
-        }
-        
-        .points-list {
-            flex: 1;
-            overflow-y: auto;
-            background-color: var(--color-background-dark);
-        }
-        
-        .point-item {
-            padding: 10px 15px;
-            border-bottom: 1px solid var(--color-background-dark-light);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 12px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .point-item:hover {
-            background-color: var(--color-background-dark-light);
-        }
-        
-        .point-item.selected {
-            background-color: var(--color-highlight-transparent);
-            border-left: 4px solid var(--color-highlight);
-        }
-        
-        .point-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        }
-        
-        .point-coords {
-            color: var(--color-text-white);
-            font-weight: 500;
-            min-width: 120px;
-        }
-        
-        .point-time {
-            color: var(--color-text-gray);
-            min-width: 80px;
-        }
-        
-        .point-speed {
-            font-weight: 500;
-            min-width: 45px;
-            text-align: right;
-        }
-        
-        .point-delete {
-            background: #995353;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            opacity: 0;
-        }
-        
-        .point-item:hover .point-delete {
-            opacity: 1;
-        }
-        
-        .point-delete:hover {
-            background: #7a4242;
-        }
-        
-        .status {
-            padding: 15px 20px;
-            background-color: var(--color-background-dark);
-            border-top: 1px solid var(--color-highlight);
-            font-size: 14px;
-            color: var(--color-text-white);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .speed-legend-inline {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            font-size: 12px;
-        }
-        
-        .speed-legend-inline .speed-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .speed-color-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 2px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        
-        .hover-tooltip {
-            position: absolute;
-            background: var(--color-background-dark);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            pointer-events: none;
-            z-index: 1000;
-            white-space: nowrap;
-            border: 1px solid var(--color-highlight);
-            box-shadow: var(--box-shadow);
-        }
-        
-        .track-header {
-            padding: 12px 20px;
-            background-color: var(--color-background-dark-light);
-            color: white;
-            cursor: pointer;
-            border-bottom: 1px solid var(--color-highlight-transparent);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .track-header:hover {
-            background-color: var(--color-background-dark);
-        }
-        
-        .track-header.active {
-            background-color: var(--color-highlight-transparent);
-            color: var(--color-highlight);
-        }
-        
-        .track-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            margin-right: 8px;
-            border: 2px solid white;
-        }
-        
-        .track-info {
-            display: flex;
-            align-items: center;
-        }
-        
-        .track-controls {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .track-export-btn {
-            padding: 4px 8px;
-            background: var(--color-highlight);
-            color: var(--color-background-dark);
-            border: none;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .track-export-btn:hover {
-            background-color: #e5cfa1;
-        }
-        
-        .track-points {
-            display: block;
-        }
-        
-        .track-points.collapsed {
-            display: none;
-        }
-        
-        .collapse-icon {
-            transition: transform 0.3s ease;
-        }
-        
-        .collapsed .collapse-icon {
-            transform: rotate(-90deg);
-        }
-        
-        .edit-drawer {
-            position: fixed;
-            left: -400px;
-            top: 0;
-            width: 380px;
-            height: 100vh;
-            background-color: var(--color-background-dark);
-            border-right: 1px solid var(--color-highlight);
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
-            transition: left 0.3s ease;
-            z-index: 2000;
-            overflow-y: auto;
-        }
-        
-        .edit-drawer.open {
-            left: 0;
-        }
-        
-        .edit-drawer-header {
-            padding: 16px 20px;
-            background-color: var(--color-background-dark-light);
-            border-bottom: 1px solid var(--color-highlight);
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: var(--color-highlight);
-        }
-        
-        .edit-drawer-close {
-            background: none;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-            color: var(--color-text-white);
-            padding: 4px;
-            border-radius: 4px;
-        }
-        
-        .edit-drawer-close:hover {
-            background-color: var(--color-background-dark-light);
-        }
-        
-        .edit-drawer-content {
-            padding: 20px;
-        }
-        
-        .drawer-section {
-            margin-bottom: 24px;
-        }
-        
-        .drawer-section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--color-highlight);
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--color-highlight-transparent);
-        }
-        
-        .about-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-        
-        .about-dialog.open {
-            display: flex;
-        }
-        
-        .about-content {
-            background: var(--color-background-dark);
-            border-radius: 8px;
-            padding: 32px;
-            max-width: 600px;
-            margin: 20px;
-            box-shadow: var(--box-shadow);
-            border: 1px solid var(--color-highlight);
-        }
-        
-        .about-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .about-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--color-highlight);
-        }
-        
-        .about-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--color-text-white);
-            padding: 4px;
-            border-radius: 4px;
-        }
-        
-        .about-close:hover {
-            background-color: var(--color-background-dark-light);
-        }
-        
-        .about-text {
-            color: var(--color-text-white);
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        
-        .about-link {
-            color: var(--color-highlight);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .about-link:hover {
-            text-decoration: underline;
-        }
-        
-        .header-controls {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        
-        .header-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .header-divider {
-            width: 1px;
-            height: 24px;
-            background: var(--color-highlight);
-            margin: 0 8px;
-        }
-        
-        .mode-toggle {
-            background-color: var(--color-background-dark);
-            border: 1px solid var(--color-highlight);
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: var(--color-text-white);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .mode-toggle.edit-mode {
-            background-color: var(--color-highlight);
-            color: var(--color-background-dark);
-            font-weight: bold;
-        }
-        
-        .mode-toggle:hover {
-            background-color: var(--color-background-dark-light);
-        }
-        
-        .control-button {
-            padding: 8px 16px;
-            border: 1px solid var(--color-highlight);
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: var(--color-background-dark);
-            color: var(--color-highlight);
-        }
-        
-        .control-button:hover {
-            background-color: var(--color-background-dark-light);
-            transform: translateY(-1px);
-        }
-        
-        .control-button.success {
-            background-color: #2c4828;
-            border-color: #e5ffeb;
-            color: #e5ffeb;
-        }
-        
-        .control-button.danger {
-            background-color: #995353;
-            border-color: #ff3434;
-            color: white;
-        }
-        
-        .paint-active {
-            background-color: var(--color-highlight) !important;
-            color: var(--color-background-dark) !important;
-            font-weight: bold;
-        }
-        
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(245, 222, 179, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(245, 222, 179, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 222, 179, 0); }
-        }
-        
-        .paint-ready {
-            animation: pulse 2s infinite;
-        }
-        
-        /* Date Picker Styles */
-        .date-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 8px;
-            margin: 20px 0;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 4px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polku – GPX Track Editor</title>
+  <meta name="description" content="Polku – an interactive GPX track generator for the Reitti project">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/workbench.css">
+  <link rel="stylesheet" href="/css/datetime-picker.css">
+  <link rel="stylesheet" href="/css/lineicons.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css">
+  <style>
+    /* tiny overrides / additions not worth a separate file */
 
-        .date-item {
-            padding: 8px;
-            border: 1px solid var(--color-highlight);
-            border-radius: 4px;
-            text-align: center;
-            font-size: 12px;
-            cursor: pointer;
-            background: var(--color-background-dark);
-            transition: all 0.2s;
-            user-select: none;
-            color: var(--color-text-white);
-        }
+    /* override date picker popup direction */
+    .datetime-picker .picker-popup {
+      bottom: auto !important;
+      top: 100% !important;
+    }
 
-        .date-item:hover {
-            background: var(--color-background-dark-light);
-        }
+    /* make room for the fixed header */
+    #map { top: 50px; }
 
-        .date-item.selected {
-            background: var(--color-highlight);
-            color: var(--color-background-dark);
-            border-color: var(--color-highlight);
-        }
+    /* push floating panels below the header */
+    #pointsPanel { top: 110px; }
+    #gpxEditPanel { top: 110px; left: 16px; }
 
-        .date-item.in-range {
-            background: var(--color-highlight-transparent);
-            border-color: var(--color-highlight);
-        }
-    </style>
+    /* new floating settings panel (edit drawer) */
+    #gpxEditPanel {
+      position: fixed;
+      left: 16px;
+      top: 110px;
+      display: flex; flex-direction: column;
+      background: var(--panel-solid);
+      border: 1px solid var(--panel-line);
+      border-radius: 10px;
+      z-index: 20;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    #gpxEditPanel .history-header { flex-shrink: 0; }
+    #gpxEditPanel .gpx-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 16px;
+    }
+
+    /* full‑width header at the top */
+    #gpxHeader {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      background: var(--panel-header-bg, #1a1c23);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    #gpxHeader .drawer-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    /* keep existing point‑list styles */
+    .gpx-drawer-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 16px;
+      height: auto;
+    }
+    .gpx-drawer-section { margin-bottom: 18px; }
+    .gpx-drawer-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-highlight);
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--panel-line);
+    }
+    .gpx-drawer .control-group { margin-bottom: 12px; }
+    .gpx-drawer .control-label { margin-bottom: 4px; }
+    .gpx-drawer input[type="number"],
+    .gpx-drawer input[type="range"],
+    .gpx-drawer input[type="datetime-local"] {
+      width: 100%;
+    }
+    /* point info panel – same as workbench .selection-info just renamed */
+    #pointInfo {
+      position: fixed;
+      bottom: 200px; left: 16px;
+      width: 380px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 50;
+      background: #f7f7f7;
+      color: #222;
+    }
+    #pointInfo .sel-info-body { padding: 10px 12px; }
+    #pointInfo .sel-info-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
+    #pointInfo .sel-info-row .k { color: #222; }
+    #pointInfo .sel-info-row .v { color: #222; text-align: right; }
+    #pointInfo .sel-info-actions { display: flex; gap: 6px; padding: 6px 0 0; border-top: 1px solid rgba(0,0,0,0.12); margin-top: 6px; }
+    #pointInfo .sel-info-head .sel-info-title {
+      color: #222;
+    }
+    #pointInfo .sel-info-close {
+      color: #222;
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    /* diffs section */
+    #pointInfo .sel-info-diffs {
+      margin-top: 8px;
+      border-top: 1px solid rgba(0,0,0,0.12);
+      padding-top: 6px;
+    }
+    /* floating points panel */
+    #pointsPanel {
+      position: fixed;
+      right: 16px; top: 110px;
+      width: 380px;
+      max-height: calc(100vh - 200px);
+      display: flex; flex-direction: column;
+      background: var(--panel-solid);
+      border: 1px solid var(--panel-line);
+      border-radius: 10px;
+      z-index: 10;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    #pointsPanel .history-header { flex-shrink: 0; }
+    #pointsPanel .history-list { flex:1; overflow-y: auto; }
+    .gpx-track-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+    }
+    .gpx-track-header:hover { background: rgba(255,255,255,0.05); }
+    .gpx-track-header .track-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; display: inline-block; vertical-align: middle; }
+    .gpx-point { padding: 4px 12px 4px 28px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; display: flex; justify-content: space-between; }
+    .gpx-point:hover { background: rgba(255,255,255,0.04); }
+    .gpx-point .coords { color: var(--ink-dim); }
+    .gpx-point .time { color: var(--color-text-white); min-width: 70px; text-align: right; }
+    .speed-color-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
+
+    /* -- track header sub‑components -- */
+    .track-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      flex: 1;
+      min-width: 0;
+    }
+    .track-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;   /* adjust to taste */
+    }
+    .track-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .track-export-btn {
+      padding: 2px 6px;
+      font-size: 10px;
+      line-height: 1;
+      border: 1px solid var(--panel-line);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .track-export-btn:hover {
+      background: var(--panel-hover, rgba(255,255,255,0.1));
+    }
+
+    /* preview popup */
+    #previewPopup {
+      display: none;
+      position:fixed; z-index:70; pointer-events:none;
+      padding: 8px 10px; font-size:11px; line-height:1.4;
+      background: var(--panel-solid);
+      border:1px solid var(--panel-line);
+      border-radius:6px;
+      color: var(--ink);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+    }
+    #previewPopup .row { display:flex; justify-content:space-between; margin-bottom:2px; }
+    #previewPopup .label { color:var(--ink-faint); }
+    #previewPopup .value { text-align:right; color:var(--ink); }
+
+    /* when edit drawer is visible, reposition point info beside the drawer */
+    body.edit-mode #pointInfo { left: 430px; }
+
+    /* About modal */
+    #aboutModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45);
+      z-index: 300;
+      justify-content: center;
+      align-items: center;
+    }
+    #aboutModal.show { display: flex; }
+    #aboutModal .modal-box {
+      background: var(--panel-solid);
+      border: 1px solid var(--panel-line);
+      border-radius: 12px;
+      max-width: 520px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      color: var(--ink);
+    }
+    #aboutModal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--panel-line);
+    }
+    #aboutModal .modal-body {
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #aboutModal .modal-body a {
+      color: var(--color-highlight, #3498db);
+    }
+    #aboutModal .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--ink-faint);
+      padding: 0 4px;
+    }
+
+    /* Polku about improvements */
+    #aboutModal .about-logo {
+      display: block;
+      margin: 0 auto 20px auto;
+      height: 80px;
+      max-width: 100%;
+    }
+    #aboutModal .about-description {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--ink);
+    }
+    #aboutModal .about-description strong {
+      font-weight: 700;
+      color: var(--color-highlight, #3498db);
+    }
+    #aboutModal .about-description a {
+      font-weight: 600;
+    }
+  </style>
 </head>
-<body class="bg-dark">
-    <div class="container">
-        <div>
-            <div class="header">
-                <div class="header-content">
-                    <h1>GPX Test Data Generator</h1>
-                    <p id="headerDescription">Interactive tool for creating and editing GPS tracks</p>
-                </div>
-                <div class="header-controls">
-                    <div class="header-section">
-                        <button id="modeToggle" class="btn mode-toggle" onclick="toggleEditMode()">
-                            <i class="lni lni-eye"></i> View Mode
-                        </button>
-                    </div>
-                    
-                    <div class="header-divider"></div>
-                    
-                    <div class="header-section">
-                        <button onclick="document.getElementById('gpxFileInput').click()" class="btn"><i class="lni lni-globe-1"></i> Import</button>
-                        <button onclick="exportAllGPX()" class="btn btn-success"><i class="lni lni-floppy-disk-1"></i> Export</button>
-                        <button onclick="clearAll()" class="btn btn-danger"><i class="lni lni-trash-3"></i> Clear</button>
-                        <button onclick="randomizeAllData()" class="btn"><i class="lni lni-calculator-2"></i> Randomize</button>
-                    </div>
-                    
-                    <div class="header-divider"></div>
-                    
-                    <div class="header-section">
-                        <button onclick="openAboutDialog()" class="btn"><i class="lni lni-map-pin-5"></i> About</button>
-                        <button id="layerToggle" class="btn" onclick="toggleMapLayer()"><i class="lni lni-globe-stand"></i></button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Edit Drawer -->
-            <div class="edit-drawer" id="editDrawer">
-                <div class="edit-drawer-header">
-                    <span>Edit Controls</span>
-                    <button class="edit-drawer-close" onclick="toggleEditDrawer()">×</button>
-                </div>
-                <div class="edit-drawer-content">
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Track Settings</div>
-                        <div class="control-group">
-                            <label class="control-label" for="startDateTime">Start Date & Time</label>
-                            <input type="datetime-local" id="startDateTime" step="1">
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label" for="timeInterval">Interval (seconds)</label>
-                            <input type="number" id="timeInterval" value="30" min="1" max="3600">
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label" for="maxSpeed">Max Speed (km/h)</label>
-                            <input type="number" id="maxSpeed" value="25" min="1" max="300">
-                        </div>
-                    </div>
-                    
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Elevation & GPS</div>
-                        <div class="control-group">
-                            <label class="control-label" for="elevation">Elevation (m)</label>
-                            <input type="number" id="elevation" value="10" step="0.1">
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label" for="elevationVariation">±Variation (m)</label>
-                            <input type="number" id="elevationVariation" value="0" min="0" step="0.1">
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label" for="accuracySlider">GPS Accuracy: <span id="accuracyValue">5</span>m</label>
-                            <input type="range" id="accuracySlider" min="0" max="100" value="5">
-                        </div>
-                    </div>
-                    
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Options</div>
-                        <div class="control-group">
-                            <label class="control-label">
-                                <input type="checkbox" id="autoNewTrack" checked style="margin-right: 8px;">
-                                Auto new track on day change
-                            </label>
-                        </div>
-                        <div class="control-group">
-                            <label class="control-label">
-                                <input type="checkbox" id="autoStops" style="margin-right: 8px;">
-                                Add realistic stops
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Drawing Tools</div>
-                        <div class="control-group">
-                            <button id="paintModeToggle" class="control-button" onclick="togglePaintMode()"><i class="lni lni-gallery"></i> Paint Mode: OFF</button>
-                            <div class="paint-mode-info">Click map to start/stop painting</div>
-                        </div>
-                        <div class="control-group">
-                            <button onclick="newTrack()" class="control-button"><i class="lni lni-plus"></i> New Track</button>
-                        </div>
-                    </div>
-                    
-                    <div class="drawer-section">
-                        <div class="drawer-section-title">Time Adjustment</div>
-                        <div class="control-group">
-                            <label class="control-label">Shift Current Track</label>
-                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                                <button onclick="shiftTrackTime(-1, 'hour')" class="control-button" style="flex: 1; font-size: 11px;">-1h</button>
-                                <button onclick="shiftTrackTime(1, 'hour')" class="control-button" style="flex: 1; font-size: 11px;">+1h</button>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="shiftTrackTime(-1, 'day')" class="control-button" style="flex: 1; font-size: 11px;">-1d</button>
-                                <button onclick="shiftTrackTime(1, 'day')" class="control-button" style="flex: 1; font-size: 11px;">+1d</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                </div>
-            </div>
-            <input type="file" id="gpxFileInput" accept=".gpx,.json" multiple style="display: none;" onchange="handleGPXFiles(event)">
-        <div class="main-content">
-            <div class="map-container">
-                <div id="map"></div>
-            </div>
-            
-            <div class="points-panel">
-                <div class="points-header">
-                    Points (<span id="pointCount">0</span>)
-                </div>
-                <div class="points-summary" id="pointsSummary">
-                    Click on the map to add points
-                </div>
-                <div class="points-list" id="pointsList">
-                </div>
-            </div>
-        </div>
-        
-        <div class="status">
-            <span id="statusText">Ready to create GPX track</span>
-            <div class="speed-legend-inline" id="speedLegendInline">
-                <!-- Speed legend will be populated by JavaScript -->
-            </div>
-        </div>
-    </div>
+<body style="background: var(--bg); color: var(--ink);">
 
-    <!-- About Dialog -->
-    <div class="about-dialog" id="aboutDialog">
-        <div class="about-content">
-            <div class="about-header">
-                <h2 class="about-title">About GPX Generator</h2>
-                <button class="about-close" onclick="closeAboutDialog()">×</button>
-            </div>
-            <div class="about-text">
-                <p>This interactive GPX generator is designed for creating realistic GPS test data for location-based applications. It's particularly useful for testing and development of GPS tracking systems, route planning applications, and location analytics tools.</p>
-                
-                <p><strong>Features:</strong></p>
-                <ul style="margin: 12px 0; padding-left: 20px;">
-                    <li>Interactive map-based point creation</li>
-                    <li>Realistic speed and elevation simulation</li>
-                    <li>Customizable GPS accuracy and timing</li>
-                    <li>Multiple track support with export capabilities</li>
-                    <li>Paint mode for continuous track drawing</li>
-                </ul>
-                
-                <p><strong>Use Cases:</strong></p>
-                <ul style="margin: 12px 0; padding-left: 20px;">
-                    <li>Testing location-based mobile applications</li>
-                    <li>Creating sample data for GPS analytics</li>
-                    <li>Simulating user movement patterns</li>
-                    <li>Generating test routes for navigation systems</li>
-                </ul>
-                
-                <p>This tool is part of the <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener" class="about-link">Reitti project</a> - an open-source location tracking and analytics platform.</p>
-            </div>
-        </div>
-    </div>
+<!-- fixed header with toolbar -->
+<div id="gpxHeader">
+  <div class="drawer-head">
+    <a href="/" title="Reitti" class="header-logo" style="margin-right:16px; display:flex; align-items:center; gap:6px; text-decoration:none; color:inherit;">
+      <img src="/img/logo.svg" alt="Polku logo" height="24" style="vertical-align:middle;">
+      <span style="font-weight:700; font-size:15px;">Polku</span>
+    </a>
+    <button class="head-btn active" id="btnEditMode" onclick="toggleEditMode()">✎ Edit</button>
+    <div class="sep"></div>
+    <button class="head-btn" onclick="document.getElementById('gpxFileInput').click()">📂 Import</button>
+    <button class="head-btn" onclick="exportAll()">💾 Export</button>
+    <button class="head-btn" onclick="clearAll()" style="color:#e07a6b">🗑 Clear</button>
+    <button class="head-btn" onclick="randomizeAll()">🎲 Randomize</button>
+    <button class="head-btn" onclick="showAbout()" style="margin-left:auto;">About</button>
+  </div>
+</div>
 
-    <!-- JSON Date Picker Dialog -->
-    <div class="about-dialog" id="jsonDatePicker">
-        <div class="about-content">
-            <div class="about-header">
-                <h2 class="about-title">Select Dates to Import</h2>
-                <button class="about-close" onclick="closeJsonPicker()">×</button>
-            </div>
-            <div class="about-text">
-                <p>Select a range of dates from the Google Records file. Click a date to select it, or use Shift+Click to select a range.</p>
-                <div id="dateGrid" class="date-grid"></div>
-                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
-                    <button class="control-button" onclick="closeJsonPicker()">Cancel</button>
-                    <button class="control-button success" onclick="importSelectedJsonDates()">Import Selected</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="map" style="position:absolute; inset:0; top:50px; left:0; right:0; bottom:0;"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="gpx-generator.js"></script>
-    <script>
-        // Initialize edit mode state
-        let isEditMode = false;
-        let isEditDrawerOpen = false;
-        
-        function toggleEditMode() {
-            isEditMode = !isEditMode;
-            const modeToggle = document.getElementById('modeToggle');
-            const headerDescription = document.getElementById('headerDescription');
-            
-            if (isEditMode) {
-                modeToggle.innerHTML = '<i class="lni lni-pencil-1"></i> Edit Mode';
-                modeToggle.classList.add('edit-mode');
-                headerDescription.textContent = 'Click on the map to add points. Right-click points to remove them.';
-                // Open the edit drawer automatically
-                if (!isEditDrawerOpen) {
-                    toggleEditDrawer();
-                }
-                // Enable point addition (this will be handled in gpx-generator.js)
-                if (window.enableEditMode) {
-                    window.enableEditMode();
-                }
-            } else {
-                modeToggle.innerHTML = '<i class="lni lni-eye"></i> View Mode';
-                modeToggle.classList.remove('edit-mode');
-                headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
-                // Close edit drawer if open
-                if (isEditDrawerOpen) {
-                    closeEditDrawer();
-                }
-                // Disable point addition (this will be handled in gpx-generator.js)
-                if (window.disableEditMode) {
-                    window.disableEditMode();
-                }
-            }
-        }
-        
-        function toggleEditDrawer() {
-            isEditDrawerOpen = !isEditDrawerOpen;
-            const drawer = document.getElementById('editDrawer');
-            
-            if (isEditDrawerOpen) {
-                drawer.classList.add('open');
-            } else {
-                drawer.classList.remove('open');
-                // If we're closing the drawer and edit mode is active, exit edit mode
-                if (isEditMode) {
-                    toggleEditMode();
-                }
-            }
-        }
-        
-        function closeEditDrawer() {
-            if (isEditDrawerOpen) {
-                isEditDrawerOpen = false;
-                const drawer = document.getElementById('editDrawer');
-                drawer.classList.remove('open');
-            }
-        }
-        
-        function openAboutDialog() {
-            document.getElementById('aboutDialog').classList.add('open');
-        }
-        
-        function closeAboutDialog() {
-            document.getElementById('aboutDialog').classList.remove('open');
-        }
-        
-        // Close about dialog when clicking outside
-        document.getElementById('aboutDialog').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAboutDialog();
-            }
-        });
-        
-        // Initialize the page in view mode
-        document.addEventListener('DOMContentLoaded', function() {
-            // Ensure we start in view mode
-            isEditMode = false;
-            isEditDrawerOpen = false;
-            
-            // Set up initial UI state
-            const modeToggle = document.getElementById('modeToggle');
-            const headerDescription = document.getElementById('headerDescription');
-            
-            modeToggle.innerHTML = '<i class="lni lni-eye"></i> View Mode';
-            modeToggle.classList.remove('edit-mode');
-            headerDescription.textContent = 'Interactive tool for creating and editing GPS tracks';
-            
-            // Ensure drawer is closed
-            const drawer = document.getElementById('editDrawer');
-            drawer.classList.remove('open');
-            
-            // Disable edit mode in the map (this will be handled in gpx-generator.js)
-            setTimeout(() => {
-                if (window.disableEditMode) {
-                    window.disableEditMode();
-                }
-            }, 100);
-        });
-    </script>
+<!-- floating point info -->
+<div id="pointInfo" class="floating selection-info" style="display:none">
+  <div class="sel-info-head">
+    <span class="sel-info-title" id="pointInfoTitle">Point</span>
+    <button class="sel-info-close" onclick="hidePointInfo(true)">×</button>
+  </div>
+  <div class="sel-info-body" id="pointInfoBody"></div>
+</div>
+
+<!-- preview popup -->
+<div id="previewPopup"></div>
+
+<!-- floating points panel (right side) -->
+<div id="pointsPanel">
+  <div class="history-header">
+    <div style="display:flex; align-items:center; gap:9px;">
+      <h4>Points</h4>
+      <span class="history-count" id="pointCountBadge">0</span>
+    </div>
+  </div>
+  <div class="history-list" id="pointsList"></div>
+</div>
+
+<!-- floating edit drawer (left side) -->
+<div id="gpxEditPanel">
+  <div class="history-header"><h4>Settings</h4></div>
+  <div class="gpx-drawer-body">
+    <div>
+      <!-- Date & Time section using native datetime-local picker -->
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Date & Time</div>
+        <div class="control-group">
+          <label class="control-label">Start Time</label>
+          <input type="datetime-local" id="startDatetimeLocal" class="form-control">
+        </div>
+      </div>
+
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Track Settings</div>
+        <div class="control-group">
+          <label class="control-label">Interval (s)</label>
+          <input type="number" id="timeInterval" value="30" min="1" max="3600" class="form-control">
+        </div>
+        <div class="control-group">
+          <label class="control-label">Max Speed (km/h)</label>
+          <input type="number" id="maxSpeed" value="25" min="1" max="300" class="form-control">
+        </div>
+      </div>
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Elevation & GPS</div>
+        <div class="control-group">
+          <label class="control-label">Elevation (m)</label>
+          <input type="number" id="elevation" value="10" step="0.1" class="form-control">
+        </div>
+        <div class="control-group">
+          <label class="control-label">±Variation (m)</label>
+          <input type="number" id="elevationVariation" value="0" min="0" step="0.1" class="form-control">
+        </div>
+        <div class="control-group">
+          <label class="control-label">GPS Accuracy: <span id="accuracyValue">5</span>m</label>
+          <input type="range" id="accuracySlider" min="0" max="100" value="5" class="form-control">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Options</div>
+        <div class="control-group">
+          <label class="control-label"><input type="checkbox" id="autoNewTrack" checked> Auto new track on day change</label>
+          <label class="control-label"><input type="checkbox" id="autoStops"> Add realistic stops</label>
+        </div>
+      </div>
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Time Adjustment</div>
+        <div class="control-group">
+          <label class="control-label">Shift Current Track</label>
+          <div style="display:flex; gap:4px; margin-bottom:4px;">
+            <button class="head-btn" onclick="shiftTrackTime(-1,'hour')">-1h</button>
+            <button class="head-btn" onclick="shiftTrackTime(1,'hour')">+1h</button>
+            <button class="head-btn" onclick="shiftTrackTime(-1,'day')">-1d</button>
+            <button class="head-btn" onclick="shiftTrackTime(1,'day')">+1d</button>
+          </div>
+        </div>
+      </div>
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Drawing</div>
+        <button class="head-btn" onclick="newTrack()">New Track</button>
+        <button class="head-btn" id="btnPaintMode" onclick="togglePaintMode()">🎨 Paint</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="gpxFileInput" accept=".gpx,.json" multiple style="display:none" onchange="handleGPXFiles(event)">
+
+<script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js"></script>
+<script src="/js/datetime-picker.js"></script>
+<script src="/gpx-generator.js"></script>
+
+<!-- About modal -->
+<div id="aboutModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span style="font-weight:600; font-size:18px;">About Polku</span>
+      <button class="modal-close" onclick="closeAbout()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <img src="/img/logo.svg" alt="Polku logo" class="about-logo">
+      <div class="about-description">
+        <p>This interactive GPX generator is designed for creating realistic GPS test data for location-based applications. It's particularly useful for testing and development of GPS tracking systems, route planning applications, and location analytics tools.</p>
+        <p>All processing happens <strong>locally</strong> – no track data is ever sent to any server. Your privacy is fully respected.</p>
+        <p><strong>Features:</strong></p>
+        <ul style="margin: 12px 0; padding-left: 20px;">
+            <li>Interactive map-based point creation</li>
+            <li>Realistic speed and elevation simulation</li>
+            <li>Customizable GPS accuracy and timing</li>
+            <li>Multiple track support with export capabilities</li>
+            <li>Paint mode for continuous track drawing</li>
+            <li>Moving a whole path by a randomized value around the globe</li>
+        </ul>
+        <p><strong>Use Cases:</strong></p>
+        <ul style="margin: 12px 0; padding-left: 20px;">
+            <li>Testing location-based mobile applications</li>
+            <li>Creating sample data for GPS analytics</li>
+            <li>Simulating user movement patterns</li>
+            <li>Generating test routes for navigation systems</li>
+        </ul>
+        <p><strong>Polku</strong> (Finnish for “path” or “trail”) captures the core idea: connecting points into a track tells a story of movement. It is a companion tool for the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti</a> project. A personal location tracking and analysis application that helps you understand your movement patterns and significant places. Together, these tools give you full control over your GPS data.</p>
+        <p>Visit the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti website</a> or explore the code on <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener">GitHub</a>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
