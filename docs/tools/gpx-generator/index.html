@@ -460,6 +460,10 @@
     window.selectedPoints = new Set();
     window.currentTool = null;   // 'select' | 'boxselect' | 'addpoint'
 
+    // drag state (our own, because the original module variable is inaccessible)
+    let dragPoint = null;        // { trackIndex, pointIndex }
+    let dragOccurred = false;
+
     const btnSelect = document.getElementById('btnSelect');
     const btnBoxSelect = document.getElementById('btnBoxSelect');
     const btnAddPoint = document.getElementById('btnAddPoint');
@@ -498,7 +502,7 @@
         const ov = document.getElementById('boxSelectOverlay');
         if (ov) ov.style.display = 'none';
         window.__boxStart = null;
-        boxSelectReset(); // reset internal state if any
+        window.boxSelectReset(); // defined below
       }
 
       // paint mode is exclusive with any other tool
@@ -507,11 +511,20 @@
           window.togglePaintMode();
         }
       }
+
+      // Make the "selected‑points" source aware of the change (if any selected points exist)
+      if (typeof window.updateSelectedPointsSource === 'function') {
+        window.updateSelectedPointsSource();
+      }
     };
+
+    // box‑select internal reset (no‑op)
+    function boxSelectReset() { /* reset internal state */ }
+    window.boxSelectReset = boxSelectReset;
 
     // selected‑point source data builder
     function updateSelectedPointsSource() {
-      const map = window.reittiMap || window.map; // fallback to DOM element just in case
+      const map = window.reittiMap || window.map;
       if (!map || !map.getSource || !map.getSource('selected-points')) return;
       const features = [];
       const set = window.selectedPoints;
@@ -529,6 +542,7 @@
       });
       map.getSource('selected-points').setData({ type: 'FeatureCollection', features });
     }
+    window.updateSelectedPointsSource = updateSelectedPointsSource;
 
     // ----- wire everything after map is available -----
     function initToolLayer(map) {
@@ -544,7 +558,7 @@
         type: 'circle',
         source: 'selected-points',
         paint: {
-          'circle-radius': 8,
+          'circle-radius': 5,                 /* slightly smaller than original points */
           'circle-color': '#f2c470',
           'circle-stroke-width': 2,
           'circle-stroke-color': '#333'
@@ -600,8 +614,13 @@
           return;
         }
 
-        // add point only when the "add point" tool is active
+        // add point only when the "add point" tool is active and we didn't just drag
         if (window.currentTool === 'addpoint') {
+          // If we dragged a point, skip the click that would have added a new one
+          if (dragOccurred) {
+            dragOccurred = false;
+            return;
+          }
           if (origClick) origClick(e);
         }
       });
@@ -627,15 +646,15 @@
           return;
         }
 
-        // drag a point (only when edit mode is on)
+        // drag a point (any tool except boxselect)
         const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
         if (features.length) {
           const f = features[0];
-          window.dragPoint = {
+          dragPoint = {
             trackIndex: f.properties.trackIndex,
             pointIndex: f.properties.pointIndex
           };
-          window.dragOccurred = false;
+          dragOccurred = false;
           map.dragPan.disable();
           e.preventDefault();
         }
@@ -674,9 +693,9 @@
         }
 
         // finish point drag
-        if (window.dragPoint) {
+        if (dragPoint) {
           // point already updated in real‑time by mousemove
-          window.dragPoint = null;
+          dragPoint = null;
           map.dragPan.enable();
         }
       });
@@ -694,6 +713,26 @@
           overlay.style.top    = y + 'px';
           overlay.style.width  = w + 'px';
           overlay.style.height = h + 'px';
+        }
+
+        // ---- drag a point with our own state ----
+        if (dragPoint && window.editModeEnabled) {
+          const track = window.tracks[dragPoint.trackIndex];
+          if (track) {
+            const p = track.points[dragPoint.pointIndex];
+            if (p) {
+              p.lat = e.lngLat.lat;
+              p.lng = e.lngLat.lng;
+              p.originalLat = e.lngLat.lat;
+              p.originalLng = e.lngLat.lng;
+              dragOccurred = true;
+              // force full layer update (tracks, points) – provided by gpx-generator.js
+              if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+              if (typeof window.updatePointsList === 'function') window.updatePointsList();
+              // also recompute the selected‑points source so markers follow the moved point
+              if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
+            }
+          }
         }
 
         // always delegate to original mousemove (preview, point‑hover etc.)
