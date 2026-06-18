@@ -63,7 +63,8 @@ function initMap() {
     container: 'map',
     style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json', // simple clean style
     center: [24.9384, 60.1699],
-    zoom: 10
+    zoom: 10,
+    keyboard: false   // disable built‑in keyboard pan so our shortcuts are not captured
   });
   map.addControl(new maplibregl.NavigationControl({showCompass: false}), 'top-left');
   map.on('load', () => {

@@ -510,7 +510,7 @@
       <ul>
         <li><strong>View mode</strong> – click a point to see its details; press <kbd>←</kbd>/<kbd>→</kbd> to move between points.</li>
         <li><strong>Edit mode → Select</strong> – click point to select/deselect; drag to move selected point(s); use Box select for areas.</li>
-        <li><strong>Edit mode → Box select</strong> – drag to select all points in area; <kbd>Shift</kbd>‑click to add to selection; <kbd>Shift</kbd>‑drag (box) to add to selection.</li>
+        <li><strong>Edit mode → Box select</strong> – drag to select all points in area; <kbd>Ctrl</kbd>‑click to add to selection; <kbd>Ctrl</kbd>‑drag (box) to add to selection.</li>
       </ul>
       <h4>Keyboard Shortcuts</h4>
       <table style="width:100%; border-collapse: collapse;">
@@ -523,7 +523,7 @@
           <td>Expand selection by one adjacent point in that direction</td>
         </tr>
         <tr>
-          <td style="padding:4px 8px"><kbd>Shift</kbd>‑click on a point</td>
+          <td style="padding:4px 8px"><kbd>Ctrl</kbd>‑click on a point</td>
           <td>Add / remove that point from the current selection (toggle)</td>
         </tr>
       </table>
@@ -678,7 +678,7 @@
           return;
         }
 
-        const shiftKey = e.originalEvent && e.originalEvent.shiftKey;
+        const ctrlKey = e.originalEvent && e.originalEvent.ctrlKey;
 
         if (window.currentTool === 'select') {
           const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
@@ -687,34 +687,36 @@
             const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
             // remember last clicked point for shift‑navigation
             window.lastSelectedPoint = { ti: f.properties.trackIndex, pi: f.properties.pointIndex };
-            if (shiftKey) {
-              // expand selection (add, never remove)
-              if (!window.selectedPoints.has(id)) {
-                window.selectedPoints.add(id);
-              }
-            } else {
-              // toggle: click selected = unselect; click unselected = select
+
+            if (ctrlKey) {
+              // Ctrl‑click toggles (add / remove) individual point
               if (window.selectedPoints.has(id)) {
                 window.selectedPoints.delete(id);
               } else {
                 window.selectedPoints.add(id);
               }
-              // When selecting a single point (or making it selected), show its info
-              if (window.selectedPoints.size === 1 && window.selectedPoints.has(id)) {
-                if (typeof window.syncPinnedPoint === 'function') {
-                  window.syncPinnedPoint(f.properties.trackIndex, f.properties.pointIndex);
-                }
-              } else {
-                // hide info if we end up with zero or multiple selected points
-                if (typeof hidePointInfo === 'function') hidePointInfo(true);
+            } else {
+              // plain click replaces selection with this point
+              if (!window.selectedPoints.has(id) || window.selectedPoints.size > 1) {
+                window.selectedPoints.clear();
+                window.selectedPoints.add(id);
               }
             }
+            // show info only when exactly one point is selected
+            if (window.selectedPoints.size === 1 && window.selectedPoints.has(id)) {
+              if (typeof window.syncPinnedPoint === 'function') {
+                window.syncPinnedPoint(f.properties.trackIndex, f.properties.pointIndex);
+              }
+            } else {
+              if (typeof hidePointInfo === 'function') hidePointInfo(true);
+            }
+
             updateSelectedPointsSource();
             e.preventDefault();
             return;
           }
-          // click on empty area clears selection (unless shift is held)
-          if (!shiftKey) {
+          // click on empty area clears selection (unless Ctrl is held)
+          if (!ctrlKey) {
             window.selectedPoints.clear();
             updateSelectedPointsSource();
             if (typeof hidePointInfo === 'function') hidePointInfo(true);
