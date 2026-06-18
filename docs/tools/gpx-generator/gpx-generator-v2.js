@@ -15,6 +15,8 @@ let lastMouseLngLat = null;
 let stopProbability = 0.05;
 let speedColorCache = {};
 
+const MAX_INTERPOLATION_SEGMENTS = 40000;
+
 // persisted point selection (view mode)
 let pinnedPoint = null;
 
@@ -518,14 +520,35 @@ function addPointWithInterpolation(targetLat, targetLng) {
   const dist = calculateDistance(last.lat, last.lng, targetLat, targetLng);
   const timeInterval = parseInt(document.getElementById('timeInterval').value);
   const maxSpeed = parseFloat(document.getElementById('maxSpeed').value);
-  const maxDist = (maxSpeed*1000/3600)*timeInterval;
+  let maxDist = (maxSpeed*1000/3600)*timeInterval;
+  if (maxDist <= 0) maxDist = 1;
   if (dist <= maxDist) { addPoint(targetLat, targetLng); return; }
-  const segments = Math.ceil(dist/maxDist);
+  let segments = Math.ceil(dist/maxDist);
+  if (segments > MAX_INTERPOLATION_SEGMENTS) {
+    segments = MAX_INTERPOLATION_SEGMENTS;
+    console.warn('Too many interpolation points, capped at ' + MAX_INTERPOLATION_SEGMENTS);
+  }
   const dLat = (targetLat - last.lat) / segments;
   const dLng = (targetLng - last.lng) / segments;
+  const baseTs = last.timestamp;
+  const intervalMs = timeInterval * 1000;
   for (let i=1; i<=segments; i++) {
-    addPoint(last.lat + dLat*i, last.lng + dLng*i);
+    const ts = new Date(baseTs.getTime() + i * intervalMs);
+    addPoint(last.lat + dLat*i, last.lng + dLng*i, {
+      timestamp: ts,
+      skipUpdate: true,
+      skipTimeUpdate: true,
+      skipDayChangeCheck: true,
+      skipStops: true
+    });
   }
+  // after batch, update layers once
+  updateAllLayers();
+  updatePointsList();
+  updateStatus();
+  // advance picker time to after the last added point
+  const lastPointTs = track.points[track.points.length-1].timestamp;
+  advancePickerTime(lastPointTs);
 }
 
 // ---- time & date picker (native) ------------------------------------------
