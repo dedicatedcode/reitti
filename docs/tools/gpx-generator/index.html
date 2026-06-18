@@ -468,6 +468,11 @@
     let boxStartPixel = null;
     let boxCurrPixel  = null;
 
+    // multi‑point drag state
+    window.multiDrag = false;
+    window.multiDragOrigin = null;  // { lat, lng }
+    window.multiDragMap = null;     // Map of pointId -> { trackIndex, pointIndex, lat0, lng0 }
+
     const btnSelect = document.getElementById('btnSelect');
     const btnBoxSelect = document.getElementById('btnBoxSelect');
     const btnAddPoint = document.getElementById('btnAddPoint');
@@ -588,23 +593,35 @@
           return;
         }
 
+        const shiftKey = e.originalEvent && e.originalEvent.shiftKey;
+
         if (window.currentTool === 'select') {
           const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
           if (features.length) {
             const f = features[0];
             const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
-            if (window.selectedPoints.has(id)) {
-              window.selectedPoints.delete(id);
+            if (shiftKey) {
+              // expand selection (add, never remove)
+              if (!window.selectedPoints.has(id)) {
+                window.selectedPoints.add(id);
+              }
             } else {
-              window.selectedPoints.add(id);
+              // toggle: click selected = unselect; click unselected = select
+              if (window.selectedPoints.has(id)) {
+                window.selectedPoints.delete(id);
+              } else {
+                window.selectedPoints.add(id);
+              }
             }
             updateSelectedPointsSource();
             e.preventDefault();
             return;
           }
-          // click on empty area → clear selection
-          window.selectedPoints.clear();
-          updateSelectedPointsSource();
+          // click on empty area clears selection (unless shift is held)
+          if (!shiftKey) {
+            window.selectedPoints.clear();
+            updateSelectedPointsSource();
+          }
           return;
         }
 
@@ -637,7 +654,9 @@
           return;
         }
 
-        // box‑select drag start
+        const shiftKey = e.originalEvent && e.originalEvent.shiftKey;
+
+        // box‑select drag start (allowed with or without shift)
         if (window.currentTool === 'boxselect') {
           window.__boxStart = e.lngLat;
           boxStartPixel = map.project(e.lngLat);
@@ -652,10 +671,49 @@
           return;
         }
 
-        // drag a point (any tool except boxselect)
+        // For tools other than boxselect, shift‑click is used for selection
+        // and should NOT start a drag.
+        if (shiftKey) {
+          return;
+        }
+
+        // drag a point
         const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
         if (features.length) {
           const f = features[0];
+          const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
+
+          // If the clicked point is part of an existing selection, start a multi‑point drag.
+          if (window.selectedPoints.size > 0 && window.selectedPoints.has(id)) {
+            const track = window.tracks[f.properties.trackIndex];
+            const point = track.points[f.properties.pointIndex];
+            window.multiDrag = true;
+            window.multiDragOrigin = { lat: point.lat, lng: point.lng };
+
+            const snapshot = new Map();
+            window.selectedPoints.forEach(pid => {
+              const [tiStr, piStr] = pid.split('-');
+              const ti = Number(tiStr);
+              const pi = Number(piStr);
+              const t = window.tracks[ti];
+              if (t && t.points[pi]) {
+                const p = t.points[pi];
+                snapshot.set(pid, {
+                  trackIndex: ti,
+                  pointIndex: pi,
+                  lat0: p.lat,
+                  lng0: p.lng
+                });
+              }
+            });
+            window.multiDragMap = snapshot;
+            dragOccurred = false;           // so a later click won't add a point
+            map.dragPan.disable();
+            e.preventDefault();
+            return;
+          }
+
+          // single‑point drag
           dragPoint = {
             trackIndex: f.properties.trackIndex,
             pointIndex: f.properties.pointIndex
@@ -663,6 +721,7 @@
           dragOccurred = false;
           map.dragPan.disable();
           e.preventDefault();
+          return;
         }
       });
 
@@ -689,7 +748,13 @@
 
           const bounds = new maplibregl.LngLatBounds(swLngLat, neLngLat);
 
-          window.selectedPoints.clear();
+          const shiftKey = e.originalEvent && e.originalEvent.shiftKey;
+
+          if (!shiftKey) {
+            // replace selection
+            window.selectedPoints.clear();
+          }
+
           const tracks = window.tracks || [];
           tracks.forEach((track, ti) => {
             track.points.forEach((p, pi) => {
@@ -707,10 +772,17 @@
           return;
         }
 
-        // finish point drag
+        // finish single‑point drag
         if (dragPoint) {
-          // point already updated in real‑time by mousemove
           dragPoint = null;
+          map.dragPan.enable();
+        }
+
+        // finish multi‑point drag
+        if (window.multiDrag) {
+          window.multiDrag = false;
+          window.multiDragOrigin = null;
+          window.multiDragMap = null;
           map.dragPan.enable();
         }
       });
@@ -750,6 +822,31 @@
               if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
             }
           }
+        }
+
+        // ---- multi‑point drag ----
+        if (window.multiDrag && window.multiDragOrigin && window.editModeEnabled) {
+          const deltaLat = e.lngLat.lat - window.multiDragOrigin.lat;
+          const deltaLng = e.lngLat.lng - window.multiDragOrigin.lng;
+          const mdm = window.multiDragMap;
+          if (mdm) {
+            mdm.forEach((item) => {
+              const track = window.tracks[item.trackIndex];
+              if (track && track.points[item.pointIndex]) {
+                const p = track.points[item.pointIndex];
+                p.lat = item.lat0 + deltaLat;
+                p.lng = item.lng0 + deltaLng;
+                p.originalLat = p.lat;
+                p.originalLng = p.lng;
+              }
+            });
+            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+            if (typeof window.updatePointsList === 'function') window.updatePointsList();
+            if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
+            dragOccurred = true;
+          }
+          e.preventDefault();
+          return; // skip the original mousemove to avoid interference
         }
 
         // always delegate to original mousemove (preview, point‑hover etc.)
