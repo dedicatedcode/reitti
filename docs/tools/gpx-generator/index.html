@@ -656,8 +656,46 @@
 
         const shiftKey = e.originalEvent && e.originalEvent.shiftKey;
 
-        // box‑select drag start (allowed with or without shift)
+        // box‑select tool
         if (window.currentTool === 'boxselect') {
+          // If shift is NOT held and click hits a selected point → start multi‑point drag
+          if (!shiftKey) {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+            if (features.length) {
+              const f = features[0];
+              const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
+              if (window.selectedPoints.has(id)) {
+                const track = window.tracks[f.properties.trackIndex];
+                const point = track.points[f.properties.pointIndex];
+                window.multiDrag = true;
+                window.multiDragOrigin = { lat: point.lat, lng: point.lng };
+
+                const snapshot = new Map();
+                window.selectedPoints.forEach(pid => {
+                  const [tiStr, piStr] = pid.split('-');
+                  const ti = Number(tiStr);
+                  const pi = Number(piStr);
+                  const t = window.tracks[ti];
+                  if (t && t.points[pi]) {
+                    const p = t.points[pi];
+                    snapshot.set(pid, {
+                      trackIndex: ti,
+                      pointIndex: pi,
+                      lat0: p.lat,
+                      lng0: p.lng
+                    });
+                  }
+                });
+                window.multiDragMap = snapshot;
+                dragOccurred = false;
+                map.dragPan.disable();
+                e.preventDefault();
+                return;
+              }
+            }
+          }
+
+          // normal box‑select drag start
           window.__boxStart = e.lngLat;
           boxStartPixel = map.project(e.lngLat);
           boxCurrPixel = boxStartPixel;
