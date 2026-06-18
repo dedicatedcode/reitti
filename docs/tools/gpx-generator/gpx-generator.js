@@ -215,7 +215,9 @@ function onMapMouseMove(e) {
 
   // preview line
   const previewSource = map.getSource('preview');
-  if (editModeEnabled && !paintMode) {
+  const previewAllowed = (typeof window.currentTool === 'undefined' ||
+                          (window.currentTool !== 'select' && window.currentTool !== 'boxselect'));
+  if (editModeEnabled && !paintMode && previewAllowed) {
     const track = tracks[currentTrackIndex];
     if (previewSource) {
       if (track && track.points.length) {
@@ -235,7 +237,9 @@ function onMapMouseMove(e) {
 
   // preview popup
   const popup = document.getElementById('previewPopup');
-  if (editModeEnabled) {
+  const previewPopupAllowed = (typeof window.currentTool === 'undefined' ||
+                               (window.currentTool !== 'select' && window.currentTool !== 'boxselect'));
+  if (editModeEnabled && previewPopupAllowed) {
     updatePreviewPopup(e);
   } else {
     if (popup) popup.style.display = 'none';
