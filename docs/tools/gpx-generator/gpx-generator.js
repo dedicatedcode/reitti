@@ -20,6 +20,10 @@ const MAX_INTERPOLATION_SEGMENTS = 40000;
 // persisted point selection (view mode)
 let pinnedPoint = null;
 
+// drag & move support
+let dragPoint = null;       // { trackIndex, pointIndex }
+let dragOccurred = false;
+
 // Google JSON import state
 let pendingJsonData = null;
 let pendingJsonFilename = "";
@@ -105,7 +109,20 @@ function initMap() {
   map.on('click', onMapClick);
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => {
+    // Keep info visible when a point is pinned or being dragged
+    if (pinnedPoint || dragPoint) return;
     hidePointInfo();
+  });
+
+  map.on('mousedown', onMapMouseDown);
+  map.on('mouseup', onMapMouseUp);
+
+  // pointer cursor on point hover
+  map.on('mouseenter', 'points-circle', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', 'points-circle', () => {
+    map.getCanvas().style.cursor = '';
   });
 }
 
@@ -113,6 +130,12 @@ function emptyFC() { return { type:'FeatureCollection', features:[] }; }
 
 // --- map event handlers ----------------------------------------------------
 function onMapClick(e) {
+  // ignore clicks triggered after a drag
+  if (dragOccurred) {
+    dragOccurred = false;
+    return;
+  }
+
   // view mode – persistent point selection
   if (!editModeEnabled) {
     const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
@@ -133,8 +156,52 @@ function onMapClick(e) {
   else addPoint(e.lngLat.lat, e.lngLat.lng);
 }
 
+function onMapMouseDown(e) {
+  if (editModeEnabled) return;               // drag only in view mode
+  const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+  if (features.length) {
+    const f = features[0];
+    dragPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
+    dragOccurred = false;                     // will be set to true on actual movement
+    map.dragPan.disable();
+  }
+}
+
+function onMapMouseUp(e) {
+  if (dragPoint) {
+    // finalize position (already updated by mousemove)
+    const track = tracks[dragPoint.trackIndex];
+    if (track && dragPoint.pointIndex < track.points.length) {
+      pinnedPoint = { trackIndex: dragPoint.trackIndex, pointIndex: dragPoint.pointIndex };
+      showPointInfoForPinned();
+    }
+    dragPoint = null;
+    map.dragPan.enable();
+  }
+}
+
 function onMapMouseMove(e) {
   if (!map.loaded()) return;
+
+  // -- drag point movement ------------------------------------------------
+  if (dragPoint) {
+    const track = tracks[dragPoint.trackIndex];
+    if (track) {
+      const p = track.points[dragPoint.pointIndex];
+      if (p) {
+        p.lat = e.lngLat.lat;
+        p.lng = e.lngLat.lng;
+        p.originalLat = e.lngLat.lat;
+        p.originalLng = e.lngLat.lng;
+        dragOccurred = true;                   // prevent the following click from clearing the pin
+        updateAllLayers();
+        updatePointsList();
+        // keep info for the dragged point
+        showPointInfoForPinned();
+      }
+    }
+    return;
+  }
 
   // preview line
   const previewSource = map.getSource('preview');
