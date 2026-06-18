@@ -9,6 +9,7 @@ let currentTrackIndex = 0;
 let editModeEnabled = false;
 window.editModeEnabled = editModeEnabled;
 let paintMode = false;
+window.paintMode = paintMode;
 let paintActive = false;
 let lastPaintTime = 0;
 let paintThrottleMs = 100;
@@ -569,8 +570,15 @@ function togglePaintMode() {
   if (!editModeEnabled) return;
   paintMode = !paintMode;
   paintActive = paintMode;               // start painting immediately when paint mode turns on
+  window.paintMode = paintMode;
   updatePaintButton();
   map.getContainer().style.cursor = paintMode ? 'crosshair' : '';
+
+  // When paint mode is toggled on, clear any other active tool.
+  // When toggled off, default back to add‑point mode.
+  if (typeof window.setTool === 'function') {
+    window.setTool(paintMode ? null : 'addpoint');
+  }
 }
 function updatePaintButton() {
   const btn = document.getElementById('btnPaintMode');

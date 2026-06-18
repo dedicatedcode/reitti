@@ -297,6 +297,7 @@
     <button class="head-btn active" id="btnEditMode" onclick="handleEditToggle()">✎ Edit</button>
     <button class="btn head-btn" id="btnSelect" data-tool="select" title="Select" style="display:none" onclick="setTool('select')">Select</button>
     <button class="btn head-btn" id="btnBoxSelect" data-tool="boxselect" title="Box select" style="display:none" onclick="setTool('boxselect')">Box</button>
+    <button class="btn head-btn" id="btnAddPoint" data-tool="addpoint" title="Add point" style="display:none" onclick="setTool('addpoint')">➕ Add</button>
     <div class="sep"></div>
     <button class="head-btn" onclick="document.getElementById('gpxFileInput').click()">📂 Import</button>
     <button class="head-btn" onclick="exportAll()">💾 Export</button>
@@ -455,15 +456,17 @@
 
     // selected set & tool state
     window.selectedPoints = new Set();
-    window.currentTool = null;   // 'select' | 'boxselect'
+    window.currentTool = null;   // 'select' | 'boxselect' | 'addpoint'
 
     const btnSelect = document.getElementById('btnSelect');
     const btnBoxSelect = document.getElementById('btnBoxSelect');
+    const btnAddPoint = document.getElementById('btnAddPoint');
 
     function updateToolButtonsVisibility() {
       const visible = window.editModeEnabled;
       if (btnSelect) btnSelect.style.display = visible ? '' : 'none';
       if (btnBoxSelect) btnBoxSelect.style.display = visible ? '' : 'none';
+      if (btnAddPoint) btnAddPoint.style.display = visible ? '' : 'none';
     }
 
     // wrap the original edit toggle so we can show/hide tool buttons
@@ -472,6 +475,13 @@
         window.toggleEditMode();
       }
       updateToolButtonsVisibility();
+      // When edit mode is enabled, default to add‑point mode.
+      // When disabled, clear any active tool.
+      if (window.editModeEnabled) {
+        setTool('addpoint');
+      } else {
+        setTool(null);
+      }
     };
 
     // active tool switching
@@ -479,11 +489,21 @@
       window.currentTool = tool;
       if (btnSelect) btnSelect.classList.toggle('active', tool === 'select');
       if (btnBoxSelect) btnBoxSelect.classList.toggle('active', tool === 'boxselect');
+      if (btnAddPoint) btnAddPoint.classList.toggle('active', tool === 'addpoint');
+
       // hide box overlay when leaving box mode
       if (tool !== 'boxselect') {
         const ov = document.getElementById('boxSelectOverlay');
         if (ov) ov.style.display = 'none';
         window.__boxStart = null;
+        boxSelectReset(); // reset internal state if any
+      }
+
+      // paint mode is exclusive with any other tool
+      if (window.paintMode) {
+        if (typeof window.togglePaintMode === 'function') {
+          window.togglePaintMode();
+        }
       }
     };
 
@@ -562,8 +582,15 @@
           return;
         }
 
-        // default edit behaviour (add point)
-        origClick(e);
+        // paint mode is exclusive; ignore clicks while painting
+        if (window.paintMode) {
+          return;
+        }
+
+        // add point only when the "add point" tool is active
+        if (window.currentTool === 'addpoint') {
+          origClick(e);
+        }
       });
 
       // ----- replace mousedown / mouseup / mousemove for drag & box select -----
