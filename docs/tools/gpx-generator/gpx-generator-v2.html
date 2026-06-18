@@ -254,6 +254,26 @@
       color: var(--ink-faint);
       padding: 0 4px;
     }
+
+    /* Polku about improvements */
+    #aboutModal .about-logo {
+      display: block;
+      margin: 0 auto 20px auto;
+      height: 80px;
+      max-width: 100%;
+    }
+    #aboutModal .about-description {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--ink);
+    }
+    #aboutModal .about-description strong {
+      font-weight: 700;
+      color: var(--color-highlight, #3498db);
+    }
+    #aboutModal .about-description a {
+      font-weight: 600;
+    }
   </style>
 </head>
 <body style="background: var(--bg); color: var(--ink);">
@@ -384,10 +404,12 @@
       <button class="modal-close" onclick="closeAbout()">&times;</button>
     </div>
     <div class="modal-body">
-      <img src="/img/logo.svg" alt="Polku logo" style="height:60px; margin-bottom:12px;">
-      <p>This tool lets you create and edit GPX tracks entirely inside your browser.<br>All processing happens <strong>locally</strong> – no track data is ever sent to any server. Your privacy is fully respected.</p>
-      <p><strong>Polku</strong> (Finnish for “path” or “trail”) captures the core idea: connecting points into a track tells a story of movement. It is a companion tool for the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti</a> project — a personal location tracking and analysis application that helps you understand your movement patterns and significant places. Together, these tools give you full control over your GPS data.</p>
-      <p>Visit the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti website</a> or explore the code on <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener">GitHub</a>.</p>
+      <img src="/img/logo.svg" alt="Polku logo" class="about-logo">
+      <div class="about-description">
+        <p>This tool lets you create and edit GPX tracks entirely inside your browser.<br>All processing happens <strong>locally</strong> – no track data is ever sent to any server. Your privacy is fully respected.</p>
+        <p><strong>Polku</strong> (Finnish for “path” or “trail”) captures the core idea: connecting points into a track tells a story of movement. It is a companion tool for the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti</a> project — a personal location tracking and analysis application that helps you understand your movement patterns and significant places. Together, these tools give you full control over your GPS data.</p>
+        <p>Visit the <a href="https://www.dedicatedcode.com/projects/reitti/latest/" target="_blank" rel="noopener">Reitti website</a> or explore the code on <a href="https://github.com/dedicatedcode/reitti" target="_blank" rel="noopener">GitHub</a>.</p>
+      </div>
     </div>
   </div>
 </div>
