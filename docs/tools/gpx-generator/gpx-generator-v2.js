@@ -265,8 +265,10 @@ function showPointInfo(props) {
   panel.style.display = 'block';
 }
 function hidePointInfo() {
-  // keep displayed when a point is pinned in view mode
-  if (pinnedPoint && !editModeEnabled) return;
+  // close the panel and clear any pinned point
+  if (pinnedPoint && !editModeEnabled) {
+    clearPinned();
+  }
   document.getElementById('pointInfo').style.display = 'none';
 }
 function deletePointFromInfo(ti, pi) {
