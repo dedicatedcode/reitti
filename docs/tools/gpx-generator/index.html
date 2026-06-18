@@ -1038,12 +1038,23 @@
 
   // move the pinned point (and selection) to the next/previous point in the SAME TRACK
   window.navigatePoint = function(direction) {
-    const pt = window.getPinnedPoint ? window.getPinnedPoint() : null;
+    // Determine the current reference point.
+    // Prefer what is currently displayed in the point-info panel (getPinnedPoint),
+    // otherwise fall back to the last selected / clicked point.
+    let pt = null;
+    if (window.getPinnedPoint) {
+      pt = window.getPinnedPoint();
+    }
+    if (!pt && window.lastSelectedPoint) {
+      pt = window.lastSelectedPoint;
+    }
     if (!pt) return;
+
     const ti = pt.trackIndex;
     const pi = pt.pointIndex;
     const track = window.tracks && window.tracks[ti];
     if (!track) return;
+
     const newPi = pi + direction;
     if (newPi < 0 || newPi >= track.points.length) return;
 
@@ -1114,10 +1125,10 @@
         if (typeof window.expandSelection === 'function') window.expandSelection(dir);
         e.preventDefault();
       } else {
-        // navigate the pinned point (must be a single point showing info)
-        const pt = window.getPinnedPoint ? window.getPinnedPoint() : null;
-        if (pt) {
+        // navigate the selection (works in both view and edit modes)
+        if (typeof window.navigatePoint === 'function') {
           window.navigatePoint(dir);
+          // Always prevent default so the map doesn't pan when arrow keys are pressed
           e.preventDefault();
         }
       }
