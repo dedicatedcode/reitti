@@ -299,8 +299,6 @@
     bottom: 342px;
     right: 18px;
     z-index: 10;
-    min-width: 240px;
-    max-width: 320px;
     padding: 10px 12px;
     font-size: 0.8rem;
     pointer-events: auto;
@@ -657,8 +655,6 @@
 
 .head-btn {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
     gap: 6px;
     padding: 6px 11px;
     background: rgba(255, 255, 255, 0.03);
