@@ -209,6 +209,51 @@
 
     /* when edit drawer is visible, reposition point info beside the drawer */
     body.edit-mode #pointInfo { left: 430px; }
+
+    /* About modal */
+    #aboutModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45);
+      z-index: 300;
+      justify-content: center;
+      align-items: center;
+    }
+    #aboutModal.show { display: flex; }
+    #aboutModal .modal-box {
+      background: var(--panel-solid);
+      border: 1px solid var(--panel-line);
+      border-radius: 12px;
+      max-width: 520px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      color: var(--ink);
+    }
+    #aboutModal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--panel-line);
+    }
+    #aboutModal .modal-body {
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #aboutModal .modal-body a {
+      color: var(--color-highlight, #3498db);
+    }
+    #aboutModal .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--ink-faint);
+      padding: 0 4px;
+    }
   </style>
 </head>
 <body style="background: var(--bg); color: var(--ink);">
@@ -216,12 +261,17 @@
 <!-- fixed header with toolbar -->
 <div id="gpxHeader">
   <div class="drawer-head">
+    <a href="/" title="Reitti" class="header-logo" style="margin-right:16px; display:flex; align-items:center; gap:6px; text-decoration:none; color:inherit;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span style="font-weight:700; font-size:15px;">Reitti</span>
+    </a>
     <button class="head-btn active" id="btnEditMode" onclick="toggleEditMode()">✎ Edit</button>
     <div class="sep"></div>
     <button class="head-btn" onclick="document.getElementById('gpxFileInput').click()">📂 Import</button>
     <button class="head-btn" onclick="exportAll()">💾 Export</button>
     <button class="head-btn" onclick="clearAll()" style="color:#e07a6b">🗑 Clear</button>
     <button class="head-btn" onclick="randomizeAll()">🎲 Randomize</button>
+    <button class="head-btn" onclick="showAbout()" style="margin-left:auto;">ℹ️ About</button>
   </div>
 </div>
 
@@ -325,6 +375,21 @@
 <script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js"></script>
 <script src="/js/datetime-picker.js"></script>
 <script src="gpx-generator-v2.js"></script>
+
+<!-- About modal -->
+<div id="aboutModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span style="font-weight:600; font-size:18px;">ℹ️ About GPX Generator</span>
+      <button class="modal-close" onclick="closeAbout()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>This tool lets you create and edit GPX tracks entirely inside your browser.<br>All processing happens <strong>locally</strong> – no track data is ever sent to any server. Your privacy is fully respected.</p>
+      <p>GPX Generator is part of the <a href="https://reitti.app" target="_blank" rel="noopener">Reitti</a> project, an open‑source travel diary and location analytics platform.</p>
+      <p>To learn more, visit the <a href="https://reitti.app" target="_blank" rel="noopener">Reitti website</a> or explore the code on <a href="https://github.com/reitti-io/reitti" target="_blank" rel="noopener">GitHub</a>.</p>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

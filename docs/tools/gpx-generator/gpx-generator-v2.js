@@ -861,5 +861,15 @@ function initControls() {
   });
 }
 
+// About modal functions
+function showAbout() {
+  const modal = document.getElementById('aboutModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeAbout() {
+  const modal = document.getElementById('aboutModal');
+  if (modal) modal.style.display = 'none';
+}
+
 // automatically start in view mode (edit off)
 editModeEnabled = false;
