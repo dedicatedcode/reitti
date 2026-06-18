@@ -676,16 +676,18 @@
         if (window.__boxStart && window.currentTool === 'boxselect') {
           overlay.style.display = 'none';
 
-          // use the stored pixel positions to compute the bounding box
-          const nw = map.unproject([
-            Math.min(boxStartPixel.x, boxCurrPixel.x),
-            Math.min(boxStartPixel.y, boxCurrPixel.y)
-          ]);
-          const se = map.unproject([
-            Math.max(boxStartPixel.x, boxCurrPixel.x),
-            Math.max(boxStartPixel.y, boxCurrPixel.y)
-          ]);
-          const bounds = new maplibregl.LngLatBounds(nw, se);
+          // Compute bounding box from the pixel corners.
+          // Swapping min/max of x and y ensures we get the correct southwest and northeast corners
+          // regardless of which direction the user dragged.
+          const minX = Math.min(boxStartPixel.x, boxCurrPixel.x);
+          const minY = Math.min(boxStartPixel.y, boxCurrPixel.y);
+          const maxX = Math.max(boxStartPixel.x, boxCurrPixel.x);
+          const maxY = Math.max(boxStartPixel.y, boxCurrPixel.y);
+
+          const swLngLat = map.unproject([minX, maxY]); // bottom‑left (southwest)
+          const neLngLat = map.unproject([maxX, minY]); // top‑right (northeast)
+
+          const bounds = new maplibregl.LngLatBounds(swLngLat, neLngLat);
 
           window.selectedPoints.clear();
           const tracks = window.tracks || [];
