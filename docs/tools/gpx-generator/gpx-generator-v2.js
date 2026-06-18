@@ -446,8 +446,15 @@ function updatePointsList() {
   let html = '';
   tracks.forEach((track, ti) => {
     html += `<div class="gpx-track-header" onclick="toggleTrack(${ti})">
-      <div><span class="track-color" style="background:${track.color}"></span>${track.name} (${track.points.length})</div>
-      <span style="font-size:11px">${track.collapsed?'▶':'▼'}</span>
+      <div class="track-info">
+        <span class="track-color" style="background:${track.color}"></span>
+        <span class="track-name">${track.name}</span>
+        <span>(${track.points.length})</span>
+      </div>
+      <div class="track-controls">
+        <button class="track-export-btn" onclick="event.stopPropagation(); exportTrackGPX(${ti})">Export</button>
+        <span class="collapse-icon">${track.collapsed?'▶':'▼'}</span>
+      </div>
     </div>`;
     if (!track.collapsed) {
       track.points.forEach((p, pi) => {
@@ -472,6 +479,14 @@ function toggleTrack(idx) {
   tracks[idx].collapsed = !tracks[idx].collapsed;
   updatePointsList();
 }
+
+function exportTrackGPX(trackIndex) {
+  const track = tracks[trackIndex];
+  if (!track || !track.points.length) return;
+  const gpx = generateGPX(track);
+  downloadFile(gpx, `${track.name.replace(/\s+/g,'_')}.gpx`, 'application/gpx+xml');
+}
+
 function highlightPoint(ti, pi) {
   const track = tracks[ti];
   if (!track || pi>=track.points.length) return;

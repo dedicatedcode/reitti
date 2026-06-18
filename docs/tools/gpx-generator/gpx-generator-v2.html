@@ -129,7 +129,7 @@
     #pointsPanel {
       position: fixed;
       right: 16px; top: 110px;
-      width: 340px;
+      width: 380px;
       max-height: calc(100vh - 200px);
       display: flex; flex-direction: column;
       background: var(--panel-solid);
@@ -148,12 +148,49 @@
       cursor: pointer;
     }
     .gpx-track-header:hover { background: rgba(255,255,255,0.05); }
-    .gpx-track-header .track-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+    .gpx-track-header .track-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; display: inline-block; vertical-align: middle; }
     .gpx-point { padding: 4px 12px 4px 28px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; display: flex; justify-content: space-between; }
     .gpx-point:hover { background: rgba(255,255,255,0.04); }
     .gpx-point .coords { color: var(--ink-dim); }
     .gpx-point .time { color: var(--ink-faint); min-width: 70px; text-align: right; }
     .speed-color-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
+
+    /* -- track header sub‑components -- */
+    .track-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      flex: 1;
+      min-width: 0;
+    }
+    .track-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;   /* adjust to taste */
+    }
+    .track-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .track-export-btn {
+      padding: 2px 6px;
+      font-size: 10px;
+      line-height: 1;
+      border: 1px solid var(--panel-line);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .track-export-btn:hover {
+      background: var(--panel-hover, rgba(255,255,255,0.1));
+    }
 
     /* preview popup */
     #previewPopup {
