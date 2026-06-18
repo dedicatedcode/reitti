@@ -12,6 +12,66 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.css">
   <style>
     /* tiny overrides / additions not worth a separate file */
+
+    /* override date picker popup direction */
+    .datetime-picker .picker-popup {
+      bottom: auto !important;
+      top: 100% !important;
+    }
+
+    /* make room for the fixed header */
+    #map { top: 50px; }
+
+    /* push floating panels below the header */
+    #pointsPanel { top: 110px; }
+    #gpxEditPanel { top: 110px; left: 16px; }
+
+    /* new floating settings panel (edit drawer) */
+    #gpxEditPanel {
+      position: fixed;
+      left: 16px;
+      top: 110px;
+      width: 340px;
+      max-height: calc(100vh - 200px);
+      display: flex; flex-direction: column;
+      background: var(--panel-solid);
+      border: 1px solid var(--panel-line);
+      border-radius: 10px;
+      z-index: 20;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    #gpxEditPanel .history-header { flex-shrink: 0; }
+    #gpxEditPanel .gpx-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 16px;
+    }
+
+    /* full‑width header at the top */
+    #gpxHeader {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      background: var(--panel-header-bg, #1a1c23);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    #gpxHeader .drawer-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    /* keep existing point‑list styles */
     .gpx-drawer-body {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -52,7 +112,7 @@
     /* floating points panel */
     #pointsPanel {
       position: fixed;
-      right: 16px; top: 60px;
+      right: 16px; top: 110px;
       width: 340px;
       max-height: calc(100vh - 200px);
       display: flex; flex-direction: column;
@@ -78,38 +138,13 @@
     .gpx-point .coords { color: var(--ink-dim); }
     .gpx-point .time { color: var(--ink-faint); min-width: 70px; text-align: right; }
     .speed-color-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
-    /* bottom drawer – specific overrides */
-    #gpxDrawer { height: auto; max-height: 350px; }
-    .drawer-head { flex-wrap: wrap; }
   </style>
 </head>
 <body style="background: var(--bg); color: var(--ink);">
 
-<div id="map" style="position:absolute; inset:0;"></div>
-
-<!-- floating point info -->
-<div id="pointInfo" class="floating selection-info" style="display:none">
-  <div class="sel-info-head">
-    <span class="sel-info-title" id="pointInfoTitle">Point</span>
-    <button class="sel-info-close" onclick="hidePointInfo()">×</button>
-  </div>
-  <div class="sel-info-body" id="pointInfoBody"></div>
-</div>
-
-<!-- floating points panel -->
-<div id="pointsPanel">
-  <div class="history-header">
-    <div style="display:flex; align-items:center; gap:9px;">
-      <h4>Points</h4>
-      <span class="history-count" id="pointCountBadge">0</span>
-    </div>
-  </div>
-  <div class="history-list" id="pointsList"></div>
-</div>
-
-<!-- bottom drawer -->
-<div id="gpxDrawer" class="drawer" style="bottom:12px;">
-  <div class="drawer-head" style="flex-wrap: wrap;">
+<!-- fixed header with toolbar and date picker -->
+<div id="gpxHeader">
+  <div class="drawer-head">
     <button class="head-btn active" id="btnEditMode" onclick="toggleEditMode()">✎ Edit</button>
     <button class="head-btn" id="btnPaintMode" onclick="togglePaintMode()">🎨 Paint</button>
     <div class="sep"></div>
@@ -124,6 +159,33 @@
     <button class="head-btn" onclick="clearAll()" style="color:#e07a6b">🗑 Clear</button>
     <button class="head-btn" onclick="randomizeAll()">🎲 Randomize</button>
   </div>
+</div>
+
+<div id="map" style="position:absolute; inset:0; top:50px; left:0; right:0; bottom:0;"></div>
+
+<!-- floating point info -->
+<div id="pointInfo" class="floating selection-info" style="display:none">
+  <div class="sel-info-head">
+    <span class="sel-info-title" id="pointInfoTitle">Point</span>
+    <button class="sel-info-close" onclick="hidePointInfo()">×</button>
+  </div>
+  <div class="sel-info-body" id="pointInfoBody"></div>
+</div>
+
+<!-- floating points panel (right side) -->
+<div id="pointsPanel">
+  <div class="history-header">
+    <div style="display:flex; align-items:center; gap:9px;">
+      <h4>Points</h4>
+      <span class="history-count" id="pointCountBadge">0</span>
+    </div>
+  </div>
+  <div class="history-list" id="pointsList"></div>
+</div>
+
+<!-- floating edit drawer (left side) -->
+<div id="gpxEditPanel">
+  <div class="history-header"><h4>Settings</h4></div>
   <div class="gpx-drawer-body">
     <div>
       <div class="gpx-drawer-section">
@@ -186,5 +248,20 @@
 <script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js"></script>
 <script src="/js/datetime-picker.js"></script>
 <script src="gpx-generator-v2.js"></script>
+
+<!-- ensure date picker popup opens below -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var picker = window.gpxDatePicker;
+  if (picker) {
+    if (typeof picker.setOption === 'function') {
+      picker.setOption('popupPlacement', 'bottom');
+    } else if (picker.options) {
+      picker.options.popupPlacement = 'bottom';
+    }
+  }
+});
+</script>
+
 </body>
 </html>
