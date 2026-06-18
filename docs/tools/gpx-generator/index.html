@@ -1122,5 +1122,89 @@
   });
 </script>
 
+<script>
+  (function() {
+    // ---- Workaround: provide a way to find the currently focused point ----
+    window.getPinnedPoint = function() {
+      const panel = document.getElementById('pointInfo');
+      if (!panel || panel.style.display === 'none') return null;
+      const titleEl = document.getElementById('pointInfoTitle');
+      if (!titleEl) return null;
+      const txt = titleEl.textContent.trim();
+      const m = txt.match(/^(.+?)\s*·\s*Point\s+(\d+)$/);
+      if (!m) return null;
+      const trackName = m[1];
+      const pointIdx = parseInt(m[2], 10) - 1;
+      const tracks = window.tracks || [];
+      for (let ti = 0; ti < tracks.length; ti++) {
+        if (tracks[ti].name === trackName && tracks[ti].points[pointIdx]) {
+          return { trackIndex: ti, pointIndex: pointIdx };
+        }
+      }
+      return null;
+    };
+
+    // ---- Simulate a map click to update the pinned point and info panel ----
+    window.syncPinnedPoint = function(ti, pi) {
+      const track = window.tracks[ti];
+      if (!track || pi < 0 || pi >= track.points.length) return;
+      const p = track.points[pi];
+      const map = window.reittiMap || window.map;
+      if (!map) return;
+      map.flyTo({ center: [p.lng, p.lat], zoom: map.getZoom() });
+      // fire click so the original handler updates pinnedPoint and refreshes the info panel
+      const pixel = map.project([p.lng, p.lat]);
+      map.fire('click', {
+        lngLat: { lat: p.lat, lng: p.lng },
+        point: pixel,
+        originalEvent: {}
+      });
+    };
+
+    // ---- Add navigation buttons to the point‑info panel when in view mode ----
+    function addNavButtons() {
+      if (window.editModeEnabled) return;
+      const body = document.getElementById('pointInfoBody');
+      if (!body) return;
+      // remove any previous buttons
+      body.querySelectorAll('.custom-nav-buttons').forEach(el => el.remove());
+      const container = document.createElement('div');
+      container.className = 'custom-nav-buttons';
+      container.style.cssText = 'margin-top:8px; display:flex; gap:6px;';
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '← Prev';
+      prevBtn.className = 'btn head-btn';
+      prevBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        window.navigatePoint(-1);
+      });
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = 'Next →';
+      nextBtn.className = 'btn head-btn';
+      nextBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        window.navigatePoint(1);
+      });
+      container.appendChild(prevBtn);
+      container.appendChild(nextBtn);
+      body.appendChild(container);
+    }
+
+    // observe changes to the point‑info body as well as the visibility of the panel
+    const pointInfoBody = document.getElementById('pointInfoBody');
+    if (pointInfoBody) {
+      const bodyObserver = new MutationObserver(addNavButtons);
+      bodyObserver.observe(pointInfoBody, { childList: true });
+    }
+    const pointInfo = document.getElementById('pointInfo');
+    if (pointInfo) {
+      const visibilityObserver = new MutationObserver(function() {
+        if (pointInfo.style.display !== 'none') addNavButtons();
+      });
+      visibilityObserver.observe(pointInfo, { attributes: true, attributeFilter: ['style'] });
+    }
+  })();
+</script>
+
 </body>
 </html>
