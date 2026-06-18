@@ -105,23 +105,26 @@ function onMapMouseMove(e) {
     lastMouseLngLat = e.lngLat;
     return;
   }
-  // preview line
+  // preview line – guard against sources not yet loaded
+  const previewSource = map.getSource('preview');
   if (editModeEnabled && !paintMode) {
     const track = tracks[currentTrackIndex];
-    if (track && track.points.length) {
-      const last = track.points[track.points.length-1];
-      const features = [{
-        type: 'Feature',
-        geometry: { type:'LineString', coordinates: [[last.lng, last.lat], [e.lngLat.lng, e.lngLat.lat]] }
-      }];
-      map.getSource('preview').setData({ type:'FeatureCollection', features });
-    } else {
-      map.getSource('preview').setData(emptyFC());
+    if (previewSource) {
+      if (track && track.points.length) {
+        const last = track.points[track.points.length-1];
+        const features = [{
+          type: 'Feature',
+          geometry: { type:'LineString', coordinates: [[last.lng, last.lat], [e.lngLat.lng, e.lngLat.lat]] }
+        }];
+        previewSource.setData({ type:'FeatureCollection', features });
+      } else {
+        previewSource.setData(emptyFC());
+      }
     }
   } else {
-    map.getSource('preview').setData(emptyFC());
+    if (previewSource) previewSource.setData(emptyFC());
   }
-  // point hover → info panel
+  // point hover → info panel (does not require sources)
   const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
   if (features.length) {
     const f = features[0];
