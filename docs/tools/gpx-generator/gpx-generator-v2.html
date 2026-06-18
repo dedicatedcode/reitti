@@ -101,13 +101,38 @@
       max-height: 400px;
       overflow-y: auto;
       z-index: 50;
+      background: var(--panel-bg-light, #f7f7f7);
+      color: #222;
     }
     #pointInfo .sel-info-body { padding: 10px 12px; }
     #pointInfo .sel-info-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
-    #pointInfo .sel-info-row .k { color: var(--ink-faint); }
-    #pointInfo .sel-info-row .v { color: var(--ink); text-align: right; }
-    #pointInfo .sel-info-actions { display: flex; gap: 6px; padding: 6px 0 0; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 6px; }
-    #pointInfo .sel-info-btn { flex:1; }
+    #pointInfo .sel-info-row .k { color: #222; }
+    #pointInfo .sel-info-row .v { color: #222; text-align: right; }
+    #pointInfo .sel-info-actions { display: flex; gap: 6px; padding: 6px 0 0; border-top: 1px solid rgba(0,0,0,0.12); margin-top: 6px; }
+    #pointInfo .sel-info-btn {
+      flex: 1;
+      background: #e0e0e0;
+      border: 1px solid #aaa;
+      color: #222;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+    }
+    #pointInfo .sel-info-btn:hover {
+      background: #d0d0d0;
+    }
+    #pointInfo .sel-info-head .sel-info-title {
+      color: #222;
+    }
+    #pointInfo .sel-info-close {
+      color: #222;
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
     /* floating points panel */
     #pointsPanel {
       position: fixed;
