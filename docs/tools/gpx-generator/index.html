@@ -545,6 +545,9 @@
     window.selectedPoints = new Set();
     window.currentTool = null;   // 'select' | 'boxselect' | 'addpoint'
 
+    // guard for syncPinnedPoint recursion
+    window.syncPinnedPointInProgress = false;
+
     // drag state (our own, because the original module variable is inaccessible)
     let dragPoint = null;        // { trackIndex, pointIndex }
     let dragOccurred = false;
@@ -704,7 +707,7 @@
             }
             // show info only when exactly one point is selected
             if (window.selectedPoints.size === 1 && window.selectedPoints.has(id)) {
-              if (typeof window.syncPinnedPoint === 'function') {
+              if (!window.syncPinnedPointInProgress && typeof window.syncPinnedPoint === 'function') {
                 window.syncPinnedPoint(f.properties.trackIndex, f.properties.pointIndex);
               }
             } else {
@@ -1124,6 +1127,9 @@
 
 <script>
   (function() {
+    // Guard to prevent re‑triggering of navigation‑button insertion
+    let navButtonsGuard = false;
+
     // ---- Workaround: provide a way to find the currently focused point ----
     window.getPinnedPoint = function() {
       const panel = document.getElementById('pointInfo');
@@ -1146,6 +1152,9 @@
 
     // ---- Simulate a map click to update the pinned point and info panel ----
     window.syncPinnedPoint = function(ti, pi) {
+      // Prevent infinite recursion when called from within a click handler
+      if (window.syncPinnedPointInProgress) return;
+
       const track = window.tracks[ti];
       if (!track || pi < 0 || pi >= track.points.length) return;
       const p = track.points[pi];
@@ -1154,40 +1163,55 @@
       map.flyTo({ center: [p.lng, p.lat], zoom: map.getZoom() });
       // fire click so the original handler updates pinnedPoint and refreshes the info panel
       const pixel = map.project([p.lng, p.lat]);
-      map.fire('click', {
-        lngLat: { lat: p.lat, lng: p.lng },
-        point: pixel,
-        originalEvent: {}
-      });
+      window.syncPinnedPointInProgress = true;
+      try {
+        map.fire('click', {
+          lngLat: { lat: p.lat, lng: p.lng },
+          point: pixel,
+          originalEvent: {}
+        });
+      } finally {
+        window.syncPinnedPointInProgress = false;
+      }
     };
 
     // ---- Add navigation buttons to the point‑info panel when in view mode ----
     function addNavButtons() {
+      // avoid re‑entry triggered by mutation observers
+      if (navButtonsGuard) return;
       if (window.editModeEnabled) return;
       const body = document.getElementById('pointInfoBody');
       if (!body) return;
-      // remove any previous buttons
-      body.querySelectorAll('.custom-nav-buttons').forEach(el => el.remove());
-      const container = document.createElement('div');
-      container.className = 'custom-nav-buttons';
-      container.style.cssText = 'margin-top:8px; display:flex; gap:6px;';
-      const prevBtn = document.createElement('button');
-      prevBtn.textContent = '← Prev';
-      prevBtn.className = 'btn head-btn';
-      prevBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        window.navigatePoint(-1);
-      });
-      const nextBtn = document.createElement('button');
-      nextBtn.textContent = 'Next →';
-      nextBtn.className = 'btn head-btn';
-      nextBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        window.navigatePoint(1);
-      });
-      container.appendChild(prevBtn);
-      container.appendChild(nextBtn);
-      body.appendChild(container);
+      // if the buttons already exist bail out
+      if (body.querySelector('.custom-nav-buttons')) return;
+
+      navButtonsGuard = true;
+      try {
+        // remove any previous buttons (should not exist, but just in case)
+        body.querySelectorAll('.custom-nav-buttons').forEach(el => el.remove());
+        const container = document.createElement('div');
+        container.className = 'custom-nav-buttons';
+        container.style.cssText = 'margin-top:8px; display:flex; gap:6px;';
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '← Prev';
+        prevBtn.className = 'btn head-btn';
+        prevBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          window.navigatePoint(-1);
+        });
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Next →';
+        nextBtn.className = 'btn head-btn';
+        nextBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          window.navigatePoint(1);
+        });
+        container.appendChild(prevBtn);
+        container.appendChild(nextBtn);
+        body.appendChild(container);
+      } finally {
+        navButtonsGuard = false;
+      }
     }
 
     // observe changes to the point‑info body as well as the visibility of the panel
@@ -1198,8 +1222,15 @@
     }
     const pointInfo = document.getElementById('pointInfo');
     if (pointInfo) {
+      let visibilityGuard = false;
       const visibilityObserver = new MutationObserver(function() {
-        if (pointInfo.style.display !== 'none') addNavButtons();
+        if (visibilityGuard) return;
+        try {
+          visibilityGuard = true;
+          if (pointInfo.style.display !== 'none') addNavButtons();
+        } finally {
+          visibilityGuard = false;
+        }
       });
       visibilityObserver.observe(pointInfo, { attributes: true, attributeFilter: ['style'] });
     }
