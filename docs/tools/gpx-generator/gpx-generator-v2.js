@@ -101,6 +101,7 @@ function onMapClick(e) {
 }
 
 function onMapMouseMove(e) {
+  if (!map.loaded()) return;
   if (paintMode && paintActive) {
     lastMouseLngLat = e.lngLat;
     return;
