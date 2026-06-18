@@ -120,7 +120,7 @@ function onMapClick(e) {
       showPointInfoForPinned();
     } else {
       clearPinned();
-      hidePointInfo();
+      hidePointInfo(true);
     }
     return;
   }
@@ -264,19 +264,22 @@ function showPointInfo(props) {
   body.innerHTML = html;
   panel.style.display = 'block';
 }
-function hidePointInfo() {
+function hidePointInfo(force = false) {
+  const el = document.getElementById('pointInfo');
+  // If the mouse is currently over the panel, do not hide it unless the caller explicitly forces it (e.g. the close button).
+  if (!force && el && el.matches(':hover')) return;
   // close the panel and clear any pinned point
   if (pinnedPoint && !editModeEnabled) {
     clearPinned();
   }
-  document.getElementById('pointInfo').style.display = 'none';
+  if (el) el.style.display = 'none';
 }
 function deletePointFromInfo(ti, pi) {
   removePoint(ti, pi);
   if (pinnedPoint && pinnedPoint.trackIndex === ti && pinnedPoint.pointIndex === pi) {
     clearPinned();
   }
-  hidePointInfo();
+  hidePointInfo(true);
 }
 function centerOnPoint(lat, lng) {
   map.flyTo({ center: [lng, lat], zoom: 14 });
@@ -285,7 +288,7 @@ function centerOnPoint(lat, lng) {
 function showPointInfoForPinned() {
   if (!pinnedPoint) return;
   const track = tracks[pinnedPoint.trackIndex];
-  if (!track || pinnedPoint.pointIndex >= track.points.length) { clearPinned(); hidePointInfo(); return; }
+  if (!track || pinnedPoint.pointIndex >= track.points.length) { clearPinned(); hidePointInfo(true); return; }
   const p = track.points[pinnedPoint.pointIndex];
   let speed = null;
   if (pinnedPoint.pointIndex > 0) {
@@ -770,12 +773,12 @@ function toggleEditMode() {
     if (drawer) drawer.style.display = 'none';
     document.body.classList.remove('edit-mode');
     clearPinned();
-    hidePointInfo();
+    hidePointInfo(true);
   } else {
     if (drawer) drawer.style.display = '';
     document.body.classList.add('edit-mode');
     clearPinned();
-    hidePointInfo();
+    hidePointInfo(true);
   }
   updateStatus();
 }
