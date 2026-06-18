@@ -91,7 +91,8 @@
     .gpx-drawer .control-group { margin-bottom: 12px; }
     .gpx-drawer .control-label { margin-bottom: 4px; }
     .gpx-drawer input[type="number"],
-    .gpx-drawer input[type="range"] {
+    .gpx-drawer input[type="range"],
+    .gpx-drawer input[type="datetime-local"] {
       width: 100%;
     }
     /* point info panel – same as workbench .selection-info just renamed */
@@ -142,17 +143,10 @@
 </head>
 <body style="background: var(--bg); color: var(--ink);">
 
-<!-- fixed header with toolbar and date picker -->
+<!-- fixed header with toolbar -->
 <div id="gpxHeader">
   <div class="drawer-head">
     <button class="head-btn active" id="btnEditMode" onclick="toggleEditMode()">✎ Edit</button>
-    <button class="head-btn" id="btnPaintMode" onclick="togglePaintMode()">🎨 Paint</button>
-    <div class="sep"></div>
-    <div class="datetime-picker" id="startDateTimePicker">
-      <input type="date" class="date-input form-control" id="startDate">
-      <input type="time" class="time-input form-control" id="startTime" step="1">
-      <button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>
-    </div>
     <div class="sep"></div>
     <button class="head-btn" onclick="document.getElementById('gpxFileInput').click()">📂 Import</button>
     <button class="head-btn" onclick="exportAll()">💾 Export</button>
@@ -188,6 +182,15 @@
   <div class="history-header"><h4>Settings</h4></div>
   <div class="gpx-drawer-body">
     <div>
+      <!-- Date & Time section using native datetime-local picker -->
+      <div class="gpx-drawer-section">
+        <div class="gpx-drawer-section-title">Date & Time</div>
+        <div class="control-group">
+          <label class="control-label">Start Time</label>
+          <input type="datetime-local" id="startDatetimeLocal" class="form-control">
+        </div>
+      </div>
+
       <div class="gpx-drawer-section">
         <div class="gpx-drawer-section-title">Track Settings</div>
         <div class="control-group">
@@ -238,6 +241,7 @@
       <div class="gpx-drawer-section">
         <div class="gpx-drawer-section-title">Drawing</div>
         <button class="head-btn" onclick="newTrack()">New Track</button>
+        <button class="head-btn" id="btnPaintMode" onclick="togglePaintMode()">🎨 Paint</button>
       </div>
     </div>
   </div>
@@ -248,20 +252,6 @@
 <script src="https://unpkg.com/maplibre-gl@5.17.0/dist/maplibre-gl.js"></script>
 <script src="/js/datetime-picker.js"></script>
 <script src="gpx-generator-v2.js"></script>
-
-<!-- ensure date picker popup opens below -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var picker = window.gpxDatePicker;
-  if (picker) {
-    if (typeof picker.setOption === 'function') {
-      picker.setOption('popupPlacement', 'bottom');
-    } else if (picker.options) {
-      picker.options.popupPlacement = 'bottom';
-    }
-  }
-});
-</script>
 
 </body>
 </html>

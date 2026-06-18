@@ -11,7 +11,6 @@ let paintMode = false;
 let paintActive = false;
 let lastPaintTime = 0;
 let paintThrottleMs = 100;
-let paintInterval = null;
 let lastMouseLngLat = null;
 let stopProbability = 0.05;
 let speedColorCache = {};
@@ -22,17 +21,21 @@ let pendingJsonFilename = "";
 let selectedDates = new Set();
 let lastClickedDate = null;
 
-// DateTimePicker instance
-let gpxDatePicker = null;
-
 // Map and layers
 let map;
 let tracksSource, pointsSource, previewSource;
 
+// --- helpers ---------------------------------------------------------------
+function pad2(n) { return n.toString().padStart(2,'0'); }
+
 // --- initialise -----------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
-  initDateTimePicker();
+  // set default datetime-local value
+  const now = new Date();
+  const localStr = now.getFullYear() + '-' + pad2(now.getMonth()+1) + '-' + pad2(now.getDate()) +
+    'T' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+  document.getElementById('startDatetimeLocal').value = localStr;
   initControls();
   createNewTrack();
   updateStatus();
@@ -102,20 +105,8 @@ function emptyFC() { return { type:'FeatureCollection', features:[] }; }
 // --- map event handlers ----------------------------------------------------
 function onMapClick(e) {
   if (!editModeEnabled) return;
-  if (paintMode) {
-    paintActive = !paintActive;
-    lastMouseLngLat = e.lngLat;
-    if (paintActive) {
-      const track = tracks[currentTrackIndex];
-      if (track && track.points.length) addPointWithInterpolation(e.lngLat.lat, e.lngLat.lng);
-      else addPoint(e.lngLat.lat, e.lngLat.lng);
-      startAutoPainting();
-    } else {
-      stopAutoPainting();
-    }
-    updatePaintButton();
-    return;
-  }
+  // in paint mode painting is handled continuously by mousemove
+  if (paintMode) return;
   const track = tracks[currentTrackIndex];
   if (track && track.points.length) addPointWithInterpolation(e.lngLat.lat, e.lngLat.lng);
   else addPoint(e.lngLat.lat, e.lngLat.lng);
@@ -143,6 +134,22 @@ function onMapMouseMove(e) {
   } else {
     if (previewSource) previewSource.setData(emptyFC());
   }
+
+  // paint mode – add points at mouse cursor while active
+  if (editModeEnabled && paintMode && paintActive) {
+    const now = Date.now();
+    if (now - lastPaintTime > paintThrottleMs) {
+      lastPaintTime = now;
+      const track = tracks[currentTrackIndex];
+      if (track && track.points.length) {
+        addPointWithInterpolation(e.lngLat.lat, e.lngLat.lng);
+      } else {
+        addPoint(e.lngLat.lat, e.lngLat.lng);
+      }
+    }
+  }
+
+  lastMouseLngLat = e.lngLat;
 
   // point hover – guard against layer not yet existing
   if (map.getLayer('points-circle')) {
@@ -353,8 +360,7 @@ function highlightPoint(ti, pi) {
 function togglePaintMode() {
   if (!editModeEnabled) return;
   paintMode = !paintMode;
-  paintActive = false;
-  if (!paintMode) stopAutoPainting();
+  paintActive = paintMode;               // start painting immediately when paint mode turns on
   updatePaintButton();
   map.getContainer().style.cursor = paintMode ? 'crosshair' : '';
 }
@@ -364,19 +370,6 @@ function updatePaintButton() {
   else if (paintActive) btn.textContent = '⏸ Painting';
   else btn.textContent = '▶ Paint Ready';
   btn.classList.toggle('active', paintMode);
-}
-function startAutoPainting() {
-  if (paintInterval) clearInterval(paintInterval);
-  paintInterval = setInterval(() => {
-    if (paintActive && lastMouseLngLat) {
-      const track = tracks[currentTrackIndex];
-      if (track && track.points.length) addPointWithInterpolation(lastMouseLngLat.lat, lastMouseLngLat.lng);
-      else addPoint(lastMouseLngLat.lat, lastMouseLngLat.lng);
-    }
-  }, 500);
-}
-function stopAutoPainting() {
-  if (paintInterval) { clearInterval(paintInterval); paintInterval = null; }
 }
 
 // ---- interpolation --------------------------------------------------------
@@ -397,25 +390,18 @@ function addPointWithInterpolation(targetLat, targetLng) {
   }
 }
 
-// ---- time & date picker ---------------------------------------------------
-function initDateTimePicker() {
-  gpxDatePicker = new DateTimePicker(document.getElementById('startDateTimePicker'), {
-    timeFormat: '24h',
-    popupPlacement: 'top'
-  });
-  gpxDatePicker.on('change', (iso, date) => {});
-
-  const now = new Date();
-  gpxDatePicker.setValue(now.toISOString().slice(0,19));
-}
+// ---- time & date picker (native) ------------------------------------------
 function getCurrentPickerDate() {
-  const val = gpxDatePicker.getValue();
-  return val ? new Date(val) : new Date();
+  const el = document.getElementById('startDatetimeLocal');
+  return el && el.value ? new Date(el.value) : new Date();
 }
+
 function advancePickerTime(lastTs) {
   const interval = parseInt(document.getElementById('timeInterval').value);
   const next = new Date(lastTs.getTime() + interval*1000);
-  gpxDatePicker.setValue(next.toISOString().slice(0,19));
+  const localStr = next.getFullYear() + '-' + pad2(next.getMonth()+1) + '-' + pad2(next.getDate()) +
+    'T' + pad2(next.getHours()) + ':' + pad2(next.getMinutes()) + ':' + pad2(next.getSeconds());
+  document.getElementById('startDatetimeLocal').value = localStr;
 }
 
 // ---- helpers for stops / day change ---------------------------------------
