@@ -214,7 +214,7 @@ function showPointInfo(props) {
   const title = document.getElementById('pointInfoTitle');
   const body = document.getElementById('pointInfoBody');
   title.textContent = `${props.trackName} · Point ${props.pointIndex+1}`;
-  body.innerHTML = `
+  let html = `
     <div class="sel-info-row"><span class="k">Lat</span><span class="v">${props.lat.toFixed(6)}</span></div>
     <div class="sel-info-row"><span class="k">Lng</span><span class="v">${props.lng.toFixed(6)}</span></div>
     <div class="sel-info-row"><span class="k">Time</span><span class="v">${new Date(props.timestamp).toLocaleString()}</span></div>
@@ -222,9 +222,40 @@ function showPointInfo(props) {
     <div class="sel-info-row"><span class="k">Elev</span><span class="v">${props.elevation ? props.elevation.toFixed(1)+'m' : '-'}</span></div>
     <div class="sel-info-row"><span class="k">Acc</span><span class="v">${props.accuracy ? props.accuracy+'m' : '-'}</span></div>
     <div class="sel-info-actions">
-      <button class="sel-info-btn" onclick="deletePointFromInfo(${props.trackIndex},${props.pointIndex})">Delete</button>
-      <button class="sel-info-btn" onclick="centerOnPoint(${props.lat},${props.lng})">Center</button>
+      <button class="btn sel-info-btn" onclick="deletePointFromInfo(${props.trackIndex},${props.pointIndex})">Delete</button>
+      <button class="btn sel-info-btn" onclick="centerOnPoint(${props.lat},${props.lng})">Center</button>
     </div>`;
+
+  // ---- diffs to neighbor points ----
+  const track = tracks[props.trackIndex];
+  if (track) {
+    const pi = props.pointIndex;
+    const prev = pi > 0 ? track.points[pi - 1] : null;
+    const next = pi < track.points.length - 1 ? track.points[pi + 1] : null;
+    if (prev || next) {
+      html += '<div class="sel-info-diffs">';
+      html += '<div style="font-size:11px; font-weight:600; margin-bottom:4px; color:#444;">Relative to neighbors</div>';
+      const p = track.points[pi];
+      if (prev) {
+        const dist = calculateDistance(prev.lat, prev.lng, p.lat, p.lng);
+        const dtSec = (p.timestamp - prev.timestamp) / 1000;
+        const spd = dist > 0 && dtSec > 0 ? (dist/1000) / (dtSec/3600) : null;
+        html += `<div class="sel-info-row"><span class="k">← Prev dist</span><span class="v">${dist.toFixed(1)} m</span></div>`;
+        html += `<div class="sel-info-row"><span class="k">← Prev Δt</span><span class="v">${dtSec.toFixed(0)} s</span></div>`;
+        html += `<div class="sel-info-row"><span class="k">← Prev Speed</span><span class="v">${spd ? spd.toFixed(1)+' km/h' : '-'}</span></div>`;
+      }
+      if (next) {
+        const dist = calculateDistance(p.lat, p.lng, next.lat, next.lng);
+        const dtSec = (next.timestamp - p.timestamp) / 1000;
+        const spd = dist > 0 && dtSec > 0 ? (dist/1000) / (dtSec/3600) : null;
+        html += `<div class="sel-info-row"><span class="k">Next dist →</span><span class="v">${dist.toFixed(1)} m</span></div>`;
+        html += `<div class="sel-info-row"><span class="k">Next Δt →</span><span class="v">${dtSec.toFixed(0)} s</span></div>`;
+        html += `<div class="sel-info-row"><span class="k">Next Speed →</span><span class="v">${spd ? spd.toFixed(1)+' km/h' : '-'}</span></div>`;
+      }
+      html += '</div>';
+    }
+  }
+  body.innerHTML = html;
   panel.style.display = 'block';
 }
 function hidePointInfo() {
