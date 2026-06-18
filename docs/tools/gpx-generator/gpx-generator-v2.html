@@ -137,6 +137,25 @@
     .gpx-point .coords { color: var(--ink-dim); }
     .gpx-point .time { color: var(--ink-faint); min-width: 70px; text-align: right; }
     .speed-color-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
+
+    /* preview popup */
+    #previewPopup {
+      display: none;
+      position:fixed; z-index:70; pointer-events:none;
+      padding: 8px 10px; font-size:11px; line-height:1.4;
+      background: var(--panel-solid);
+      border:1px solid var(--panel-line);
+      border-radius:6px;
+      color: var(--ink);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+    }
+    #previewPopup .row { display:flex; justify-content:space-between; margin-bottom:2px; }
+    #previewPopup .label { color:var(--ink-faint); }
+    #previewPopup .value { text-align:right; color:var(--ink); }
+
+    /* when edit drawer is visible, reposition point info and points panel beside the drawer */
+    body.edit-mode #pointInfo { left: 430px; }
+    body.edit-mode #pointsPanel { left: 460px; right: auto; top:110px; width:340px; }
   </style>
 </head>
 <body style="background: var(--bg); color: var(--ink);">
@@ -163,6 +182,9 @@
   </div>
   <div class="sel-info-body" id="pointInfoBody"></div>
 </div>
+
+<!-- preview popup -->
+<div id="previewPopup"></div>
 
 <!-- floating points panel (right side) -->
 <div id="pointsPanel">

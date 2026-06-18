@@ -15,6 +15,9 @@ let lastMouseLngLat = null;
 let stopProbability = 0.05;
 let speedColorCache = {};
 
+// persisted point selection (view mode)
+let pinnedPoint = null;
+
 // Google JSON import state
 let pendingJsonData = null;
 let pendingJsonFilename = "";
@@ -39,6 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initControls();
   createNewTrack();
   updateStatus();
+
+  // drawer hidden initially (not in edit mode)
+  document.getElementById('gpxEditPanel').style.display = 'none';
+  document.body.classList.remove('edit-mode');
 });
 
 // --- map -------------------------------------------------------------------
@@ -104,8 +111,20 @@ function emptyFC() { return { type:'FeatureCollection', features:[] }; }
 
 // --- map event handlers ----------------------------------------------------
 function onMapClick(e) {
-  if (!editModeEnabled) return;
-  // in paint mode painting is handled continuously by mousemove
+  // view mode – persistent point selection
+  if (!editModeEnabled) {
+    const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+    if (features.length) {
+      const f = features[0];
+      pinnedPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
+      showPointInfoForPinned();
+    } else {
+      clearPinned();
+      hidePointInfo();
+    }
+    return;
+  }
+  // edit mode – add points
   if (paintMode) return;
   const track = tracks[currentTrackIndex];
   if (track && track.points.length) addPointWithInterpolation(e.lngLat.lat, e.lngLat.lng);
@@ -135,6 +154,14 @@ function onMapMouseMove(e) {
     if (previewSource) previewSource.setData(emptyFC());
   }
 
+  // preview popup
+  const popup = document.getElementById('previewPopup');
+  if (editModeEnabled) {
+    updatePreviewPopup(e);
+  } else {
+    if (popup) popup.style.display = 'none';
+  }
+
   // paint mode – add points at mouse cursor while active
   if (editModeEnabled && paintMode && paintActive) {
     const now = Date.now();
@@ -151,17 +178,33 @@ function onMapMouseMove(e) {
 
   lastMouseLngLat = e.lngLat;
 
-  // point hover – guard against layer not yet existing
+  // point hover / persistent point
   if (map.getLayer('points-circle')) {
     const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
-    if (features.length) {
-      const f = features[0];
-      showPointInfo(f.properties);
+    if (editModeEnabled) {
+      if (features.length) {
+        showPointInfo(features[0].properties);
+      } else {
+        hidePointInfo();
+      }
+    } else {
+      // view mode – prefer pinned point, then hover
+      if (pinnedPoint) {
+        showPointInfoForPinned();
+      } else if (features.length) {
+        showPointInfo(features[0].properties);
+      } else {
+        hidePointInfo();
+      }
+    }
+  } else {
+    if (editModeEnabled) {
+      hidePointInfo();
+    } else if (pinnedPoint) {
+      showPointInfoForPinned();
     } else {
       hidePointInfo();
     }
-  } else {
-    hidePointInfo();
   }
 }
 
@@ -185,14 +228,48 @@ function showPointInfo(props) {
   panel.style.display = 'block';
 }
 function hidePointInfo() {
+  // keep displayed when a point is pinned in view mode
+  if (pinnedPoint && !editModeEnabled) return;
   document.getElementById('pointInfo').style.display = 'none';
 }
 function deletePointFromInfo(ti, pi) {
   removePoint(ti, pi);
+  if (pinnedPoint && pinnedPoint.trackIndex === ti && pinnedPoint.pointIndex === pi) {
+    clearPinned();
+  }
   hidePointInfo();
 }
 function centerOnPoint(lat, lng) {
   map.flyTo({ center: [lng, lat], zoom: 14 });
+}
+
+function showPointInfoForPinned() {
+  if (!pinnedPoint) return;
+  const track = tracks[pinnedPoint.trackIndex];
+  if (!track || pinnedPoint.pointIndex >= track.points.length) { clearPinned(); hidePointInfo(); return; }
+  const p = track.points[pinnedPoint.pointIndex];
+  let speed = null;
+  if (pinnedPoint.pointIndex > 0) {
+    const prev = track.points[pinnedPoint.pointIndex-1];
+    speed = (calculateDistance(prev.lat,prev.lng,p.lat,p.lng)/1000) / ((p.timestamp - prev.timestamp)/3600000);
+  }
+  const props = {
+    trackIndex: pinnedPoint.trackIndex,
+    pointIndex: pinnedPoint.pointIndex,
+    trackName: track.name,
+    color: track.color,
+    lat: p.lat,
+    lng: p.lng,
+    timestamp: p.timestamp.toISOString(),
+    speed,
+    elevation: p.elevation,
+    accuracy: p.accuracy
+  };
+  showPointInfo(props);
+}
+
+function clearPinned() {
+  pinnedPoint = null;
 }
 
 // ---- core point operations ------------------------------------------------
@@ -438,6 +515,52 @@ function getSpeedColorCached(kmh) {
   return col;
 }
 
+// ---- preview popup --------------------------------------------------------
+function updatePreviewPopup(e) {
+  const popup = document.getElementById('previewPopup');
+  if (!popup) return;
+  const mouseLat = e.lngLat.lat;
+  const mouseLng = e.lngLat.lng;
+  const track = tracks[currentTrackIndex];
+  let distance = null;
+  let speed = null;
+  let pointsToAdd = 1;
+  if (track && track.points.length) {
+    const last = track.points[track.points.length-1];
+    distance = calculateDistance(last.lat, last.lng, mouseLat, mouseLng);
+    const timeInterval = parseInt(document.getElementById('timeInterval').value);
+    const maxSpeed = parseFloat(document.getElementById('maxSpeed').value);
+    const maxDist = (maxSpeed*1000/3600) * timeInterval;
+    if (distance <= maxDist) {
+      pointsToAdd = 1;
+      speed = (distance/1000) / (timeInterval/3600);
+    } else {
+      const segments = Math.ceil(distance / maxDist);
+      pointsToAdd = segments;
+      speed = (distance/segments/1000) / (timeInterval/3600);
+    }
+  }
+  let html = `<div class="row"><span class="label">Lat, Lng</span><span class="value">${mouseLat.toFixed(5)}, ${mouseLng.toFixed(5)}</span></div>`;
+  if (distance !== null) html += `<div class="row"><span class="label">Distance</span><span class="value">${distance.toFixed(1)} m</span></div>`;
+  if (speed !== null) html += `<div class="row"><span class="label">Speed</span><span class="value">${speed.toFixed(1)} km/h</span></div>`;
+  if (pointsToAdd > 1) html += `<div class="row"><span class="label">Will add</span><span class="value">${pointsToAdd} points</span></div>`;
+  if (!distance) html += `<div class="row"><span class="label"></span><span class="value">Click to add first point</span></div>`;
+  popup.innerHTML = html;
+  // position near cursor
+  const mapRect = map.getContainer().getBoundingClientRect();
+  let left = mapRect.left + e.point.x + 15;
+  let top = mapRect.top + e.point.y + 15;
+  // respect drawer bounds
+  const drawer = document.getElementById('gpxEditPanel');
+  if (drawer && drawer.style.display !== 'none') {
+    const drawerRect = drawer.getBoundingClientRect();
+    if (left < drawerRect.right + 10) left = drawerRect.right + 12;
+  }
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+  popup.style.display = 'block';
+}
+
 // ---- import / export ------------------------------------------------------
 function handleGPXFiles(event) {
   const files = Array.from(event.target.files);
@@ -597,8 +720,18 @@ function toggleEditMode() {
   const btn = document.getElementById('btnEditMode');
   btn.classList.toggle('active', editModeEnabled);
   btn.textContent = editModeEnabled ? '✎ Edit (on)' : '✎ Edit';
+  const drawer = document.getElementById('gpxEditPanel');
   if (!editModeEnabled) {
     if (paintMode) togglePaintMode();
+    if (drawer) drawer.style.display = 'none';
+    document.body.classList.remove('edit-mode');
+    clearPinned();
+    hidePointInfo();
+  } else {
+    if (drawer) drawer.style.display = '';
+    document.body.classList.add('edit-mode');
+    clearPinned();
+    hidePointInfo();
   }
   updateStatus();
 }
