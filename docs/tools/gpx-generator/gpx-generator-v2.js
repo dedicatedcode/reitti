@@ -226,7 +226,7 @@ function showPointInfo(props) {
       <button class="btn sel-info-btn" onclick="centerOnPoint(${props.lat},${props.lng})">Center</button>
     </div>`;
 
-  // ---- diffs to neighbor points ----
+  // ---- diffs to neighbour points -----------------------------------------
   const track = tracks[props.trackIndex];
   if (track) {
     const pi = props.pointIndex;
@@ -234,25 +234,31 @@ function showPointInfo(props) {
     const next = pi < track.points.length - 1 ? track.points[pi + 1] : null;
     if (prev || next) {
       html += '<div class="sel-info-diffs">';
-      html += '<div style="font-size:11px; font-weight:600; margin-bottom:4px; color:#444;">Relative to neighbors</div>';
+      html += '<div style="font-size:11px; font-weight:600; margin-bottom:4px; color:#444;">Relative to neighbours</div>';
+      html += '<div style="display:flex; gap:12px;">';
       const p = track.points[pi];
       if (prev) {
         const dist = calculateDistance(prev.lat, prev.lng, p.lat, p.lng);
         const dtSec = (p.timestamp - prev.timestamp) / 1000;
         const spd = dist > 0 && dtSec > 0 ? (dist/1000) / (dtSec/3600) : null;
+        html += '<div style="flex:1; min-width:0;">';
         html += `<div class="sel-info-row"><span class="k">← Prev dist</span><span class="v">${dist.toFixed(1)} m</span></div>`;
         html += `<div class="sel-info-row"><span class="k">← Prev Δt</span><span class="v">${dtSec.toFixed(0)} s</span></div>`;
         html += `<div class="sel-info-row"><span class="k">← Prev Speed</span><span class="v">${spd ? spd.toFixed(1)+' km/h' : '-'}</span></div>`;
+        html += '</div>';
       }
       if (next) {
         const dist = calculateDistance(p.lat, p.lng, next.lat, next.lng);
         const dtSec = (next.timestamp - p.timestamp) / 1000;
         const spd = dist > 0 && dtSec > 0 ? (dist/1000) / (dtSec/3600) : null;
+        html += '<div style="flex:1; min-width:0;">';
         html += `<div class="sel-info-row"><span class="k">Next dist →</span><span class="v">${dist.toFixed(1)} m</span></div>`;
         html += `<div class="sel-info-row"><span class="k">Next Δt →</span><span class="v">${dtSec.toFixed(0)} s</span></div>`;
         html += `<div class="sel-info-row"><span class="k">Next Speed →</span><span class="v">${spd ? spd.toFixed(1)+' km/h' : '-'}</span></div>`;
+        html += '</div>';
       }
-      html += '</div>';
+      html += '</div>'; // flex container
+      html += '</div>'; // diffs
     }
   }
   body.innerHTML = html;
@@ -330,9 +336,11 @@ function addPoint(lat, lng, options = {}) {
   };
   track.points.push(point);
   if (!options.skipTimeUpdate) advancePickerTime(ts);
-  updateAllLayers();
-  updatePointsList();
-  updateStatus();
+  if (!options.skipUpdate) {
+    updateAllLayers();
+    updatePointsList();
+    updateStatus();
+  }
 }
 
 function removePoint(trackIdx, pointIdx) {
@@ -355,7 +363,7 @@ function clearAll() {
 }
 
 // ---- track management -----------------------------------------------------
-function createNewTrack(name, startTime) {
+function createNewTrack(name, startTime, skipUpdate = false) {
   const idx = tracks.length;
   const color = TRACK_COLORS[idx % TRACK_COLORS.length];
   let sTime = startTime || getCurrentPickerDate();
@@ -369,9 +377,11 @@ function createNewTrack(name, startTime) {
   const track = { id: idx, name: name || `Track ${idx+1}`, points: [], color, collapsed: false, startTime: sTime };
   tracks.push(track);
   currentTrackIndex = idx;
-  updateAllLayers();
-  updatePointsList();
-  updateStatus();
+  if (!skipUpdate) {
+    updateAllLayers();
+    updatePointsList();
+    updateStatus();
+  }
   return track;
 }
 function newTrack() { createNewTrack(); }
@@ -647,7 +657,7 @@ function parseAndImportGPX(content, filename) {
       track.name = trackName;
       track.startTime = dayPoints[0].timestamp;
     } else {
-      track = createNewTrack(trackName, dayPoints[0].timestamp);
+      track = createNewTrack(trackName, dayPoints[0].timestamp, true);
     }
 
     dayPoints.forEach(p => {
@@ -657,7 +667,8 @@ function parseAndImportGPX(content, filename) {
         skipNoise: true,
         skipStops: true,
         skipTimeUpdate: true,
-        skipDayChangeCheck: true
+        skipDayChangeCheck: true,
+        skipUpdate: true
       });
       bounds.extend([p.lng, p.lat]);
     });
@@ -708,9 +719,9 @@ function importSelectedJsonDates() {
   sorted.forEach(dateStr => {
     const dayPoints = pendingJsonData[dateStr];
     dayPoints.sort((a,b)=>a.timestamp-b.timestamp);
-    const track = createNewTrack(`${pendingJsonFilename} - ${dateStr}`, dayPoints[0].timestamp);
+    const track = createNewTrack(`${pendingJsonFilename} - ${dateStr}`, dayPoints[0].timestamp, true);
     dayPoints.forEach(p => {
-      addPoint(p.lat,p.lng,{ timestamp:p.timestamp, elevation:p.elevation, accuracy:p.accuracy, skipNoise:true, skipStops:true, skipTimeUpdate:true, skipDayChangeCheck:true });
+      addPoint(p.lat,p.lng,{ timestamp:p.timestamp, elevation:p.elevation, accuracy:p.accuracy, skipNoise:true, skipStops:true, skipTimeUpdate:true, skipDayChangeCheck:true, skipUpdate: true });
       bounds.extend([p.lng,p.lat]);
       total++;
     });
