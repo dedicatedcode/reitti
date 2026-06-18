@@ -464,6 +464,10 @@
     let dragPoint = null;        // { trackIndex, pointIndex }
     let dragOccurred = false;
 
+    // box‑select pixel state (stored directly, avoids reading overlay styles)
+    let boxStartPixel = null;
+    let boxCurrPixel  = null;
+
     const btnSelect = document.getElementById('btnSelect');
     const btnBoxSelect = document.getElementById('btnBoxSelect');
     const btnAddPoint = document.getElementById('btnAddPoint');
@@ -502,7 +506,11 @@
         const ov = document.getElementById('boxSelectOverlay');
         if (ov) ov.style.display = 'none';
         window.__boxStart = null;
-        window.boxSelectReset(); // defined below
+        boxStartPixel = null;
+        boxCurrPixel = null;
+        // also release any drag‑pan disable that may be left over
+        const map = window.reittiMap || window.map;
+        if (map) map.dragPan.enable();
       }
 
       // paint mode is exclusive with any other tool
@@ -517,10 +525,6 @@
         window.updateSelectedPointsSource();
       }
     };
-
-    // box‑select internal reset (no‑op)
-    function boxSelectReset() { /* reset internal state */ }
-    window.boxSelectReset = boxSelectReset;
 
     // selected‑point source data builder
     function updateSelectedPointsSource() {
@@ -636,6 +640,8 @@
         // box‑select drag start
         if (window.currentTool === 'boxselect') {
           window.__boxStart = e.lngLat;
+          boxStartPixel = map.project(e.lngLat);
+          boxCurrPixel = boxStartPixel;
           overlay.style.display = 'block';
           overlay.style.left = '0px';
           overlay.style.top  = '0px';
@@ -669,12 +675,16 @@
         // finish box select
         if (window.__boxStart && window.currentTool === 'boxselect') {
           overlay.style.display = 'none';
-          const sx = parseFloat(overlay.style.left) || 0;
-          const sy = parseFloat(overlay.style.top) || 0;
-          const sw = parseFloat(overlay.style.width) || 0;
-          const sh = parseFloat(overlay.style.height) || 0;
-          const nw = map.unproject([sx, sy]);
-          const se = map.unproject([sx + sw, sy + sh]);
+
+          // use the stored pixel positions to compute the bounding box
+          const nw = map.unproject([
+            Math.min(boxStartPixel.x, boxCurrPixel.x),
+            Math.min(boxStartPixel.y, boxCurrPixel.y)
+          ]);
+          const se = map.unproject([
+            Math.max(boxStartPixel.x, boxCurrPixel.x),
+            Math.max(boxStartPixel.y, boxCurrPixel.y)
+          ]);
           const bounds = new maplibregl.LngLatBounds(nw, se);
 
           window.selectedPoints.clear();
@@ -687,7 +697,10 @@
             });
           });
           updateSelectedPointsSource();
+
           window.__boxStart = null;
+          boxStartPixel = null;
+          boxCurrPixel = null;
           map.dragPan.enable();
           return;
         }
@@ -703,8 +716,10 @@
       map.on('mousemove', function(e) {
         // box select rectangle
         if (window.__boxStart && window.editModeEnabled && window.currentTool === 'boxselect') {
-          const startPx = map.project(window.__boxStart);
-          const currPx  = map.project(e.lngLat);
+          const startPx = boxStartPixel;
+          const currPx = map.project(e.lngLat);
+          boxCurrPixel = currPx;
+
           const x = Math.min(startPx.x, currPx.x);
           const y = Math.min(startPx.y, currPx.y);
           const w = Math.abs(currPx.x - startPx.x);
