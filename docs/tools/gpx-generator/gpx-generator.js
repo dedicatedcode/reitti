@@ -153,10 +153,12 @@ function onMapClick(e) {
     if (features.length) {
       const f = features[0];
       pinnedPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
+      window.lastSelectedPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
       showPointInfoForPinned();
     } else {
       clearPinned();
       hidePointInfo(true);
+      window.lastSelectedPoint = null;
     }
     return;
   }
@@ -168,23 +170,24 @@ function onMapClick(e) {
 }
 
 function onMapMouseDown(e) {
-  if (editModeEnabled) return;               // drag only in view mode
+  if (!editModeEnabled) return;
   const features = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
   if (features.length) {
     const f = features[0];
     dragPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
-    dragOccurred = false;                     // will be set to true on actual movement
+    dragOccurred = false;
     map.dragPan.disable();
   }
 }
 
 function onMapMouseUp(e) {
   if (dragPoint) {
-    // finalize position (already updated by mousemove)
-    const track = tracks[dragPoint.trackIndex];
-    if (track && dragPoint.pointIndex < track.points.length) {
-      pinnedPoint = { trackIndex: dragPoint.trackIndex, pointIndex: dragPoint.pointIndex };
-      showPointInfoForPinned();
+    if (editModeEnabled) {
+      const track = tracks[dragPoint.trackIndex];
+      if (track && dragPoint.pointIndex < track.points.length) {
+        pinnedPoint = { trackIndex: dragPoint.trackIndex, pointIndex: dragPoint.pointIndex };
+        showPointInfoForPinned();
+      }
     }
     dragPoint = null;
     map.dragPan.enable();
@@ -195,7 +198,7 @@ function onMapMouseMove(e) {
   if (!map.loaded()) return;
 
   // -- drag point movement ------------------------------------------------
-  if (dragPoint) {
+  if (editModeEnabled && dragPoint) {
     const track = tracks[dragPoint.trackIndex];
     if (track) {
       const p = track.points[dragPoint.pointIndex];
@@ -211,6 +214,10 @@ function onMapMouseMove(e) {
         showPointInfoForPinned();
       }
     }
+    return;
+  } else if (dragPoint) {
+    dragPoint = null;
+    map.dragPan.enable();
     return;
   }
 
@@ -960,6 +967,20 @@ function closeAbout() {
   const modal = document.getElementById('aboutModal');
   if (modal) modal.style.display = 'none';
 }
+
+// Export helpers for keyboard navigation
+window.getPinnedPoint = function() {
+  return pinnedPoint;
+};
+window.setPinnedPoint = function(ti, pi) {
+  const track = tracks[ti];
+  if (!track || pi < 0 || pi >= track.points.length) return;
+  pinnedPoint = { trackIndex: ti, pointIndex: pi };
+  if (window.lastSelectedPoint !== undefined) {
+    window.lastSelectedPoint = { trackIndex: ti, pointIndex: pi };
+  }
+  showPointInfoForPinned();
+};
 
 // automatically start in view mode (edit off)
 editModeEnabled = false;
