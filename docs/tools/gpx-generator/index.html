@@ -1036,7 +1036,7 @@
 <!-- navigation & help functionality (global) -->
 <script>
   // ------------------ point info navigation ------------------
-  window.lastSelectedPoint = null;    // { ti, pi } – last clicked/selected point (for shift‑expansion)
+  window.lastSelectedPoint = null;    // { ti, pi } – last clicked/selected point (for shift‑expansion))
 
   // move the pinned point (and selection) to the next/previous point in the SAME TRACK
   window.navigatePoint = function(direction) {
@@ -1074,14 +1074,12 @@
 
   // expand selection by one neighbour in the given direction FROM THE CURRENT PIN/FOCUSED POINT
   window.expandSelection = function(direction) {
-    let ref = null;
-    // prefer currently shown point info (pinned), otherwise the last clicked point
-    if (window.getPinnedPoint) {
+    // use the most recently selected / clicked point for expansion, so that
+    // repeatedly pressing shift+arrow extends the selection further.
+    let ref = window.lastSelectedPoint || null;
+    if (!ref && window.getPinnedPoint) {
       const p = window.getPinnedPoint();
       if (p) ref = p;
-    }
-    if (!ref && window.lastSelectedPoint) {
-      ref = window.lastSelectedPoint;
     }
     if (!ref) return;
 
