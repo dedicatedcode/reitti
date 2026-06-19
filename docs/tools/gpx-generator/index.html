@@ -609,7 +609,7 @@
       }
 
       // paint mode is exclusive with any other tool
-      if (window.paintMode) {
+      if (window.paintMode && tool !== null) {
         if (typeof window.togglePaintMode === 'function') {
           window.togglePaintMode();
         }
