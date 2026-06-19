@@ -1261,14 +1261,14 @@
         container.style.cssText = 'margin-top:8px; display:flex; gap:6px;';
         const prevBtn = document.createElement('button');
         prevBtn.textContent = '← Prev';
-        prevBtn.className = 'btn head-btn';
+        prevBtn.className = 'btn sel-info-btn';
         prevBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           window.navigatePoint(-1);
         });
         const nextBtn = document.createElement('button');
         nextBtn.textContent = 'Next →';
-        nextBtn.className = 'btn head-btn';
+        nextBtn.className = 'btn sel-info-btn';
         nextBtn.addEventListener('click', function(e) {
           e.stopPropagation();
           window.navigatePoint(1);
