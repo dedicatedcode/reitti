@@ -531,6 +531,8 @@
   </div>
 </div>
 
+<div id="modalBackdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); z-index:299;"></div>
+
 <script>
   (function() {
     // ---------------------------------------------------------------
@@ -1245,6 +1247,68 @@
       });
       visibilityObserver.observe(pointInfo, { attributes: true, attributeFilter: ['style'] });
     }
+  })();
+</script>
+
+<script>
+  (function() {
+    const bd = document.getElementById('modalBackdrop');
+    if (!bd) return;
+
+    // backdrop click closes any visible modal
+    bd.addEventListener('click', function(e) {
+      if (e.target !== bd) return;
+      if (typeof closeAbout === 'function') closeAbout();
+      if (typeof closeHelp === 'function') closeHelp();
+    });
+
+    // patch showAbout so the backdrop is shown
+    if (typeof showAbout === 'function') {
+      const origAbout = showAbout;
+      window.showAbout = function() {
+        origAbout();
+        bd.style.display = 'block';
+      };
+    }
+    // patch closeAbout so the backdrop is hidden
+    if (typeof closeAbout === 'function') {
+      const origCloseAbout = closeAbout;
+      window.closeAbout = function() {
+        origCloseAbout();
+        bd.style.display = 'none';
+      };
+    }
+    // patch toggleHelp
+    if (typeof toggleHelp === 'function') {
+      const origToggle = toggleHelp;
+      window.toggleHelp = function() {
+        origToggle();
+        const modal = document.getElementById('helpModal');
+        const visible = modal && (modal.style.display === 'flex' || modal.style.display === 'block');
+        bd.style.display = visible ? 'block' : 'none';
+      };
+    }
+    // patch closeHelp
+    if (typeof closeHelp === 'function') {
+      const origCloseHelp = closeHelp;
+      window.closeHelp = function() {
+        origCloseHelp();
+        bd.style.display = 'none';
+      };
+    }
+
+    // Also react to style changes on the modals (e.g. someone calls .style.display directly)
+    const observer = new MutationObserver(function() {
+      const about = document.getElementById('aboutModal');
+      const help = document.getElementById('helpModal');
+      const aboutVisible = about && (about.style.display === 'flex' || about.style.display === 'block');
+      const helpVisible = help && (help.style.display === 'flex' || help.style.display === 'block');
+      bd.style.display = (aboutVisible || helpVisible) ? 'block' : 'none';
+    });
+    const aboutEl = document.getElementById('aboutModal');
+    const helpEl = document.getElementById('helpModal');
+    if (aboutEl) observer.observe(aboutEl, { attributes: true, attributeFilter: ['style'] });
+    if (helpEl) observer.observe(helpEl, { attributes: true, attributeFilter: ['style'] });
   })();
 </script>
 
