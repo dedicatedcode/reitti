@@ -589,8 +589,13 @@ function highlightPoint(ti, pi) {
 function togglePaintMode() {
   if (!editModeEnabled) return;
   paintMode = !paintMode;
-  paintActive = paintMode;               // start painting immediately when paint mode turns on
+  if (paintMode) {
+    paintActive = false;               // not painting until first click
+  } else {
+    paintActive = false;
+  }
   window.paintMode = paintMode;
+  window.paintActive = paintActive;
   updatePaintButton();
   map.getContainer().style.cursor = paintMode ? 'crosshair' : '';
 
@@ -600,6 +605,15 @@ function togglePaintMode() {
     window.setTool(paintMode ? null : 'addpoint');
   }
 }
+
+function togglePaintActive() {
+  if (!paintMode) return;
+  paintActive = !paintActive;
+  window.paintActive = paintActive;
+  updatePaintButton();
+}
+window.togglePaintActive = togglePaintActive;
+
 function updatePaintButton() {
   const btn = document.getElementById('btnPaintMode');
   if (!paintMode) btn.textContent = ' 🎨 Paint';
