@@ -1299,11 +1299,6 @@
   (function() {
     const bd = document.getElementById('modalBackdrop');
     if (!bd) return;
-
-    // Because the about/help modals are full‑screen and sit *on top* of the
-    // backdrop, a click on the backdrop never reaches it.  We therefore make
-    // the modals themselves aware of clicks outside their content boxes.
-
     const aboutEl = document.getElementById('aboutModal');
     const helpEl = document.getElementById('helpModal');
 
