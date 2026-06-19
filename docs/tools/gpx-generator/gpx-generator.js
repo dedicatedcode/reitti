@@ -311,7 +311,7 @@ function showPointInfo(props) {
     <div class="sel-info-row"><span class="k">Time</span><span class="v">${new Date(props.timestamp).toLocaleString()}</span></div>
     <div class="sel-info-row"><span class="k">Speed</span><span class="v">${props.speed ? props.speed.toFixed(1)+' km/h' : '-'}</span></div>
     <div class="sel-info-row"><span class="k">Elev</span><span class="v">${props.elevation ? props.elevation.toFixed(1)+'m' : '-'}</span></div>
-    <div class="sel-info-row"><span class="k">Acc</span><span class="v">${props.accuracy ? props.accuracy+'m' : '-'}</span></div>
+    <div class="sel-info-row"><span class="k">Acc</span><span class="v">${typeof props.accuracy === 'number' ? props.accuracy.toFixed(1)+'m' : '-'}</span></div>
     <div class="sel-info-actions">
       <button class="btn btn-danger sel-info-btn" onclick="deletePointFromInfo(${props.trackIndex},${props.pointIndex})">Delete</button>
       <button class="btn sel-info-btn" onclick="centerOnPoint(${props.lat},${props.lng})">Center</button>
@@ -417,8 +417,13 @@ function addPoint(lat, lng, options = {}) {
   if (!options.skipStops && document.getElementById('autoStops').checked && shouldAddStop(track)) {
     ts = addRealisticStop(ts);
   }
-  const acc = options.accuracy !== undefined ? options.accuracy : parseFloat(document.getElementById('accuracySlider').value);
-  const coords = options.skipNoise ? {lat,lng} : applyGPSNoise(lat,lng,acc);
+  // accuracy: keep explicit value (from import) as is; otherwise leave undefined.
+  // use slider value only when noise generation is needed and no explicit accuracy given.
+  let noiseAcc = options.accuracy;
+  if (!options.skipNoise && noiseAcc === undefined) {
+    noiseAcc = parseFloat(document.getElementById('accuracySlider').value);
+  }
+  const coords = options.skipNoise ? {lat,lng} : applyGPSNoise(lat,lng,noiseAcc);
   let elevation = options.elevation;
   if (elevation === undefined) {
     const base = parseFloat(document.getElementById('elevation').value);
@@ -428,7 +433,9 @@ function addPoint(lat, lng, options = {}) {
   const point = {
     lat: coords.lat, lng: coords.lng,
     originalLat: lat, originalLng: lng,
-    timestamp: ts, elevation, accuracy: acc
+    timestamp: ts,
+    elevation,
+    accuracy: options.accuracy         // undefined when not given → display '-'
   };
   track.points.push(point);
   if (!options.skipTimeUpdate) advancePickerTime(ts);
@@ -782,7 +789,16 @@ function parseAndImportGPX(content, filename) {
     let ts = new Date();
     if (timeEl) ts = new Date(timeEl.textContent) || ts;
     const ele = parseFloat(pt.querySelector('ele')?.textContent || '0');
-    allPoints.push({lat,lng,timestamp:ts, elevation:ele});
+
+    // attempt to read accuracy from <extensions><accuracy>
+    let accuracy;
+    const accEl = pt.querySelector('extensions > accuracy') || pt.querySelector('accuracy');
+    if (accEl) {
+      const val = parseFloat(accEl.textContent);
+      if (!isNaN(val)) accuracy = val;
+    }
+
+    allPoints.push({lat,lng,timestamp:ts, elevation:ele, accuracy});
   });
   if (!allPoints.length) return;
   allPoints.sort((a,b)=>a.timestamp-b.timestamp);
@@ -817,6 +833,7 @@ function parseAndImportGPX(content, filename) {
       addPoint(p.lat, p.lng, {
         timestamp: p.timestamp,
         elevation: p.elevation,
+        accuracy: p.accuracy,
         skipNoise: true,
         skipStops: true,
         skipTimeUpdate: true,
