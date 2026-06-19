@@ -691,7 +691,7 @@
             const f = features[0];
             const id = getPointId(f.properties.trackIndex, f.properties.pointIndex);
             // remember last clicked point for shift‑navigation
-            window.lastSelectedPoint = { ti: f.properties.trackIndex, pi: f.properties.pointIndex };
+            window.lastSelectedPoint = { trackIndex: f.properties.trackIndex, pointIndex: f.properties.pointIndex };
 
             if (ctrlKey) {
               // Ctrl‑click toggles (add / remove) individual point
@@ -904,7 +904,7 @@
               if (bounds.contains([p.lng, p.lat])) {
                 const id = getPointId(ti, pi);
                 window.selectedPoints.add(id);
-                if (!firstAdded) firstAdded = { ti, pi };
+                if (!firstAdded) firstAdded = { trackIndex: ti, pointIndex: pi };
               }
             });
           });
@@ -1036,7 +1036,7 @@
 <!-- navigation & help functionality (global) -->
 <script>
   // ------------------ point info navigation ------------------
-  window.lastSelectedPoint = null;    // { ti, pi } – last clicked/selected point (for shift‑expansion))
+  window.lastSelectedPoint = null;    // { trackIndex, pointIndex } – last clicked/selected point (for shift‑expansion)
 
   // move the pinned point (and selection) to the next/previous point in the SAME TRACK
   window.navigatePoint = function(direction) {
@@ -1062,13 +1062,13 @@
 
     // replace selection with this single point
     if (window.selectedPoints) window.selectedPoints.clear();
-    window.selectedPoints.add(getPointId(ti, newPi));
+    window.selectedPoints.add(window.getPointId(ti, newPi));
     if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
 
     // update pinned point (which also refreshes the point info panel)
     if (window.syncPinnedPoint) window.syncPinnedPoint(ti, newPi);
 
-    window.lastSelectedPoint = { ti: ti, pi: newPi };
+    window.lastSelectedPoint = { trackIndex: ti, pointIndex: newPi };
     return; // prevent default scroll (caller should preventDefault)
   };
 
@@ -1091,13 +1091,13 @@
     const newPi = pi + direction;
     if (newPi < 0 || newPi >= track.points.length) return;
 
-    const newId = getPointId(ti, newPi);
+    const newId = window.getPointId(ti, newPi);
     if (!window.selectedPoints) window.selectedPoints = new Set();
     window.selectedPoints.add(newId);
     if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
 
     // remember the newly added point as last selected (for subsequent expansions)
-    window.lastSelectedPoint = { ti: ti, pi: newPi };
+    window.lastSelectedPoint = { trackIndex: ti, pointIndex: newPi };
   };
 
   // ------------------ help modal ------------------
