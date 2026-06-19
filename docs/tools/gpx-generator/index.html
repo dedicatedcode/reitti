@@ -1072,10 +1072,10 @@
     return; // prevent default scroll (caller should preventDefault)
   };
 
-  // expand selection by one neighbour in the given direction FROM THE CURRENT PIN/FOCUSED POINT
+  // expand selection by one neighbour in the given direction, always adding the point
+  // before the first or after the last currently selected point in the track.
   window.expandSelection = function(direction) {
-    // use the most recently selected / clicked point for expansion, so that
-    // repeatedly pressing shift+arrow extends the selection further.
+    // use the most recently clicked point as reference track
     let ref = window.lastSelectedPoint || null;
     if (!ref && window.getPinnedPoint) {
       const p = window.getPinnedPoint();
@@ -1084,20 +1084,79 @@
     if (!ref) return;
 
     const ti = ref.trackIndex;
-    const pi = ref.pointIndex;
     const track = window.tracks && window.tracks[ti];
     if (!track) return;
 
-    const newPi = pi + direction;
-    if (newPi < 0 || newPi >= track.points.length) return;
+    // find the minimal and maximal selected point indices in this track
+    let minIdx = ref.pointIndex;
+    let maxIdx = ref.pointIndex;
+    const ids = window.selectedPoints;
+    if (ids && ids.size > 0) {
+      for (const id of ids) {
+        const [tStr, pStr] = id.split('-');
+        const t = Number(tStr);
+        const p = Number(pStr);
+        if (t === ti) {
+          if (p < minIdx) minIdx = p;
+          if (p > maxIdx) maxIdx = p;
+        }
+      }
+    }
 
-    const newId = window.getPointId(ti, newPi);
+    // compute candidate index depending on direction
+    const candidateIdx = direction < 0 ? minIdx - 1 : maxIdx + 1;
+
+    // bounds check
+    if (candidateIdx < 0 || candidateIdx >= track.points.length) return;
+
+    // if the point is already in the selection, do nothing
+    if (window.selectedPoints && window.selectedPoints.has(window.getPointId(ti, candidateIdx))) return;
+
+    // add the point to the selection
     if (!window.selectedPoints) window.selectedPoints = new Set();
-    window.selectedPoints.add(newId);
+    window.selectedPoints.add(window.getPointId(ti, candidateIdx));
     if (typeof window.updateSelectedPointsSource === 'function') window.updateSelectedPointsSource();
 
-    // remember the newly added point as last selected (for subsequent expansions)
-    window.lastSelectedPoint = { trackIndex: ti, pointIndex: newPi };
+    // remember this new point so further expansions continue outward
+    window.lastSelectedPoint = { trackIndex: ti, pointIndex: candidateIdx };
+  };
+
+  // Delete all currently selected points (supports multi‑point selections)
+  window.deleteSelectedPoints = function() {
+    const set = window.selectedPoints;
+    if (!set || set.size === 0) return;
+
+    const byTrack = {};
+    for (const id of set) {
+      const [tiStr, piStr] = id.split('-');
+      const ti = parseInt(tiStr, 10);
+      const pi = parseInt(piStr, 10);
+      if (!byTrack[ti]) byTrack[ti] = [];
+      byTrack[ti].push(pi);
+    }
+    for (const tiKey in byTrack) {
+      const ti = parseInt(tiKey, 10);
+      const track = window.tracks[ti];
+      if (!track) continue;
+      // Remove from highest index to lowest so that splices don't affect lower indices
+      byTrack[ti].sort((a, b) => b - a);
+      byTrack[ti].forEach(pi => {
+        if (pi < track.points.length) {
+          removePoint(ti, pi);   // global function from gpx‑generator.js
+        }
+      });
+    }
+    window.selectedPoints.clear();
+    if (typeof window.updateSelectedPointsSource === 'function') {
+      window.updateSelectedPointsSource();
+    }
+    // Clear the pinned point if it was part of the deleted set
+    if (window.pinnedPoint) {
+      const track = window.tracks && window.tracks[window.pinnedPoint.trackIndex];
+      if (!track || window.pinnedPoint.pointIndex >= track.points.length) {
+        if (typeof window.clearPinned === 'function') window.clearPinned();
+      }
+    }
   };
 
   // ------------------ help modal ------------------
@@ -1131,6 +1190,13 @@
           // Always prevent default so the map doesn't pan when arrow keys are pressed
           e.preventDefault();
         }
+      }
+    }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (typeof window.deleteSelectedPoints === 'function') {
+        window.deleteSelectedPoints();
+        e.preventDefault();
       }
     }
   });
