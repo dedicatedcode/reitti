@@ -100,6 +100,8 @@ public class GpxImporter {
                             double longitude = Double.parseDouble(lonAttr);
                             currentPoint.setLatitude(latitude);
                             currentPoint.setLongitude(longitude);
+
+                            //here we want to first read the extensions > accuracy value if present, if this is missing we try to read the hdop value and have a mapping to m from that value. Everything over 5 shoudl result in over 100m. AI!
                             // Default accuracy for GPX files
                             currentPoint.setAccuracyMeters(10.0);
                         }
