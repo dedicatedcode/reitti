@@ -551,6 +551,7 @@ function updatePointsList() {
       </div>
       <div class="track-controls">
         <button class="track-export-btn" onclick="event.stopPropagation(); exportTrackGPX(${ti})">Export</button>
+        <button class="track-export-btn" onclick="event.stopPropagation(); deleteTrack(${ti})" style="color:#e07a6b;">🗑</button>
         <span class="collapse-icon">${track.collapsed?'▶':'▼'}</span>
       </div>
     </div>`;
@@ -583,6 +584,25 @@ function exportTrackGPX(trackIndex) {
   if (!track || !track.points.length) return;
   const gpx = generateGPX(track);
   downloadFile(gpx, `${track.name.replace(/\s+/g,'_')}.gpx`, 'application/gpx+xml');
+}
+
+function deleteTrack(trackIndex) {
+  const track = tracks[trackIndex];
+  if (!track) return;
+  if (!confirm(`Delete track "${track.name}" and all its points?`)) return;
+  // clear any pinned point that belongs to this track
+  if (pinnedPoint && pinnedPoint.trackIndex === trackIndex) {
+    clearPinned();
+    hidePointInfo(true);
+  }
+  tracks.splice(trackIndex, 1);
+  // update currentTrackIndex if it became invalid
+  if (currentTrackIndex >= tracks.length) {
+    currentTrackIndex = Math.max(0, tracks.length - 1);
+  }
+  updateAllLayers();
+  updatePointsList();
+  updateStatus();
 }
 
 function highlightPoint(ti, pi) {
