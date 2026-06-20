@@ -1472,7 +1472,8 @@ class MapRenderer {
         // Create MapLibre GL marker
         const marker = new maplibregl.Marker({
             element: container,
-            anchor: 'center'
+            anchor: 'center',
+            offset: [-5, 0]
         }).setLngLat([lng, lat]).addTo(this.map);
 
         // Store additional data with the marker for updates
@@ -1481,17 +1482,6 @@ class MapRenderer {
             userData: userData,
             color: userData.color,
             imgElement: img
-        };
-
-        // Create detailed popup content
-        const formatTimestamp = (timestamp) => {
-            if (!timestamp) return t('common.unknown') || 'Unknown';
-            const date = new Date(timestamp);
-            return date.toLocaleString();
-        };
-
-        const formatCoordinates = (lat, lng) => {
-            return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         };
 
         const popupContent = ``;
@@ -1597,7 +1587,6 @@ class MapRenderer {
             return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         };
 
-        debugger
         const popupContent = `
         <div class="floating map-popup">
             <div class="sel-info-head">
