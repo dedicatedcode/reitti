@@ -1,0 +1,109 @@
+.place-name-container {
+    position: relative;
+    display: inline-block;
+}
+
+.edit-icon {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    font-size: 1.6rem;
+    background: gray;
+    border: 1px solid wheat;
+    color: wheat;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.place-actions {
+    display: flex;
+    flex-direction: row;
+    top: 0;
+    position: absolute;
+    flex-grow: 0;
+    align-items: start;
+    gap: 8px;
+    right: 0;
+    text-shadow: none;
+
+}
+
+.timeline-entry.trip.active:hover .edit-icon,
+.timeline-entry.active:hover .place-name-container .edit-icon {
+    opacity: 1;
+}
+
+.place-name-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: inherit;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.trip-transport-mode-container.editing,
+.place-name-container.editing {
+    border-radius: 3px;
+    font-size: 1rem;
+    min-width: 700px;
+}
+
+.inline-edit-form {
+    padding-bottom: 8px;
+}
+
+.inline-edit-form .btn {
+    border: 1px solid;
+}
+
+.inline-edit-form .form-group {
+    margin-bottom: 15px;
+}
+
+.inline-edit-form .form-group:last-of-type {
+    margin-bottom: 20px;
+}
+
+.inline-edit-form .form-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-edit-form .place-name-input {
+    width: 100%;
+}
+
+
+@media (max-width: 800px) {
+    .trip-transport-mode-container.editing,
+    .place-name-container.editing {
+        border-radius: 3px;
+        font-size: 1rem;
+        min-width: 0;
+    }
+
+    .inline-edit-form select {
+        font-size: 1rem;
+    }
+
+
+    .timeline-entry .trip-transport-mode-container .edit-icon,
+    .timeline-entry .place-name-container .edit-icon {
+        display: none;
+
+    }
+
+    .timeline-entry.active .trip-transport-mode-container .edit-icon,
+    .timeline-entry.active .place-name-container .edit-icon {
+        opacity: 1;
+        display: inline-block;
+    }
+
+    .edit-icon {
+        position: relative;
+    }
+}
+
+
