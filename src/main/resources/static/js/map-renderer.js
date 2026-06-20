@@ -1479,6 +1479,7 @@ class MapRenderer {
         marker._avatarData = {
             userId: userId,
             userData: userData,
+            color: userData.color,
             imgElement: img
         };
 
@@ -1493,29 +1494,12 @@ class MapRenderer {
             return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         };
 
-        const popupContent = `
-        <div style="font-family: var(--sans-serif-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-highlight);">
-                ${t('map.auto-update.latest-location')}
-            </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.user')}:</strong> ${userData.displayName}
-            </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
-            </div>
-            <div style="margin-bottom: 4px;">
-                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
-            </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
-            </div>
-        </div>
-    `;
+        const popupContent = ``;
 
         // Add popup with detailed user info
         const popup = new maplibregl.Popup({
             offset: 25,
+            maxWidth: '500px',
             closeButton: false
         }).setHTML(popupContent);
 
@@ -1572,7 +1556,8 @@ class MapRenderer {
                         avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
-                        timestamp: latestLocation.timestamp
+                        timestamp: latestLocation.timestamp,
+                        color: userConfig.color
                     });
                 } else {
                     this.addAvatarMarker(
@@ -1612,22 +1597,31 @@ class MapRenderer {
             return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         };
 
+        debugger
         const popupContent = `
-        <div style="font-family: var(--sans-serif-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-highlight);">
-                ${t('map.auto-update.latest-location')}
+        <div class="floating map-popup">
+            <div class="sel-info-head">
+                <div class="sel-info-title">
+                    ${t('map.auto-update.latest-location')}
+                </div>
             </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.user')}:</strong> ${userData.displayName}
+            <div class="sel-info-row">
+                <span class="k">${t('common.user')}:</span>
+                <span class="v sel-info-tag">
+                    <span class="swatch" style="background:${userData.color}"></span>${userData.displayName}
+                </span>
             </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
+            <div class="sel-info-row">
+                <span class="k">${t('common.position')}:</span>
+                <span class="v mono">${formatTimestamp(userData.timestamp)}</span>
             </div>
-            <div style="margin-bottom: 4px;">
-                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
+           <div class="sel-info-row">
+                <span class="k">${t('common.time')}:</span>
+                <span class="v mono">${formatCoordinates(lat, lng)}</span>
             </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
+            <div class="sel-info-row">
+                <span class="k">${t('common.last-updated')}:</span>
+                <span class="v mono">${this._formatTimeAgo(userData.timestamp)}</span>
             </div>
         </div>
     `;
@@ -1639,7 +1633,6 @@ class MapRenderer {
      */
     removeAvatarMarkers() {
         this.avatarMarkers.forEach(marker => {
-            debugger
             marker.remove();
         });
         this.avatarMarkers.clear();
