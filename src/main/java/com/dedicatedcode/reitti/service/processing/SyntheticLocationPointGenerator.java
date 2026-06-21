@@ -53,6 +53,8 @@ public class SyntheticLocationPointGenerator {
 
             // Apply speed-based transformation: slower speeds shift points towards start
             // Using a power function where speed < 1 m/s creates stronger clustering at start
+
+            //here we need to shift them more agressivly to the start AI!
             double speedFactor = Math.min(speed / 5.0, 1.0); // normalize to 5 m/s as reference
             double ratio = Math.pow(timeRatio, 1.0 / (speedFactor + 0.5));
 
