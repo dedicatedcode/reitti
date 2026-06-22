@@ -23,6 +23,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -60,6 +61,7 @@ class MemoryControllerTest {
         mockMvc = MockMvcBuilders
                 .webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
+                .defaultRequest(get("/").locale(Locale.US))
                 .build();
         // Create a unique user for this test run
         user = testingService.randomUser();
@@ -138,8 +140,8 @@ class MemoryControllerTest {
         List<MemoryTrip> byMemoryBlockId = memoryTripJdbcService.findByMemoryBlockId(clusterBlock.getId());
         assertEquals(1, byMemoryBlockId.size());
         MemoryTrip tripInCluster = byMemoryBlockId.getFirst();
-        assertEquals("45,0000, 5,0000", tripInCluster.getStartVisit().getName());
-        assertEquals("45,0000, 5,0000", tripInCluster.getEndVisit().getName());
+        assertEquals("45.0000, 5.0000", tripInCluster.getStartVisit().getName());
+        assertEquals("45.0000, 5.0000", tripInCluster.getEndVisit().getName());
     }
 
 
