@@ -100,4 +100,4 @@ The source code for this project is available on GitHub: [https://github.com/ded
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the GNU Affero General Public License Version 3 (AGPLv3) License.

@@ -123,7 +123,6 @@ public class UserSettingsController {
             model.addAttribute("availableLanguages", Language.values());
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
-            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
             model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("unitSystems", UnitSystem.values());
@@ -193,7 +192,6 @@ public class UserSettingsController {
                              @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam(name = "preferred_language") Language preferredLanguage,
                              @RequestParam(name = "unit_system", defaultValue = "METRIC") String unitSystem,
-                             @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
@@ -222,7 +220,6 @@ public class UserSettingsController {
                         displayName,
                         password,
                         role, UnitSystem.valueOf(unitSystem),
-                        preferColoredMap,
                         preferredLanguage,
                         homeLatitude,
                         homeLongitude,
@@ -246,7 +243,6 @@ public class UserSettingsController {
                                 .orElse(UserSettings.defaultSettings(createdUser.getId()));
                         UserSettings updatedSettings = new UserSettings(
                                 existingSettings.getUserId(),
-                                existingSettings.isPreferColoredMap(),
                                 existingSettings.getSelectedLanguage(),
                                 existingSettings.getUnitSystem(),
                                 existingSettings.getHomeLatitude(),
@@ -289,7 +285,6 @@ public class UserSettingsController {
                              @RequestParam(defaultValue = "USER") Role role,
                              @RequestParam Language preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
-                             @RequestParam(defaultValue = "false") boolean preferColoredMap,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
                              @RequestParam(required = false) MultipartFile avatar,
@@ -353,7 +348,6 @@ public class UserSettingsController {
             
             UnitSystem unitSystem = UnitSystem.valueOf(unit_system);
             UserSettings updatedSettings = new UserSettings(userId,
-                                                            preferColoredMap,
                                                             preferred_language,
                                                             unitSystem,
                                                             homeLatitude,
@@ -441,7 +435,6 @@ public class UserSettingsController {
             UserSettings userSettings = userSettingsJdbcService.findByUserId(userId).orElse(UserSettings.defaultSettings(userId));
             model.addAttribute("selectedLanguage", userSettings.getSelectedLanguage());
             model.addAttribute("selectedUnitSystem", userSettings.getUnitSystem().name());
-            model.addAttribute("preferColoredMap", userSettings.isPreferColoredMap());
             model.addAttribute("homeLatitude", userSettings.getHomeLatitude());
             model.addAttribute("homeLongitude", userSettings.getHomeLongitude());
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
@@ -452,7 +445,6 @@ public class UserSettingsController {
             // Default values for new users
             model.addAttribute("selectedLanguage", Language.EN);
             model.addAttribute("selectedUnitSystem", "METRIC");
-            model.addAttribute("preferColoredMap", false);
             model.addAttribute("selectedRole", "USER");
             model.addAttribute("homeLatitude", null);
             model.addAttribute("homeLongitude", null);
@@ -479,11 +471,9 @@ public class UserSettingsController {
             boolean hasCustomCss = userSettings != null && StringUtils.hasText(userSettings.getCustomCss());
             model.addAttribute("hasCustomCss", hasCustomCss);
         }
-        
-        // Add default avatars to model
+
         model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
-        
-        // Add admin status to model
+
         model.addAttribute("isAdmin", ADMIN == currentUser.getRole());
         
         return "fragments/user-management :: user-form-page";

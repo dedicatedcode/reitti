@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div class="user-timeline-selection" th:fragment="user-selection" th:if="${showUserSelection}">
+        <th:block th:each="userData, iterStat : ${timelineData.users}">
+            <div th:title="${userData.displayName}" th:if="${userData}"
+                 class="user-header"
+                 th:classappend="${iterStat.first} ? 'active' : ''"
+                 th:data-user-id="${userData.userId}"
+                 onclick="selectUser(this)">
+                <img th:src="@{${userData.userAvatarUrl}}"
+                     th:alt="${userData.avatarFallback}"
+                     class="avatar">
+                <div th:text="${userData.displayName}" class="username">Username</div>
+                <span class="user-follow-badge"><i class="lni lni-location-arrow-right"></i></span>
+                <div class="device-toggle-container">
+                    <button class="device-toggle-btn" onclick="event.stopPropagation(); toggleDeviceMenu(this)"
+                            th:title="#{timeline.devices.toggle.title}">
+                        <i class="lni lni-menu-meatballs-1"></i>
+                    </button>
+                    <div class="device-menu hidden">
+                        <div class="slide-reveal-container">
+                            <input type="checkbox" class="user-follow-checkbox"
+                                   th:id="${'live-user-follow-' + userData.userId}"
+                                   th:data-user-id="${userData.userId}"
+                                   onchange="followUser(this)">
+                            <label th:for="${'live-user-follow-' + userData.userId}" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{timeline.user.follow}">Follow user</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:title="${device.name()}" th:if="${device}" th:each="device : ${userData.devices}"
+                 class="device-header"
+                 th:data-user-id="${userData.userId}"
+                 th:data-device-id="${device.id()}"
+                 th:data-device-color="${device.color()}"
+                 th:data-device-metadata-url="${device.metadataUrl()}"
+                 th:data-device-stream-url="${device.streamUrl()}"
+                 th:data-avatar-url="${device.avatarUrl()}"
+                 th:data-avatar-fallback="${device.avatarFallback()}"
+                 th:data-display-name="${device.name()}"
+                 th:data-show-avatar="${device.showAvatarOnMap()}"
+                 onclick="selectDevice(this)">
+                <img th:src="@{${device.avatarUrl()}}"
+                     th:alt="${device.avatarFallback()}"
+                     class="avatar">
+                <div th:text="${device.name()}" class="username">Username</div>
+            </div>
+        </th:block>
+
+    </div>
+</div>
+
+</body>
+</html>

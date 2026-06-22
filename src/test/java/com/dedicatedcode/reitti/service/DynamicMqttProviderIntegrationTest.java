@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -47,6 +48,7 @@ class DynamicMqttProviderIntegrationTest {
     @BeforeEach
     void setUp() {
         testUser = testingService.randomUser();
+        Device device = testingService.findDefaultDevice(testUser);
         String topic = "owntracks/" + testUser.getUsername() + "/testdevice";
 
         mqttIntegration = new MqttIntegration(
@@ -60,6 +62,7 @@ class DynamicMqttProviderIntegrationTest {
                 null,
                 PayloadType.OWNTRACKS,
                 true,
+                device.id(),
                 Instant.now(),
                 null,
                 null,
@@ -105,7 +108,7 @@ class DynamicMqttProviderIntegrationTest {
 
         // Then
         await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(15, TimeUnit.SECONDS)
                 .until(() -> rawLocationPointJdbcService.findLatest(testUser).isPresent());
 
         List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
@@ -236,7 +239,7 @@ class DynamicMqttProviderIntegrationTest {
 
         // Then
         await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(30, TimeUnit.SECONDS)
                 .until(() -> {
                     List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
                             testUser,

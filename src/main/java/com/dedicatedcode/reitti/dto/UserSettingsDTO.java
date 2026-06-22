@@ -10,20 +10,21 @@ import java.time.ZoneId;
 import java.util.Locale;
 
 public record UserSettingsDTO(
-        boolean preferColoredMap,
         Language selectedLanguage,
         String selectedLocale,
         Instant newestData,
         UnitSystem unitSystem,
         Double homeLatitude,
         Double homeLongitude,
+        @Deprecated(forRemoval = true)
         TilesCustomizationDTO tiles,
         UIMode uiMode,
         PhotoMode photoMode,
         TimeDisplayMode displayMode,
         TimeMode timeMode,
         ZoneId timezoneOverride,
-        String customCssUrl
+        String customCssUrl,
+        String timelineColor
 ) {
 
     public enum UIMode {
@@ -37,6 +38,7 @@ public record UserSettingsDTO(
         DISABLED
     }
 
+    @Deprecated(forRemoval = true)
     public record TilesCustomizationDTO(String service, String attribution){}
 
 }

@@ -22,8 +22,8 @@ public class ReittiIntegrationController {
     }
 
     @GetMapping("/avatar/{integrationId}")
-    public ResponseEntity<byte[]> getAvatar(@AuthenticationPrincipal User user, @PathVariable Long integrationId) {
-        return this.reittiIntegrationService.getAvatar(user, integrationId).map(avatarData -> {
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Long integrationId) {
+        return this.reittiIntegrationService.getAvatar(integrationId).map(avatarData -> {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(avatarData.mimeType()));
             headers.setContentLength(avatarData.imageData().length);

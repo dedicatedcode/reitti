@@ -61,7 +61,7 @@
 
             const tilesUrl = window.userSettings.tiles.service;
 
-            const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+            const tileLayer = L.tileLayer.grayscale;
             tileLayer(tilesUrl, {
                 attribution: ''
             }).addTo(map);

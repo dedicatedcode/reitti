@@ -2,17 +2,16 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
-import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,10 +23,16 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
     private OwnTracksRecorderIntegrationJdbcService service;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
     private TestingService testingService;
+
+    private User admin;
+    private Device device;
+
+    @BeforeEach
+    void setUp() {
+        admin = this.testingService.admin();
+        device = this.testingService.findDefaultDevice(admin);
+    }
 
     @Test
     void findByUser_WhenNoIntegrationExists_ReturnsEmpty() {
@@ -49,10 +54,11 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
 
-        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
+        OwnTracksRecorderIntegration saved = service.save(admin, integration);
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getBaseUrl()).isEqualTo("http://localhost:8083");
@@ -73,8 +79,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 null,
                 null,
-                true,
-                now, null);
+                device.id(),
+                true, now, null);
 
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -90,7 +96,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
         service.save(this.testingService.admin(), integration);
 
@@ -113,7 +120,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -125,8 +133,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device456",
                 null,
                 null,
-                false,
-                Instant.now(), saved.getVersion());
+                device.id(),
+                false, Instant.now(), saved.getVersion());
 
         OwnTracksRecorderIntegration result = service.update(updated);
 
@@ -148,7 +156,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -160,8 +169,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device456",
                 null,
                 null,
-                false,  // Wrong version
-                null, 999L);
+                device.id(),
+                // Wrong version
+                false, null, 999L);
 
         assertThatThrownBy(() -> service.update(updated))
                 .isInstanceOf(RuntimeException.class)
@@ -177,7 +187,8 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
         OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
 
@@ -198,24 +209,16 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 "device123",
                 true,
                 null,
-                null
+                null,
+                device.id()
         );
         service.save(this.testingService.admin(), integration);
 
         // Create second user
-        User otherUser = createTestUser(UUID.randomUUID().toString(), "password", "ADMIN", UUID.randomUUID().toString());
+        User otherUser = testingService.randomUser();
 
         // Try to find integration for second user
         Optional<OwnTracksRecorderIntegration> result = service.findByUser(otherUser);
         assertThat(result).isEmpty();
-
-    }
-
-    private User createTestUser(String username, String password, String role, String displayName) {
-        // Insert user directly into database for testing
-        String sql = "INSERT INTO users (username, password, display_name, role, version) VALUES (?, ?, ?, ?, ?) RETURNING id";
-        Long userId = jdbcTemplate.queryForObject(sql, Long.class, username, password, displayName, role, 1L);
-        
-        return new User(userId, username, password, displayName, null, null, Role.ADMIN, 1L);
     }
 }

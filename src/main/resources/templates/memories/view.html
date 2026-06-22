@@ -454,7 +454,8 @@
                 map: {
                     streamUrl: streamUrl,
                     metaDataUrl: metaDataUrl
-                }
+                },
+                continuous: true
             }, window.userSettings, getUserTimezone());
             mapRenderer.setGpsDataManagers([gpsDataManager]);
             gpsDataManager.loadFixed((current, total, stage) => {
@@ -654,7 +655,8 @@
                 streamUrl: rawLocationUrl,
                 metaDataUrl: metaDataUrl
             },
-            mapDataProviders: additionalProviders
+            mapDataProviders: additionalProviders,
+            continuous: true
         }, window.userSettings, getUserTimezone());
         console.log(`Initializing Map: ${elementId} with ${rawLocationUrl}`);
         mapRenderer.setGpsDataManagers([gpsDataManager]);

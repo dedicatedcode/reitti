@@ -1,8 +1,10 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -14,10 +16,10 @@ import java.util.List;
 @Service
 public class GpxExportService {
     
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final SourceLocationPointJdbcService locationPointJdbcService;
 
-    public GpxExportService(RawLocationPointJdbcService rawLocationPointJdbcService) {
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+    public GpxExportService(SourceLocationPointJdbcService locationPointJdbcService) {
+        this.locationPointJdbcService = locationPointJdbcService;
     }
 
     /**
@@ -26,14 +28,15 @@ public class GpxExportService {
      * <p>
      * Note: start and end date should be given in UTC
      *
-     * @param user the user whose location data will be exported
-     * @param start the start time of the export range
-     * @param end the end time of the export range
-     * @param writer the writer to which the GPX content will be streamed
+     * @param user     the user whose location data will be exported
+     * @param device
+     * @param start    the start time of the export range
+     * @param end      the end time of the export range
+     * @param writer   the writer to which the GPX content will be streamed
      * @param relevant controls if we export only the relevant data for processing (true) or only the imported data (false)
      * @throws IOException if an I/O error occurs during writing
      */
-    public void generateGpxContentStreaming(User user, Instant start, Instant end, Writer writer, boolean relevant) throws IOException {
+    public void generateGpxContentStreaming(User user, Device device, Instant start, Instant end, Writer writer, boolean relevant) throws IOException {
         // Write GPX header
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         writer.write("<gpx version=\"1.1\" creator=\"Reitti\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
@@ -51,9 +54,9 @@ public class GpxExportService {
         while (!currentDate.isAfter(end)) {
             Instant nextDate = currentDate.plus(1, ChronoUnit.DAYS);
             
-            List<RawLocationPoint> points = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentDate, nextDate, relevant, !relevant, !relevant);
+            List<SourceLocationPoint> points = locationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, currentDate, nextDate, !relevant, !relevant);
             
-            for (RawLocationPoint point : points) {
+            for (SourceLocationPoint point : points) {
                 writer.write("      <trkpt lat=\"" + point.getLatitude() + "\" lon=\"" + point.getLongitude() + "\">\n");
                 
                 if (point.getElevationMeters() != null) {

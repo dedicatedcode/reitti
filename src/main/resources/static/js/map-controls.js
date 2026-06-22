@@ -13,6 +13,10 @@ class MapControls {
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
+                <label class="map-style-selector" title="${t('map.display-control.map-style.title')}" title="Change Map style">
+                    <i class="lni lni-layers-1"></i>
+                    <select id="map-style-select"></select>
+                </label>
                 <button type="button" class="btn map-control-btn active" id="toggle-3d-btn" title="${t('map.display-control.mode.3d.enabled.title')}">
                     <i class="lni lni-map-marker-1"></i>
                     <span>${t('map.display-control.mode.3d.enabled.text')}</span>
@@ -49,11 +53,20 @@ class MapControls {
         this.toggleSatelliteModeBtn = document.getElementById('toggle-satellite-btn');
         this.toggleGlobeProjectionModeBtn = document.getElementById('toggle-globeprojection-btn');
         this.compassBtn = document.getElementById('compass-btn');
+        this.mapStyleSelect = document.getElementById('map-style-select');
+        this.refreshMapStyleOptions();
         this._setup();
     }
 
 
     _setup() {
+        this.mapStyleSelect.addEventListener('change', () => {
+            const newValue = parseInt(this.mapStyleSelect.value);
+            this._updateCapabilitiesUI(newValue);
+            MapRenderer.setActiveMapStyleId(newValue);
+            this.emit('selectionChanged', this.getState());
+        });
+
         this.toggle3dBtn.addEventListener('click', () => {
             const isEnabled = this.toggle3dBtn.classList.contains('active');
             if (isEnabled) {
@@ -64,6 +77,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleTerrainModeBtn.addEventListener('click', () => {
+            if (this.toggleTerrainModeBtn.disabled) return;
+
             const isEnabled = this.toggleTerrainModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableTerrain();
@@ -73,6 +88,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleBuildingsModeBtn.addEventListener('click', () => {
+            if (this.toggleBuildingsModeBtn.disabled) return;
+
             const isEnabled = this.toggleBuildingsModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableBuildings();
@@ -82,6 +99,8 @@ class MapControls {
             this.emit('selectionChanged', this.getState());
         });
         this.toggleSatelliteModeBtn.addEventListener('click', () => {
+            if (this.toggleSatelliteModeBtn.disabled) return;
+
             const isEnabled = this.toggleSatelliteModeBtn.classList.contains('active');
             if (isEnabled) {
                 this._disableSatellite();
@@ -135,6 +154,40 @@ class MapControls {
         } else {
             this._disableGlobeProjection();
         }
+        this._updateCapabilitiesUI(window.reittiActiveMapStyleId);
+    }
+
+    _updateCapabilitiesUI(activeId) {
+        const mapStyles = MapRenderer.getMapStyles();
+        const activeStyle = mapStyles.find(s => s.id === activeId);
+        if (!activeStyle) return;
+
+        const caps = activeStyle.capabilities || {};
+        const hasTerrain = !!caps.terrainSourceId;
+        const hasBuildings = caps.building3dLayerIds && caps.building3dLayerIds.length > 0;
+        const hasSatellite = !!caps.satelliteLayerId;
+
+        this.toggleTerrainModeBtn.disabled = !hasTerrain;
+        this.toggleBuildingsModeBtn.disabled = !hasBuildings;
+        this.toggleSatelliteModeBtn.disabled = !hasSatellite;
+    }
+
+    mountTo(newContainer) {
+        if (newContainer && this.rootElement) {
+            newContainer.appendChild(this.rootElement);
+        }
+    }
+
+    mountTo(newContainer) {
+        if (newContainer && this.rootElement) {
+            newContainer.appendChild(this.rootElement);
+        }
+    }
+
+    mountTo(newContainer) {
+        if (newContainer && this.rootElement) {
+            newContainer.appendChild(this.rootElement);
+        }
     }
 
     mountTo(newContainer) {
@@ -144,14 +197,37 @@ class MapControls {
     }
 
     getState() {
+        const activeStyle = MapRenderer.getMapStyles()
+            .find(s => s.id === window.reittiActiveMapStyleId);
+        const caps = activeStyle ? activeStyle.capabilities || {} : {};
         return {
+            mapStyleId: activeStyle.id,
             is3d: this.toggle3dBtn.classList.contains('active'),
-            renderTerrain: this.toggleTerrainModeBtn.classList.contains('active'),
-            renderBuildings: this.toggleBuildingsModeBtn.classList.contains('active'),
-            renderSatelliteView: this.toggleSatelliteModeBtn.classList.contains('active'),
+            renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
+            renderBuildings: caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
+            renderSatelliteView: !!caps.satelliteLayerId && this.toggleSatelliteModeBtn.classList.contains('active'),
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
-        }
+        };
     }
+
+    refreshMapStyleOptions(preferredStyleId = null) {
+        const mapStyles = MapRenderer.getMapStyles();
+        const storedMapStyleId = preferredStyleId || MapRenderer.getActiveMapStyleId();
+        const selectedMapStyleId = mapStyles.some(style => style.id === storedMapStyleId)
+            ? storedMapStyleId
+            : MapRenderer.getDefaultMapStyleId();
+
+        this.mapStyleSelect.innerHTML = mapStyles
+            .map(style => `<option value="${this._escapeHtml(style.id)}"${style.id === selectedMapStyleId ? ' selected' : ''}>${this._escapeHtml(style.label)}</option>`)
+            .join('');
+        window.reittiActiveMapStyleId = selectedMapStyleId;
+    }
+
+    setMapStyleId(mapStyleId) {
+        this.refreshMapStyleOptions(mapStyleId);
+        window.reittiActiveMapStyleId = this.mapStyleSelect.value;
+    }
+
     _enable3d() {
         const span = this.toggle3dBtn.querySelector('span');
         localStorage.setItem('is3d', 'true')
@@ -232,32 +308,14 @@ class MapControls {
         this.toggleGlobeProjectionModeBtn.title = t('map.display-control.globe_projection.disabled.title');
     }
 
-    _deepMerge(target, source) {
-        let result = {...target};
-        for (const key of Object.keys(source)) {
-            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] && typeof target[key] === 'object') {
-                result[key] = this._deepMerge(target[key], source[key]);
-            } else {
-                result[key] = source[key];
-            }
-        }
-        return result;
-    }
-
-    is3d() {
-        return this.toggle3dBtn.classList.contains('active');
-    }
-
-    isTerrainEnabled() {
-        return this.toggleTerrainModeBtn.classList.contains('active');
-    }
-
-    isBuildingsEnabled() {
-        return this.toggleBuildingsModeBtn.classList.contains('active');
-    }
-
-    isSatelliteViewEnabled() {
-        return this.toggleSatelliteModeBtn.classList.contains('active');
+    _escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[character]));
     }
 
     /** Events **/

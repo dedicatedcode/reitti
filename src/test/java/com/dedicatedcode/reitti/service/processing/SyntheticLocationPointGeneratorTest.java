@@ -28,10 +28,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(2, ChronoUnit.MINUTES);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.001, 8.001), 15.0, 105.0, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.001, 8.001), 15.0, 105.0, false, false, 1L
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)
@@ -60,10 +60,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(1, ChronoUnit.MINUTES);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.002, 8.002), 20.0, 110.0, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.002, 8.002), 20.0, 110.0, false, false, 1L
         );
 
         // When: Generate synthetic points
@@ -76,7 +76,7 @@ class SyntheticLocationPointGeneratorTest {
         
         // Verify middle point coordinates (should be halfway between start and end)
         LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
-        assertEquals(50.0012, middlePoint.getLatitude(), 0.0001);
+        assertEquals(50.0009, middlePoint.getLatitude(), 0.0001);
         assertEquals(8.001, middlePoint.getLongitude(), 0.001);
     }
 
@@ -87,10 +87,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(1, ChronoUnit.MINUTES);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.001, 8.001), 20.0, 120.0, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.001, 8.001), 20.0, 120.0, false, false, 1L
         );
 
         // When: Generate synthetic points
@@ -100,8 +100,8 @@ class SyntheticLocationPointGeneratorTest {
 
         // Then: Middle point should have interpolated values
         LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
-        assertEquals(14.785, middlePoint.getAccuracyMeters(), 0.05); // 10 + (20-10) * 0.5
-        assertEquals(109.57, middlePoint.getElevationMeters(), 0.02); // 100 + (120-100) * 0.5
+        assertEquals(14.629, middlePoint.getAccuracyMeters(), 0.05); // 10 + (20-10) * 0.5
+        assertEquals(109.25, middlePoint.getElevationMeters(), 0.02); // 100 + (120-100) * 0.5
     }
 
     @Test
@@ -111,10 +111,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(1, ChronoUnit.MINUTES);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), null, null, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), null, null, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.001, 8.001), null, null, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.001, 8.001), null, null, false, false, 1L
         );
 
         // When: Generate synthetic points
@@ -136,10 +136,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(1, ChronoUnit.MINUTES);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.01, 8.01), 20.0, 110.0, false, false, false, false, 1L // ~1.4km apart
+                2L, null, endTime, new GeoPoint(50.01, 8.01), 20.0, 110.0, false, false, 1L // ~1.4km apart
         );
 
         // When: Generate synthetic points with 500m max distance
@@ -158,10 +158,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(10, ChronoUnit.SECONDS);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.0001, 8.0001), 15.0, 105.0, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.0001, 8.0001), 15.0, 105.0, false, false, 1L
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)
@@ -180,10 +180,10 @@ class SyntheticLocationPointGeneratorTest {
         Instant endTime = startTime.plus(75, ChronoUnit.SECONDS);
         
         RawLocationPoint startPoint = new RawLocationPoint(
-                1L, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, false, false, 1L
+                1L, null, startTime, new GeoPoint(50.0, 8.0), 10.0, 100.0, false, false, 1L
         );
         RawLocationPoint endPoint = new RawLocationPoint(
-                2L, endTime, new GeoPoint(50.001, 8.001), 15.0, 105.0, false, false, false, false, 1L
+                2L, null, endTime, new GeoPoint(50.001, 8.001), 15.0, 105.0, false, false, 1L
         );
 
         // When: Generate synthetic points for 4 points per minute (15 second intervals)

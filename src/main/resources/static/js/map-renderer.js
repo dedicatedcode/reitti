@@ -1,9 +1,147 @@
 class MapRenderer {
+     static getCustomMapStyles() {
+        return Array.isArray(window.reittiCustomMapStyles)
+            ? window.reittiCustomMapStyles
+            : [];
+    }
+
+    static getMapStyles() {
+        return [
+            ...MapRenderer.getCustomMapStyles()
+        ];
+    }
+
+    static getMapStyleValue(mapStyle) {
+        if (mapStyle?.mapType === 'vector') {
+            if (mapStyle?.styleInputType === 'url') {
+                return mapStyle?.styleUrl;
+            } else if (mapStyle?.styleInputType === 'json') {
+                return MapRenderer._cloneStaticStyleDefinition(mapStyle.styleInput);
+            } else {
+                throw new Error('Invalid vector style input type');
+            }
+        } else if (mapStyle?.mapType === 'raster') {
+            if (mapStyle?.rasterSourceInputType === 'json-url') {
+                const tileJsonUrl = mapStyle?.dataSource?.tileJsonUrl;
+                if (!tileJsonUrl) {
+                    throw new Error('Raster style missing tileJsonUrl');
+                }
+                return {
+                    version: 8,
+                    name: mapStyle.label || 'Raster',
+                    sources: {
+                        'raster-tiles': {
+                            type: 'raster',
+                            url: tileJsonUrl,
+                            tileSize: mapStyle?.dataSource?.tileSize || 256,
+                            attribution: mapStyle?.dataSource?.attribution || ''
+                        }
+                    },
+                    layers: [{
+                        id: 'raster-layer',
+                        type: 'raster',
+                        source: 'raster-tiles',
+                        minzoom: mapStyle?.dataSource?.minzoom || 0,
+                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
+                    }]
+                };
+            } else if (mapStyle?.rasterSourceInputType === 'url-template') {
+                // Return a complete raster style object
+                const tileUrl = mapStyle?.dataSource?.tileUrlTemplate;
+                if (!tileUrl) {
+                    throw new Error('Raster style missing tile URL template');
+                }
+                return {
+                    version: 8,
+                    name: mapStyle.label || 'Raster',
+                    sources: {
+                        'raster-tiles': {
+                            type: 'raster',
+                            tiles: [tileUrl],
+                            tileSize: mapStyle?.dataSource?.tileSize || 256,
+                            attribution: mapStyle?.dataSource?.attribution || ''
+                        }
+                    },
+                    layers: [{
+                        id: 'raster-layer',
+                        type: 'raster',
+                        source: 'raster-tiles',
+                        minzoom: mapStyle?.dataSource?.minzoom || 0,
+                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
+                    }]
+                };
+            } else {
+                throw new Error('Invalid raster style input type');
+            }
+        } else {
+            throw new Error('Invalid map type');
+        }
+    }
+
+    static _cloneStaticStyleDefinition(definition) {
+        if (typeof definition === 'string') {
+            return JSON.parse(definition);
+        } else {
+            return definition;
+        }
+    }
+
+    static getActiveMapStyleId() {
+        const activeStyleId = window.reittiActiveMapStyleId || window.localStorage?.getItem('mapStyleId');
+        return MapRenderer.getMapStyles().some(style => style.id === activeStyleId)
+            ? activeStyleId
+            : MapRenderer.getDefaultMapStyleId();
+    }
+
+    static setActiveMapStyleId(mapStyleId) {
+        window.reittiActiveMapStyleId = mapStyleId;
+        window.localStorage?.setItem('mapStyleId', mapStyleId);
+    }
+
+    static getMapStyle(styleId) {
+        const styles = MapRenderer.getMapStyles();
+        return styles.find(style => style.id === styleId) || styles[0];
+    }
+
+    static getDefaultMapStyleId() {
+        const styles = MapRenderer.getMapStyles();
+        return styles[0]?.id || 'reitti';
+    }
+
+    static ensureRTLTextPlugin() {
+        if (MapRenderer.rtlTextPluginConfigured || !window.maplibregl?.setRTLTextPlugin) return;
+
+        const pluginUrl = MapRenderer.getMapStyles().find(style => style.rtlTextPluginUrl)?.rtlTextPluginUrl;
+        if (!pluginUrl) return;
+
+        try {
+            maplibregl.setRTLTextPlugin(pluginUrl, null, true);
+        } catch (error) {
+            console.warn('Unable to configure RTL text plugin:', error);
+        } finally {
+            MapRenderer.rtlTextPluginConfigured = true;
+        }
+    }
+
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
+        MapRenderer.ensureRTLTextPlugin();
+
         this.userSettings = userSettings;
         this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
         this.element.classList.add('is-loading');
+        this.TERRAIN_PROFILES = {
+            // Mapbox/MapTiler standard: (R * 256 * 256 + G * 256 + B) * 0.1 - 10000
+            MAPTILER: {
+                decoder: { rScaler: 6553.6, gScaler: 25.6, bScaler: 0.1, offset: -10000 },
+                scale: 1.5
+            },
+            // Terrarium: (R * 256 + G + B / 256) - 32768
+            TERRARIUM: {
+                decoder: { rScaler: 256, gScaler: 1, bScaler: 1 / 256, offset: -32768 },
+                scale: 1.5
+            }
+        };
         const defaultViewConfig = {
             fitConfig: {
                 padding: {
@@ -18,6 +156,7 @@ class MapRenderer {
             }
         }
 
+        this.selectedManager = null;
         this.viewConfig = {
             ...defaultViewConfig,
             ...viewConfig,
@@ -34,12 +173,15 @@ class MapRenderer {
         this.gpsDataManagers = []
 
         this.viewState = initialViewState;
+        this.viewState.mapStyleId = this.viewState.mapStyleId || MapRenderer.getActiveMapStyleId();
+        this.currentMapStyle = MapRenderer.getMapStyle(this.viewState.mapStyleId);
+        this.satelliteHiddenPaintProperties = new Map();
         this._pitchBearingAllowed = true;
 
         const mapOptions = {
             interleaved: true,
             container: element,
-            style: window.contextPath + '/map/reitti.json?ts=' + new Date().getTime(),
+            style: MapRenderer.getMapStyleValue(this.currentMapStyle),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
@@ -121,25 +263,42 @@ class MapRenderer {
         this.bounds = [];
 
         this.highlightLayer = null;
-        this._initialLoadPromise = new Promise(resolve => {
-            this.map.once('style.load', async () => {
-                console.log('Initial style loaded!');
-                await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
-                await this._switchTerrainLayer(this.viewState.renderTerrain);
-                await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
-                await this._switchProjection(this.viewState.renderGlobe);
-                this._syncPitchBearingState(false);
-                this.element.classList.remove('is-loading');
-                this.element.classList.add('is-loaded');
-                resolve();
-            });
-        });
+        this._initialLoadPromise = this._initializeInitialStyle();
 
         this._setup();
     }
 
+    async _initializeInitialStyle() {
+        let loaded = await this._waitForStyleLoad(this.currentMapStyle);
+        if (!loaded) {
+            loaded = await this._fallbackToDefaultStyle();
+        }
+
+        if (!loaded) {
+            this.element.classList.remove('is-loading');
+            console.warn('Map style failed to load and no fallback style was available.');
+            return;
+        }
+
+        this._ensureStyleCompatibilityLayers();
+        await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+        await this._switchTerrainLayer(this.viewState.renderTerrain);
+        await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+        await this._switchProjection(this.viewState.renderGlobe);
+        this._syncPitchBearingState(false);
+        this.element.classList.remove('is-loading');
+        this.element.classList.add('is-loaded');
+    }
+
     async updateViewState(next) {
-        this.transitionQueue = this.transitionQueue.then(() => this._updateViewStateInternal(next));
+        this.transitionQueue = this.transitionQueue
+            .catch(error => {
+                console.error('Previous map state transition failed:', error);
+            })
+            .then(() => this._updateViewStateInternal(next))
+            .catch(error => {
+                console.error('Map state transition failed:', error);
+            });
         return this.transitionQueue;
     }
 
@@ -148,10 +307,29 @@ class MapRenderer {
         const prev = { ...this.viewState };
         this.viewState = next;
 
+        const styleChanged = prev.mapStyleId !== next.mapStyleId;
         const projectionChanged = prev.renderGlobe !== next.renderGlobe;
         const satelliteChanged  = prev.renderSatelliteView !== next.renderSatelliteView;
         const terrainChanged    = prev.renderTerrain !== next.renderTerrain;
         const buildingsChanged  = (prev.renderBuildings !== next.renderBuildings) || (prev.is3d !== next.is3d);
+
+        if (styleChanged) {
+            const styleSwitched = await this._switchMapStyle(next.mapStyleId);
+            if (!styleSwitched) {
+                this.viewState = {
+                    ...next,
+                    mapStyleId: prev.mapStyleId
+                };
+            }
+            this._ensureStyleCompatibilityLayers();
+            await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
+            await this._switchTerrainLayer(this.viewState.renderTerrain);
+            await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            await this._switchProjection(this.viewState.renderGlobe);
+            this._syncPitchBearingState(false);
+            this._rerenderOverlays();
+            return;
+        }
 
         // 1) If projection or satellite changes, temporarily turn off terrain to avoid render bugs.
         if (projectionChanged || satelliteChanged) {
@@ -200,6 +378,177 @@ class MapRenderer {
         this._rerenderOverlays();
     }
 
+    _getStyleCapabilities() {
+        return this.currentMapStyle?.capabilities || {};
+    }
+
+    _cloneStyleDefinition(definition) {
+        return JSON.parse(JSON.stringify(definition));
+    }
+
+    _getFirstSymbolLayerId() {
+        const layers = this.map.getStyle()?.layers || [];
+        return layers.find(layer => layer.type === 'symbol')?.id;
+    }
+
+    _ensureSource(sourceId, sourceDefinition) {
+        if (!sourceId || !sourceDefinition || this.map.getSource(sourceId)) return;
+        this.map.addSource(sourceId, this._cloneStyleDefinition(sourceDefinition));
+    }
+
+    _ensureLayer(layerDefinition, beforeLayerId = this._getFirstSymbolLayerId()) {
+        if (!layerDefinition || this.map.getLayer(layerDefinition.id)) return;
+
+        const layer = this._cloneStyleDefinition(layerDefinition);
+        const sourceId = layer.source;
+        if (sourceId && !this.map.getSource(sourceId)) {
+            console.warn(`Cannot add map layer ${layer.id}; source ${sourceId} is not available.`);
+            return;
+        }
+
+        if (beforeLayerId && this.map.getLayer(beforeLayerId)) {
+            this.map.addLayer(layer, beforeLayerId);
+        } else {
+            this.map.addLayer(layer);
+        }
+    }
+
+    _ensureStyleCompatibilityLayers() {
+        const capabilities = this._getStyleCapabilities();
+        const buildingLayerDefinitions = capabilities.building3dLayerDefinitions || [];
+        const needsBuildingSource = buildingLayerDefinitions.some(layerDefinition => layerDefinition.source === capabilities.buildingSourceId);
+
+        this._ensureSource(capabilities.terrainSourceId, capabilities.terrainSourceDefinition);
+        this._ensureSource(capabilities.satelliteSourceId, capabilities.satelliteSourceDefinition);
+        if (needsBuildingSource) {
+            this._ensureSource(capabilities.buildingSourceId, capabilities.buildingSourceDefinition);
+        }
+
+        this._ensureLayer(capabilities.satelliteLayerDefinition);
+        this._ensureLayer(capabilities.hillshadeLayerDefinition);
+        buildingLayerDefinitions.forEach(layerDefinition => this._ensureLayer(layerDefinition));
+    }
+
+    async _waitForStyleLoad(mapStyle, timeoutMs = 10000) {
+        if (this.map.isStyleLoaded()) {
+            return true;
+        }
+
+        return new Promise(resolve => {
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                console.warn(`Timed out waiting for map style ${mapStyle?.id || 'unknown'} to load.`);
+                resolve(false);
+            }, timeoutMs);
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                this.map.off('style.load', handleLoad);
+                this.map.off('error', handleError);
+            };
+            const handleLoad = () => {
+                cleanup();
+                resolve(true);
+            };
+            const handleError = (event) => {
+                console.warn(`Map style ${mapStyle?.id || 'unknown'} emitted an error while loading:`, event?.error || event);
+            };
+
+            this.map.once('style.load', handleLoad);
+            this.map.on('error', handleError);
+        });
+    }
+
+    async _setStyleAndWait(mapStyle, timeoutMs = 10000) {
+        return new Promise(resolve => {
+            const timeout = window.setTimeout(() => {
+                cleanup();
+                console.warn(`Timed out waiting for map style ${mapStyle?.id || 'unknown'} to load.`);
+                resolve(false);
+            }, timeoutMs);
+            const cleanup = () => {
+                window.clearTimeout(timeout);
+                this.map.off('style.load', handleLoad);
+                this.map.off('error', handleError);
+            };
+            const handleLoad = () => {
+                cleanup();
+                resolve(true);
+            };
+            const handleError = (event) => {
+                console.warn(`Map style ${mapStyle?.id || 'unknown'} emitted an error while loading:`, event?.error || event);
+            };
+
+            this.map.once('style.load', handleLoad);
+            this.map.on('error', handleError);
+
+            try {
+                this.map.setStyle(MapRenderer.getMapStyleValue(mapStyle));
+            } catch (error) {
+                cleanup();
+                console.warn(`Unable to apply map style ${mapStyle?.id || 'unknown'}:`, error);
+                resolve(false);
+            }
+        });
+    }
+
+    async _fallbackToDefaultStyle() {
+        const fallbackStyle = MapRenderer.getMapStyle(MapRenderer.getDefaultMapStyleId());
+        if (!fallbackStyle || fallbackStyle.id === this.currentMapStyle?.id) {
+            return false;
+        }
+
+        console.warn(`Falling back to map style ${fallbackStyle.id}.`);
+        const loaded = await this._setStyleAndWait(fallbackStyle, 10000);
+        if (loaded) {
+            this.currentMapStyle = fallbackStyle;
+            this.viewState.mapStyleId = fallbackStyle.id;
+            this._persistMapStyleSelection(fallbackStyle.id);
+        }
+        return loaded;
+    }
+
+    _persistMapStyleSelection(mapStyleId) {
+        window.reittiActiveMapStyleId = mapStyleId;
+        window.localStorage?.setItem('mapStyleId', mapStyleId);
+        const styleSelect = document.getElementById('map-style-select');
+        if (styleSelect) {
+            styleSelect.value = mapStyleId;
+        }
+        const settingsStyleSelect = document.getElementById('settings-map-style-select');
+        if (settingsStyleSelect) {
+            settingsStyleSelect.value = mapStyleId;
+        }
+    }
+
+    async _switchMapStyle(mapStyleId) {
+        const nextStyle = MapRenderer.getMapStyle(mapStyleId);
+        if (!nextStyle || nextStyle.id === this.currentMapStyle?.id) return true;
+
+        const previousStyle = this.currentMapStyle;
+        this.terrainLayer = null;
+        this.satelliteHiddenPaintProperties.clear();
+        this.element.classList.add('is-loading');
+
+        let loaded = await this._setStyleAndWait(nextStyle);
+        if (loaded) {
+            this.currentMapStyle = nextStyle;
+            this.element.classList.remove('is-loading');
+            return true;
+        }
+
+        if (previousStyle) {
+            console.warn(`Restoring previous map style ${previousStyle.id}.`);
+            loaded = await this._setStyleAndWait(previousStyle, 10000);
+            if (loaded) {
+                this.currentMapStyle = previousStyle;
+                this._persistMapStyleSelection(previousStyle.id);
+            }
+        }
+
+        this.element.classList.remove('is-loading');
+        return false;
+    }
+
     setGpsDataManagers(managers) {
         this.gpsDataManagers = [...managers].reverse();
         this.bounds = [];
@@ -226,15 +575,7 @@ class MapRenderer {
         const performFit = async () => {
             try {
                 await this._initialLoadPromise;
-                this.bounds = [];
-                console.log('Attempting to fit bounds...');
-                this.gpsDataManagers.forEach(manager => this._extendBounds(manager.bounds));
-                console.log('Bounds calculated:', this.bounds);
-                if (this.bounds.length === 0) {
-                    this._flyToHomeLocation();
-                } else {
-                    this.fitMapToBounds(this.bounds);
-                }
+                this._refitBounds();
                 this.element.classList.remove('is-loading');
                 this.element.classList.add('is-loaded');
             } catch (error) {
@@ -243,6 +584,20 @@ class MapRenderer {
         };
 
         return performFit();
+    }
+
+    _refitBounds() {
+        this.bounds = [];
+        console.log('Attempting to fit bounds...');
+        this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
+            .forEach(manager => this._extendBounds(manager.bounds));
+        console.log('Bounds calculated:', this.bounds);
+        if (this.bounds.length === 0) {
+            this._flyToHomeLocation();
+        } else {
+            this.fitMapToBounds(this.bounds);
+        }
     }
 
     reset() {
@@ -262,13 +617,20 @@ class MapRenderer {
         this.photosManager.setPhotos(photos);
     }
 
-    enableAvatars() {
+    enableAvatars(todayStart = null, todayEnd = null) {
         this.showAvatars = true;
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
-            
-            if (latestLocation && userConfig) {
+            if (todayStart !== null && todayEnd !== null) {
+                if (!latestLocation) return;
+                const locMs = new Date(latestLocation.timestamp).getTime();
+                if (locMs < todayStart || locMs > todayEnd) {
+                    return; // we skip the avatar marker since it is not today
+                }
+            }
+
+            if (latestLocation && userConfig?.showAvatar && this.avatarMarkers.get(manager.id) == null) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID
                     latestLocation.latitude, 
@@ -348,16 +710,6 @@ class MapRenderer {
         }
     }
 
-    _awaitStyleLoaded(func) {
-        if (this.map.isStyleLoaded()) {
-            func();
-        } else {
-            this.map.once('style.load', () => {
-                func()
-            });
-        }
-    }
-
     _updateLayers() {
 
         const allLayers = [];
@@ -365,7 +717,6 @@ class MapRenderer {
         if (this.viewState.renderTerrain) {
             allLayers.push(this.terrainLayer);
         }
-
 
         this.gpsDataManagers.forEach(manager => {
             const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
@@ -377,10 +728,11 @@ class MapRenderer {
                 } else {
                     const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
                     const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
-                    const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
+                    const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension({elevationLayerId: 'terrain-loader'})] : [];
+                    const layerData = manager.getLayerData(buffer, this.viewState.aggregated);
                     allLayers.push(new deck.PathLayer({
                         id: `paths-static-fixed-${layerKey}`,
-                        data: manager.getLayerData(buffer, this.viewState.aggregated),
+                        data: layerData,
                         positionFormat: 'XYZ',
                         getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
                         getWidth: this.deckParams.trips.staticPathWidth,
@@ -407,12 +759,12 @@ class MapRenderer {
                         // SHADOW TRIP (Animated)
                         allLayers.push(new deck.TripsLayer({
                             id: `trips-shadow-${layerKey}`,
-                            data: manager.getLayerData(buffer, this.viewState.aggregated),
+                            data: layerData,
                             positionFormat: 'XYZ',
-                            getColor: [255, 255, 255],
+                            getColor: manager.color,
                             opacity: this.deckParams.trips.shadowOpacity,
                             widthMinPixels: this.deckParams.trips.shadowWidth,
-                            trailLength: calculatedTrail * 1.2,
+                            trailLength: calculatedTrail,
                             visibility: this.viewState.animating,
                             currentTime: this.viewState.currentTime,
                             capRounded: true,
@@ -429,15 +781,14 @@ class MapRenderer {
                             }
                         }));
 
-                        // CORE TRIP (Animated)
                         allLayers.push(new deck.TripsLayer({
                             id: `trips-core-${layerKey}`,
-                            data: manager.getLayerData(buffer, this.viewState.aggregated),
+                            data: layerData,
                             positionFormat: 'XYZ',
-                            getColor: manager.color,
+                            getColor: [255, 255, 255, 100],
                             opacity: this.deckParams.trips.cometOpacity * this.viewState.animating,
                             widthMinPixels: this.deckParams.trips.cometWidth,
-                            trailLength: calculatedTrail,
+                            trailLength: calculatedTrail * 1.2,
                             currentTime: this.viewState.currentTime,
                             capRounded: true,
                             jointRounded: true,
@@ -820,6 +1171,7 @@ class MapRenderer {
     }
 
     async _switchSatelliteLayer(enable) {
+        this._ensureStyleCompatibilityLayers();
         this._applySatellitePaintProperties(enable);
         await this._waitForIdle();
     }
@@ -827,18 +1179,24 @@ class MapRenderer {
     _applySatellitePaintProperties(enable) {
         if (!this.map || !this.map.getStyle) return;
 
-        if (this.map.getLayer && this.map.getLayer('satellite-layer')) {
-            this.map.setPaintProperty('satellite-layer', 'raster-opacity', enable ? 1 : 0);
-        }
+        const satelliteLayerId = this._getStyleCapabilities().satelliteLayerId;
+        if (!satelliteLayerId || !this.map.getLayer || !this.map.getLayer(satelliteLayerId)) return;
+
+        this.map.setLayoutProperty(satelliteLayerId, 'visibility', enable ? 'visible' : 'none');
+        this.map.setPaintProperty(satelliteLayerId, 'raster-opacity', enable ? 1 : 0);
 
         const style = this.map.getStyle();
         if (!style || !Array.isArray(style.layers)) return;
 
         const targetTypes = ['fill', 'background', 'fill-extrusion', 'line'];
-        const protectedLayers = ['satellite-layer', 'sky', 'building-3d'];
+        const protectedLayers = new Set([
+            satelliteLayerId,
+            'sky',
+            ...(this._getStyleCapabilities().building3dLayerIds || [])
+        ]);
 
         style.layers.forEach(layer => {
-            if (targetTypes.includes(layer.type) && !protectedLayers.includes(layer.id)) {
+            if (targetTypes.includes(layer.type) && !protectedLayers.has(layer.id)) {
                 let opacityProp = '';
                 if (layer.type === 'line') opacityProp = 'line-opacity';
                 if (layer.type === 'fill') opacityProp = 'fill-opacity';
@@ -846,7 +1204,16 @@ class MapRenderer {
                 if (layer.type === 'background') opacityProp = 'background-opacity';
 
                 try {
-                    this.map.setPaintProperty(layer.id, opacityProp, enable ? 0 : null);
+                    const cacheKey = `${layer.id}:${opacityProp}`;
+                    if (enable) {
+                        if (!this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                            this.satelliteHiddenPaintProperties.set(cacheKey, this.map.getPaintProperty(layer.id, opacityProp));
+                        }
+                        this.map.setPaintProperty(layer.id, opacityProp, 0);
+                    } else if (this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                        this.map.setPaintProperty(layer.id, opacityProp, this.satelliteHiddenPaintProperties.get(cacheKey));
+                        this.satelliteHiddenPaintProperties.delete(cacheKey);
+                    }
                 } catch (_) {
                     // Layer might not be present yet; ignore
                 }
@@ -854,88 +1221,132 @@ class MapRenderer {
         });
 
         // Buildings: keep a faint extrusion over satellite if desired
-        if (this.map.getLayer && this.map.getLayer('building-3d')) {
+        (this._getStyleCapabilities().building3dLayerIds || []).forEach(layerId => {
+            if (!this.map.getLayer || !this.map.getLayer(layerId)) return;
             try {
-                this.map.setPaintProperty('building-3d', 'fill-extrusion-opacity', enable ? 0.6 : null);
+                const opacityProp = 'fill-extrusion-opacity';
+                const cacheKey = `${layerId}:${opacityProp}`;
+                if (enable) {
+                    if (!this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                        this.satelliteHiddenPaintProperties.set(cacheKey, this.map.getPaintProperty(layerId, opacityProp));
+                    }
+                    this.map.setPaintProperty(layerId, opacityProp, 0.6);
+                } else if (this.satelliteHiddenPaintProperties.has(cacheKey)) {
+                    this.map.setPaintProperty(layerId, opacityProp, this.satelliteHiddenPaintProperties.get(cacheKey));
+                    this.satelliteHiddenPaintProperties.delete(cacheKey);
+                }
             } catch (_) {}
-        }
+        });
     }
 
     _extractTerrainUrl() {
-        // 1. Try reading directly from the loaded Style JSON (Instant, no waiting)
+        const terrainSourceId = this._getStyleCapabilities().terrainSourceId;
+        if (!terrainSourceId) return null;
+
         const style = this.map.getStyle();
-        if (style && style.sources && style.sources['terrain-source']) {
-            const sourceDef = style.sources['terrain-source'];
+        if (style?.sources?.[terrainSourceId]) {
+            const sourceDef = style.sources[terrainSourceId];
+            const profile = this._detectProfile(sourceDef);
+
             if (sourceDef.tiles && sourceDef.tiles.length > 0) {
-                return sourceDef.tiles[0];
+                return { type: 'template', value: sourceDef.tiles[0], profile: profile };
             }
+
             if (sourceDef.url) {
-                return sourceDef.url;
+                return { type: 'manifest', value: sourceDef.url, profile: profile };
             }
         }
-
-        const source = this.map.getSource('terrain-source');
-        if (source && source.tiles && source.tiles.length > 0) {
-            return source.tiles[0];
-        }
-
-        return null; // Return null safely if nothing found
+        return null;
     }
 
+    _detectProfile(sourceDef) {
+        if (sourceDef.encoding === 'terrarium') return this.TERRAIN_PROFILES.TERRARIUM;
+
+        // Fallback based on attribution/name
+        const attr = (sourceDef.attribution || "").toLowerCase();
+        if (attr.includes("maptiler")) return this.TERRAIN_PROFILES.MAPTILER;
+
+        return this.TERRAIN_PROFILES.TERRARIUM;
+    }
+
+
     async _switchTerrainLayer(enable) {
-        const hasHillshading = !!this.map.getLayer && this.map.getLayer('hillshading');
+        this._ensureStyleCompatibilityLayers();
+        const capabilities = this._getStyleCapabilities();
+        const terrainSourceId = capabilities.terrainSourceId;
+        const hillshadeLayerId = capabilities.hillshadeLayerId;
+        const hasHillshading = !!hillshadeLayerId && !!this.map.getLayer && this.map.getLayer(hillshadeLayerId);
+
+        if (!terrainSourceId || !this.map.getSource(terrainSourceId)) {
+            this.terrainLayer = null;
+            this.map.setTerrain(null);
+            return;
+        }
 
         if (enable) {
             // Get URL safely
-            const terrainUrl = this._extractTerrainUrl();
+            let terrainData = this._extractTerrainUrl();
 
-            if (!terrainUrl) {
+            if (!terrainData) {
                 console.warn("Terrain source definition not found in style.");
                 return;
             }
 
-            if (hasHillshading) {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'visible');
+            let finalTileUrl;
+            let elevationScale = 1.5;
+
+            // Handle the two types detected
+            if (terrainData.type === 'manifest') {
+                const response = await fetch(terrainData.value);
+                const tileJson = await response.json();
+                terrainData.profile = this._detectProfile(tileJson);
+                finalTileUrl = tileJson.tiles[0];
+                // Dynamically set scale if provided in TileJSON
+                elevationScale = tileJson.scale ? parseFloat(tileJson.scale) : 1.5;
+            } else {
+                finalTileUrl = terrainData.value;
             }
 
-            // Create DeckGL layer
+            if (hasHillshading) {
+                this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'visible');
+            }
+
             this.terrainLayer = new deck.TerrainLayer({
                 id: 'terrain-loader',
-                elevationData: terrainUrl,
-                elevationDecoder: {
-                    rScaler: 256,
-                    gScaler: 1,
-                    bScaler: 1 / 256,
-                    offset: -32768
-                },
+                elevationData: finalTileUrl,
+                elevationDecoder: terrainData.profile.decoder,
                 minZoom: 0,
                 maxZoom: 14,
-                elevationScale: 1.5,
+                elevationScale: elevationScale,
                 operation: 'terrain',
-                loadOptions: { fetch: { priority: 'high' } }
+                loadOptions: {
+                    terrain: {
+                        maxRequests: 6
+                    },
+                    fetch: { priority: 'high' } }
             });
 
             // Set MapLibre terrain
             this.map.setTerrain({
-                source: 'terrain-source',
+                source: terrainSourceId,
                 exaggeration: 1
             });
 
         } else {
             this.terrainLayer = null;
             if (hasHillshading) {
-                this.map.setLayoutProperty('hillshading', 'visibility', 'none');
+                this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'none');
             }
             this.map.setTerrain(null);
         }
     }
 
     _switchMapBuildingLayer(is3d) {
-        if (is3d) {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'visible');
-        } else {
-            this.map.setLayoutProperty('building-3d', 'visibility', 'none');
-        }
+        this._ensureStyleCompatibilityLayers();
+        (this._getStyleCapabilities().building3dLayerIds || []).forEach(layerId => {
+            if (!this.map.getLayer || !this.map.getLayer(layerId)) return;
+            this.map.setLayoutProperty(layerId, 'visibility', is3d ? 'visible' : 'none');
+        });
     }
 
     setHighlight({ managerId, startTime, endTime }) {
@@ -1003,8 +1414,7 @@ class MapRenderer {
             terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
         });
 
-        // We must trigger a re-render of the deck.gl overlay
-        this._rerenderOverlays(); // We'll modify _updateLayers to include the highlight
+        this._rerenderOverlays();
 
         // Calculate and return the bounds
         const bounds = new maplibregl.LngLatBounds();
@@ -1062,52 +1472,24 @@ class MapRenderer {
         // Create MapLibre GL marker
         const marker = new maplibregl.Marker({
             element: container,
-            anchor: 'center'
-        })
-            .setLngLat([lng, lat])
-            .addTo(this.map);
+            anchor: 'center',
+            offset: [-5, 0]
+        }).setLngLat([lng, lat]).addTo(this.map);
 
         // Store additional data with the marker for updates
         marker._avatarData = {
             userId: userId,
             userData: userData,
+            color: userData.color,
             imgElement: img
         };
 
-        // Create detailed popup content
-        const formatTimestamp = (timestamp) => {
-            if (!timestamp) return t('common.unknown') || 'Unknown';
-            const date = new Date(timestamp);
-            return date.toLocaleString();
-        };
-
-        const formatCoordinates = (lat, lng) => {
-            return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        };
-
-        const popupContent = `
-        <div style="font-family: var(--sans-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                ${t('map.auto-update.latest-location')}
-            </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.user')}:</strong> ${userData.displayName}
-            </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
-            </div>
-            <div style="margin-bottom: 4px;">
-                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
-            </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
-            </div>
-        </div>
-    `;
+        const popupContent = ``;
 
         // Add popup with detailed user info
         const popup = new maplibregl.Popup({
             offset: 25,
+            maxWidth: '500px',
             closeButton: false
         }).setHTML(popupContent);
 
@@ -1132,7 +1514,6 @@ class MapRenderer {
      */
     updateAvatarPositions() {
         const activeUserIds = new Set();
-
         // Update existing markers or create new ones
         this.gpsDataManagers.forEach(manager => {
             const userConfig = manager.config;
@@ -1165,7 +1546,8 @@ class MapRenderer {
                         avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
-                        timestamp: latestLocation.timestamp
+                        timestamp: latestLocation.timestamp,
+                        color: userConfig.color
                     });
                 } else {
                     this.addAvatarMarker(
@@ -1206,21 +1588,29 @@ class MapRenderer {
         };
 
         const popupContent = `
-        <div style="font-family: var(--sans-font); min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--color-primary);">
-                ${t('map.auto-update.latest-location')}
+        <div class="floating map-popup">
+            <div class="sel-info-head">
+                <div class="sel-info-title">
+                    ${t('map.auto-update.latest-location')}
+                </div>
             </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.user')}:</strong> ${userData.displayName}
+            <div class="sel-info-row">
+                <span class="k">${t('common.user')}:</span>
+                <span class="v sel-info-tag">
+                    <span class="swatch" style="background:${userData.color}"></span>${userData.displayName}
+                </span>
             </div>
-            <div style="margin-bottom: 6px;">
-                <strong>${t('common.time')}:</strong> ${formatTimestamp(userData.timestamp)}
+            <div class="sel-info-row">
+                <span class="k">${t('common.position')}:</span>
+                <span class="v mono">${formatTimestamp(userData.timestamp)}</span>
             </div>
-            <div style="margin-bottom: 4px;">
-                <strong>${t('common.position')}:</strong> ${formatCoordinates(lat, lng)}
+           <div class="sel-info-row">
+                <span class="k">${t('common.time')}:</span>
+                <span class="v mono">${formatCoordinates(lat, lng)}</span>
             </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                <strong>${t('common.last-updated')}:</strong> ${this._formatTimeAgo(userData.timestamp)}
+            <div class="sel-info-row">
+                <span class="k">${t('common.last-updated')}:</span>
+                <span class="v mono">${this._formatTimeAgo(userData.timestamp)}</span>
             </div>
         </div>
     `;
@@ -1275,5 +1665,13 @@ class MapRenderer {
         }
     }
 
-
+    setSelectedManager(managerId) {
+        console.log("setting selected manager to", managerId);
+        this.selectedManager = managerId;
+        if (this.element.classList.contains('is-loaded') && this.gpsDataManagers.length > 0) {
+            this._refitBounds();
+        }
+    }
 }
+
+MapRenderer.rtlTextPluginConfigured = false;

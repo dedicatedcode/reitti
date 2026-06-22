@@ -77,6 +77,10 @@ class LiveModeController {
     }
 
 
+    isActive() {
+        return this.autoUpdateMode;
+    }
+
     /** Events **/
     on(event, callback) {
         if (!this.eventListeners[event]) this.eventListeners[event] = [];
@@ -205,7 +209,6 @@ class LiveModeController {
     }
 
     _scheduleTimelineReload(eventData) {
-        // Add event to pending events
         this.pendingEvents.push(eventData);
 
         if (this.firstEventTime === null) {

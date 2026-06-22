@@ -92,7 +92,7 @@
         }
         const tilesUrl = window.userSettings.tiles.service;
         const tilesAttribution = window.userSettings.tiles.attribution;
-        const tileLayer = window.userSettings.preferColoredMap ? L.tileLayer : L.tileLayer.grayscale;
+        const tileLayer = L.tileLayer.grayscale;
 
         // Initialize map
         homeLocationMap = L.map('homeLocationMap').setView([60.1699, 24.9384], 10)

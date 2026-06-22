@@ -3,17 +3,13 @@ package com.dedicatedcode.reitti.controller.api.ingestion.gpslogger;
 import com.dedicatedcode.reitti.controller.api.ingestion.owntracks.OwntracksFriendResponse;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
-import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,21 +23,17 @@ import java.util.Map;
 @RequestMapping("/api/v1/ingest")
 public class GPSLoggerIngestionApiController {
     private static final Logger logger = LoggerFactory.getLogger(GPSLoggerIngestionApiController.class);
-    private final UserJdbcService userJdbcService;
     private final LocationBatchingService locationBatchingService;
 
-    public GPSLoggerIngestionApiController(UserJdbcService userJdbcService,
-                                           LocationBatchingService locationBatchingService) {
-        this.userJdbcService = userJdbcService;
+    public GPSLoggerIngestionApiController(LocationBatchingService locationBatchingService) {
         this.locationBatchingService = locationBatchingService;
     }
 
     @PostMapping("/gpslogger")
-    public ResponseEntity<?> receiveData(@RequestBody OwntracksLocationRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
-
+    public ResponseEntity<?> receiveData(@AuthenticationPrincipal DeviceTokenUser user, @RequestBody OwntracksLocationRequest request) {
+        if (user.getDevice().isEmpty()) {
+            throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+        }
         try {
             if (!request.isLocationUpdate()) {
                 logger.debug("Ignoring non-location GpsLogger message of type: {}", request.getType());
@@ -58,7 +50,7 @@ public class GPSLoggerIngestionApiController {
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
-            this.locationBatchingService.addLocationPoint(user, locationPoint);
+            this.locationBatchingService.addLocationPoint(user, user.getDevice().get(), locationPoint);
             logger.debug("Successfully received and queued GpsLogger location point for user {}",
                          user.getUsername());
 

@@ -2,11 +2,13 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -36,6 +38,7 @@ public class IntegrationsSettingsController {
     private final ContextPathHolder contextPathHolder;
     private final ApiTokenService apiTokenService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
     private final DynamicMqttProvider mqttProvider;
@@ -45,7 +48,7 @@ public class IntegrationsSettingsController {
 
     public IntegrationsSettingsController(ContextPathHolder contextPathHolder,
                                           ApiTokenService apiTokenService,
-                                          RawLocationPointJdbcService rawLocationPointJdbcService,
+                                          RawLocationPointJdbcService rawLocationPointJdbcService, DeviceJdbcService deviceJdbcService,
                                           ImmichIntegrationService immichIntegrationService,
                                           OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
                                           DynamicMqttProvider mqttProvider,
@@ -55,6 +58,7 @@ public class IntegrationsSettingsController {
         this.contextPathHolder = contextPathHolder;
         this.apiTokenService = apiTokenService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
         this.mqttProvider = mqttProvider;
@@ -64,9 +68,7 @@ public class IntegrationsSettingsController {
     }
 
     @GetMapping
-    public String getPage(@AuthenticationPrincipal User user,
-                          HttpServletRequest request,
-                          Model model) {
+    public String getPage(@AuthenticationPrincipal User user, Model model) {
         model.addAttribute("activeSection", "integrations");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
@@ -79,7 +81,7 @@ public class IntegrationsSettingsController {
                                          HttpServletRequest request,
                                          Model model,
                                          @RequestParam(required = false) String openSection) {
-        List<ApiToken> tokens = apiTokenService.getTokensForUser(currentUser);
+        List<ApiToken> tokens = getUsableTokens(currentUser);
 
         // Determine the token to use
         String tokenToUse = null;
@@ -97,6 +99,7 @@ public class IntegrationsSettingsController {
         }
 
         model.addAttribute("selectedToken", tokenToUse);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(currentUser).stream().toList());
         model.addAttribute("tokens", tokens);
 
         Optional<OwnTracksRecorderIntegration> recorderIntegration = ownTracksRecorderIntegrationService.getIntegrationForUser(currentUser);
@@ -128,6 +131,10 @@ public class IntegrationsSettingsController {
 
 
         return "settings/fragments/integrations :: integrations-content";
+    }
+
+    private List<ApiToken> getUsableTokens(User currentUser) {
+        return apiTokenService.getTokensForUser(currentUser).stream().filter(t -> t.getDevice() != null).toList();
     }
 
     private String calculateServerUrl(HttpServletRequest request) {
@@ -213,10 +220,12 @@ public class IntegrationsSettingsController {
                                                    @RequestParam(defaultValue = "false") boolean enabled,
                                                    @RequestParam String authUsername,
                                                    @RequestParam String authPassword,
+                                                   @RequestParam Long reittiDeviceId,
                                                    @AuthenticationPrincipal User currentUser,
                                                    RedirectAttributes redirectAttributes) {
         try {
-            ownTracksRecorderIntegrationService.saveIntegration(currentUser, baseUrl, username, authUsername, authPassword, deviceId, enabled);
+            Device device = this.deviceJdbcService.find(currentUser, reittiDeviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            ownTracksRecorderIntegrationService.saveIntegration(currentUser, device, baseUrl, username, authUsername, authPassword, deviceId, enabled);
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.config.saved"));
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.config.error", e.getMessage()));
@@ -253,7 +262,7 @@ public class IntegrationsSettingsController {
     }
 
     @PostMapping("/owntracks-recorder-integration/load-historical")
-    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser, RedirectAttributes redirectAttributes, HttpServletRequest request) {
+    public String loadOwnTracksRecorderHistoricalData(@AuthenticationPrincipal User currentUser,  RedirectAttributes redirectAttributes, HttpServletRequest request) {
         try {
             ownTracksRecorderIntegrationService.loadHistoricalData(currentUser);
             redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.owntracks.recorder.load.historical.success"));
@@ -274,6 +283,7 @@ public class IntegrationsSettingsController {
             @RequestParam(name = "mqtt_username", required = false) String username,
             @RequestParam(name = "mqtt_password", required = false) String password,
             @RequestParam(name = "mqtt_payloadType") PayloadType payloadType,
+            @RequestParam(name = "mqtt_deviceId") Long deviceId,
             @RequestParam(name = "mqtt_enabled",defaultValue = "false") boolean enabled,
             RedirectAttributes redirectAttributes) {
 
@@ -288,7 +298,11 @@ public class IntegrationsSettingsController {
             if (port < 1 || port > 65535) {
                 redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.port_range"));
                 return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+            }
 
+            if (this.deviceJdbcService.find(user, deviceId).isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.unknown_device"));
+                return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
             }
 
             MqttIntegration mqttIntegration = this.mqttIntegrationJdbcService.findByUser(user).orElse(MqttIntegration.empty());
@@ -302,6 +316,7 @@ public class IntegrationsSettingsController {
                     .withUsername(username)
                     .withPassword(password)
                     .withPayloadType(payloadType)
+                    .withDeviceId(deviceId)
                     .withEnabled(enabled);
             mqttIntegrationJdbcService.save(user, updatedIntegration);
             if (wasEnabled && !updatedIntegration.isEnabled()) {
@@ -371,6 +386,7 @@ public class IntegrationsSettingsController {
                                                                                                                                     password,
                                                                                                                                     payloadType,
                                                                                                                                     true,
+                                                                                                                                    null,
                                                                                                                                     null,
                                                                                                                                     null,
                                                                                                                                     null,

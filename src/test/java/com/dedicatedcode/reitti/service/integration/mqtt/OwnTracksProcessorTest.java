@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration.mqtt;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,10 +37,12 @@ class OwnTracksProcessorTest {
     private ArgumentCaptor<LocationPoint> locationPointCaptor;
 
     private User testUser;
+    private Device device;
 
     @BeforeEach
     void setUp() {
         testUser = new User(1L, "testuser", "password", "Test User", null, null, null, 1L);
+        device = mock(Device.class);
     }
 
     @Test
@@ -63,10 +66,10 @@ class OwnTracksProcessorTest {
         when(objectMapper.readValue(validJson, OwntracksLocationRequest.class)).thenReturn(request);
 
         // When
-        ownTracksProcessor.process(testUser, validJson.getBytes());
+        ownTracksProcessor.process(testUser, device, validJson.getBytes());
 
         // Then
-        verify(locationBatchingService).addLocationPoint(eq(testUser), locationPointCaptor.capture());
+        verify(locationBatchingService).addLocationPoint(eq(testUser), any(Device.class), locationPointCaptor.capture());
         LocationPoint capturedPoint = locationPointCaptor.getValue();
         assertEquals(expectedLocationPoint.getTimestamp(), capturedPoint.getTimestamp());
         assertEquals(expectedLocationPoint.getLatitude(), capturedPoint.getLatitude());
@@ -84,10 +87,10 @@ class OwnTracksProcessorTest {
         when(objectMapper.readValue(nonLocationJson, OwntracksLocationRequest.class)).thenReturn(request);
 
         // When
-        ownTracksProcessor.process(testUser, nonLocationJson.getBytes());
+        ownTracksProcessor.process(testUser, device, nonLocationJson.getBytes());
 
         // Then
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        verify(locationBatchingService, never()).addLocationPoint(any(), any(Device.class), any());
     }
 
     @Test
@@ -104,10 +107,10 @@ class OwnTracksProcessorTest {
         when(objectMapper.readValue(invalidJson, OwntracksLocationRequest.class)).thenReturn(request);
 
         // When
-        ownTracksProcessor.process(testUser, invalidJson.getBytes());
+        ownTracksProcessor.process(testUser, device, invalidJson.getBytes());
 
         // Then
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        verify(locationBatchingService, never()).addLocationPoint(any(), any(Device.class), any());
     }
 
     @Test
@@ -118,7 +121,7 @@ class OwnTracksProcessorTest {
             .thenThrow(new RuntimeException("JSON parsing error"));
 
         // When/Then
-        assertDoesNotThrow(() -> ownTracksProcessor.process(testUser, invalidJson.getBytes()));
-        verify(locationBatchingService, never()).addLocationPoint(any(), any());
+        assertDoesNotThrow(() -> ownTracksProcessor.process(testUser, device, invalidJson.getBytes()));
+        verify(locationBatchingService, never()).addLocationPoint(any(), any(Device.class), any());
     }
 }

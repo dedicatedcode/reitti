@@ -3,7 +3,8 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.dedicatedcode.reitti.service.MessageDispatcherService.TRIGGER_PROCESSING_QUEUE;
+import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Service
 public class VisitDetectionPreviewService {
@@ -26,12 +27,16 @@ public class VisitDetectionPreviewService {
     private static final long READY_THRESHOLD_SECONDS = 5;
 
     private final JdbcTemplate jdbcTemplate;
-    private final RedisQueueService messageEnqueuer;
+    private final JobSchedulingService jobScheduler;
+    private final Task<TriggerProcessingEvent> processingEventTask;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
 
-    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate, RedisQueueService messageEnqueuer) {
+    public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate,
+                                        JobSchedulingService jobScheduler,
+                                        Task<TriggerProcessingEvent> processingEventTask) {
         this.jdbcTemplate = jdbcTemplate;
-        this.messageEnqueuer = messageEnqueuer;
+        this.jobScheduler = jobScheduler;
+        this.processingEventTask = processingEventTask;
     }
 
     public String startPreview(User user, DetectionParameter config, Instant date) {
@@ -56,8 +61,8 @@ public class VisitDetectionPreviewService {
 
         Timestamp start = Timestamp.from(date.minus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
         Timestamp end = Timestamp.from(date.plus(1, ChronoUnit.DAYS).plus(config.getVisitMerging().getSearchDurationInHours() * 2, ChronoUnit.HOURS));
-        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, elevation_meters, geom, processed, version, ignored, synthetic, preview_id, preview_created_at) " +
-                "SELECT accuracy_meters, timestamp, user_id, elevation_meters, geom, false, version, ignored, synthetic, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ? AND invalid = false",
+        this.jdbcTemplate.update("INSERT INTO preview_raw_location_points(accuracy_meters, timestamp, user_id, elevation_meters, geom, processed, version, synthetic, preview_id, preview_created_at) " +
+                                         "SELECT accuracy_meters, timestamp, user_id, elevation_meters, geom, FALSE, version, synthetic, ?, ? FROM raw_location_points WHERE timestamp > ? AND timestamp <= ? AND user_id = ?",
                 previewId,
                 Timestamp.valueOf(now),
                 start,
@@ -65,10 +70,12 @@ public class VisitDetectionPreviewService {
                 user.getId());
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString());
-        messageEnqueuer.enqueue(TRIGGER_PROCESSING_QUEUE, triggerEvent);
-        
-        // Initialize preview status tracking
+        UUID parentJob = this.jobScheduler.createParentJob(user, VISIT_TRIP_DETECTION, previewId);
+        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString()).withParentJobId(parentJob);
+        this.jobScheduler.enqueueTask(processingEventTask, triggerEvent,
+                                  JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
+                                          .friendlyName("Preview Visit Detection")
+                                          .build());
         updatePreviewStatus(previewId);
         
         return previewId;

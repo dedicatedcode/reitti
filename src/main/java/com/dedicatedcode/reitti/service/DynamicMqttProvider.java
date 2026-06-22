@@ -1,14 +1,14 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttPayloadProcessor;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
-import com.hivemq.client.internal.mqtt.MqttClientSslConfigImpl;
 import com.hivemq.client.mqtt.MqttClient;
-import com.hivemq.client.mqtt.MqttClientSslConfig;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3ClientBuilder;
@@ -33,12 +33,17 @@ import java.util.stream.Collectors;
 public class DynamicMqttProvider {
     private static final Logger log = LoggerFactory.getLogger(DynamicMqttProvider.class);
     private final UserJdbcService userJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final MqttIntegrationJdbcService repository;
     private final Map<PayloadType, MqttPayloadProcessor> processors;
     private final ConcurrentHashMap<Long, Mqtt3AsyncClient> activeClients = new ConcurrentHashMap<>();
 
-    public DynamicMqttProvider(UserJdbcService userJdbcService, MqttIntegrationJdbcService repository, List<MqttPayloadProcessor> processorList) {
+    public DynamicMqttProvider(UserJdbcService userJdbcService,
+                               DeviceJdbcService deviceJdbcService,
+                               MqttIntegrationJdbcService repository,
+                               List<MqttPayloadProcessor> processorList) {
         this.userJdbcService = userJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.repository = repository;
         this.processors = processorList.stream()
             .collect(Collectors.toMap(MqttPayloadProcessor::getSupportedType, p -> p));
@@ -48,6 +53,7 @@ public class DynamicMqttProvider {
     public void reconnectAllOnStartup() {
         this.userJdbcService.getAllUsers()
                 .forEach(user -> this.repository.findByUser(user)
+                        .filter(MqttIntegration::isEnabled)
                         .ifPresent(config -> connectClient(user, config)));
     }
 
@@ -111,6 +117,7 @@ public class DynamicMqttProvider {
 
         Mqtt3ConnectBuilder.Send<CompletableFuture<Mqtt3ConnAck>> builder = client.connectWith()
                 .cleanSession(false);
+        Device device = this.deviceJdbcService.getDefaultDevice(user);
         if (StringUtils.hasText(config.getUsername())) {
             builder.simpleAuth()
                     .username(config.getUsername())
@@ -124,7 +131,7 @@ public class DynamicMqttProvider {
                     client.subscribeWith()
                             .topicFilter(config.getTopic())
                             .qos(MqttQos.AT_LEAST_ONCE)
-                            .callback(publish -> dispatch(user, config, publish.getPayloadAsBytes()))
+                            .callback(publish -> dispatch(user, device, config, publish.getPayloadAsBytes()))
                             .send();
                 }).exceptionally(throwable -> {
                     log.error("Error connecting client [{}] for user {} to {} on {}", config.getIdentifier(), user.getUsername(), config.getTopic(), config.getHost(), throwable);
@@ -132,10 +139,10 @@ public class DynamicMqttProvider {
                 });
     }
 
-    private void dispatch(User user, MqttIntegration config, byte[] payload) {
+    private void dispatch(User user, Device device, MqttIntegration config, byte[] payload) {
         MqttPayloadProcessor processor = processors.get(config.getPayloadType());
         if (processor != null) {
-            processor.process(user, payload);
+            processor.process(user, device, payload);
         } else {
             log.error("No processor found for type: {}", config.getPayloadType());
         }

@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.dto.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.TimelineService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,9 +25,9 @@ public class TimelineApiController {
     }
 
     @GetMapping
-    public List<TimelineEntry> getTimeline(@AuthenticationPrincipal User user,
-                                           @RequestParam String date,
-                                           @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+    public List<SingleTimelineEntry> getTimeline(@AuthenticationPrincipal User user,
+                                                 @RequestParam String date,
+                                                 @RequestParam(required = false, defaultValue = "UTC") String timezone) {
 
         LocalDate selectedDate = LocalDate.parse(date);
         ZoneId userTimezone = ZoneId.of(timezone);
@@ -35,7 +35,7 @@ public class TimelineApiController {
         Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
         Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
-        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay);
+        return this.timelineService.buildTimelineEntries(user, userTimezone, selectedDate, startOfDay, endOfDay, true);
     }
 
 }
