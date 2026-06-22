@@ -79,7 +79,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Trips involving removed places should be deleted
@@ -102,7 +102,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Visits for removed places should be deleted
@@ -130,7 +130,7 @@ class DataCleanupServiceTest {
         // When - only remove placeToRemove1
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Only visit for removed place should be deleted
@@ -152,7 +152,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1, placeToRemove2);
         List<LocalDate> affectedDays = List.of(LocalDate.now());
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Specified places should be deleted
@@ -194,7 +194,7 @@ class DataCleanupServiceTest {
         // When - cleanup with day1 and day2 as affected days
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(day1, day2);
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Points on affected days should be marked as unprocessed
@@ -218,7 +218,7 @@ class DataCleanupServiceTest {
         // When
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
         List<LocalDate> affectedDays = List.of(); // Empty list
-        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays);
+        dataCleanupService.cleanupForGeometryChange(testUser, placesToRemove, affectedDays, null);
 
         // Then
         // Visit should be removed
@@ -250,23 +250,24 @@ class DataCleanupServiceTest {
 
     private ProcessedVisit createTestVisit(SignificantPlace place, Instant startTime, Instant endTime) {
         long duration = ChronoUnit.SECONDS.between(startTime, endTime);
-        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration);
+        ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration,null);
         return processedVisitJdbcService.create(testUser, visit);
     }
 
     private Trip createTestTrip(ProcessedVisit startVisit, ProcessedVisit endVisit) {
         long duration = ChronoUnit.SECONDS.between(startVisit.getEndTime(), endVisit.getStartTime());
         Trip trip = new Trip(
-            null,
-            startVisit.getEndTime(),
-            endVisit.getStartTime(),
-            duration,
-            1000.0,
-            1200.0,
-            TransportMode.WALKING,
-            startVisit,
-            endVisit,
-            1L
+                null,
+                startVisit.getEndTime(),
+                endVisit.getStartTime(),
+                duration,
+                1000.0,
+                1200.0,
+                TransportMode.WALKING,
+                startVisit,
+                endVisit,
+                null,
+                1L
         );
         return tripJdbcService.create(testUser, trip);
     }
@@ -274,12 +275,11 @@ class DataCleanupServiceTest {
     private RawLocationPoint createProcessedPoint(User user, Instant timestamp) {
         RawLocationPoint point = new RawLocationPoint(
             null,
+            null,
             timestamp,
             new GeoPoint(53.863149, 10.700927),
             10.0,
             null,
-            false,
-            false,
             false,
             false,
             1L
@@ -290,14 +290,13 @@ class DataCleanupServiceTest {
         // Mark as processed
         RawLocationPoint processed = new RawLocationPoint(
             created.getId(),
+            created.getSourceId(),
             created.getTimestamp(),
             created.getGeom(),
             created.getAccuracyMeters(),
             created.getElevationMeters(),
             true,
             created.isSynthetic(),
-            created.isIgnored(),
-            created.isInvalid(),
             created.getVersion()
         );
         

@@ -4,13 +4,16 @@ import com.dedicatedcode.reitti.event.LocationProcessEvent;
 import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.*;
+import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
+import com.dedicatedcode.reitti.service.MetadataOverrideService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
-import com.dedicatedcode.reitti.service.queue.RedisQueueService;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -23,9 +26,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static com.dedicatedcode.reitti.service.MessageDispatcherService.PLACE_CREATED_QUEUE;
+import static com.dedicatedcode.reitti.service.jobs.JobType.REVERSE_GEOCODE;
 
 /**
  * Unified service that processes the entire GPS pipeline atomically per user.
@@ -53,7 +55,9 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
-    private final RedisQueueService messageEnqueuer;
+    private final MetadataOverrideService metadataOverrideService;
+    private final JobSchedulingService jobScheduler;
+    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -71,9 +75,9 @@ public class UnifiedLocationProcessingService {
             TransportModeService transportModeService,
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
-            GeometryFactory geometryFactory,
-            RedisQueueService messageEnqueuer) {
-
+            GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
+            JobSchedulingService jobScheduler,
+            Task<SignificantPlaceCreatedEvent> reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -90,7 +94,9 @@ public class UnifiedLocationProcessingService {
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
-        this.messageEnqueuer = messageEnqueuer;
+        this.metadataOverrideService = metadataOverrideService;
+        this.jobScheduler = jobScheduler;
+        this.reverseGeocodingTask = reverseGeocodingTask;
     }
 
     /**
@@ -226,13 +232,11 @@ public class UnifiedLocationProcessingService {
         Instant windowEnd = event.getLatest().plus(1, ChronoUnit.DAYS);
 
         DetectionParameter currentConfiguration;
-        DetectionParameter.VisitDetection detectionParams;
         if (previewId == null) {
             currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, windowStart);
         } else {
             currentConfiguration = previewVisitDetectionParametersJdbcService.findCurrent(user, previewId);
         }
-        detectionParams = currentConfiguration.getVisitDetection();
 
         List<ProcessedVisit> existingProcessedVisits;
         if (previewId == null) {
@@ -255,15 +259,11 @@ public class UnifiedLocationProcessingService {
         List<RawLocationPoint> timeOrderedPoints;
         if (previewId == null) {
             timeOrderedPoints = rawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true, false, false);
+                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true);
         } else {
             timeOrderedPoints = previewRawLocationPointJdbcService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, windowStart, windowEnd);
         }
-
-        timeOrderedPoints = timeOrderedPoints.stream()
-                .filter(p -> !p.isIgnored() && !p.isInvalid())
-                .toList();
 
         logger.debug("Loaded {} valid points in [{}, {}]", timeOrderedPoints.size(), windowStart, windowEnd);
 
@@ -298,7 +298,7 @@ public class UnifiedLocationProcessingService {
                     .getVisitMerging();
         }
 
-        // Expand search window for merging
+        // Expand the search window for merging
         Instant searchStart = initialStart;
         Instant searchEnd = initialEnd;
 
@@ -314,7 +314,7 @@ public class UnifiedLocationProcessingService {
             previewProcessedVisitJdbcService.deleteAll(existingProcessedVisits);
         }
 
-        // Expand window based on deleted processed visits
+        // Expand the window based on deleted processed visits
         if (!existingProcessedVisits.isEmpty()) {
             if (existingProcessedVisits.getFirst().getStartTime().isBefore(searchStart)) {
                 searchStart = existingProcessedVisits.getFirst().getStartTime();
@@ -325,7 +325,7 @@ public class UnifiedLocationProcessingService {
         }
 
         if (allVisits.isEmpty()) {
-            return new VisitMergingResult(List.of(), List.of(), searchStart, searchEnd, System.currentTimeMillis() - start);
+            return new VisitMergingResult(new ArrayList<>(), new ArrayList<>(), searchStart, searchEnd, System.currentTimeMillis() - start);
         }
 
         // Merge visits chronologically
@@ -482,53 +482,6 @@ public class UnifiedLocationProcessingService {
         return stayPoints;
     }
 
-    private List<StayPoint> detectStayPointsFromTrajectory(
-            Map<Integer, List<RawLocationPoint>> points,
-            DetectionParameter.VisitDetection visitDetectionParameters) {
-        logger.debug("Starting cluster-based stay point detection with {} different spatial clusters.", points.size());
-
-        List<List<RawLocationPoint>> clusters = new ArrayList<>();
-
-        //split them up when time is x seconds between
-        for (List<RawLocationPoint> clusteredByLocation : points.values()) {
-            logger.debug("Start splitting up geospatial cluster with [{}] elements based on minimum time [{}]s between points", clusteredByLocation.size(), visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints());
-            //first sort them by timestamp
-            clusteredByLocation.sort(Comparator.comparing(RawLocationPoint::getTimestamp));
-
-            List<RawLocationPoint> currentTimedCluster = new ArrayList<>();
-            clusters.add(currentTimedCluster);
-            currentTimedCluster.add(clusteredByLocation.getFirst());
-
-            Instant currentTime = clusteredByLocation.getFirst().getTimestamp();
-
-            for (int i = 1; i < clusteredByLocation.size(); i++) {
-                RawLocationPoint next = clusteredByLocation.get(i);
-                if (Duration.between(currentTime, next.getTimestamp()).getSeconds() < visitDetectionParameters.getMaxMergeTimeBetweenSameStayPoints()) {
-                    currentTimedCluster.add(next);
-                } else {
-                    currentTimedCluster = new ArrayList<>();
-                    currentTimedCluster.add(next);
-                    clusters.add(currentTimedCluster);
-                }
-                currentTime = next.getTimestamp();
-            }
-        }
-
-        logger.debug("Detected {} stay points after splitting them up.", clusters.size());
-        //filter them by duration
-        List<List<RawLocationPoint>> filteredByMinimumDuration = clusters.stream()
-                .filter(c -> Duration.between(c.getFirst().getTimestamp(), c.getLast().getTimestamp()).toSeconds() > visitDetectionParameters.getMinimumStayTimeInSeconds())
-                .toList();
-
-        logger.debug("Found {} valid clusters after duration filtering with minimum stay time [{}]s", filteredByMinimumDuration.size(), visitDetectionParameters.getMinimumStayTimeInSeconds());
-
-        // Step 3: Convert valid clusters to stay points
-        return filteredByMinimumDuration.stream()
-                .map(this::createStayPoint)
-                .sorted(Comparator.comparing(StayPoint::getArrivalTime))
-                .collect(Collectors.toList());
-    }
-
     private List<ProcessedVisit> mergeVisitsChronologically(
             User user, String previewId, String traceId, List<Visit> visits,
             DetectionParameter.VisitMerging mergeConfiguration) {
@@ -584,7 +537,7 @@ public class UnifiedLocationProcessingService {
                 currentEndTime = nextVisit.getEndTime().isAfter(currentEndTime)
                         ? nextVisit.getEndTime() : currentEndTime;
             } else {
-                ProcessedVisit processedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
+                ProcessedVisit processedVisit = createProcessedVisit(user, currentPlace, currentStartTime, currentEndTime);
                 if (processedVisit != null) {
                     result.add(processedVisit);
                 }
@@ -594,14 +547,14 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        ProcessedVisit lastProcessedVisit = createProcessedVisit(currentPlace, currentStartTime, currentEndTime);
+        ProcessedVisit lastProcessedVisit = createProcessedVisit(user, currentPlace, currentStartTime, currentEndTime);
         if (lastProcessedVisit != null) {
             result.add(lastProcessedVisit);
         }
         return result;
     }
 
-    private ProcessedVisit createProcessedVisit(SignificantPlace place, Instant startTime, Instant endTime) {
+    private ProcessedVisit createProcessedVisit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
         if (endTime.isBefore(startTime)) {
             logger.warn("Skipping zero or negative duration processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
             return null;  // Indicate to skip
@@ -611,7 +564,9 @@ public class UnifiedLocationProcessingService {
             return null;
         }
         logger.debug("Creating processed visit for place [{}] between [{}] and [{}]", place.getId(), startTime, endTime);
-        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond());
+
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, startTime, endTime).map(MemoryMetadata::getProperties).orElse(null);
+        return new ProcessedVisit(place, startTime, endTime, endTime.getEpochSecond() - startTime.getEpochSecond(), metadata);
     }
 
     private StayPoint createStayPoint(List<RawLocationPoint> clusterPoints) {
@@ -825,6 +780,8 @@ public class UnifiedLocationProcessingService {
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
         TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, tripStartTime, tripEndTime);
+        Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);
+
         Trip trip = new Trip(
                 tripStartTime,
                 tripEndTime,
@@ -833,7 +790,8 @@ public class UnifiedLocationProcessingService {
                 travelledDistanceMeters,
                 transportMode,
                 startVisit,
-                endVisit
+                endVisit,
+                metadata
         );
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
                 Optional.ofNullable(startVisit.getPlace().getName()).orElse("Unknown Name"),
@@ -913,7 +871,12 @@ public class UnifiedLocationProcessingService {
                 place.getLongitudeCentroid(),
                 traceId
         );
-        messageEnqueuer.enqueue(PLACE_CREATED_QUEUE, event);
+        this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                      JobSchedulingService.Metadata.builder()
+                                          .user(user)
+                                          .jobType(REVERSE_GEOCODE)
+                                          .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
+                                          .build());
         logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
     }
 

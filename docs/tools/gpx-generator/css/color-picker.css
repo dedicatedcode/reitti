@@ -1,0 +1,98 @@
+.color-picker-section {
+    margin-top: 10px;
+}
+
+.color-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+    max-width: 400px;
+}
+
+.color-option {
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+}
+
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-option input:checked + .color-swatch {
+    border-color: var(--color-text-white);
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-option:hover .color-swatch {
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.color-actions {
+    margin-top: 10px;
+}
+
+.custom-color-swatch {
+    background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+    linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--color-border-default);
+}
+
+.custom-color-icon {
+    font-size: 20px;
+    color: var(--color-text-white);
+    font-weight: bold;
+}
+
+.custom-color-input-section {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: var(--color-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--color-border-default);
+}
+
+.custom-color-input-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.custom-color-input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.custom-color-input-wrapper input[type="color"] {
+    width: 50px;
+    height: 40px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.custom-color-input-wrapper input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border-default);
+    border-radius: 4px;
+    background-color: var(--color-background-dark);
+    color: var(--color-text-white);
+    font-family: monospace;
+}

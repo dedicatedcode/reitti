@@ -3,6 +3,10 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,10 +18,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
@@ -25,10 +26,12 @@ public class ProcessedVisitJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final ObjectMapper objectMapper;
 
-    public ProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, SignificantPlaceJdbcService significantPlaceJdbcService) {
+    public ProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, SignificantPlaceJdbcService significantPlaceJdbcService, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.objectMapper = objectMapper;
     }
 
     private final RowMapper<ProcessedVisit> PROCESSED_VISIT_ROW_MAPPER = new RowMapper<>() {
@@ -36,15 +39,23 @@ public class ProcessedVisitJdbcService {
         public ProcessedVisit mapRow(ResultSet rs, int rowNum) throws SQLException {
             SignificantPlace place = significantPlaceJdbcService.findById(rs.getLong("place_id")).orElseThrow();
             Long processedVisitId = rs.getLong("id");
+            try {
+                String metadataValue = rs.getString("metadata");
+                Map<String, Object> metadata = metadataValue != null ? objectMapper.readValue(metadataValue, new TypeReference<>() {}) : null;
+                return new ProcessedVisit(
+                        processedVisitId,
+                        place,
+                        rs.getTimestamp("start_time").toInstant(),
+                        rs.getTimestamp("end_time").toInstant(),
+                        rs.getLong("duration_seconds"),
+                        metadata,
+                        rs.getLong("version")
+                );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
 
-            return new ProcessedVisit(
-                    processedVisitId,
-                    place,
-                    rs.getTimestamp("start_time").toInstant(),
-                    rs.getTimestamp("end_time").toInstant(),
-                    rs.getLong("duration_seconds"),
-                    rs.getLong("version")
-            );
+
         }
     };
 
@@ -126,25 +137,35 @@ public class ProcessedVisitJdbcService {
     }
 
     public ProcessedVisit create(User user, ProcessedVisit visit) {
-        String sql = "INSERT INTO processed_visits (user_id, start_time, end_time, duration_seconds, place_id, version) " +
-                "VALUES (?, ?, ?, ?, ?, 1) RETURNING id";
+        String sql = "INSERT INTO processed_visits (user_id, start_time, end_time, duration_seconds, place_id, metadata, version) " +
+                "VALUES (?, ?, ?, ?, ?, ?::jsonb, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
-                visit.getPlace() != null ? visit.getPlace().getId() : null
+                visit.getPlace() != null ? visit.getPlace().getId() : null,
+                asJson(visit.getMetadata())
         );
         return visit.withId(id).withVersion(1);
     }
 
+    private String asJson(Object value) {
+        try {
+            return this.objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public ProcessedVisit update(ProcessedVisit visit) {
-        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ? WHERE id = ?";
+        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ?, metadata = ?::jsonb WHERE id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace().getId(),
+                asJson(visit.getMetadata()),
                 visit.getId()
         );
         return visit;
@@ -181,10 +202,10 @@ public class ProcessedVisitJdbcService {
         List<ProcessedVisit> result = new ArrayList<>();
 
         // 1. Build the multi-row INSERT statement structure
-        String valuePlaceholder = "(?, ?, ?, ?, ?)";
+        String valuePlaceholder = "(?, ?, ?, ?, ?, ?::jsonb)";
         String valuesPlaceholders = String.join(", ", Collections.nCopies(visitsToStore.size(), valuePlaceholder));
 
-        String sql = "INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds)\n" +
+        String sql = "INSERT INTO processed_visits (user_id, place_id, start_time, end_time, duration_seconds, metadata)\n" +
                 "VALUES " + valuesPlaceholders + " RETURNING id;";
 
         List<Object> batchArgs = new ArrayList<>();
@@ -194,6 +215,7 @@ public class ProcessedVisitJdbcService {
             batchArgs.add(Timestamp.from(visit.getStartTime()));
             batchArgs.add(Timestamp.from(visit.getEndTime()));
             batchArgs.add(visit.getDurationSeconds());
+            batchArgs.add(asJson(visit.getMetadata()));
         }
 
         List<Long> updateCounts = jdbcTemplate.query(sql, new ArgumentPreparedStatementSetter(batchArgs.toArray()), (resultSet, _) -> resultSet.getLong("id"));

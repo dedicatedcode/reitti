@@ -3,9 +3,11 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.*;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
+import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -14,7 +16,7 @@ import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -22,6 +24,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
 class UserServiceTest {
@@ -46,6 +49,12 @@ class UserServiceTest {
 
     @Autowired
     private TransportModeOverrideJdbcService transportModeOverrideJdbcService;
+
+    @Autowired
+    private OwnTracksRecorderIntegrationJdbcService ownTracksRecorderIntegrationJdbcService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private TestingService testingService;
@@ -82,6 +91,17 @@ class UserServiceTest {
         // Verify default transport mode configurations are created
         List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
         assertThat(transportConfigs).hasSize(4);
+
+        //Verify default MapStyleSetting
+        assertEquals("Reitti",
+                     this.jdbcTemplate.queryForObject("""
+                                                              SELECT name FROM user_map_styles
+                                                                          WHERE id = (SELECT active_style_id FROM user_map_style_settings WHERE user_id = ?)
+                                                              """, String.class, user.getId()));
+
+
+        assertEquals(1, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM devices WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(1, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM api_tokens WHERE user_id = ?", Integer.class, user.getId()));
     }
 
     @Test
@@ -93,7 +113,6 @@ class UserServiceTest {
                 "password123",
                 Role.ADMIN,
                 UnitSystem.IMPERIAL,
-                true,
                 Language.EN,
                 null,
                 null,
@@ -119,7 +138,6 @@ class UserServiceTest {
                 "password123",
                 Role.ADMIN,
                 UnitSystem.IMPERIAL,
-                true,
                 Language.EN,
                 52.5200,
                 13.4050,
@@ -140,7 +158,6 @@ class UserServiceTest {
         // Verify user settings were created
         UserSettings settings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         assertThat(settings.getUnitSystem()).isEqualTo(UnitSystem.IMPERIAL);
-        assertThat(settings.isPreferColoredMap()).isTrue();
         assertThat(settings.getSelectedLanguage()).isEqualTo(Language.EN);
         assertThat(settings.getHomeLatitude()).isEqualTo(52.5200);
         assertThat(settings.getHomeLongitude()).isEqualTo(13.4050);
@@ -164,7 +181,6 @@ class UserServiceTest {
             "password123",
             Role.USER,
             UnitSystem.METRIC,
-            false,
             Language.DE,
             null,
             null,
@@ -188,7 +204,7 @@ class UserServiceTest {
             "external456",
             "https://example.com/delete.jpg"
         );
-        
+        Device device = testingService.findDefaultDevice(user);
         // Verify user has default data
         List<DetectionParameter> detectionParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
         List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
@@ -199,19 +215,29 @@ class UserServiceTest {
                 .withHost("localhost")
                 .withIdentifier("identifier")
                 .withTopic( "topic")
-                .withPayloadType(PayloadType.OWNTRACKS));
+                .withPayloadType(PayloadType.OWNTRACKS)
+                .withDeviceId(device.id()));
         SignificantPlace significantPlace = this.testingService.newSignificantPlace(user);
         this.significantPlaceOverrideJdbcService.insertOverride(user, significantPlace);
 
         this.transportModeOverrideJdbcService.addTransportModeOverride(user, TransportMode.WALKING, Instant.now().minus(10, ChronoUnit.MINUTES), Instant.now());
+        this.ownTracksRecorderIntegrationJdbcService.save(user,new OwnTracksRecorderIntegration(
+                "http://localhost",
+                "daniel",
+                "1111",
+                true,
+                null,
+                null,
+                1L));
         // When
         userService.deleteUser(user);
 
         // Then - all related data should be deleted
-        List<DetectionParameter> remainingParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
-        List<TransportModeConfig> remainingConfigs = transportModeJdbcService.getTransportModeConfigs(user);
-        
-        assertThat(remainingParams).isEmpty();
-        assertThat(remainingConfigs).isEmpty();
+        assertEquals(0, visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).size());
+        assertEquals(0, transportModeJdbcService.getTransportModeConfigs(user).size());
+
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_map_style_settings WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM mqtt_integrations WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM owntracks_recorder_integration WHERE user_id = ?", Integer.class, user.getId()));
     }
 }

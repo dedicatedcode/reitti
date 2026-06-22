@@ -1,9 +1,12 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -15,7 +18,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,6 +25,7 @@ import java.util.Map;
 public class StreamingRawLocationPointJdbcService {
     private static final Logger log = LoggerFactory.getLogger(StreamingRawLocationPointJdbcService.class);
 
+    private static final int POINTS_PER_BATCH = 8192;
     private final JdbcTemplate jdbcTemplate;
     private final GeoLocationTimezoneService timezoneService;
 
@@ -32,7 +35,7 @@ public class StreamingRawLocationPointJdbcService {
     }
 
     @Transactional(readOnly = true)
-    public void streamPoints(Long userId, Instant start, Instant end, ResponseBodyEmitter emitter) {
+    public void streamPoints(User user, Instant start, Instant end, ResponseBodyEmitter emitter) {
         String sql = """
             SELECT
                 ST_X(geom) as lng,
@@ -42,21 +45,46 @@ public class StreamingRawLocationPointJdbcService {
             FROM raw_location_points
             WHERE user_id = ?
               AND timestamp >= ? AND timestamp < ?
-              AND invalid = false
             ORDER BY timestamp
         """;
-        int pointsPerBatch = 8192;
-        ByteBuffer buffer = ByteBuffer.allocate(pointsPerBatch * 20);
-        buffer.order(ByteOrder.LITTLE_ENDIAN); // Essential for JS Float32Array
 
-        Map<String, ZoneId> timezoneCache = new HashMap<>();
-        jdbcTemplate.query(sql, ps -> {
-            // Important for streaming
-            ps.setLong(1, userId);
+        streamSql(emitter, sql, ps -> {
+            ps.setLong(1, user.getId());
             ps.setTimestamp(2, Timestamp.from(start));
             ps.setTimestamp(3, Timestamp.from(end));
-            ps.setFetchSize(pointsPerBatch);
-        }, rs -> {
+            ps.setFetchSize(POINTS_PER_BATCH);
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void streamPoints(User user, Device device, Instant start, Instant end, ResponseBodyEmitter emitter) {
+        String sql = """
+                    SELECT
+                        ST_X(geom) as lng,
+                        ST_Y(geom) as lat,
+                        elevation_meters as alt,
+                        EXTRACT(EPOCH FROM timestamp) as ts
+                    FROM raw_source_points
+                    WHERE user_id = ?
+                      AND device_id = ?
+                      AND timestamp >= ? AND timestamp < ?
+                    ORDER BY timestamp
+                """;
+
+        streamSql(emitter, sql, ps -> {
+            ps.setLong(1, user.getId());
+            ps.setLong(2, device.id());
+            ps.setTimestamp(3, Timestamp.from(start));
+            ps.setTimestamp(4, Timestamp.from(end));
+            ps.setFetchSize(POINTS_PER_BATCH);
+        });
+    }
+    private void streamSql(ResponseBodyEmitter emitter, String sql, PreparedStatementSetter ps) {
+        ByteBuffer buffer = ByteBuffer.allocate(POINTS_PER_BATCH * 20);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        Map<String, ZoneId> timezoneCache = new HashMap<>();
+        jdbcTemplate.query(sql, ps, rs -> {
             float lat = rs.getFloat("lat");
             float lng = rs.getFloat("lng");
             float ts = rs.getFloat("ts");

@@ -1,13 +1,17 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
+import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTrigger;
+import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +29,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/settings/visit-sensitivity")
@@ -34,30 +38,27 @@ public class SettingsVisitSensitivityController {
     private static final Logger log = LoggerFactory.getLogger(SettingsVisitSensitivityController.class);
     private final VisitDetectionParametersJdbcService configurationService;
     private final VisitDetectionPreviewService visitDetectionPreviewService;
-    private final ProcessingPipelineTrigger processingPipelineTrigger;
-    private final TripJdbcService tripJdbcService;
-    private final ProcessedVisitJdbcService processedVisitJdbcService;
+
     private final MessageSource messageSource;
     private final boolean dataManagementEnabled;
+    private final JobSchedulingService jobScheduler;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final SignificantPlaceJdbcService significantPlaceJdbcService;
+    private final Task<VisitSensitivityConfigurationRecalculationTask.TaskData> recalculationJobTask;
 
     public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
-                                              ProcessingPipelineTrigger processingPipelineTrigger,
-                                              TripJdbcService tripJdbcService,
-                                              ProcessedVisitJdbcService processedVisitJdbcService,
                                               MessageSource messageSource,
-                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled, RawLocationPointJdbcService rawLocationPointJdbcService, SignificantPlaceJdbcService significantPlaceJdbcService) {
+                                              @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                              JobSchedulingService jobScheduler,
+                                              RawLocationPointJdbcService rawLocationPointJdbcService,
+                                              Task<VisitSensitivityConfigurationRecalculationTask.TaskData> recalculationJobTask) {
         this.configurationService = configurationService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
-        this.processingPipelineTrigger = processingPipelineTrigger;
-        this.tripJdbcService = tripJdbcService;
-        this.processedVisitJdbcService = processedVisitJdbcService;
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.jobScheduler = jobScheduler;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.significantPlaceJdbcService = significantPlaceJdbcService;
+        this.recalculationJobTask = recalculationJobTask;
     }
     
     @GetMapping
@@ -263,20 +264,15 @@ public class SettingsVisitSensitivityController {
         }
 
         needsRecalculation.forEach(dp -> this.configurationService.updateConfiguration(dp.withRecalculationState(RecalculationState.RUNNING)));
-        CompletableFuture.runAsync(() -> {
-            log.debug("Clearing all time range");
-            try {
-                tripJdbcService.deleteAllForUser(user);
-                processedVisitJdbcService.deleteAllForUser(user);
-                significantPlaceJdbcService.deleteForUser(user);
-                rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
-                allConfigurationsForUser.forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
-                log.debug("Starting recalculation of all configurations");
-                processingPipelineTrigger.start(user);
-            } catch (Exception e) {
-                log.error("Error clearing time range", e);
-            }
-        });
+
+        log.debug("Scheduling recalculation task");
+        this.jobScheduler.enqueueTask(recalculationJobTask,
+                                      new VisitSensitivityConfigurationRecalculationTask.TaskData(user),
+                                      JobSchedulingService.Metadata.builder()
+                                              .user(user)
+                                              .friendlyName("Recalculation for changed VisitSensitivity settings")
+                                              .jobType(JobType.DATA_RECALCULATION).build());
+
         log.debug("Recalculation of all configurations triggered");
     }
 

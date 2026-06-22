@@ -1,16 +1,12 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.TimelineData;
-import com.dedicatedcode.reitti.dto.TimelineEntry;
-import com.dedicatedcode.reitti.dto.UserTimelineData;
+import com.dedicatedcode.reitti.dto.timeline.*;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
@@ -24,6 +20,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -37,91 +34,65 @@ public class TimelineController {
 
     private final AvatarService avatarService;
     private final ReittiIntegrationService reittiIntegrationService;
+    private final DeviceJdbcService deviceJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final TimelineService timelineService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TransportModeService transportModeService;
     private final TripJdbcService tripJdbcService;
+    private final TimelineOverviewStatisticsService timelineOverviewStatisticsService;
+
 
     @Autowired
     public TimelineController(UserJdbcService userJdbcService,
                               AvatarService avatarService,
                               ReittiIntegrationService reittiIntegrationService,
+                              DeviceJdbcService deviceJdbcService,
                               UserSharingJdbcService userSharingJdbcService,
                               TimelineService timelineService,
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
-                              TripJdbcService tripJdbcService) {
+                              TripJdbcService tripJdbcService,
+                              TimelineOverviewStatisticsService timelineOverviewStatisticsService) {
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
+        this.deviceJdbcService = deviceJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.timelineService = timelineService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.transportModeService = transportModeService;
         this.tripJdbcService = tripJdbcService;
+        this.timelineOverviewStatisticsService = timelineOverviewStatisticsService;
     }
 
     @GetMapping("/content/range")
     public String getTimelineContentRange(@RequestParam LocalDate startDate,
                                           @RequestParam LocalDate endDate,
-                                          @RequestParam(required = false, defaultValue = "UTC") String timezone,
+                                          @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                           Authentication principal, Model model) {
 
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 
-        ZoneId userTimezone = ZoneId.of(timezone);
-        LocalDate now = LocalDate.now(userTimezone);
+        LocalDate now = LocalDate.now(timezone);
 
-        // Check if any date in the range is not today
         if (!startDate.isEqual(now) || !endDate.isEqual(now)) {
             if (!authorities.contains("ROLE_USER") && !authorities.contains("ROLE_ADMIN") && !authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
             }
         }
+        List<UserTimelineData> allUsersData = new ArrayList<>();
 
-        // Find the user by username
         User user = userJdbcService.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
 
-        // Convert LocalDate to start and end Instant for the date range in user's timezone
-        Instant startOfRange = startDate.atStartOfDay(userTimezone).toInstant();
-        Instant endOfRange = endDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-
-        // Build timeline data for current user and connected users
-        List<UserTimelineData> allUsersData = new ArrayList<>();
-
-        // Add current user data first - for range, we'll use the start date for the timeline service
-        List<TimelineEntry> currentUserEntries;
-        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
-            currentUserEntries = this.timelineService.buildTimelineEntries(user, userTimezone, startDate, startOfRange, endOfRange);
-        } else {
-            currentUserEntries = Collections.emptyList();
-        }
-
-        boolean loadVisits = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS");
-        boolean loadPaths = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE");
-        String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone) : null;
-        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone);
-        String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone) : null;
-        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
-        String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
-        allUsersData.add(new UserTimelineData(user.getId() + "",
-                                              user.getDisplayName(),
-                                              currentUserInitials,
-                                              currentUserAvatarUrl,
-                                              userSettings.getColor(),
-                                              currentUserEntries,
-                                              null,
-                                              currentUserProcessedVisitsUrl,
-                                              mapMetaDataUrl,
-                                              mapStreamDataUrl));
+        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, true);
+        allUsersData.add(userData);
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
-            allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, userTimezone));
-            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, userTimezone));
+            allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, timezone));
+            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, true));
         }
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
@@ -132,7 +103,86 @@ public class TimelineController {
         model.addAttribute("timezone", timezone);
         model.addAttribute("isRange", true);
         model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
+        model.addAttribute("showUserSelection", timelineData.users().size() > 1 || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
+
         return "fragments/timeline :: timeline-content";
+    }
+
+    private UserTimelineData createUserTimeLineData(User user, List<String> authorities, LocalDate startDate, LocalDate endDate, ZoneId timezone, boolean loadTimeline) {
+        Instant startOfRange = startDate.atStartOfDay(timezone).toInstant();
+        Instant endOfRange = endDate.plusDays(1).atStartOfDay(timezone).toInstant().minusMillis(1);
+        boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
+
+        List<? extends TimelineEntry> currentUserEntries;
+        if (loadTimeline && (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS"))) {
+            if (shouldAggregate) {
+                currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone);
+            } else {
+                currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
+            }
+        } else {
+            currentUserEntries = Collections.emptyList();
+        }
+
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        boolean loadVisits = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS");
+        boolean loadPaths = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE");
+        String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId());
+        String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
+        String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
+
+        List<DeviceTimelineData> enabledDevices = Collections.emptyList();
+        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
+            if (this.deviceJdbcService.getAllEnabled(user).stream().filter(Device::showOnMap).count() >= 2) {
+                enabledDevices = this.deviceJdbcService.getAllEnabled(user).stream()
+                        .filter(Device::showOnMap)
+                        .map(d -> new DeviceTimelineData(d.id(),
+                                                         d.name(),
+                                                         this.avatarService.getAvatarDeviceId(user.getId(), d.id()).map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt()).orElse(null),
+                                                         this.avatarService.generateInitials(d.name()),
+                                                         d.enabled(),
+                                                         d.color(),
+                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
+                                                         loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId()) : null))
+                        .toList();
+            }
+        }
+        return new UserTimelineData(user.getId() + "",
+                                    user.getDisplayName(),
+                                    currentUserInitials,
+                                    currentUserAvatarUrl,
+                                    userSettings.getColor(),
+                                    currentUserEntries,
+                                    null,
+                                    currentUserProcessedVisitsUrl,
+                                    mapMetaDataUrl,
+                                    mapStreamDataUrl,
+                                    enabledDevices);
+    }
+
+    @GetMapping("/user-selection")
+    public String loadUserSelection(@RequestParam LocalDate startDate,
+                                    @RequestParam LocalDate endDate,
+                                    @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                    Authentication principal,
+                                    Model model) {
+        List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        List<UserTimelineData> allUsersData = new ArrayList<>();
+        User user = userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, false);
+        allUsersData.add(userData);
+
+        if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
+            allUsersData.addAll(this.reittiIntegrationService.getUserData(user, startDate, endDate, timezone));
+            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, false));
+        }
+
+        TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
+        model.addAttribute("timelineData", timelineData);
+        model.addAttribute("showUserSelection", timelineData.users().size() > 1);
+        return "fragments/user-selection :: user-selection";
     }
 
     @GetMapping("/trips/edit-form/{id}")
@@ -178,15 +228,15 @@ public class TimelineController {
         return "fragments/trip-edit :: view-mode";
     }
 
-    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
+    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline) {
         return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
                 .map(u -> {
                     Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
                     return sharedWithUserOpt.map(sharedWithUser -> {
                         Instant startOfRange = startDate.atStartOfDay(userTimezone).toInstant();
                         Instant endOfRange = endDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-                        
-                        List<TimelineEntry> userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange);
+
+                        List<SingleTimelineEntry> userTimelineEntries = loadTimeline ? this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false) : Collections.emptyList();
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
@@ -203,7 +253,8 @@ public class TimelineController {
                                                     currentUserRawLocationPointsUrl,
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
-                                                    mapStreamDataUrl);
+                                                    mapStreamDataUrl,
+                                                    Collections.emptyList());
                     });
                 })
                 .filter(Optional::isPresent)

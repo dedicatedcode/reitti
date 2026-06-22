@@ -757,7 +757,3 @@
     font-weight: 600;
     margin-right: 4px;
 }
-
-.maplibregl-popup-anchor-top .maplibregl-popup-tip {
-    border-bottom-color: var(--color-background-dark-light);
-}

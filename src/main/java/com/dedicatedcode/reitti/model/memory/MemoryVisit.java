@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.model.memory;
 
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,9 +26,9 @@ public class MemoryVisit {
             if (place.getCity() != null && !place.getCity().isBlank()) {
                 name = place.getCity();
             } else {
-                name = String.format("%.4f, %.4f",
-                        place.getLatitudeCentroid(),
-                        place.getLongitudeCentroid());
+                name = String.format(LocaleContextHolder.getLocale(), "%.4f, %.4f",
+                                     place.getLatitudeCentroid(),
+                                     place.getLongitudeCentroid());
             }
         }
         return new MemoryVisit(null, true, name, visit.getStartTime(), visit.getEndTime(), visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid(), visit.getPlace().getTimezone());

@@ -36,7 +36,7 @@
         <div style="margin-top: 24px;"><strong th:text="#{integrations.mobile.help.title}">Need Help?</strong></div>
         <p style="color: var(--color-text-white)">
             <span th:text="#{integrations.mobile.help.description}">For detailed setup instructions and tips, visit our comprehensive guide:</span>
-            <a href="https://www.dedicatedcode.com/projects/reitti/configurations/mobile-app-integration/"
+            <a href="https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/"
                target="_blank"
                rel="noopener noreferrer"
                style="color: var(--color-highlight);"
@@ -150,6 +150,37 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 </div>
             </div>
         </details>
+        <details data-section="colota" th:attr="open=${openSection == 'colota' ? 'open' : null}">
+            <summary><span th:text="#{integrations.colota.title}">📍 Colota Setup</span></summary>
+            <div>
+                <p th:text="#{integrations.colota.description}">Overland is a GPS logger for iOS that sends location data in GeoJSON format.</p>
+                <p>
+                    <strong th:text="#{integrations.homepage}">Homepage:</strong>
+                    <a href="https://colota.app/" target="_blank" rel="noopener noreferrer" style="color: var(--color-highlight)">https://colota.app/</a>
+                </p>
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:text="#{integrations.colota.step1}">Install Colota</li>
+                        <li th:utext="#{integrations.colota.step2}">Open Colota and go to the <strong>Settings > API Settings</strong></li>
+                        <li th:utext="#{integrations.colota.step3}">Select the <strong>Reitti template</strong></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.colota.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.colota.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li><span th:utext="#{integrations.colota.step5}">Set HTTP Header to:</span>
+<pre>
+X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
+</pre>
+
+                        </li>
+                        <li th:utext="#{integrations.colota.step6}">Configure your tracking settings</li>
+                    </ol>
+                </div>
+                <div th:if="${hasToken}">
+                    <div><a id="colota-config-link" class="btn" th:text="#{integrations.colota.configure}">Configure Colota</a></div>
+                    <div><small th:text="#{integrations.colota.configure.description}">This will configure Colota to send data to this reitti instance.</small></div>
+                </div>
+            </div>
+        </details>
         <details data-section="owntracks-recorder" th:attr="open=${openSection == 'owntracks-recorder' ? 'open' : null}">
             <summary><span th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</span></summary>
             <div>
@@ -215,14 +246,24 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                th:value="${ownTracksRecorderIntegration?.authPassword}">
                         <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
                     </div>
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="reittiDevice" th:text="#{integrations.owntracks.recorder.reittiDevice}">Reitti Device</label>
+                        <select id="reittiDevice" name="reittiDeviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${ownTracksRecorderIntegration != NULL && device.id() == ownTracksRecorderIntegration?.reittiDeviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.owntracks.recorder.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="reittiDeviceId" th:value="${devices.get(0).id()}">
 
-                    <div class="form-group">
-                        <label>
+                    <div class="form-group slide-reveal-container">
                             <input type="checkbox"
                                    name="enabled"
+                                   id="recorderEnabled"
                                    value="true"
                                    th:checked="${ownTracksRecorderIntegration?.enabled}">
-                            <span th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                        <label for="recorderEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
                         </label>
                     </div>
 
@@ -350,14 +391,15 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                th:placeholder="#{integrations.mqtt.port.placeholder}"
                                th:value="${mqttIntegration?.port}">
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox"
-                                   id="mqttUseTLS"
-                                   name="mqtt_useTLS"
-                                   value="true"
-                                   th:checked="${mqttIntegration?.useTLS}">
-                            <span th:text="#{integrations.mqtt.useTLS}">User TLS?</span>
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                               id="mqttUseTLS"
+                               name="mqtt_useTLS"
+                               value="true"
+                               th:checked="${mqttIntegration?.useTLS}">
+                        <label for="mqttUseTLS" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.mqtt.useTLS}">User TLS?</span>
                         </label>
                     </div>
                     <div class="form-group">
@@ -409,13 +451,24 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                         </select>
                         <small th:text="#{integrations.mqtt.payload.type.help}">Select the format of the location data payload</small>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox"
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="mqttDevice" th:text="#{integrations.mqtt.reittiDevice}">Reitti Device</label>
+                        <select id="mqttDevice" name="mqtt_deviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${mqttIntegration != NULL && device.id() == mqttIntegration?.deviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.mqtt.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="mqtt_deviceId" th:value="${devices.get(0).id()}">
+
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                                   id="mqttEnabled"
                                    name="mqtt_enabled"
                                    value="true"
                                    th:checked="${mqttIntegration?.enabled}">
-                            <span th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
+                        <label for="mqttEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.mqtt.enabled}">Enable Integration</span>
                         </label>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -545,24 +598,28 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                    th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
                         </div>
 
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox"
-                                       name="useBestGuessLocation"
-                                       value="true"
-                                       th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
-                                <span th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox"
+                                   name="useBestGuessLocation"
+                                   id="immichUseBestGuessLocation"
+                                   value="true"
+                                   th:checked="${hasIntegration && immichIntegration.useBestGuessLocation}">
+                            <label for="immichUseBestGuessLocation" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span  class="label-text" th:text="#{integrations.immich.useBestGuessLocation}">Enable Use-Best-Guess</span>
                             </label>
                             <small th:text="#{integrations.immich.useBestGuessLocation.description}">When enabled, Reitti will match photos without location data to the closest location on the map.</small>
 
                         </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox"
-                                       name="enabled"
-                                       value="true"
-                                       th:checked="${hasIntegration && immichIntegration.enabled}">
-                                <span th:text="#{integrations.immich.enabled}">Enable Integration</span>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox"
+                                   name="enabled"
+                                   id="immichEnabled"
+                                   value="true"
+                                   th:checked="${hasIntegration && immichIntegration.enabled}">
+                            <label for="immichEnabled" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{integrations.immich.enabled}">Enable Integration</span>
                             </label>
                         </div>
 
@@ -628,8 +685,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             <summary>
                 <i class="lni lni-network"></i> <span th:text="#{integrations.shared.instances.title}">Shared Instances</span>
             </summary>
-            <div id="shared-instances-section" th:hx-get="@{/settings/integrations/shared-instances-content}" hx-trigger="load" hx-swap="innerHTML">
-            </div>
+            <div id="shared-instances-section" th:hx-get="@{/settings/integrations/shared-instances-content}" hx-trigger="load" hx-swap="innerHTML"></div>
         </details>
     </div>
     <script th:inline="javascript">
@@ -646,10 +702,12 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             const owntracksConfig = generateOwnTracksConfig(currentToken, serverUrl);
             const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(currentToken, serverUrl);
             const overlandConfigUrl = generateOverlandUrl(currentToken, serverUrl);
+            const colotaConfig = generateColotaConfig(currentToken, serverUrl);
 
             document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
             document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
             document.getElementById('overland-config-link').href = overlandConfigUrl;
+            document.getElementById('colota-config-link').href = 'colota:///setup?' + colotaConfig;
 
             if (tokenSelect) {
                 tokenSelect.addEventListener('change', function () {
@@ -659,10 +717,13 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                     const owntracksConfig = generateOwnTracksConfig(selectedToken, serverUrl);
                     const gpsloggerPropertiesUrl = generateGpsLoggerPropertiesUrl(selectedToken, serverUrl);
                     const overlandConfigUrl = generateOverlandUrl(selectedToken, serverUrl);
+                    const colotaConfig = generateColotaConfig(currentToken, serverUrl);
 
                     document.getElementById('gpslogger-config-link').href = 'gpslogger://properties/' + gpsloggerPropertiesUrl;
                     document.getElementById('owntracks-config-link').href = 'owntracks:///config?inline=' + owntracksConfig;
                     document.getElementById('overland-config-link').href = overlandConfigUrl;
+                    document.getElementById('colota-config-link').href = 'colota:///setup?' + colotaConfig;
+
                 });
             }
 
@@ -687,6 +748,19 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 const encodedUrl = encodeURIComponent(ingestUrl);
                 return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
             }
+
+            function generateColotaConfig(token, serverUrl) {
+                const json = JSON.stringify({
+                    "endpoint": serverUrl + window.contextPath + '/api/v1/ingest/gpslogger',
+                    "apiTemplate": "reitti",
+                    "httpMethod": "POST",
+                    "customHeaders": {
+                        "X-API-TOKEN": token
+                    }
+                });
+                return btoa(json);
+            }
+
             const detailsElements = document.querySelectorAll('details');
             detailsElements.forEach(details => {
                 details.addEventListener('toggle', function() {

@@ -12,13 +12,14 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="/css/leaflet.css">
     <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="/css/date-picker.css">
-    <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
     <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="/css/photo-client.css">
     <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="/css/inline-edit.css">
     <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
+
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
@@ -38,6 +39,60 @@
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
     <script th:src="@{/js/SettingsMenu.js}"></script>
+    <script th:src="@{/js/auto-complete.js}"></script>
+    <script th:src="@{/js/vendor/chart.js}"></script>
+    <style>
+        /* Overlay styles */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .overlay-content {
+            position: relative;
+            background: var(--color-background-dark, #1e1e1e);
+            border-radius: 12px;
+            min-width: 360px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 0 24px 24px 24px;
+        }
+
+        .overlay-content h2 {
+            border-bottom: 1px solid var(--color-highlight);
+            padding-bottom: 12px;
+            color: var(--color-highlight);
+            font-weight: 100;
+            font-family: var(--sans-serif-font);
+        }
+
+
+    </style>
 </head>
 <body>
 <div id="new-map" style="display: block"></div>
@@ -47,23 +102,30 @@
     </div>
     <div id="status-text" class="status-text">Ready</div>
 </div>
+<div id="metadata-overlay" class="overlay hidden">
+    <div class="overlay-backdrop" onclick="closeMetadataOverlay()"></div>
+    <div class="overlay-content" id="metadata-overlay-content">
+        <!-- Content loaded via HTMX -->
+    </div>
+</div>
 <!-- Auto-update overlay -->
 <div id="auto-update-overlay" class="auto-update-overlay">
     <button sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')"
-            class="overlay-button exit-button" th:title="#{js.map.auto-update.disable.title}">
+            class="overlay-button exit-button" th:title="#{map.auto-update.disable.title}">
         <i class="lni lni-pause"></i>
     </button>
     <button sec:authorize="hasAnyRole('ROLE_MAGIC_LINK_ONLY_LIVE', 'ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS', 'ROLE_MAGIC_LINK_ONLY_LAST_LOCATION')"
             class="overlay-button exit-button" th:title="#{js.map.display-control.title}">
         <div id="live-mode-map-controls-section"></div>
     </button>
-    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{js.map.fullscreen.toggle.title}" title="Toggle Fullscreen">
+    <button class="overlay-button fullscreen-button" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen">
         <i class="lni lni-arrow-all-direction"></i>
     </button>
     <div class="date" id="auto-update-date"></div>
     <div class="time" id="auto-update-time"></div>
 </div>
 <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('index')}"></div>
+
 <div class="timeline">
     <div class="timeline-container"
          th:hx-get="@{/timeline/content/range}"
@@ -72,6 +134,12 @@
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
+</div>
+
+<div id="auto-update-user-selection" th:hx-get="@{/timeline/user-selection}" class="hidden"
+     hx-trigger="dateChanged  from:body"
+     hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}">
+
 </div>
 <div id="date-picker-container"></div>
 <div id="tooltip" style="position: absolute; z-index: 10; pointer-events: none; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px; display: none; font-family: sans-serif; font-size: 12px; max-width: 300px;"></div>
@@ -90,7 +158,8 @@
                 <option value="1" th:text="#{map.time-control.speed.normal}">Normal (1x)</option>
                 <option value="60" th:text="#{map.time-control.speed.fast}">Fast (60x)</option>
                 <option value="3600" th:text="#{map.time-control.speed.super_fast}">Super Fast (3600x)</option>
-                <option value="auto" selected th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
+                <option value="auto" th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
+                <option value="adaptive" selected th:text="#{map.time-control.speed.adaptive}">Adaptive</option>
             </select>
         </div>
     </div>
@@ -148,6 +217,8 @@
 
 
     window.userSettings = /*[[${userSettings}]]*/ {}
+    window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+    window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
 
     let gpsDataManagers = [];
     let currentDateRange = null;
@@ -169,24 +240,27 @@
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
         const fabContainer = document.getElementById('fab-container');
+        const autoUpdateUserSelection = document.getElementById('auto-update-user-selection');
 
         if (autoUpdateMode) {
             timeline.classList.add('hidden');
             datePicker.classList.add('hidden');
             fabContainer.classList.add('hidden');
+            autoUpdateUserSelection.classList.remove('hidden');
             if (window.horizontalDatePicker) {
                 window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
             }
             timelineControl.hide();
-            mapRenderer.enableAvatars();
         } else {
             timeline.classList.remove('hidden');
             datePicker.classList.remove('hidden');
             fabContainer.classList.remove('hidden');
-            mapRenderer.disableAvatars();
+            autoUpdateUserSelection.classList.add('hidden');
         }
+        updateAvatarsVisibility();
         handleAutoTodaySelectionTimer(autoUpdateMode)
     })
+
     const mapControls = new MapControls('map-controls-section');
     const mapRenderer = new MapRenderer('new-map', userSettings, createViewState());
 
@@ -217,6 +291,36 @@
             startAnimation();
         }
     };
+
+    function updateAvatarsVisibility() {
+        const isAutoUpdate = Boolean(liveModeController && liveModeController.isActive());
+
+        if (isAutoUpdate) {
+            mapRenderer.enableAvatars();
+            return;
+        }
+
+        const settingEnabled = localStorage.getItem('showAvatars') !== 'false';
+        if (!settingEnabled) {
+            mapRenderer.disableAvatars();
+            return;
+        }
+
+        // Normal mode: only show avatars if the selected date is today
+        const today = getCurrentLocalDate(); // e.g. "2023-06-01"
+        const selectedStart = currentDateRange?.startDate;
+        const isSingleToday = selectedStart === today && (!currentDateRange?.endDate || currentDateRange.endDate === today);
+
+        if (!isSingleToday) {
+            mapRenderer.disableAvatars();
+            return;
+        }
+
+        const todayStart = Math.floor(new Date(today + 'T00:00:00').getTime());
+        const todayEnd = todayStart + 86400000; // 24 hours
+
+        mapRenderer.enableAvatars(todayStart, todayEnd);
+    }
 
     function startAnimation() {
         isPlaying = true;
@@ -249,38 +353,55 @@
         }
     }
 
+    let linearProgress = 0;
+
     function animate(now) {
         if (!isPlaying) return;
         if (lastFrameTime === null) {
-            lastFrameTime = now; // Capture the start time
-            animationId = requestAnimationFrame(animate); // Request next frame
-            return; // Exit early without moving the slider
+            lastFrameTime = now;
+            animationId = requestAnimationFrame(animate);
+            return;
         }
-        // 1. Calculate how much real time has passed since the last frame
-        // 'now' is provided automatically by requestAnimationFrame
-        const deltaTime = (now - lastFrameTime) / 1000; // convert ms to seconds
-        lastFrameTime = now; // Update for the next frame
 
-        // 2. Logic to prevent "jumps" (e.g., if the user changes tabs)
+        const deltaTime = (now - lastFrameTime) / 1000; // seconds
+        lastFrameTime = now;
+
+        // Prevent large jumps (e.g., tab switching)
         if (deltaTime > 0.1) {
             animationId = requestAnimationFrame(animate);
             return;
         }
 
-        // 3. Advance the slider
-        let step = timeMultiplier * deltaTime;
-        let newValue = parseFloat(timelineControl.getOffset()) + step;
+        const manager = gpsDataManagers[0];
 
-        // 4. Loop logic
-        if (newValue > parseFloat(timelineControl.getMaxOffset())) {
-            newValue = 0;
+        // Calculate linear progress (0 → 1) over the full loop
+
+        const totalLoopTime = parseFloat(timelineControl.getMaxOffset()) / timeMultiplier;
+        const activityPerSecond = manager.totalActivity / totalLoopTime;
+        linearProgress += (deltaTime * activityPerSecond) / manager.totalActivity;
+
+        if (linearProgress >= 1) {
+            linearProgress -= 1; // loop back to start
         }
 
-        // 5. Update UI and Map
-        timelineControl.setOffset(newValue);
+        const warp = document.getElementById('speed-selector').value === 'adaptive';
+        let adaptedOffset;
+        if (manager && typeof manager.getDisplayTimestamp === 'function') {
+            const minTs = manager.minTimestamp;
+            if (timelineControl.aggregate) {
+                // aggregate mode: timestamp is seconds-of-day (0–86400)
+                adaptedOffset = linearProgress * 86400;
+            } else {
+                const adaptedTimestamp = manager.getDisplayTimestamp(linearProgress, warp, timelineControl.aggregate);
+                adaptedOffset = adaptedTimestamp - minTs;
+            }
+        } else {
+            adaptedOffset = linearProgress * parseFloat(timelineControl.getMaxOffset());
+        }
+        // Apply the adapted offset to the slider and the map
+        timelineControl.setOffset(adaptedOffset);
         mapRenderer.updateViewState(createViewState([]));
 
-        // 6. Request the next frame
         animationId = requestAnimationFrame(animate);
     }
 
@@ -316,6 +437,53 @@
         if (current >= total) {
             fadeOutOverlay(overlay);
         }
+    }
+
+    function loadGpsData(requestedStart, requestedEnd) {
+        const RENDER_CHUNK_SIZE = 50000;
+        const completedManagers = new Set();
+
+        gpsDataManagers.forEach((gpsDataManager, index) => {
+            let lastRenderedPointCount = 0;
+            gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
+
+                switch (stage) {
+                    case 'metadata':
+                        updateStatus("Fetching metadata...", 10, 100);
+
+                        break;
+                    case 'streaming':
+                        updateStatus("Loading point {0} / {1}", current, total);
+                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
+                            lastRenderedPointCount = current;
+                            requestAnimationFrame(() => {
+                                mapRenderer._refitBounds();
+                                mapRenderer.updateViewState(createViewState());
+                            });
+                        }
+                        break;
+                    case 'bundling':
+                        updateStatus("Optimizing routes: {0} / {1} points", current, total);
+                        break;
+                    case 'complete':
+                        lastRenderedPointCount = 0;
+                        const aggregateToggle = document.getElementById('aggregate-toggle');
+                        timelineControl.setup({
+                            aggregate: aggregateToggle ? aggregateToggle.checked : false,
+                            minTimestamp: gpsDataManager.minTimestamp,
+                            maxTimestamp: gpsDataManager.maxTimestamp,
+                        })
+                        calculateTimelineMultiplier();
+                        updateStatus("Finished processing {1} points", current, total);
+                        mapRenderer.updateViewState(createViewState());
+                        completedManagers.add(index);
+                        if (completedManagers.size === gpsDataManagers.length) {
+                            mapRenderer.finishedLoading();
+                        }
+
+                }
+            });
+        });
     }
 
     function fadeOutOverlay(overlay) {
@@ -360,28 +528,122 @@
         }
     }
 
-    function selectUser(userHeader) {
-        // Remove active class from all user headers
+    function showUser(userHeader) {
+        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+    }
+
+    function toggleDeviceMenu(btn) {
+        const container = btn.closest('.device-toggle-container');
+        const menu = container.querySelector('.device-menu');
+        document.querySelectorAll('.device-menu:not(.hidden)').forEach(m => {
+            if (m !== menu) {
+                m.classList.add('hidden');
+            }
+        });
+        menu.classList.toggle('hidden');
+    }
+
+    function enableDeviceGpsDataManager(userId, deviceId, displayName, color, avatarUrl, avatarFallback, showAvatar, metaDataUrl, streamUrl) {
+        const config = {
+            id: `${userId}_${deviceId}`,
+            respectBounds: true,
+            color: color,
+            avatarUrl: avatarUrl,
+            avatarFallback: avatarFallback,
+            showAvatar: showAvatar,
+            displayName: displayName,
+            map: {
+                metaDataUrl: metaDataUrl,
+                streamUrl: streamUrl,
+            },
+            continuous: false
+        };
+        gpsDataManagers.push(new GpsDataManager(config, window.userSettings, getUserTimezone()));
+    }
+
+    function restoreDeviceVisibility() {
+        document.querySelectorAll('.device-header').forEach(checkbox => {
+            const userId = checkbox.dataset.userId;
+            const deviceId = checkbox.dataset.deviceId;
+            const displayName = checkbox.dataset.displayName;
+            const metaDataUrl = checkbox.dataset.deviceMetadataUrl;
+            const streamUrl = checkbox.dataset.deviceStreamUrl;
+            const color = checkbox.dataset.deviceColor;
+            const avatarUrl = checkbox.dataset.avatarUrl;
+            const avatarFallback = checkbox.dataset.avatarFallback;
+            const showAvatar = checkbox.dataset.showAvatar;
+            enableDeviceGpsDataManager(userId, deviceId, displayName, color, avatarUrl, avatarFallback, showAvatar, metaDataUrl, streamUrl);
+        });
+    }
+
+    function followUser(btn) {
+        const userHeader = btn.closest('.user-header');
+        const rawUserId = userHeader.getAttribute('data-user-id');
+        const badge = userHeader.querySelector('.user-follow-badge');
+        const wasSelected = badge.classList.contains('active');
+
+        // Deselect all badges
+        document.querySelectorAll('.user-header .user-follow-badge').forEach(element => {
+            element.classList.remove('active');
+        });
+
+        // Uncheck all checkboxes
+        document.querySelectorAll('.user-follow-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+
+        if (!wasSelected) {
+            // Check every checkbox that belongs to this user
+            document.querySelectorAll(`.user-follow-checkbox[data-user-id="${rawUserId}"]`).forEach(cb => {
+                cb.checked = true;
+            });
+            const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${userHeader.dataset.userId}"] .user-follow-badge`);
+            // Activate all badges for this user
+            followedBadge.forEach(badge => badge.classList.add('active'));
+
+            mapRenderer.setSelectedManager(rawUserId);
+            localStorage.setItem('followedUser', rawUserId);
+        } else {
+            mapRenderer.setSelectedManager(null);
+            localStorage.removeItem('followedUser');
+        }
+    }
+
+    function selectDevice(userHeader) {
         document.querySelectorAll('.user-header').forEach(header => {
             header.classList.remove('active');
         });
-
-        // Add active class to clicked user header
+        document.querySelectorAll('.device-header').forEach(header => {
+            header.classList.remove('active');
+        });
         userHeader.classList.add('active');
 
-        // Get the user ID from the clicked header
+        const userId = userHeader.getAttribute('data-user-id');
+        const deviceId = userHeader.getAttribute('data-device-id');
+        mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
+    }
+
+    function selectUser(userHeader) {
+        document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.device-header').forEach(header => {
+            header.classList.remove('active');
+        });
+
+        userHeader.classList.add('active');
+
         const userId = userHeader.getAttribute('data-user-id');
 
-        // Hide all user timeline sections
         document.querySelectorAll('.user-timeline-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // Show the corresponding user timeline section
         const targetSection = document.querySelector(`.user-timeline-section[data-user-id="${userId}"]`);
         if (targetSection) {
             targetSection.classList.add('active');
         }
+        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
     }
 
     function updateUrlWithDate(currentDateRange) {
@@ -508,60 +770,6 @@
             link.setAttribute('href', url.toString());
         });
     }
-    function loadTimelineData(requestedStart, requestedEnd) {
-        console.log('loadTimelineData', requestedStart, requestedEnd);
-        gpsDataManagers = [];
-        const RENDER_CHUNK_SIZE = 50000;
-        const completedManagers = new Set();
-
-        userConfigs.forEach(config => {
-            const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
-            gpsDataManagers.push(gpsDataManager)
-        });
-
-
-        mapRenderer.setGpsDataManagers(gpsDataManagers);
-        gpsDataManagers.forEach((gpsDataManager, index) => {
-            let lastRenderedPointCount = 0;
-            gpsDataManager.load(requestedStart, requestedEnd, (current, total, stage) => {
-
-                switch (stage) {
-                    case 'metadata':
-                        updateStatus("Fetching metadata...", 10, 100);
-
-                        break;
-                    case 'streaming':
-                        updateStatus("Loading point {0} / {1}", current, total);
-                        if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
-                            lastRenderedPointCount = current;
-                            requestAnimationFrame(() => {
-                                mapRenderer.updateViewState(createViewState());
-                            });
-                        }
-                        break;
-                    case 'bundling':
-                        updateStatus("Optimizing routes: {0} / {1} points", current, total);
-                        break;
-                    case 'complete':
-                        lastRenderedPointCount = 0;
-                        const aggregateToggle = document.getElementById('aggregate-toggle');
-                        timelineControl.setup({
-                            aggregate: aggregateToggle ? aggregateToggle.checked : false,
-                            minTimestamp: gpsDataManager.minTimestamp,
-                            maxTimestamp: gpsDataManager.maxTimestamp,
-                        })
-                        calculateTimelineMultiplier();
-                        updateStatus("Finished processing {1} points", current, total);
-                        mapRenderer.updateViewState(createViewState());
-                        completedManagers.add(index);
-                        if (completedManagers.size === gpsDataManagers.length) {
-                            mapRenderer.finishedLoading();
-                        }
-
-                }
-            });
-        });
-    }
 
     if (window.userSettings.uiMode === "SHARED_LIVE_MODE_ONLY") {
         liveModeController.enterLiveMode();
@@ -580,6 +788,24 @@
             highlightTimes: highlightTimes,
             showPhotos: window.userSettings.photoMode === 'ENABLED',
         };
+    }
+
+    function updateFollowedUser() {
+        if (localStorage.getItem('followedUser')) {
+            const followedUserId = localStorage.getItem('followedUser');
+            const followedBadge = document.querySelectorAll(`.user-header[data-user-id="${followedUserId}"] .user-follow-badge`);
+            const followedCheckbox = document.querySelectorAll(`.user-header[data-user-id="${followedUserId}"] .user-follow-checkbox`);
+
+            if (followedBadge) {
+                followedBadge.forEach(badge => badge.classList.add('active'));
+                followedCheckbox.forEach(cb => cb.checked = 'true');
+
+                mapRenderer.setSelectedManager(followedUserId);
+            } else {
+                console.warn(`User with ID ${followedUserId} not found in the DOM. Will drop it from local storage.`);
+                localStorage.removeItem('followedUser');
+            }
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -601,12 +827,14 @@
                     color: container.dataset.baseColor,
                     avatarUrl: container.dataset.userAvatarUrl,
                     avatarFallback: container.dataset.avatarFallback,
+                    showAvatar: true,
                     displayName: container.dataset.displayName,
                     map: {
                         metaDataUrl: container.dataset.locationMetadataUrl,
                         streamUrl: container.dataset.locationStreamUrl,
                         visitsUrl: container.dataset.processedVisitsUrl
-                    }
+                    },
+                    continuous: true
                 };
                 configs.push(config);
             });
@@ -616,7 +844,8 @@
         document.body.addEventListener('htmx:afterSwap', function (event) {
             if (event.detail.target.classList.contains('timeline-container')) {
                 userConfigs = calculateUserConfigs();
-
+                gpsDataManagers = [];
+                updateFollowedUser();
                 stopAnimation();
 
                 const params = getTimelineParams();
@@ -645,7 +874,14 @@
                     maxTimestamp: params.endDateUtcSeconds,
                     aggregate: aggregateToggle ? aggregateToggle.checked : false
                 });
-                loadTimelineData(params.startDateUtcSeconds, params.endDateUtcSeconds);
+
+                userConfigs.forEach(config => {
+                    const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
+                    gpsDataManagers.push(gpsDataManager)
+                });
+                restoreDeviceVisibility()
+                mapRenderer.setGpsDataManagers(gpsDataManagers);
+                loadGpsData(params.startDateUtcSeconds, params.endDateUtcSeconds);
 
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
@@ -653,7 +889,7 @@
                 }
                 window.timelineScrollIndicator = new TimelineScrollIndicator();
                 window.timelineScrollIndicator.init();
-
+                updateAvatarsVisibility();
                 updateEditPlaceLinks();
             }
         });
@@ -800,7 +1036,8 @@
                     } else {
                         element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
                     }
-                    element.classList.remove('hidden')                }
+                    element.classList.remove('hidden')
+                }
             }
         });
 
@@ -828,7 +1065,7 @@
                 endDate: window.horizontalDatePicker.formatDate(endDate)
             };
             updateUrlWithDate(currentDateRange);
-            // Trigger HTMX reload of timeline
+            updateTodayFabVisibility();
             document.body.dispatchEvent(new CustomEvent('dateChanged'));
         });
 
@@ -843,7 +1080,7 @@
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
 
         document.getElementById('speed-selector').onchange = function(e) {
-            if (e.target.value === 'auto') {
+            if (e.target.value === 'auto' || e.target.value === 'adapative') {
                 calculateTimelineMultiplier();
             } else {
                 timeMultiplier = parseInt(e.target.value);
@@ -853,16 +1090,29 @@
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); // Prevent event bubbling
+                e.stopPropagation();
                 settingsMenu.open();
             });
         }
+
+        document.addEventListener('click', function (event) {
+            document.querySelectorAll('.device-menu:not(.hidden)').forEach(menu => {
+                const container = menu.closest('.device-toggle-container');
+                if (!container.contains(event.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+        });
 
         // Add settings change listener
         document.addEventListener('settingsChanged', function (event) {
             const {setting, value} = event.detail;
 
             switch (setting) {
+                case 'mapStyleId':
+                    mapControls.setMapStyleId(value);
+                    mapRenderer.updateViewState(createViewState([]));
+                    break;
                 case 'viewMode':
                     mapRenderer.updateViewState(createViewState([]));
                     break;
@@ -882,6 +1132,9 @@
                     break;
                 case 'datepickerVisible':
                     document.body.classList.toggle('datepicker-hidden', !value);
+                    break;
+                case 'showAvatars':
+                    updateAvatarsVisibility();
                     break;
             }
         });
@@ -940,6 +1193,48 @@
             toggleBtn.classList.add('active');
         }
     }
+
+    function openMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.remove('hidden');
+    }
+    function closeMetadataOverlay() {
+        document.getElementById('metadata-overlay').classList.add('hidden');
+        document.getElementById('metadata-overlay-content').innerHTML = '';
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('metadata-overlay').classList.contains('hidden')) {
+            closeMetadataOverlay();
+        }
+    });
+
+    function addTagChip(tag) {
+        tag = tag.trim();
+        if (!tag) return;
+
+        // Avoid duplicates
+        const existing = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        if (existing.includes(tag)) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" onclick="removeTagChip(this)">&times;</span>`;
+        document.getElementById('tags-chips-container').appendChild(chip);
+
+        updateTagsHidden();
+    }
+
+    function removeTagChip(removeBtn) {
+        removeBtn.parentElement.remove();
+        updateTagsHidden();
+    }
+
+    function updateTagsHidden() {
+        const tags = Array.from(document.querySelectorAll('#tags-chips-container .tag-text'))
+            .map(el => el.textContent);
+        document.getElementById('tags-hidden').value = tags.join(',');
+    }
+
 </script>
 
 </body>

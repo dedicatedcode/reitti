@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.Temporal;
 import java.util.List;
 import java.util.Optional;
 
@@ -127,5 +130,20 @@ public class UserJdbcService {
             Role.valueOf(rs.getString("role")),
             rs.getLong("version")
         );
+    }
+
+    public void setLastDataModificationAt(User user, Instant lastDataModificationAt) {
+        this.jdbcTemplate.update("UPDATE users SET last_data_modified_at = ? WHERE id = ?", Timestamp.from(lastDataModificationAt), user.getId());
+    }
+
+    public Optional<Instant> getLastDataModificationAt(User user) {
+        return this.jdbcTemplate.queryForObject("SELECT last_data_modified_at FROM users WHERE id = ?", (rs, rowNum) -> {
+            Timestamp lastDataModifiedAt = rs.getTimestamp("last_data_modified_at");
+            if (lastDataModifiedAt == null) {
+                return Optional.empty();
+            } else {
+                return Optional.of(lastDataModifiedAt.toInstant());
+            }
+        }, user.getId());
     }
 }

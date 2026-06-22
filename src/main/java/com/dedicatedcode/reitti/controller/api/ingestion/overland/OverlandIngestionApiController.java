@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.api.ingestion.overland;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OverlandLocationRequest;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -39,11 +41,11 @@ public class OverlandIngestionApiController {
     }
 
     @PostMapping("/overland")
-    public ResponseEntity<?> receiveOverlandData(@RequestBody OverlandLocationRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = this.userJdbcService.findByUsername(userDetails.getUsername()).orElseThrow(() -> new UsernameNotFoundException(userDetails.getUsername()));
-        
+    public ResponseEntity<?> receiveOverlandData(@AuthenticationPrincipal DeviceTokenUser user, @RequestBody OverlandLocationRequest request) {
+        if (user.getDevice().isEmpty()) {
+            throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+        }
+
         try {
             if (request.getLocations() == null || request.getLocations().isEmpty()) {
                 logger.debug("Ignoring Overland request with no locations for user {}", user.getUsername());
@@ -67,7 +69,7 @@ public class OverlandIngestionApiController {
             
             // Add each location point to the batching service
             for (LocationPoint point : locationPoints) {
-                this.locationBatchingService.addLocationPoint(user, point);
+                this.locationBatchingService.addLocationPoint(user, user.getDevice().get(), point);
             }
             logger.debug("Successfully received and queued {} Overland location points for user {}",
                     locationPoints.size(), user.getUsername());

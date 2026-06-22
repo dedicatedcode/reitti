@@ -213,9 +213,8 @@ The included `docker-compose.yml` provides a complete setup with:
 | `OIDC_SCOPE`                   | Your OpenID Connect scopes for your user (optional)                                                                                                                             | openid,profile      | openid,profile                   |
 | `OIDC_AUTHENTICATION_METHOD`   | The authentication method the OIDC Client should use (optional)                                                                                                                 | client_secret_basic | client_secret_basic,none         |
 | `OIDC_SIGN_UP_ENABLED`         | Whether new users should be signed up automatically if they first login via the OIDC Provider. (optional)                                                                       | true                | false                            |
-| `PROCESSING_WAIT_TIME`         | How many seconds to wait after the last data input before starting to process all unprocessed data. (⚠️ This needs to be lower than your integrated app reports data in Reitti) | 15                  | 15                               |
 | `DANGEROUS_LIFE`               | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false               | true                             |
-| `TILES_CACHE`                  | The url of the tile caching proxy (Set to ''  to disable the cache                                                                                                              | http://tile-cache   |                                  |
+| `TILES_CACHE`                  | The url of the tile caching proxy (Set to ''  to disable the cache)                                                                                                            | http://tile-cache   |                                  |
 | `PROCESSING_BATCH_SIZE`        | How many geo points should we handle at once. For low-memory environment it could be needed to set this to 100.                                                                 | 1000                | 100                              |
 | `SERVER_PORT`                  | Application server port                                                                                                                                                         | 8080                | 8080                             |
 | `APP_UID`                      | User ID to run the application as                                                                                                                                               | 1000                | 1000                             |
@@ -400,4 +399,4 @@ click on this [link](https://hosted.weblate.org/engage/reitti/)
 
 ## License
 
-This project is licensed under the MIT License, see the LICENSE file for details.
+This project is licensed under the GNU Affero General Public License Version 3 (AGPLv3), see the LICENSE file for details.

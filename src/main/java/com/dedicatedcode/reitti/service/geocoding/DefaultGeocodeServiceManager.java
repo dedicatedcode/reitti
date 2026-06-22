@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.ResultHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,6 +30,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final GeocodingResponseJdbcService geocodingResponseJdbcService;
+    private final NominatimRateLimiter nominatimRateLimiter;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final List<ResultHandler> resultHandlers;
@@ -37,6 +39,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
 
     public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                         GeocodingResponseJdbcService geocodingResponseJdbcService,
+                                        NominatimRateLimiter nominatimRateLimiter,
                                         RestTemplate restTemplate,
                                         ObjectMapper objectMapper,
                                         List<ResultHandler> resultHandlers,
@@ -44,6 +47,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                                         @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
+        this.nominatimRateLimiter = nominatimRateLimiter;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.resultHandlers = resultHandlers;
@@ -89,6 +93,9 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
 
         for (GeocodeService service : availableServices) {
+            if (service.getType() == GeocoderType.NOMINATIM) {
+                nominatimRateLimiter.acquireBlockingly();
+            }
             List<GeocodeResult> serviceResults = performGeocode(service, latitude, longitude, significantPlace, true);
             if (!serviceResults.isEmpty()) {
                 results.computeIfAbsent(service.getType(), _ -> new ArrayList<>())
@@ -116,7 +123,12 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         List<? extends GeocodeService> shuffledServices = new ArrayList<>(availableServices);
         Collections.shuffle(shuffledServices);
 
+        List<GeocodeService> waitingServices = new ArrayList<>();
         for (GeocodeService service : shuffledServices) {
+            if (service.getType() == GeocoderType.NOMINATIM && !nominatimRateLimiter.tryAcquire()) {
+                waitingServices.add(service);
+                continue;
+            }
             try {
                 List<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
                 if (!result.isEmpty()) {
@@ -133,13 +145,33 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
             }
         }
 
+        return handleWaitingServices(waitingServices, latitude, longitude, significantPlace, recordResponse);
+    }
+
+    private Optional<GeocodeResult> handleWaitingServices(List<GeocodeService> waitingServices, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
+        for (GeocodeService service : waitingServices) {
+            this.nominatimRateLimiter.acquireBlockingly();
+            try {
+                List<GeocodeResult> result = performGeocode(service, latitude, longitude, significantPlace, recordResponse);
+                if (!result.isEmpty()) {
+                    if (recordResponse) {
+                        recordSuccess(service);
+                    }
+                    return result.stream().findFirst();
+                }
+            } catch (Exception e) {
+                logger.warn("Calling awaited geocoding failed for service [{}]: [{}]", service.getName(), e.getMessage());
+                if (recordResponse) {
+                    recordError(service);
+                }
+            }
+        }
         return Optional.empty();
     }
 
     private List<GeocodeResult> performGeocode(GeocodeService service, double latitude, double longitude, SignificantPlace significantPlace, boolean recordResponse) {
         try {
             String response = callService(service, latitude, longitude);
-
             List<GeocodeResult> geocodeResult = extractGeoCodeResult(service.getType(), response);
             if (recordResponse && !geocodeResult.isEmpty()) {
                 geocodingResponseJdbcService.insert(new GeocodingResponse(

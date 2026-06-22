@@ -1,0 +1,166 @@
+.statistics-content {
+    color: var(--color-text-white);
+    font-family: var(--serif-font);
+    background: transparent;
+    z-index: 1000;
+    position: relative;
+    font-weight: 300;
+    font-size: 1.4rem;
+    padding: 2rem;
+    flex: 1;
+}
+
+.statistics-content h2 {
+    font-weight: 300;
+    font-size: 2.4rem;
+    margin-top: 0;
+}
+
+.statistics-content h3 {
+    font-weight: 300;
+    font-size: 2.1rem;
+    margin-bottom: 1.5rem;
+    margin-top: 0;
+}
+
+.statistics-section {
+    margin-bottom: 3rem;
+}
+
+/* Top Places Grid Styles */
+.places-stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.place-stats-card {
+    background: var(--color-background-dark);
+    border: 1px solid var(--color-highlight);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.place-stats-card .place-name {
+    flex: 1;
+}
+
+.place-stats-card .place-details {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.place-stats-card .place-info {
+    flex-grow: 1;
+}
+
+.place-stats-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--box-shadow);
+}
+
+.place-map-container {
+    width: 240px;
+    height: 240px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--color-highlight);
+    position: relative;
+}
+
+.place-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.place-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(245, 222, 179, 0.2);
+}
+
+.place-stat-item:last-child {
+    border-bottom: none;
+}
+
+.place-stat-label {
+    font-size: 1rem;
+    color: var(--color-text-white);
+    opacity: 0.8;
+}
+
+.place-stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-highlight);
+}
+
+/* Transport Charts Styles */
+.transport-charts-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.transport-chart-section {
+    background: var(--color-background-dark);
+    border: 1px solid var(--color-highlight);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow: hidden;
+
+}
+
+.transport-chart-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--color-highlight);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.pie-chart-container {
+    position: relative;
+    height: 250px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (min-width: 801px) {
+    .statistics-content {
+        padding: 16px 16px 16px 0;
+    }
+}
+
+@media (min-width: 1200px) {
+    .transport-charts-container {
+        grid-template-columns: repeat(auto-fill, minmax(700px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .places-stats-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}

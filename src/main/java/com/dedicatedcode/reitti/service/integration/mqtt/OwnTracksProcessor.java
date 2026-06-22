@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration.mqtt;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +29,7 @@ public class OwnTracksProcessor implements MqttPayloadProcessor {
     }
 
     @Override
-    public void process(User user, byte[] payload) {
+    public void process(User user, Device device, byte[] payload) {
         String json = new String(payload, StandardCharsets.UTF_8);
         logger.info("Processing OwnTracks data for user {}: {}", user, json);
 
@@ -46,7 +47,7 @@ public class OwnTracksProcessor implements MqttPayloadProcessor {
                 return;
             }
 
-            this.locationBatchingService.addLocationPoint(user, locationPoint);
+            this.locationBatchingService.addLocationPoint(user, device, locationPoint);
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                          user.getUsername());
 

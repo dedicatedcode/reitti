@@ -28,7 +28,7 @@ class HomeDetectionServiceTest {
         // Create a visit that spans sleeping hours
         Instant start = Instant.parse("2023-10-01T20:00:00Z");
         Instant end = Instant.parse("2023-10-02T08:00:00Z");
-        ProcessedVisit visit = new ProcessedVisit(1L, place, start, end, 43200L, 1L); // 12 hours
+        ProcessedVisit visit = new ProcessedVisit(1L, place, start, end, 43200L, null, 1L); // 12 hours
 
         Instant memoryStart = Instant.parse("2023-10-01T00:00:00Z");
         Instant memoryEnd = Instant.parse("2023-10-02T12:00:00Z");
@@ -49,12 +49,12 @@ class HomeDetectionServiceTest {
         // Visit1 ends closer to memoryEnd
         Instant start1 = Instant.parse("2023-10-01T22:00:00Z");
         Instant end1 = Instant.parse("2023-10-02T06:00:00Z"); // Ends at 06:00, close to memoryEnd
-        ProcessedVisit visit1 = new ProcessedVisit(1L, place1, start1, end1, 28800L, 1L);
+        ProcessedVisit visit1 = new ProcessedVisit(1L, place1, start1, end1, 28800L, null, 1L);
 
         // Visit2 ends farther from memoryEnd
         Instant start2 = Instant.parse("2023-10-01T22:00:00Z");
         Instant end2 = Instant.parse("2023-10-02T04:00:00Z"); // Ends at 04:00, farther
-        ProcessedVisit visit2 = new ProcessedVisit(2L, place2, start2, end2, 28800L, 1L);
+        ProcessedVisit visit2 = new ProcessedVisit(2L, place2, start2, end2, 28800L, null, 1L);
 
         Instant memoryStart = Instant.parse("2023-10-01T00:00:00Z");
         Instant memoryEnd = Instant.parse("2023-10-02T12:00:00Z");
@@ -74,12 +74,12 @@ class HomeDetectionServiceTest {
         // Visit1: higher duration
         Instant start1 = Instant.parse("2023-10-01T20:00:00Z");
         Instant end1 = Instant.parse("2023-10-02T08:00:00Z");
-        ProcessedVisit visit1 = new ProcessedVisit(1L, place1, start1, end1, 43200L, 1L);
+        ProcessedVisit visit1 = new ProcessedVisit(1L, place1, start1, end1, 43200L, null, 1L);
 
         // Visit2: lower duration
         Instant start2 = Instant.parse("2023-10-01T22:00:00Z");
         Instant end2 = Instant.parse("2023-10-02T06:00:00Z");
-        ProcessedVisit visit2 = new ProcessedVisit(2L, place2, start2, end2, 28800L, 1L);
+        ProcessedVisit visit2 = new ProcessedVisit(2L, place2, start2, end2, 28800L, null, 1L);
 
         Instant memoryStart = Instant.parse("2023-10-01T00:00:00Z");
         Instant memoryEnd = Instant.parse("2023-10-02T12:00:00Z");
@@ -107,7 +107,7 @@ class HomeDetectionServiceTest {
         // Visit completely outside memory range
         Instant start = Instant.parse("2023-09-30T20:00:00Z");
         Instant end = Instant.parse("2023-09-30T22:00:00Z");
-        ProcessedVisit visit = new ProcessedVisit(1L, place, start, end, 7200L, 1L);
+        ProcessedVisit visit = new ProcessedVisit(1L, place, start, end, 7200L, null, 1L);
 
         Instant memoryStart = Instant.parse("2023-10-01T00:00:00Z");
         Instant memoryEnd = Instant.parse("2023-10-02T12:00:00Z");

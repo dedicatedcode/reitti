@@ -54,6 +54,13 @@ class SettingsMenu {
                                 <span class="label-text">${t('map.settings.dialog.interface.datepicker-visible')}</span>
                             </label>
                         </div>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" id="show-avatars-checkbox">
+                            <label for="show-avatars-checkbox" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text">${t('map.settings.dialog.interface.show-avatars')}</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -61,22 +68,17 @@ class SettingsMenu {
     }
     
     init() {
-        // Set up close button
         const closeBtn = this.menu.querySelector('.close-settings-btn');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
         }
         
-        // Set up overlay click to close
         this.overlay.addEventListener('click', () => this.close());
         
-        // Prevent menu clicks from closing
         this.menu.addEventListener('click', (e) => e.stopPropagation());
         
-        // Initialize checkboxes with current state
         this.initializeCheckboxes();
         
-        // Set up checkbox event listeners
         this.setupCheckboxListeners();
     }
     
@@ -91,6 +93,11 @@ class SettingsMenu {
         const datepickerCheckbox = this.menu.querySelector('#datepicker-visible-checkbox');
         if (datepickerCheckbox) {
             datepickerCheckbox.checked = !document.body.classList.contains('datepicker-hidden');
+        }
+
+        const showAvatarsCheckbox = this.menu.querySelector('#show-avatars-checkbox');
+        if (showAvatarsCheckbox) {
+            showAvatarsCheckbox.checked = localStorage.getItem('showAvatars') !== 'false'; // default true
         }
         
         // Load and apply saved settings
@@ -127,6 +134,13 @@ class SettingsMenu {
         if (aggregateToggle) {
             aggregateToggle.addEventListener('change', (e) => {
                 this.updateAggregate(e.target.checked);
+            });
+        }
+
+        const showAvatarsCheckbox = this.menu.querySelector('#show-avatars-checkbox');
+        if (showAvatarsCheckbox) {
+            showAvatarsCheckbox.addEventListener('change', (e) => {
+                this.updateShowAvatars(e.target.checked);
             });
         }
     }
@@ -210,7 +224,11 @@ class SettingsMenu {
             btn.title =  t('datepicker.state.hide.title');
         }
     }
-    
+    updateShowAvatars(visible) {
+        localStorage.setItem('showAvatars', visible);
+        this.dispatchSettingsChange('showAvatars', visible);
+    }
+
     open() {
         if (this.isVisible) return;
         
@@ -247,7 +265,8 @@ class SettingsMenu {
             viewMode: localStorage.getItem('view-mode') || 'LINEAR',
             timelineHidden: localStorage.getItem('timelineHidden') === 'true',
             datepickerHidden: localStorage.getItem('datepickerHidden') === 'true',
-            timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true'
+            timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true',
+            showAvatars: localStorage.getItem('showAvatars') !== 'false'
         };
         
         this.applySettings(settings);
@@ -266,7 +285,12 @@ class SettingsMenu {
         if (aggregateToggle) {
             aggregateToggle.checked = settings.aggregate;
         }
-        
+
+        const showAvatarsCheckbox = this.menu.querySelector('#show-avatars-checkbox');
+        if (showAvatarsCheckbox) {
+            showAvatarsCheckbox.checked = settings.showAvatars;
+        }
+
         // Apply timeline visibility
         if (settings.timelineHidden) {
             document.body.classList.add('timeline-hidden');

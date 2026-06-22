@@ -43,11 +43,6 @@ services:
   tile-cache:
     image: dedicatedcode/reitti-tile-cache:latest
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-s", "http://127.0.0.1/osm/0/0/0.png"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     volumes:
       - tile-cache-data:/var/cache/nginx
 volumes:

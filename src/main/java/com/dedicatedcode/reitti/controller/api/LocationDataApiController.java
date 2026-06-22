@@ -191,7 +191,7 @@ public class LocationDataApiController {
         List<RawLocationPoint> pointsInBoxWithNeighbors;
         long start = System.nanoTime();
         if (Duration.between(startOfRange, endOfRange).toDays() > 30 && minLat == null && maxLat == null && minLng == null && maxLng == null) {
-            pointsInBoxWithNeighbors = rawLocationPointJdbcService.findSimplifiedRouteForPeriod(user, startOfRange, endOfRange, 10000);
+            pointsInBoxWithNeighbors = rawLocationPointJdbcService.findSimplifiedRouteForPeriod(user, startOfRange, endOfRange);
         } else if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
             pointsInBoxWithNeighbors = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startOfRange, endOfRange);
             logger.trace("Loaded points in time range from database in [{}]ms", (System.nanoTime() - start) / 1_000_000);

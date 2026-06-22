@@ -22,6 +22,8 @@ class GpsDataManager {
         this.bounds = null;
         this._dataCache = {};
         this.lastLocation = null;
+        this.activityWeights = [0];
+        this.totalActivity = 0;
     }
 
     async loadFixed(onProgress) {
@@ -50,7 +52,6 @@ class GpsDataManager {
     }
 
     async load(startUTC, endUTC, onProgress) {
-        // 1. Check if we already have this data in memory
         if (this.loadingState === 'complete' &&
             startUTC >= this.minTimestamp &&
             endUTC <= this.maxTimestamp) {
@@ -145,7 +146,7 @@ class GpsDataManager {
 
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
-
+            this._computeActivityWeights();
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
             if (this.config.map.visitsUrl) {
@@ -182,69 +183,61 @@ class GpsDataManager {
         }
 
         let payload;
+        const thresholdSec = 300; // 5 minutes.
 
         if (mode === 'bundled') {
             const stride = 20;
-            const usedLength = this.cleanedCursor * 5;
+            const strideFloats = 5; // 20 bytes / 4 bytes per float
+            const timeIndex = isAggregate ? 4 : 2; // Byte offset 16/4 or 8/4
+            const usedLength = this.cleanedCursor * strideFloats;
             const trimmed = this.snappedBuffer.subarray(0, usedLength);
+
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cleanedCursor, strideFloats, timeIndex, thresholdSec
+            );
+
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cleanedCursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 2,
-                        stride: stride,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: stride,
-                        offset: isAggregate ? 16 : 8
-                    }
+                    getPath: { value: trimmed, size: 2, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 16 : 8 }
                 }
             };
         } else if (mode === 'cleaned') {
-            const usedLength = this.cleanedCursor * 6;
+            const stride = 24;
+            const strideFloats = 6;
+            const timeIndex = isAggregate ? 5 : 3;
+            const usedLength = this.cleanedCursor * strideFloats;
             const trimmed = this.cleanedBuffer.subarray(0, usedLength);
+
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cleanedCursor, strideFloats, timeIndex, thresholdSec
+            );
+
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cleanedCursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 3,
-                        stride: 24,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: 24,
-                        offset: isAggregate ? 20 : 12
-                    }
+                    getPath: { value: trimmed, size: 3, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 20 : 12 }
                 }
             };
         } else if (mode === 'raw') {
-            const usedLength = this.cursor * 6;
+            const stride = 24;
+            const strideFloats = 6;
+            const timeIndex = isAggregate ? 5 : 3;
+            const usedLength = this.cursor * strideFloats;
             const trimmed = this.buffer.subarray(0, usedLength);
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.cursor, strideFloats, timeIndex, thresholdSec
+            );
             payload = {
-                length: 1,
-                startIndices: new Uint32Array([0, this.cursor]),
+                length: length,
+                startIndices: startIndices,
                 attributes: {
-                    getPath: {
-                        value: trimmed,
-                        size: 3,
-                        stride: 24,
-                        offset: 0
-                    },
-                    getTimestamps: {
-                        value: trimmed,
-                        size: 1,
-                        stride: 24,
-                        offset: isAggregate ? 20 : 12
-                    }
+                    getPath: { value: trimmed, size: 3, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 20 : 12 }
                 }
             };
         }
@@ -255,6 +248,37 @@ class GpsDataManager {
         };
 
         return payload;
+    }
+
+    _getBinaryIndices(buffer, pointCount, strideFloats, timeIndex, thresholdSec) {
+        // If continuous is true, or no points, return single path
+        if (this.config.continuous || pointCount === 0) {
+            return {
+                length: 1,
+                startIndices: new Uint32Array([0, pointCount])
+            };
+        }
+
+        const indices = [0];
+
+        // Scan buffer for time gaps
+        for (let i = 0; i < pointCount - 1; i++) {
+            const t1 = buffer[i * strideFloats + timeIndex];
+            const t2 = buffer[(i + 1) * strideFloats + timeIndex];
+
+            // If the gap exceeds the threshold, break the line at i+1
+            if (Math.abs(t2 - t1) > thresholdSec) {
+                indices.push(i + 1);
+            }
+        }
+
+        // Always push the final vertex count as required by deck.gl
+        indices.push(pointCount);
+
+        return {
+            length: indices.length - 1,
+            startIndices: new Uint32Array(indices)
+        };
     }
 
     async _streamPoints(onProgress, signal) {
@@ -450,8 +474,159 @@ class GpsDataManager {
         if (onProgress) onProgress(this.cleanedCursor, this.cleanedCursor, 'bundling');
     }
 
+    _computeActivityWeights() {
+        if (!this.visits || this.visits.length === 0) {
+            this.activityWeights = new Float64Array([0]);
+            this.totalActivity = 0;
+            return;
+        }
+
+        const visitWeight = 0.05;
+        const tripWeight = 1.0;
+        const bufferFactor = 0.30;
+        const maxBuffer = 600;
+
+        // === CACHE SORTED RANGES (huge win) ===
+        const currentHash = this._computeVisitsHash();
+        if (!this._sortedVisitRanges || this._visitsHash !== currentHash) {
+            this._sortedVisitRanges = this.visits
+                .flatMap(p => p.activeRanges || [])
+                .sort((a, b) => a.start - b.start);
+            this._visitsHash = currentHash;
+        }
+
+        const ranges = this._sortedVisitRanges;
+        const n = this.cleanedCursor;
+
+        const weights = new Float64Array(n);
+        weights[0] = 0;
+
+        let cumulative = 0;
+        let rangeIdx = 0;
+        let lastPrevRange = null;
+
+        for (let i = 1; i < n; i++) {
+            const tsPrev = this.cleanedBuffer[(i - 1) * 6 + 3];
+            const tsCurr = this.cleanedBuffer[i * 6 + 3];
+            const dt = tsCurr - tsPrev;
+
+            if (dt <= 0) {
+                weights[i] = cumulative;
+                continue;
+            }
+
+            while (rangeIdx < ranges.length && ranges[rangeIdx].end < tsCurr) {
+                lastPrevRange = ranges[rangeIdx];
+                rangeIdx++;
+            }
+
+            let factor = tripWeight;
+            let inVisit = false;
+
+            for (let j = rangeIdx; j < ranges.length; j++) {
+                const r = ranges[j];
+                if (r.start > tsCurr) break;
+                if (tsCurr >= r.start && tsCurr <= r.end) {
+                    inVisit = true;
+                    factor = visitWeight;
+                    break;
+                }
+            }
+
+            if (!inVisit) {
+                let prevEnd = tsCurr - 3600;
+                let nextStart = tsCurr + 3600;
+
+                if (lastPrevRange && lastPrevRange.end < tsCurr) {
+                    prevEnd = lastPrevRange.end;
+                } else {
+                    for (let j = rangeIdx - 1; j >= 0; j--) {
+                        if (ranges[j].end < tsCurr) {
+                            prevEnd = ranges[j].end;
+                            lastPrevRange = ranges[j];
+                            break;
+                        }
+                    }
+                }
+
+                for (let j = rangeIdx; j < ranges.length; j++) {
+                    if (ranges[j].start > tsCurr) {
+                        nextStart = ranges[j].start;
+                        break;
+                    }
+                }
+
+                const tripDuration = nextStart - prevEnd;
+                const buffer = Math.min(tripDuration * bufferFactor, maxBuffer);
+
+                const distToNext = nextStart - tsCurr;
+                const distToPrev = tsCurr - prevEnd;
+
+                if (distToNext >= 0 && distToNext <= buffer) {
+                    const progress = 1 - (distToNext / buffer);
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = tripWeight - smooth * (tripWeight - visitWeight);
+                } else if (distToPrev >= 0 && distToPrev <= buffer) {
+                    const progress = distToPrev / buffer;
+                    const smooth = progress * progress * (3 - 2 * progress);
+                    factor = visitWeight + smooth * (tripWeight - visitWeight);
+                }
+            }
+
+            cumulative += dt * factor;
+            weights[i] = cumulative;
+        }
+
+        this.activityWeights = weights;
+        this.totalActivity = cumulative;
+    }
+
+    _computeVisitsHash() {
+        let hash = 17;
+        for (const visit of this.visits) {
+            for (const r of visit.activeRanges || []) {
+                hash = (hash * 31 + Math.imul(Math.floor(r.start), 0x85ebca6b)) | 0;
+                hash = (hash * 31 + Math.imul(Math.floor(r.end),   0xc2b2ae35)) | 0;
+            }
+        }
+        return hash >>> 0;
+    }
+
+    getDisplayTimestamp(linearProgress, useWarp = false, aggregate = false) {
+        if (aggregate || !useWarp || !this.activityWeights?.length) {
+            const total = this.maxTimestamp - this.minTimestamp;
+            return this.minTimestamp + linearProgress * total;
+        }
+
+        const target = linearProgress * this.totalActivity;
+        const weights = this.activityWeights;
+        let low = 0;
+        let high = weights.length - 1;
+
+        while (low <= high) {
+            const mid = (low + high) >> 1;
+            if (weights[mid] <= target) low = mid + 1;
+            else high = mid - 1;
+        }
+
+        const i = Math.max(0, low - 1);
+        if (i >= weights.length - 1) {
+            return this.cleanedBuffer[(weights.length - 1) * 6 + 3];
+        }
+
+        const w0 = weights[i];
+        const w1 = weights[i + 1];
+        const t0 = this.cleanedBuffer[i * 6 + 3];
+        const t1 = this.cleanedBuffer[(i + 1) * 6 + 3];
+
+        if (w1 === w0) return t0;
+        return t0 + ((target - w0) / (w1 - w0)) * (t1 - t0);
+    }
+
     _hexToRgb(hex) {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return [r, g, b];
     }
+
+
 }

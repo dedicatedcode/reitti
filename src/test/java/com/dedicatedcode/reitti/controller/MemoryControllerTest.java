@@ -23,6 +23,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @IntegrationTest
-class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
+class MemoryControllerTest {
 
     @Autowired
     private TestingService testingService;
@@ -60,6 +61,7 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
         mockMvc = MockMvcBuilders
                 .webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
+                .defaultRequest(get("/").locale(Locale.US))
                 .build();
         // Create a unique user for this test run
         user = testingService.randomUser();
@@ -75,14 +77,16 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T10:00:00Z"),
                 Instant.parse("2023-01-01T12:00:00Z"),
-                7200L
+                7200L,
+                null
         );
 
         ProcessedVisit otherVisit = new ProcessedVisit(
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T14:00:00Z"),
                 Instant.parse("2023-01-01T16:00:00Z"),
-                7200L
+                7200L,
+                null
         );
         ProcessedVisit savedVisit = this.processedVisitJdbcService.create(user, visit);
         ProcessedVisit savedOtherVisit = this.processedVisitJdbcService.create(user, otherVisit);
@@ -98,7 +102,8 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                              10000.0,
                              TransportMode.DRIVING,
                              savedVisit,
-                             savedOtherVisit);
+                             savedOtherVisit,
+                             null);
 
         Trip savedTrip = this.tripJdbcService.create(user, trip);
 
@@ -135,8 +140,8 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
         List<MemoryTrip> byMemoryBlockId = memoryTripJdbcService.findByMemoryBlockId(clusterBlock.getId());
         assertEquals(1, byMemoryBlockId.size());
         MemoryTrip tripInCluster = byMemoryBlockId.getFirst();
-        assertEquals("45,0000, 5,0000", tripInCluster.getStartVisit().getName());
-        assertEquals("45,0000, 5,0000", tripInCluster.getEndVisit().getName());
+        assertEquals("45.0000, 5.0000", tripInCluster.getStartVisit().getName());
+        assertEquals("45.0000, 5.0000", tripInCluster.getEndVisit().getName());
     }
 
 
@@ -147,14 +152,16 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T10:00:00Z"),
                 Instant.parse("2023-01-01T12:00:00Z"),
-                7200L
+                7200L,
+                null
         );
 
         ProcessedVisit otherVisit = new ProcessedVisit(
                 nonGeocodedPlace,
                 Instant.parse("2023-01-01T14:00:00Z"),
                 Instant.parse("2023-01-01T16:00:00Z"),
-                7200L
+                7200L,
+                null
         );
         ProcessedVisit savedVisit = this.processedVisitJdbcService.create(user, visit);
         ProcessedVisit savedOtherVisit = this.processedVisitJdbcService.create(user, otherVisit);
@@ -170,7 +177,8 @@ class MemoryBlockGenerationWithNonGeocodedPlaceControllerIT {
                              10000.0,
                              TransportMode.DRIVING,
                              savedVisit,
-                             savedOtherVisit);
+                             savedOtherVisit,
+                             null);
 
         Trip savedTrip = this.tripJdbcService.create(user, trip);
 

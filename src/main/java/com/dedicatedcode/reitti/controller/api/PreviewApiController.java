@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
-import com.dedicatedcode.reitti.dto.TimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
@@ -36,16 +36,16 @@ public class PreviewApiController {
     }
 
     @GetMapping("/{previewId}/timeline")
-    public List<TimelineEntry> getPreviewTimeline(@AuthenticationPrincipal User user,
-                                                  @PathVariable String previewId,
-                                                  @RequestParam String date,
-                                                  @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+    public List<SingleTimelineEntry> getPreviewTimeline(@AuthenticationPrincipal User user,
+                                                        @PathVariable String previewId,
+                                                        @RequestParam String date,
+                                                        @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         LocalDate selectedDate = LocalDate.parse(date);
         ZoneId userTimezone = ZoneId.of(timezone);
 
         Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
         Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant();
 
-        return this.timelineService.buildTimelineEntries(user, previewId, userTimezone, selectedDate, startOfDay, endOfDay);
+        return this.timelineService.buildTimelineEntries(user, previewId, userTimezone, selectedDate, startOfDay, endOfDay, false);
     }
 }

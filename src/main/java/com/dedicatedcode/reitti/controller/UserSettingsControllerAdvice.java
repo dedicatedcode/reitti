@@ -28,6 +28,7 @@ public class UserSettingsControllerAdvice {
 
     public static final double DEFAULT_HOME_LATITUDE = 60.1699;
     public static final double DEFAULT_HOME_LONGITUDE = 24.9384;
+    private static final String DEFAULT_COLOR = "#F5DEB3FF";
     private final UserJdbcService userJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
@@ -49,8 +50,7 @@ public class UserSettingsControllerAdvice {
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
             // Return default settings for anonymous users
-            return new UserSettingsDTO(false,
-                                       Language.EN,
+            return new UserSettingsDTO(Language.EN,
                                        Locale.ENGLISH.toLanguageTag(),
                                        Instant.now(),
                                        UnitSystem.METRIC,
@@ -62,7 +62,9 @@ public class UserSettingsControllerAdvice {
                                        TimeDisplayMode.DEFAULT,
                                        TimeMode.TWENTY_FOUR_HOUR,
                                        null,
-                                       null);
+                                       null,
+                                       DEFAULT_COLOR
+                                       );
         }
         
         String username = authentication.getName();
@@ -77,8 +79,7 @@ public class UserSettingsControllerAdvice {
                 latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             }
             Language selectedLanguage = dbSettings.getSelectedLanguage();
-            return new UserSettingsDTO(dbSettings.isPreferColoredMap(),
-                                       selectedLanguage,
+            return new UserSettingsDTO(selectedLanguage,
                                        selectedLanguage.getLocale().toLanguageTag(),
                                        latestData,
                                        dbSettings.getUnitSystem(),
@@ -90,11 +91,11 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getTimeDisplayMode(),
                                        dbSettings.getTimeMode(),
                                        dbSettings.getTimeZoneOverride(),
-                                       dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null);
+                                       dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null,
+                                       dbSettings.getColor());
         }
         // Fallback for authenticated users not found in database
-        return new UserSettingsDTO(false,
-                                   Language.EN,
+        return new UserSettingsDTO(Language.EN,
                                    Locale.ENGLISH.toLanguageTag(),
                                    Instant.now(),
                                    UnitSystem.METRIC,
@@ -106,8 +107,11 @@ public class UserSettingsControllerAdvice {
                                    TimeDisplayMode.DEFAULT,
                                    TimeMode.TWENTY_FOUR_HOUR,
                                    null,
-                                   null);
+                                   null,
+                                   DEFAULT_COLOR);
+
     }
+
 
     private UserSettingsDTO.UIMode mapUserToUiMode(Authentication authentication) {
         List<String> grantedRoles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();

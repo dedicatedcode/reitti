@@ -65,35 +65,35 @@ public class GeocodeServiceJdbcService {
                 String sql = "INSERT INTO geocode_services (name, url, enabled, error_count, last_used, last_error, type, priority, additional_params, version) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
                 Long id = jdbcTemplate.queryForObject(sql, Long.class,
-                  geocodeService.getName(),
-                  geocodeService.getUrl(),
-                  geocodeService.isEnabled(),
-                  geocodeService.getErrorCount(),
-                  geocodeService.getLastUsed() != null ? java.sql.Timestamp.from(geocodeService.getLastUsed()) : null,
-                  geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
-                  geocodeService.getType().name(),
-                  geocodeService.getPriority(),
-                  geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
-                  geocodeService.getVersion()
+                                                      geocodeService.getName(),
+                                                      geocodeService.getUrl(),
+                                                      geocodeService.isEnabled(),
+                                                      geocodeService.getErrorCount(),
+                                                      geocodeService.getLastUsed() != null ? java.sql.Timestamp.from(geocodeService.getLastUsed()) : null,
+                                                      geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
+                                                      geocodeService.getType().name(),
+                                                      geocodeService.getPriority(),
+                                                      geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
+                                                      geocodeService.getVersion()
                 );
 
-            return geocodeService.withId(id);
-        } else {
-            String sql = "UPDATE geocode_services SET name = ?, url = ?, enabled = ?, error_count = ?, last_used = ?, last_error = ?, type = ?, priority = ?, additional_params = ?, version = ? WHERE id = ?";
-            jdbcTemplate.update(sql,
-                    geocodeService.getName(),
-                    geocodeService.getUrl(),
-                    geocodeService.isEnabled(),
-                    geocodeService.getErrorCount(),
-                    geocodeService.getLastUsed() != null ? java.sql.Timestamp.from(geocodeService.getLastUsed()) : null,
-                    geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
-                    geocodeService.getType().name(),
-                    geocodeService.getPriority(),
-                    geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
-                    geocodeService.getVersion(),
-                    geocodeService.getId()
-            );
-            return geocodeService;
+                return geocodeService.withId(id);
+            } else {
+                String sql = "UPDATE geocode_services SET name = ?, url = ?, enabled = ?, error_count = ?, last_used = ?, last_error = ?, type = ?, priority = ?, additional_params = ?, version = ? WHERE id = ?";
+                jdbcTemplate.update(sql,
+                                    geocodeService.getName(),
+                                    geocodeService.getUrl(),
+                                    geocodeService.isEnabled(),
+                                    geocodeService.getErrorCount(),
+                                    geocodeService.getLastUsed() != null ? java.sql.Timestamp.from(geocodeService.getLastUsed()) : null,
+                                    geocodeService.getLastError() != null ? java.sql.Timestamp.from(geocodeService.getLastError()) : null,
+                                    geocodeService.getType().name(),
+                                    geocodeService.getPriority(),
+                                    geocodeService.getAdditionalParameters() != null ? this.objectMapper.writeValueAsString(geocodeService.getAdditionalParameters()) : null,
+                                    geocodeService.getVersion(),
+                                    geocodeService.getId()
+                );
+                return geocodeService;
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

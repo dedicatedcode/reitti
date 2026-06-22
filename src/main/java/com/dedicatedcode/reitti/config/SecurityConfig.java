@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.config.security.*;
 import com.dedicatedcode.reitti.model.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
