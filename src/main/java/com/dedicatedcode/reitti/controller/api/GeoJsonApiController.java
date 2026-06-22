@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.DeviceTokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.service.GeoJsonExportService;
@@ -78,13 +79,14 @@ public class GeoJsonApiController {
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> importGeoJson(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal DeviceTokenUser user,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "device", required = false) Long deviceId) {
 
         Map<String, Object> response = new HashMap<>();
 
-        Device device = this.deviceJdbcService.find(user, deviceId).orElse(null);
+        Device device = this.deviceJdbcService.find(user, deviceId)
+                .orElse(user.getDevice().orElseThrow(() -> new IllegalArgumentException("Device not found")));
         try {
             if (file.isEmpty() || file.getOriginalFilename() == null) {
                 response.put("success", false);
