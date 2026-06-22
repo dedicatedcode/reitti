@@ -77,6 +77,9 @@ public class GpxImporter {
             LocationPoint currentPoint = null;
             StringBuilder currentText = new StringBuilder();
 
+            Double currentAccuracyValue = null;
+            Double currentHdopValue = null;
+
             while (reader.hasNext()) {
                 int event = reader.next();
 
@@ -86,7 +89,6 @@ public class GpxImporter {
                         currentText.setLength(0);
 
                         if ("trkpt".equals(elementName)) {
-                            // Start of a new track point
                             String latAttr = reader.getAttributeValue(null, "lat");
                             String lonAttr = reader.getAttributeValue(null, "lon");
 
@@ -100,8 +102,9 @@ public class GpxImporter {
                             double longitude = Double.parseDouble(lonAttr);
                             currentPoint.setLatitude(latitude);
                             currentPoint.setLongitude(longitude);
-                            // Default accuracy for GPX files
-                            currentPoint.setAccuracyMeters(10.0);
+
+                            currentAccuracyValue = null;
+                            currentHdopValue = null;
                         }
                         break;
 
@@ -116,7 +119,20 @@ public class GpxImporter {
 
                         if ("trkpt".equals(endElementName) && currentPoint != null) {
                             // Finished processing this track point
+
                             if (currentPoint.getTimestamp() != null) {
+                                // Determine accuracy from optional <accuracy> or <hdop>
+                                double finalAccuracy;
+                                if (currentAccuracyValue != null) {
+                                    finalAccuracy = currentAccuracyValue;
+                                } else if (currentHdopValue != null) {
+                                    // Map HDOP to metres. Values above 5 indicate poor accuracy.
+                                    finalAccuracy = currentHdopValue > 5.0 ? 120.0 : 10.0;
+                                } else {
+                                    finalAccuracy = 10.0; // default
+                                }
+                                currentPoint.setAccuracyMeters(finalAccuracy);
+
                                 batch.add(currentPoint);
                                 processedCount.incrementAndGet();
 
@@ -142,6 +158,24 @@ public class GpxImporter {
                                     currentPoint.setElevationMeters(elevation);
                                 } catch (NumberFormatException e) {
                                     // Ignore invalid elevation values
+                                }
+                            }
+                        } else if ("accuracy".equals(endElementName) && currentPoint != null) {
+                            String accStr = currentText.toString().trim();
+                            if (StringUtils.hasText(accStr)) {
+                                try {
+                                    currentAccuracyValue = Double.parseDouble(accStr);
+                                } catch (NumberFormatException ignored) {
+                                    // invalid accuracy value, keep null
+                                }
+                            }
+                        } else if ("hdop".equals(endElementName) && currentPoint != null) {
+                            String hdopStr = currentText.toString().trim();
+                            if (StringUtils.hasText(hdopStr)) {
+                                try {
+                                    currentHdopValue = Double.parseDouble(hdopStr);
+                                } catch (NumberFormatException ignored) {
+                                    // invalid hdop value, keep null
                                 }
                             }
                         }

@@ -3,10 +3,7 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
@@ -34,6 +31,7 @@ public class ManageDataController {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final I18nService i18n;
     private final JobSchedulingService jobScheduler;
+    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
 
     public ManageDataController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${reitti.data-management.delete-all.hostname-verification.enabled:true}") boolean deleteAllHostnameVerificationEnabled,
@@ -43,7 +41,7 @@ public class ManageDataController {
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 UserSettingsJdbcService userSettingsJdbcService,
                                 I18nService i18nService,
-                                JobSchedulingService jobScheduler) {
+                                JobSchedulingService jobScheduler, SourceLocationPointJdbcService sourceLocationPointJdbcService) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
@@ -53,6 +51,7 @@ public class ManageDataController {
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.i18n = i18nService;
         this.jobScheduler = jobScheduler;
+        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
     }
 
     @GetMapping("/settings/manage-data")
@@ -176,6 +175,7 @@ public class ManageDataController {
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
         rawLocationPointJdbcService.deleteAllForUser(user);
+        sourceLocationPointJdbcService.deleteAllForUser(user);
     }
 
 }

@@ -235,4 +235,7 @@ public class SourceLocationPointJdbcService {
     }
 
 
+    public void deleteAllForUser(User user) {
+        this.jdbcTemplate.update("DELETE FROM raw_source_points WHERE user_id = ?", user.getId());
+    }
 }

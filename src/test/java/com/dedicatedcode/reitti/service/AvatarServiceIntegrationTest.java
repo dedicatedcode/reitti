@@ -158,10 +158,11 @@ class AvatarServiceIntegrationTest {
         assertEquals("JS", avatarService.generateInitials("John Smith"));
         assertEquals("JO", avatarService.generateInitials("John"));
         assertEquals("JO", avatarService.generateInitials("John"));
-        assertEquals("A", avatarService.generateInitials("A"));
+        assertEquals("A",  avatarService.generateInitials("A"));
         assertEquals("AB", avatarService.generateInitials("AB"));
-        assertEquals("AE", avatarService.generateInitials("ABCD EFGH")); // Only first 2 words
-        assertEquals("JD", avatarService.generateInitials("  John   Doe  ")); // Trimmed
+        assertEquals("AE", avatarService.generateInitials("ABCD EFGH"));
+        assertEquals("JD", avatarService.generateInitials("  John   Doe  "));
+        assertEquals("TI", avatarService.generateInitials("Test iPhone"));
     }
 
     @Test
