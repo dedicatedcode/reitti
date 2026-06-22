@@ -89,7 +89,6 @@ public class GpxImporter {
                         currentText.setLength(0);
 
                         if ("trkpt".equals(elementName)) {
-                            // Start of a new track point
                             String latAttr = reader.getAttributeValue(null, "lat");
                             String lonAttr = reader.getAttributeValue(null, "lon");
 
@@ -104,7 +103,6 @@ public class GpxImporter {
                             currentPoint.setLatitude(latitude);
                             currentPoint.setLongitude(longitude);
 
-                            // Reset optional accuracy / hdop values for this track point
                             currentAccuracyValue = null;
                             currentHdopValue = null;
                         }

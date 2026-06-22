@@ -54,7 +54,7 @@ public class SyntheticLocationPointGenerator {
             // Apply speed-based transformation: slower speeds shift points towards start
             // Using a more aggressive power function to cluster points at the beginning
             double speedFactor = Math.min(speed / 2.0, 1.0); // normalize to 2 m/s as reference (more sensitive)
-            double exponent = 1.0 / (speedFactor * 0.3 + 0.1); // More aggressive exponent (higher values = more clustering at start)
+            double exponent = 1.0 / (speedFactor * 0.8 + 0.1); // More aggressive exponent (higher values = more clustering at start)
             double ratio = Math.pow(timeRatio, exponent);
 
             // Interpolate coordinates

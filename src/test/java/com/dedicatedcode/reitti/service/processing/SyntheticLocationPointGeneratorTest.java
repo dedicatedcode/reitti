@@ -76,7 +76,7 @@ class SyntheticLocationPointGeneratorTest {
         
         // Verify middle point coordinates (should be halfway between start and end)
         LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
-        assertEquals(50.0012, middlePoint.getLatitude(), 0.0001);
+        assertEquals(50.0009, middlePoint.getLatitude(), 0.0001);
         assertEquals(8.001, middlePoint.getLongitude(), 0.001);
     }
 
@@ -100,8 +100,8 @@ class SyntheticLocationPointGeneratorTest {
 
         // Then: Middle point should have interpolated values
         LocationPoint middlePoint = syntheticPoints.get(1); // 30 seconds = 50% of the way
-        assertEquals(14.785, middlePoint.getAccuracyMeters(), 0.05); // 10 + (20-10) * 0.5
-        assertEquals(109.57, middlePoint.getElevationMeters(), 0.02); // 100 + (120-100) * 0.5
+        assertEquals(14.629, middlePoint.getAccuracyMeters(), 0.05); // 10 + (20-10) * 0.5
+        assertEquals(109.25, middlePoint.getElevationMeters(), 0.02); // 100 + (120-100) * 0.5
     }
 
     @Test
