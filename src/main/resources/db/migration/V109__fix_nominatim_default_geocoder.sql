@@ -1,0 +1,1 @@
+UPDATE geocode_services SET priority = 3, type = 'NOMINATIM', url = 'https://nominatim.openstreetmap.org' WHERE url = 'https://nominatim.openstreetmap.org/reverse?format=geocodejson&lat={lat}&lon={lng}';

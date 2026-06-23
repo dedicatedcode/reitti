@@ -65,9 +65,7 @@ public class TripJdbcService {
     };
 
     public List<Trip> findByUser(User user) {
-        String sql = "SELECT t.*" +
-                "FROM trips t " +
-                "WHERE t.user_id = ? ORDER BY start_time";
+        String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? ORDER BY start_time";
         return jdbcTemplate.query(sql, TRIP_ROW_MAPPER, user.getId());
     }
 
@@ -212,6 +210,11 @@ public class TripJdbcService {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips", Long.class);
     }
 
+    @SuppressWarnings("DataFlowIssue")
+    public long count(User user) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips WHERE user_id = ?", Long.class, user.getId());
+    }
+
     public void deleteAll(List<Trip> existingTrips) {
         if (existingTrips == null || existingTrips.isEmpty()) {
             return;
@@ -251,4 +254,5 @@ public class TripJdbcService {
             throw new RuntimeException(e);
         }
     }
+
 }

@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
 import com.dedicatedcode.reitti.service.processing.*;
 import com.github.kagkarlsson.scheduler.task.Task;
@@ -94,6 +95,15 @@ public class TaskConfig {
         return Tasks.oneTime("data-recalculation-task", VisitSensitivityConfigurationRecalculationTask.TaskData.class)
                 .execute((instance, context) -> {
                     VisitSensitivityConfigurationRecalculationTask.TaskData data = instance.getData();
+                    handler.execute(data);
+                });
+    }
+
+    @Bean
+    public Task<TransportModeRecalculationTask.TaskData> transportModeRecalculationTaks(TransportModeRecalculationTask handler) {
+        return Tasks.oneTime("transport-mode-recalculation-task", TransportModeRecalculationTask.TaskData.class)
+                .execute((instance, context) -> {
+                    TransportModeRecalculationTask.TaskData data = instance.getData();
                     handler.execute(data);
                 });
     }

@@ -142,6 +142,7 @@ public class UserService {
         setDefaultMapStyle(createdUser);
         saveDefaultVisitDetectionParameters(createdUser);
         saveDefaultTransportationModeDetectionParameters(createdUser);
+        createDefaultDeviceForUser(createdUser);
         userSettingsJdbcService.save(userSettings);
         return createdUser;
     }

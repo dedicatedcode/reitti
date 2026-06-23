@@ -261,6 +261,7 @@ public class DeviceSettingsController {
             if (deviceToDelete.defaultDevice()) {
                 model.addAttribute("errorMessage", i18n.translate("message.error.device.deletion.default"));
             } else {
+                avatarService.deleteAvatar(user.getId(), deviceId);
                 deviceJdbcService.delete(deviceToDelete, user);
                 model.addAttribute("successMessage", i18n.translate("message.success.device.deleted"));
             }
