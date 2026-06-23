@@ -120,7 +120,7 @@ class TimelineOverviewStatisticsServiceTest {
             Instant dayStart = date.atStartOfDay(tz).toInstant();
             Instant dayEnd = date.atTime(LocalTime.of(23, 59)).atZone(tz).toInstant();
 
-            ProcessedVisit visit = testingService.createVisit(user, place, dayStart, dayStart.plus(7, ChronoUnit.HOURS));
+            ProcessedVisit visit = testingService.createVisit(user, place, dayStart.plus(1, ChronoUnit.HOURS), dayStart.plus(7, ChronoUnit.HOURS));
             ProcessedVisit visit2 = testingService.createVisit(user, place, dayStart.plus(8, ChronoUnit.HOURS), dayEnd);
 
             testingService.createTrip(user, visit, visit2, TransportMode.CYCLING);
@@ -174,9 +174,9 @@ class TimelineOverviewStatisticsServiceTest {
         assertFalse(janEntry.visitEntries().isEmpty());
         GroupedTimelineEntry.VisitEntry visit = janEntry.visitEntries().get(0);
         assertNotNull(visit.name());
-        assertEquals(82740L, visit.durationSeconds());
+        assertEquals(79140L, visit.durationSeconds());
         assertEquals(2, visit.parts().size());
-        assertEquals(0.3045, visit.parts().get(0).percent(), 0.001);
+        assertEquals(0.2729, visit.parts().get(0).percent(), 0.001);
     }
 
     @Test
