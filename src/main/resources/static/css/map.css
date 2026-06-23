@@ -176,7 +176,7 @@ details.maplibregl-ctrl-attrib[open] {
     backdrop-filter: blur(14px);
     border: 1px solid var(--panel-line);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.6);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
