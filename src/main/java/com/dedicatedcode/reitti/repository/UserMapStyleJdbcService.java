@@ -49,8 +49,8 @@ public class UserMapStyleJdbcService {
                     rs.getString("glyphs_url_override"),
                     rs.getString("sprite_url_override")
             ),
-            rs.getBoolean("shared"),
             rs.getBoolean("default_style"),
+            rs.getBoolean("shared"),
             rs.getLong("version")
     );
 
