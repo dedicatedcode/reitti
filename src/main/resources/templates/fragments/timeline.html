@@ -90,7 +90,7 @@
                 </div>
                 <div class="sub-headline" th:text="${entry.subHeadline()}"></div>
                 <div class="overview-container">
-                    <div class="activity-overview" style="height: 160px; width: 100%; max-width: 360px;">
+                    <div class="activity-overview" style="height: 140px; width: 100%; max-width: 360px;">
                         <div th:text="#{timeline.grouped.activity-overview.headline}" class="text-align-center text-gray">Activity Overview</div>
                         <canvas th:id="${'overview-' + entry.syntheticId}" class="activity-overview-chart"></canvas>
                     </div>

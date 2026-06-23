@@ -85,7 +85,7 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(2, firstWeek.overview().get(0).visits());
         assertEquals(1, firstWeek.overview().get(0).trips());
         assertEquals(7, firstWeek.trips());
-        assertEquals(14, firstWeek.visits());
+        assertEquals(1, firstWeek.visits());
         assertFalse(firstWeek.visitMoods().isEmpty());
         assertEquals(Mood.HAPPY, firstWeek.visitMoods().get(0).mood());
         assertFalse(firstWeek.tripMoods().isEmpty());
@@ -160,7 +160,7 @@ class TimelineOverviewStatisticsServiceTest {
         long daysWithVisits = janEntry.overview().stream().filter(e -> e.visits() > 0).count();
         assertEquals(1, daysWithVisits);
         assertEquals(1, janEntry.trips());
-        assertEquals(2, janEntry.visits());
+        assertEquals(1, janEntry.visits());
         assertFalse(janEntry.visitMoods().isEmpty());
         assertEquals(Mood.STRESSED, janEntry.visitMoods().get(0).mood());
         assertFalse(janEntry.tripMoods().isEmpty());

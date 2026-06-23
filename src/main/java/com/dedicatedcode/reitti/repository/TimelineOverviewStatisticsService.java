@@ -167,18 +167,16 @@ public class TimelineOverviewStatisticsService {
                                                                                       """, params);
 
         List<Map<String, Object>> visits = this.jdbcTemplate.queryForList("""
-                                                                          SELECT
-                                                                              DATE_TRUNC(:granularity, pv.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
-                                                                              COALESCE(sp.name, 'Unknown / Unnamed Place') AS place_name, 
-                                                                              COUNT(pv.id) AS amount
-                                                                          FROM processed_visits pv
-                                                                          LEFT JOIN significant_places sp ON pv.place_id = sp.id
-                                                                          WHERE pv.user_id = :userId
-                                                                            AND pv.start_time >= :start
-                                                                            AND pv.start_time <= :end
-                                                                          GROUP BY 1, 2
-                                                                          ORDER BY 1, 3 DESC;
-                                                                          """, params);
+                                                                            SELECT
+                                                                                DATE_TRUNC(:granularity, pv.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
+                                                                                COUNT(DISTINCT pv.place_id) AS amount
+                                                                            FROM processed_visits pv
+                                                                            WHERE pv.user_id = :userId
+                                                                              AND pv.start_time >= :start
+                                                                              AND pv.start_time <= :end
+                                                                            GROUP BY 1
+                                                                            ORDER BY 1;
+                                                                            """, params);
 
         Locale locale = LocaleContextHolder.getLocale();
         List<GroupedTimelineEntry> entries = new ArrayList<>();
@@ -235,11 +233,13 @@ public class TimelineOverviewStatisticsService {
             LocalDate rangeEnd = granularity == Granularity.MONTHLY ?
                     sortedKey.withDayOfMonth(1).plusMonths(1).minusDays(1) :
                     sortedKey.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1).minusDays(1);
-            subheadline = i18nService.translate("js.common.time-range", sortedKey.format(DateTimeFormatter.ofPattern("dd.MM").withLocale(locale)), rangeEnd.format(DateTimeFormatter.ofPattern("dd.MM.yyyy").withLocale(locale)));
+            LocalDate adjustedRangeStart = sortedKey.isBefore(start.atZone(userTimezone).toLocalDate()) ? start.atZone(userTimezone).toLocalDate() : sortedKey;
+            LocalDate adjustedRangeEnd = rangeEnd.isAfter(end.atZone(userTimezone).toLocalDate()) ? end.atZone(userTimezone).toLocalDate() : rangeEnd;
+            subheadline = i18nService.translate("js.common.time-range", adjustedRangeStart.format(DateTimeFormatter.ofPattern("dd.MM").withLocale(locale)), adjustedRangeEnd.format(DateTimeFormatter.ofPattern("dd.MM.yyyy").withLocale(locale)));
             entries.add(new GroupedTimelineEntry(UUID.randomUUID(),
                                                  name,
                                                  subheadline,
-                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s&endDate=%s", sortedKey, endDate),
+                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s&endDate=%s", adjustedRangeStart, adjustedRangeEnd),
                                                  overviewEntries,
                                                  amountOfPlaces.get(sortedKey),
                                                  amountOfTrips.get(sortedKey),
