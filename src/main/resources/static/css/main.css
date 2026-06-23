@@ -111,6 +111,29 @@
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
     --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+
+    --bg: #0e1826;
+    --bg-deep: #0a1320;
+    --panel: rgba(22, 32, 48, 0.78);
+    --panel-solid: #162030;
+    --ink: #ece6d6;
+    --ink-dim: #a5a99f;
+    --ink-faint: #6b7285;
+    --gold: #d9a441;
+    --gold-bright: #f2c470;
+    --gold-deep: #b8862c;
+    --gold-glow: rgba(217, 164, 65, 0.55);
+    --sky: #8fc5e6;
+    --sky-dim: #5a8bb0;
+    --violet: #b89adc;
+    --slate: #7e8a9e;
+    --danger: #e07a6b;
+
+    --drawer-h: 320px;
+    --drawer-inset: 16px;
+    --connector-h: 36px;
+    --panel-line: rgba(212, 175, 108, 0.14);
+    --drawer-top-edge: calc(var(--drawer-h) + var(--drawer-inset));
 }
 
 /* CJK Language-specific font stacks */
@@ -1146,17 +1169,17 @@ tr:hover {
 }
 
 .timeline-container .aggregated-entry {
-    border-radius: 8px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(12px);
-    background-color: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(0, 0, 0, 0.16);
-    box-shadow: var(--box-shadow);
+    -webkit-backdrop-filter: blur(14px);
+    background-color: rgba(0, 0, 0, 0.45);
     padding: 0;
     color: #fff;
     left: 24px;
     margin-bottom: 24px;
     text-shadow: 0 0 0 white, 2px 2px 0 #24201c, 1px 1px 0 #171414;
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--panel-line);
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
 }
 
