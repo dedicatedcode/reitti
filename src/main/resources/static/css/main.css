@@ -1168,12 +1168,16 @@ tr:hover {
     flex-grow: 1;
 }
 
+.timeline-container .aggregated-entry-container {
+    position: relative;
+    pointer-events: all;
+    left: 24px;
+}
 .timeline-container .aggregated-entry {
     -webkit-backdrop-filter: blur(14px);
     background-color: rgba(0, 0, 0, 0.45);
     padding: 0;
     color: #fff;
-    left: 24px;
     margin-bottom: 24px;
     text-shadow: 0 0 0 white, 2px 2px 0 #24201c, 1px 1px 0 #171414;
     backdrop-filter: blur(14px);
