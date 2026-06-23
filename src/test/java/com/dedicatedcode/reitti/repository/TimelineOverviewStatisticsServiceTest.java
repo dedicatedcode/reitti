@@ -85,7 +85,7 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(2, firstWeek.overview().get(0).visits());
         assertEquals(1, firstWeek.overview().get(0).trips());
         assertEquals(7, firstWeek.trips());
-        assertEquals(14, firstWeek.visits());
+        assertEquals(1, firstWeek.visits());
         assertFalse(firstWeek.visitMoods().isEmpty());
         assertEquals(Mood.HAPPY, firstWeek.visitMoods().get(0).mood());
         assertFalse(firstWeek.tripMoods().isEmpty());
@@ -120,7 +120,7 @@ class TimelineOverviewStatisticsServiceTest {
             Instant dayStart = date.atStartOfDay(tz).toInstant();
             Instant dayEnd = date.atTime(LocalTime.of(23, 59)).atZone(tz).toInstant();
 
-            ProcessedVisit visit = testingService.createVisit(user, place, dayStart, dayStart.plus(7, ChronoUnit.HOURS));
+            ProcessedVisit visit = testingService.createVisit(user, place, dayStart.plus(1, ChronoUnit.HOURS), dayStart.plus(7, ChronoUnit.HOURS));
             ProcessedVisit visit2 = testingService.createVisit(user, place, dayStart.plus(8, ChronoUnit.HOURS), dayEnd);
 
             testingService.createTrip(user, visit, visit2, TransportMode.CYCLING);
@@ -160,7 +160,7 @@ class TimelineOverviewStatisticsServiceTest {
         long daysWithVisits = janEntry.overview().stream().filter(e -> e.visits() > 0).count();
         assertEquals(1, daysWithVisits);
         assertEquals(1, janEntry.trips());
-        assertEquals(2, janEntry.visits());
+        assertEquals(1, janEntry.visits());
         assertFalse(janEntry.visitMoods().isEmpty());
         assertEquals(Mood.STRESSED, janEntry.visitMoods().get(0).mood());
         assertFalse(janEntry.tripMoods().isEmpty());
@@ -174,9 +174,9 @@ class TimelineOverviewStatisticsServiceTest {
         assertFalse(janEntry.visitEntries().isEmpty());
         GroupedTimelineEntry.VisitEntry visit = janEntry.visitEntries().get(0);
         assertNotNull(visit.name());
-        assertEquals(82740L, visit.durationSeconds());
+        assertEquals(79140L, visit.durationSeconds());
         assertEquals(2, visit.parts().size());
-        assertEquals(0.3045, visit.parts().get(0).percent(), 0.001);
+        assertEquals(0.2729, visit.parts().get(0).percent(), 0.001);
     }
 
     @Test

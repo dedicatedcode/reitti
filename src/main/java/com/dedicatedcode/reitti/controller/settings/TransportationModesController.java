@@ -2,16 +2,16 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
-import com.dedicatedcode.reitti.service.processing.TransportModeService;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
+import com.github.kagkarlsson.scheduler.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,12 +21,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Controller
@@ -34,24 +31,21 @@ import java.util.stream.Collectors;
 public class TransportationModesController {
 
     private static final Logger log = LoggerFactory.getLogger(TransportationModesController.class);
-    private final TripJdbcService tripJdbcService;
     private final TransportModeJdbcService transportModeJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final TransportModeService transportModeService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final Task<TransportModeRecalculationTask.TaskData> recalculationJobTask;
+    private final JobSchedulingService jobSchedulingService;
     private final boolean dataManagementEnabled;
 
-    public TransportationModesController(TripJdbcService tripJdbcService,
-                                         TransportModeJdbcService transportModeJdbcService,
+    public TransportationModesController(TransportModeJdbcService transportModeJdbcService,
                                          UserSettingsJdbcService userSettingsJdbcService,
-                                         TransportModeService transportModeService,
-                                         RawLocationPointJdbcService rawLocationPointJdbcService,
+                                         Task<TransportModeRecalculationTask.TaskData> recalculationJobTask,
+                                         JobSchedulingService jobSchedulingService,
                                          @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
-        this.tripJdbcService = tripJdbcService;
         this.transportModeJdbcService = transportModeJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.transportModeService = transportModeService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.recalculationJobTask = recalculationJobTask;
+        this.jobSchedulingService = jobSchedulingService;
         this.dataManagementEnabled = dataManagementEnabled;
     }
 
@@ -199,21 +193,12 @@ public class TransportationModesController {
     @PostMapping("/reclassify")
     public String reclassifyTrips(@AuthenticationPrincipal User user, Model model) {
         try {
-            // Start async reclassification
-            CompletableFuture.runAsync(() -> {
-                tripJdbcService.findByUser(user).forEach(trip -> {
-                    Instant startTime = trip.getStartTime();
-                    Instant endTime = trip.getEndTime();
-                    List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
-                    TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, startTime, endTime);
-                    if (transportMode != trip.getTransportModeInferred()) {
-                        log.trace("Reclassified trip {} from {} to {} to mode {}", trip.getId(), startTime, endTime, transportMode);
-                        trip = trip.withTransportMode(transportMode);
-                        this.tripJdbcService.update(trip);
-                    }
-                });
-            });
-            
+            log.debug("Scheduling recalculation task");
+            this.jobSchedulingService.enqueueTask(recalculationJobTask, new TransportModeRecalculationTask.TaskData(user),
+                                          JobSchedulingService.Metadata.builder()
+                                                  .user(user)
+                                                  .friendlyName("Recalculation for changed Transportation Mode Settings")
+                                                  .jobType(JobType.DATA_RECALCULATION).build());
             model.addAttribute("reclassifyStatus", "started");
             model.addAttribute("message", "transportation.modes.reclassify.started");
             

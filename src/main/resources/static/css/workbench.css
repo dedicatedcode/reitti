@@ -1,29 +1,3 @@
-:root {
-    --bg: #0e1826;
-    --bg-deep: #0a1320;
-    --panel: rgba(22, 32, 48, 0.78);
-    --panel-solid: #162030;
-    --ink: #ece6d6;
-    --ink-dim: #a5a99f;
-    --ink-faint: #6b7285;
-    --gold: #d9a441;
-    --gold-bright: #f2c470;
-    --gold-deep: #b8862c;
-    --gold-glow: rgba(217, 164, 65, 0.55);
-    --sky: #8fc5e6;
-    --sky-dim: #5a8bb0;
-    --violet: #b89adc;
-    --slate: #7e8a9e;
-    --danger: #e07a6b;
-
-    --drawer-h: 320px;
-    --drawer-inset: 16px;
-    --connector-h: 36px;
-    --panel-line: rgba(212, 175, 108, 0.14);
-    --drawer-top-edge: calc(var(--drawer-h) + var(--drawer-inset));
-
-}
-
 #drawer .device-select {
     border-color: var(--color-highlight);
 }
