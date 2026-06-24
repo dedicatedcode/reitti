@@ -14,8 +14,14 @@ Run the application locally or on a test instance against commit {{ COMMIT_SHA }
 - [ ] Place-edit: Shows nearby places as points on the map
 - [ ] Place-edit: allows editing/removing/adding a polygon
 - [ ] Multi-user: Data isolation confirmed (no cross-leak)
-- [ ] Multi-user: Tracks and trips visible to all connected users
+- [ ] Multi-user: Tracks and Trips visible to all connected users
 - [ ] Multi-user: Live View visible to all connected users
+- [ ] Workbench: Are multiple devices displayed and selectable?
+- [ ] Workbench: Are points selected and highlighted? Can we move or remove them?
+- [ ] Workbench: Does the map follow the selected points?
+- [ ] Workbench: Does stitching a device timeline into the main timeline works?
+- [ ] Workbench: Revert actions do not break the workbench?
+- [ ] Workbench: Saving works and the main timeline gets adjusted?
 - [ ] Visit Sensitivity: Create a new setting, verify that the recalculation works
 - [ ] Import: GPX/GeoJSON triggers queue, status visible in UI
 - [ ] Geocoding: Failover handled gracefully (no UI freeze)
