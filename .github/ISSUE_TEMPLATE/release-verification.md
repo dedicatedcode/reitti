@@ -19,7 +19,7 @@ Run the application locally or on a test instance against commit {{ COMMIT_SHA }
 - [ ] Workbench: Are multiple devices displayed and selectable?
 - [ ] Workbench: Are points selected and highlighted? Can we move or remove them?
 - [ ] Workbench: Does the map follow the selected points?
-- [ ] Workbench: Does stitching a device timeline into the main timeline works?
+- [ ] Workbench: Does stitching a device timeline into the main timeline work?
 - [ ] Workbench: Revert actions do not break the workbench?
 - [ ] Workbench: Saving works and the main timeline gets adjusted?
 - [ ] Visit Sensitivity: Create a new setting, verify that the recalculation works
