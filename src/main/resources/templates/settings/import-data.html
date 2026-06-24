@@ -46,7 +46,10 @@
                             <div class="form-group">
                                 <input type="file" name="files" accept=".gpx" multiple required>
                             </div>
-                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
                                 <label for="gpx-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="gpx-device-select">
                                     <option th:each="device : ${devices}"
@@ -80,7 +83,10 @@
                             <div class="form-group">
                                 <input type="file" name="files" accept=".geojson,.json" multiple required>
                             </div>
-                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
                                 <label for="geojson-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="geojson-device-select">
                                     <option th:each="device : ${devices}"
@@ -112,7 +118,10 @@
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
                             </div>
-                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
                                 <label for="timeline-android-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="timeline-android-device-select">
                                     <option th:each="device : ${devices}"
@@ -144,7 +153,10 @@
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
                             </div>
-                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
                                 <label for="timeline-ios-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="timeline-ios-device-select">
                                     <option th:each="device : ${devices}"
@@ -175,7 +187,10 @@
                             <div class="form-group">
                                 <input type="file" name="file" accept=".json" required>
                             </div>
-                            <div class="form-group" th:if="${not #lists.isEmpty(devices)}">
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
                                 <label for="records-device-select" th:text="#{upload.select.device}">Device</label>
                                 <select name="device" id="records-device-select">
                                     <option th:each="device : ${devices}"
