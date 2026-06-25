@@ -615,6 +615,11 @@ a.btn-default,
     backdrop-filter: saturate(10%);
 }
 
+.btn.btn-small {
+    padding: 4px 6px;
+    font-size: 0.8rem;
+}
+
 fieldset {
     margin-bottom: 16px;
     border-radius: 4px;

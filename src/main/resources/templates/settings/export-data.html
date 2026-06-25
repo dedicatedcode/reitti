@@ -143,7 +143,7 @@
                                     <!-- Page navigation -->
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <button type="button" 
-                                                class="btn btn-sm"
+                                                class="btn btn-small"
                                                 th:disabled="${!hasPrevious}"
                                                 th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"
@@ -160,7 +160,7 @@
                                         </span>
                                         
                                         <button type="button" 
-                                                class="btn btn-sm"
+                                                class="btn btn-small"
                                                 th:disabled="${!hasNext}"
                                                 th:hx-get="@{/settings/export-data/data-content}"
                                                 hx-target="#data-content"

@@ -28,13 +28,13 @@
                         <button th:hx-get="@{'/settings/visit-sensitivity/edit/' + ${config.getId()}}"
                                 hx-target="#edit-form"
                                 hx-vals='js:{"timezone": getUserTimezone()}'
-                                class="btn btn-primary btn-sm"
+                                class="btn btn-primary btn-small"
                                 th:text="#{visit.sensitivity.edit}">Edit</button>
                         <button th:hx-delete="@{'/settings/visit-sensitivity/' + ${config.getId()}}"
                                 hx-target="body"
                                 th:hx-confirm="#{visit.sensitivity.delete.confirm}"
                                 th:disabled="${config.getValidSince() == null}"
-                                class="btn btn-danger btn-sm"
+                                class="btn btn-danger btn-small"
                                 th:text="#{visit.sensitivity.delete}">Delete</button>
                     </td>
                 </tr>
