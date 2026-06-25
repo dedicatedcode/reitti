@@ -259,7 +259,7 @@ public class UnifiedLocationProcessingService {
         List<RawLocationPoint> timeOrderedPoints;
         if (previewId == null) {
             timeOrderedPoints = rawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true);
+                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true, false);
         } else {
             timeOrderedPoints = previewRawLocationPointJdbcService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, windowStart, windowEnd);
@@ -373,7 +373,7 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        if (previewId == null) {
+        if (previewId == null && !processedVisits.isEmpty()) {
             //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
             Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
             if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).toHours() <= 24) {

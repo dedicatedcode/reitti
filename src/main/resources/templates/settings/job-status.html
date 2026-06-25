@@ -60,7 +60,7 @@
                                     <span th:text="${job.formattedDuration()}">0s</span>
                                 </span>
                                 <button th:if="${job.canCancel()}"
-                                        class="btn btn-danger btn-sm"
+                                        class="btn btn-danger btn-small"
                                         th:attr="hx-delete=@{/settings/job/{id}(id=${job.id()})}"
                                         hx-target="#job-status"
                                         hx-swap="innerHTML"

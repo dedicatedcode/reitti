@@ -19,9 +19,9 @@
             </select>
         </div>
         <div class="form-buttons">
-            <button type="submit" class="btn btn-sm" th:text="#{form.update}">Update</button>
+            <button type="submit" class="btn btn-small" th:text="#{form.update}">Update</button>
             <button type="button"
-                    class="btn btn-sm btn-secondary"
+                    class="btn btn-small btn-secondary"
                     th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
                     hx-target="closest .trip-transport-mode-container"
                     hx-swap="outerHTML"
