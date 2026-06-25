@@ -17,7 +17,7 @@ FROM raw_source_points rsp
     AND rsp.device_id = ov.device_id
     AND rsp.timestamp >= ov.start_time
     AND rsp.timestamp < ov.end_time
-WHERE rsp.status != 2
+WHERE rsp.status != 1
   AND rsp.invalid IS FALSE
 
 UNION ALL
@@ -35,7 +35,7 @@ FROM raw_source_points rsp
          JOIN devices d ON d.id = rsp.device_id
     AND d.user_id = rsp.user_id
     AND d.default_device = TRUE
-WHERE rsp.status != 2
+WHERE rsp.status != 1
   AND rsp.invalid IS FALSE
   AND NOT EXISTS (SELECT 1
                   FROM current_overrides ov
@@ -59,5 +59,5 @@ SELECT user_id,
        FALSE,
        status
 FROM v_source_stream
-WHERE status = 1 ON CONFLICT DO NOTHING;
+WHERE status = 2 ON CONFLICT (user_id, timestamp) DO UPDATE SET status = 2;
 
