@@ -59,13 +59,17 @@ public class RawLocationPointJdbcService {
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Instant startTime, Instant endTime, boolean includeSynthetic) {
+    public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored) {
         StringBuilder sql = new StringBuilder()
                 .append("SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
                 .append("FROM raw_location_points rlp ")
                 .append("WHERE rlp.user_id = ? ");
         if (!includeSynthetic) {
             sql.append("AND rlp.synthetic = false ");
+        }
+
+        if (!includeIgnored) {
+            sql.append("AND rlp.status = 0 ");
         }
         sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ORDER BY rlp.timestamp");
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
@@ -518,6 +522,7 @@ public class RawLocationPointJdbcService {
         ), user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public long countUnprocessedByUser(User user) {
         return this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE user_id = ? AND processed = false", Long.class, user.getId());
     }
@@ -529,9 +534,9 @@ public class RawLocationPointJdbcService {
     public int updateFromDevices(User user, TimeRange timeRange) {
        return this.jdbcTemplate.update("""
                 INSERT INTO raw_location_points
-                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic)
+                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status)
                 SELECT
-                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE
+                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status
                 FROM v_source_stream
                 WHERE user_id = ? AND timestamp  >= ? AND timestamp <= ?
                 """

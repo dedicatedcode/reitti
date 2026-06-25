@@ -161,7 +161,7 @@
                         
                         <form th:hx-post="@{/settings/share-access/users}" hx-target="#share-with" hx-swap="innerHTML">
                             <div class="user-sharing-selection">
-                                <div class="language-buttons">
+                                <div class="language-buttons" style="display:flex;">
                                     <div th:each="user : ${availableUsers}" class="user-sharing-button-wrapper">
                                         <label class="btn user-sharing-btn"
                                                th:classappend="${sharedUserIds.contains(user.id())} ? 'active' : ''">
