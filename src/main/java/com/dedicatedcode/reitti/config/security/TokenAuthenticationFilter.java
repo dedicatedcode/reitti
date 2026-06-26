@@ -35,22 +35,7 @@ public class TokenAuthenticationFilter extends BaseTokenAuthenticationFilter {
         }
 
         if(authHeader != null) {
-            Optional<ApiToken> tokenOpt = apiTokenService.getToken(authHeader);
-
-            if (tokenOpt.isPresent()) {
-                ApiToken token = tokenOpt.get();
-                User authenticatedUser = token.getUser().withRole(Role.API_ACCESS);
-                Device authenticatedDevice = token.getDevice();
-
-                UserDeviceAuthenticationToken authenticationToken = new UserDeviceAuthenticationToken(
-                        authenticatedUser,
-                        authenticatedDevice
-                );
-
-                trackApiTokenUsage(request, authHeader);
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            } else {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            if (authenticateWithToken(request, response, authHeader)) {
                 return;
             }
         }
