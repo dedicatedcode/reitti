@@ -651,6 +651,10 @@
         url.searchParams.set('startDate', currentDateRange.startDate);
         url.searchParams.set('endDate', currentDateRange.endDate);
         url.searchParams.delete('date');
+        const workbenchLink = document.getElementById('nav-workbench');
+        if (workbenchLink) {
+            workbenchLink.href = window.contextPath + '/workbench?date=' + currentDateRange.startDate;
+        }
         window.history.pushState({}, '', url);
     }
 

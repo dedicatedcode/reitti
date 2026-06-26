@@ -25,6 +25,7 @@ class DateTimePicker {
             maxDate: options.maxDate || null,
             onValidate: options.onValidate || null,
             locale: options.locale || navigator.language,
+            date: options.date || null,
             popupPlacement: options.popupPlacement || 'auto'  // 'top' | 'bottom' | 'auto'
         };
 
@@ -47,7 +48,13 @@ class DateTimePicker {
         this.timeScroll = element.querySelector('.time-scroll');
         this._listeners = { change: [] };
         this.currentDate = new Date();
-        this.selectedDate = null;
+        if (this.options.date) {
+            const [y, m, d] = options.date.split('-').map(Number);
+            this.selectedDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+            this.updateInputs();
+        } else {
+            this.selectedDate = null;
+        }
 
         this.init();
     }
