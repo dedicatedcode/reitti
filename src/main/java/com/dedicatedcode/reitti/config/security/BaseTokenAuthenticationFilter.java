@@ -1,8 +1,16 @@
 package com.dedicatedcode.reitti.config.security;
 
+import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.ApiToken;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ApiTokenService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.util.Optional;
 
 public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter {
     protected final ApiTokenService apiTokenService;
@@ -51,5 +59,28 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
 
         // Fall back to remote address
         return request.getRemoteAddr();
+    }
+
+
+    protected final boolean authenticateWithToken(HttpServletRequest request, HttpServletResponse response, String requestedToken) {
+        Optional<ApiToken> tokenOpt = apiTokenService.getToken(requestedToken);
+
+        if (tokenOpt.isPresent()) {
+            ApiToken token = tokenOpt.get();
+            User authenticatedUser = token.getUser().withRole(Role.API_ACCESS);
+            Device authenticatedDevice = token.getDevice();
+
+            UserDeviceAuthenticationToken authenticationToken = new UserDeviceAuthenticationToken(
+                    authenticatedUser,
+                    authenticatedDevice
+            );
+
+            trackApiTokenUsage(request, requestedToken);
+            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        } else {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return true;
+        }
+        return false;
     }
 }
