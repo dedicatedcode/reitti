@@ -56,6 +56,14 @@ class TokenAuthenticationFilterTest {
                 .andExpect(content().string("Success " + user.getId() + " " + device.id()));
     }
 
+ @Test
+    void whenValidXApiTokenProvided_In_Url() throws Exception {
+
+        mockMvc.perform(get("/test-endpoint").param("token", token.getToken()))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Success " + user.getId() + " " + device.id()));
+    }
+
     @Test
     void whenValidBearerTokenProvided_thenRequestPassesAndContextIsSet() throws Exception {
 
