@@ -616,6 +616,10 @@
         });
         userHeader.classList.add('active');
 
+        document.querySelectorAll('.user-timeline-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
         const userId = userHeader.getAttribute('data-user-id');
         const deviceId = userHeader.getAttribute('data-device-id');
         mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
