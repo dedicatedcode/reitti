@@ -130,7 +130,7 @@
     <div class="timeline-container"
          th:hx-get="@{/timeline/content/range}"
          hx-trigger="dateChanged from:body"
-         hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}"
+         hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone,  active: getTimelineParams().activeId }"
          hx-indicator="#loading-indicator">
         <div id="loading-indicator" class="timeline-entry" th:text="#{timeline.loading}">Loading...</div>
     </div>
@@ -138,7 +138,7 @@
 
 <div id="auto-update-user-selection" th:hx-get="@{/timeline/user-selection}" class="hidden"
      hx-trigger="dateChanged  from:body"
-     hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone}">
+     hx-vals="js:{startDate: getTimelineParams().startDate, endDate: getTimelineParams().endDate, timezone: getTimelineParams().timezone }">
 
 </div>
 <div id="date-picker-container"></div>
@@ -222,6 +222,7 @@
 
     let gpsDataManagers = [];
     let currentDateRange = null;
+    let activeId = null;
 
 
     const timelineControl = new TimelineControl(
@@ -521,15 +522,12 @@
                 startDateUtcSeconds: requestedStartUTCSeconds,
                 endDate: currentDateRange.endDate,
                 endDateUtcSeconds: requestedEndUTCSeconds,
-                timezone: timezone
+                timezone: timezone,
+                activeId: activeId,
             };
         } else {
             throw new Error('Invalid date range');
         }
-    }
-
-    function showUser(userHeader) {
-        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
     }
 
     function toggleDeviceMenu(btn) {
@@ -618,9 +616,15 @@
         });
         userHeader.classList.add('active');
 
+        document.querySelectorAll('.user-timeline-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
         const userId = userHeader.getAttribute('data-user-id');
         const deviceId = userHeader.getAttribute('data-device-id');
         mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
+        activeId = `${userId}_${deviceId}`;
+        updateUrlWithDate(currentDateRange);
     }
 
     function selectUser(userHeader) {
@@ -644,6 +648,8 @@
             targetSection.classList.add('active');
         }
         mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+        activeId = userId;
+        updateUrlWithDate(currentDateRange);
     }
 
     function updateUrlWithDate(currentDateRange) {
@@ -651,9 +657,25 @@
         url.searchParams.set('startDate', currentDateRange.startDate);
         url.searchParams.set('endDate', currentDateRange.endDate);
         url.searchParams.delete('date');
+        if (activeId) {
+            url.searchParams.set('active', activeId);
+        }
+        const workbenchLink = document.getElementById('nav-workbench');
+        if (workbenchLink) {
+            workbenchLink.href = window.contextPath + '/workbench?date=' + currentDateRange.startDate;
+        }
         window.history.pushState({}, '', url);
     }
 
+    function loadStartingActiveId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeId = urlParams.get('active');
+        if (activeId) {
+            return activeId;
+        } else {
+            return null;
+        }
+    }
     function loadStartingDate() {
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -1075,9 +1097,11 @@
         });
 
         const startingDate = loadStartingDate();
-
-        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]}`)
+        const startingId = loadStartingActiveId();
+        activeId = startingId;
+        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]} and active id ${startingId}`);
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
+
 
         document.getElementById('speed-selector').onchange = function(e) {
             if (e.target.value === 'auto' || e.target.value === 'adapative') {

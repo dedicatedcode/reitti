@@ -13,5 +13,6 @@ public record UserTimelineData(
         String processedVisitsUrl,
         String mapMetaDataUrl,
         String mapStreamDataUrl,
-        List<DeviceTimelineData> devices) {
+        List<DeviceTimelineData> devices,
+        boolean active) {
 }

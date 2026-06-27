@@ -42,7 +42,6 @@ public class TimelineController {
     private final TripJdbcService tripJdbcService;
     private final TimelineOverviewStatisticsService timelineOverviewStatisticsService;
 
-
     @Autowired
     public TimelineController(UserJdbcService userJdbcService,
                               AvatarService avatarService,
@@ -70,9 +69,11 @@ public class TimelineController {
     public String getTimelineContentRange(@RequestParam LocalDate startDate,
                                           @RequestParam LocalDate endDate,
                                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                          @RequestParam(required = false) String active,
                                           Authentication principal, Model model) {
 
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        UserDeviceRequest userDeviceRequest = UserDeviceRequest.from(active);
 
         LocalDate now = LocalDate.now(timezone);
 
@@ -87,16 +88,15 @@ public class TimelineController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
 
-        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, true);
+        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, true, userDeviceRequest);
         allUsersData.add(userData);
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
-            allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, timezone));
-            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, true));
+            allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, timezone, userDeviceRequest));
+            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, true, userDeviceRequest));
         }
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
-
         model.addAttribute("timelineData", timelineData);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
@@ -108,7 +108,7 @@ public class TimelineController {
         return "fragments/timeline :: timeline-content";
     }
 
-    private UserTimelineData createUserTimeLineData(User user, List<String> authorities, LocalDate startDate, LocalDate endDate, ZoneId timezone, boolean loadTimeline) {
+    private UserTimelineData createUserTimeLineData(User user, List<String> authorities, LocalDate startDate, LocalDate endDate, ZoneId timezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
         Instant startOfRange = startDate.atStartOfDay(timezone).toInstant();
         Instant endOfRange = endDate.plusDays(1).atStartOfDay(timezone).toInstant().minusMillis(1);
         boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
@@ -145,7 +145,8 @@ public class TimelineController {
                                                          d.enabled(),
                                                          d.color(),
                                                          String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
-                                                         loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(),startDate, endDate, timezone.getId()) : null))
+                                                         loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()) : null,
+                                                         userDeviceRequest != null && Objects.equals(user.getId().toString(), userDeviceRequest.userId()) && Objects.equals(d.id(), userDeviceRequest.deviceId())))
                         .toList();
             }
         }
@@ -159,7 +160,8 @@ public class TimelineController {
                                     currentUserProcessedVisitsUrl,
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
-                                    enabledDevices);
+                                    enabledDevices,
+                                    userDeviceRequest == null || (Objects.equals(user.getId().toString(), userDeviceRequest.userId()) && userDeviceRequest.deviceId() == null));
     }
 
     @GetMapping("/user-selection")
@@ -171,17 +173,17 @@ public class TimelineController {
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         List<UserTimelineData> allUsersData = new ArrayList<>();
         User user = userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, false);
+        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, false, null);
         allUsersData.add(userData);
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getUserData(user, startDate, endDate, timezone));
-            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, false));
+            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, false, null));
         }
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
         model.addAttribute("timelineData", timelineData);
-        model.addAttribute("showUserSelection", timelineData.users().size() > 1);
+        model.addAttribute("showUserSelection", timelineData.users().size() > 1  || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
         return "fragments/user-selection :: user-selection";
     }
 
@@ -228,15 +230,26 @@ public class TimelineController {
         return "fragments/trip-edit :: view-mode";
     }
 
-    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline) {
+    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
+
         return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
                 .map(u -> {
                     Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
                     return sharedWithUserOpt.map(sharedWithUser -> {
                         Instant startOfRange = startDate.atStartOfDay(userTimezone).toInstant();
                         Instant endOfRange = endDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                        boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
+                        List<? extends TimelineEntry> userTimelineEntries;
 
-                        List<SingleTimelineEntry> userTimelineEntries = loadTimeline ? this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false) : Collections.emptyList();
+                        if (loadTimeline) {
+                            if (shouldAggregate) {
+                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone);
+                            } else {
+                                userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false);
+                            }
+                        } else {
+                            userTimelineEntries = Collections.emptyList();
+                        }
                         String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
@@ -254,7 +267,8 @@ public class TimelineController {
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
                                                     mapStreamDataUrl,
-                                                    Collections.emptyList());
+                                                    Collections.emptyList(),
+                                                    userDeviceRequest != null && sharedWithUser.getId().toString().equals(userDeviceRequest.userId()));
                     });
                 })
                 .filter(Optional::isPresent)
@@ -262,4 +276,5 @@ public class TimelineController {
                 .sorted(Comparator.comparing(UserTimelineData::displayName))
                 .toList();
     }
+
 }
