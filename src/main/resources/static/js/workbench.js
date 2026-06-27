@@ -250,7 +250,7 @@ function fmtDateFull(ms) {
 
 function dateTimeInUserTZ(yyyy, mm, dd, hh = 0, mi = 0) {
     const utcMs = Date.UTC(yyyy, mm, dd, hh, mi);
-    const asUserTZ = new Date(utcMs).toLocaleString('en-US', {timeZone: USER_TZ});
+    const asUserTZ = new Date(utcMs).toLocaleString('en-US', {timeZone: getUserTimezone()});
     const asUTC = new Date(utcMs).toLocaleString('en-US', {timeZone: 'UTC'});
     const offsetMs = new Date(asUTC).getTime() - new Date(asUserTZ).getTime();
     return utcMs + offsetMs;
@@ -2275,8 +2275,8 @@ function renderSinglePointBody(p) {
     return rows.join('') +
         (tags.length ? `<div class="sel-info-tags">${tags.join('')}</div>` : '') +
         `<div class="sel-info-actions">
-            <button class="sel-info-btn" data-act="center">${t('workbench.action.center_map')}</button>
-            ${isSynthetic ? '' : `<button class="sel-info-btn" data-act="delete">${t('workbench.action.delete')}</button>`}
+            <button class="btn sel-info-btn" data-act="center">${t('workbench.action.center_map')}</button>
+            ${isSynthetic ? '' : `<button class="btn sel-info-btn btn-danger" data-act="delete">${t('workbench.action.delete')}</button>`}
         </div>`;
 }
 

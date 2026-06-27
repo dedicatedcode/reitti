@@ -230,9 +230,12 @@
     window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
     window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
 
+    const startDate = /*[[${date}]]*/ null;
     dateSelection = new DateTimePicker(document.getElementById('startDatePicker'), {
         timeFormat: getBrowserTimeFormat(),
-        popupPlacement: 'top'
+        popupPlacement: 'top',
+        date: startDate
+
     });
 
     dateSelection.on('change', (value, date, instance) => {

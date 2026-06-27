@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
+import com.dedicatedcode.reitti.dto.timeline.UserDeviceRequest;
 import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -71,7 +72,7 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching user timeline data range for [{}] from {} to {}", integration, startDate, endDate);
                     try {
-                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, handleRemoteUser(integration), Collections.emptyList());
+                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, handleRemoteUser(integration), Collections.emptyList(), null);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -83,7 +84,7 @@ public class ReittiIntegrationService {
                 }).toList();
     }
 
-    public List<UserTimelineData> getTimelineDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
+    public List<UserTimelineData> getTimelineDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, UserDeviceRequest userDeviceRequest) {
         return this.jdbcService
                 .findAllByUser(user)
                 .stream().filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
@@ -94,7 +95,7 @@ public class ReittiIntegrationService {
                         RemoteUser remoteUser = handleRemoteUser(integration);
                         List<SingleTimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
 
-                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, remoteUser, timelineEntries);
+                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, remoteUser, timelineEntries, userDeviceRequest);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
                         update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
@@ -676,13 +677,14 @@ public class ReittiIntegrationService {
     }
 
 
-    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<SingleTimelineEntry> timelineEntries) {
+    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<SingleTimelineEntry> timelineEntries, UserDeviceRequest userDeviceRequest) {
         integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
 
         String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
         String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
 
-        return new UserTimelineData("remote:" + integration.getId(),
+        String timelineId = "remote:" + integration.getId();
+        return new UserTimelineData(timelineId,
                                     remoteUser.getDisplayName(),
                                     this.avatarService.generateInitials(remoteUser.getDisplayName()),
                                     "/reitti-integration/avatar/" + integration.getId(),
@@ -692,7 +694,8 @@ public class ReittiIntegrationService {
                                     String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
-                                    Collections.emptyList());
+                                    Collections.emptyList(),
+                                    userDeviceRequest != null && Objects.equals(timelineId, userDeviceRequest.userId()));
     }
 
 }
