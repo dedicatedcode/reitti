@@ -1,397 +1,227 @@
 ![](.github/banner.png)
 
+**Reitti** is a self-hosted personal location tracking and analysis application that helps you understand your movement
+patterns and significant places. The name comes from Finnish, meaning *"route"* or *"path"*.
 
-Reitti is a comprehensive personal location tracking and analysis application that helps you understand your movement patterns and significant places. The name "Reitti" comes from Finnish, meaning "route" or "path".
+---
 
 ## Features
 
-### Main View
+### Map & Timeline
 
-![](.github/screenshots/main.png)
+![Main View](.github/screenshots/bundled.png)
 
-### Multiple Users View
+*The main view — interactive timeline on the left, live map on the right.*
 
-![](.github/screenshots/multiple-users.png)
+- **Interactive Timeline** – Daily timeline showing visits and trips with duration and distance info.
+- **Visit & Trip Detection** – Automatically identifies places you spend time and tracks movements between them,
+  including transport-mode detection (walking, cycling, driving).
+- **Significant Places** – Recognize and name the locations you visit frequently.
+- **Raw GPS Tracks** – Visualize your complete movement path.
+- **Multi-User View** – See all your family and friends on a single map.
+- **Live Mode** – Watch incoming data appear on the map automatically — perfect for a kiosk display in fullscreen.
 
-### Live View Mode
+### Live Location Sharing
 
-![](.github/screenshots/livemode.png)
+![Live Sharing](.github/screenshots/livemode.png)
 
-### Statistics View
+*Live location sharing — follow family and friends on a single map, across instances, or via magic links.*
 
-![](.github/screenshots/statistics.png)
+Reitti lets you share your live location with others — and see theirs in return.
 
-### Login page
+- **Same-instance sharing** – Connect with other users on your Reitti instance and follow each other's positions in real
+  time.
+- **Federation** – Connect to other Reitti instances to share locations across servers. Your data stays on your own
+  server; only live positions are exchanged with trusted instances you configure.
+- **Magic Links** – Share a link with anyone — even people without an account on your instance. They'll be able to see
+  your live position (and optionally your recent track) for as long as the link remains valid. Great for sharing your
+  ETA with friends or letting someone follow your journey.
 
-![](.github/screenshots/login.png)
+> See the [Live Sharing Guide](https://www.dedicatedcode.com/projects/reitti/5.0/usage/share-access/) for setup details.
 
-### Core Location Analysis
-- **Visit Detection**: Automatically identify places where you spend time
-- **Trip Analysis**: Track your movements between locations with transport mode detection (walking, cycling, driving)
-- **Significant Places**: Recognize and categorize frequently visited locations with custom naming
-- **Timeline View**: Interactive daily timeline showing visits and trips with duration and distance information
-- **Raw Location Tracking**: Visualize your complete movement path with detailed GPS tracks
-- **Multi-User-View**: Visualize all your family and friends on a single map
-- **Live-Mode**: Visualize incoming data automatically without having to reload the map 
-- **Fullscreen-Mode**: Display the map in fullscreen. Combined with the Live-Mode you got a nice kiosk-display
+### Devices
 
-### Data Import & Integration
+![Workbench](.github/screenshots/workbench.gif)
 
-- **Multiple Import Formats**: Support for GPX files, Google Takeout JSON, Google Timeline Exports, and GeoJSON files
-- **Real-time Data Ingestion**: Live location updates via OwnTracks and GPSLogger mobile apps
-- **Batch Processing**: Efficient handling of large location datasets with direct processing
-- **API Integration**: RESTful API for programmatic data access and ingestion
+*The workbench — drag misplaced GPS points to their correct location and stitch data from different devices together.*
 
-### Photo Management
-- **Immich Integration**: Connect with self-hosted Immich photo servers
-- **Location-based Photos**: View photos taken at specific locations and dates on your timeline
-- **Interactive Photo Viewer**: Full-screen photo modal with keyboard navigation
-- **Photo Grid Display**: Organized photo galleries for locations with multiple images
+Reitti supports tracking **multiple devices** per user. Data ingested into the default device is automatically stitched
+together into a single personal timeline. For other devices, you can use the workbench to manually stitch their data by
+selecting the device and a time range — so you never lose a moment, even when you switch between your phone, a dedicated
+GPS logger, or other sources.
 
-### User Management & Security
-- **Multi-user Support**: Multiple user accounts with individual data isolation
-- **API Token Management**: Secure API access with token-based authentication
-- **User Profile Management**: Customizable display names and secure password management
+The workbench also lets you clean up your data directly on the map:
 
-### Geocoding & Address Resolution
-- **Multiple Geocoding Services**: Support for custom geocoding providers (Nominatim, etc.)
-- **Automatic Address Resolution**: Convert coordinates to human-readable addresses
-- **Service Management**: Configure multiple geocoding services with automatic failover
+- **Move GPS points** – Drag misplaced points to their correct location.
+- **Delete GPS points** – Remove outliers or erroneous data with one click.
 
-### Customization & Localization
-- **Multi-language Support**: Available in English, Finnish, German, and French
-- **Unit System**: Display distances in the Imperial or Metric system
-- **Queue Monitoring**: Real-time job status and processing queue visibility
-- **Custom Tiles-Server**: Ability to use your own tiles-server
+> See the [Devices Guide](https://www.dedicatedcode.com/projects/reitti/5.0/configurations/devices/) for setup details.
 
-### Privacy & Self-hosting
-- **Complete Data Control**: Your location data never leaves your server
-- **Self-hosted Solution**: Deploy on your own infrastructure
-- **Asynchronous Processing**: Handle large datasets efficiently with direct processing and task scheduling
+### Custom Map Styles
 
-## Getting Started
+![Custom Map Styles](.github/screenshots/styles.png)
 
-### Prerequisites
+*Custom map styles — the same location rendered with different styles.*
 
-- Java 25 or higher
-- Maven 3.6 or higher
-- Docker and Docker Compose
-- PostgreSQL database with spatial extensions (PostGIS)
-- Redis for caching and queueing
+You are no longer locked into a single look. Reitti lets you fully customize how your map appears:
 
-### Quick Start with Docker
+- **Upload** your own map style files.
+- **Link** to remote style URLs (e.g. from [MapTiler](https://maptiler.com), [Stadia Maps](https://stadiamaps.com), or
+  your own tile server).
+- Switch between styles instantly from the map view.
 
-The easiest way to get started is using Docker Compose:
+> See the [Map Styles Guide](https://www.dedicatedcode.com/projects/reitti/5.0/configurations/map-styles/) for details.
 
-1. Get the docker compose file
-   ```bash
-   mkdir reitti
-   cd reitti
-   wget https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml
-   ```
-   or manually downloading it [here](https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml)
-2. Adjust the compose-file to your needs
+### Photos
 
-3. Start all services (PostgreSQL, Redis and Reitti)
-   ```bash
-   docker compose up -d
-   ```
+![Photo Integration](.github/screenshots/main.png)
 
-5. Access the application at `http://localhost:8080`
+*Photo integration — photos from Immich appear on your timeline at the locations where they were taken.*
 
-6. Login with admin:admin
+- Integrate with a self-hosted [Immich](https://github.com/immich-app/immich) server.
+- Photos taken at specific locations and dates appear on your timeline.
+- Full-screen photo viewer with keyboard navigation and organized galleries.
 
-**Note for ARM64 users (Apple Silicon, etc.):** Until [postgis/docker-postgis#216](https://github.com/postgis/docker-postgis/issues/216) is fixed by the PostGIS team, users wanting to run Reitti on ARM64 platforms need to change the PostGIS image in the docker-compose file from `image: postgis/postgis:17-3.5-alpine` to `image: imresamu/postgis:17-3.5-alpine`.
+### Statistics
 
-### Development Setup
+![Statistics](.github/screenshots/statistics.png)
 
-For development or custom deployments:
+*Statistics — distance charts, top places, and transport-mode breakdowns.*
 
-1. Start infrastructure services
-   ```bash
-   docker compose up -d postgis redis
-   ```
+Get insights into your movement patterns with summary statistics and visualizations.
 
-2. Build and run the application
-   ```bash
-   mvn spring-boot:run
-   ```
+### Privacy & Self-Hosting
 
-3. Access the application at `http://localhost:8080`
+- Your location data **never leaves your server**.
+- Live location sharing only transmits your current position to instances and users you explicitly trust.
+- Magic links are revocable at any time and only expose what you choose to share.
+- Reverse geocoding works out of the box using hosted [Paikka](https://www.dedicatedcode.com/projects/paikka/)
+  instances — or configure your own geocoder if you prefer.
+- Deploy on your own infrastructure with Docker.
+- Multi-user support with full data isolation.
+- OIDC / single sign-on support.
 
-Default username and password is `admin`
+---
 
-### Building Docker Image
+## Quick Start
+
+The fastest way to try Reitti is with Docker Compose:
 
 ```bash
-# Build the application
-mvn clean package
-
-# Build the Docker image
-docker build -t reitti/reitti:latest .
-```
-
-### Initial Configuration
-
-After starting the application:
-
-1. **Generate API Token**: Create an API token in `Settings → API Tokens` for mobile app integration
-2. **Configure Geocoding**: Add geocoding services in `Settings → Geocoding` for address resolution.
-   See [Reverse Geocoding Options](https://www.dedicatedcode.com/projects/reitti/4.0/configurations/reverse-geocoding/)
-3. **Import Data**: Upload your location data via `Settings → Import Data`.
-   See [Data Import](https://www.dedicatedcode.com/projects/reitti/4.0/usage/import-data/)
-4. **Set up Mobile Apps**: Configure one of the supported apps for real-time tracking.
-   See [Mobile App Integration](https://www.dedicatedcode.com/projects/reitti/4.0/integrations/mobile-apps/)
-5.
-
-## Docker Deployment
-
-This [repository](https://hub.docker.com/r/dedicatedcode/reitti/) contains Docker images for the Reitti application.
-
-### Production Deployment
-
-For production use, we recommend using the provided docker-compose configuration:
-
-```bash
-# Pull the latest image
-docker pull dedicatedcode/reitti:latest
-
-# Start all services
+mkdir reitti && cd reitti
+wget https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml
 docker compose up -d
-
-# View logs
-docker compose logs -f reitti
 ```
 
-### Standalone Docker Usage
+Then open **http://localhost:8080**. On first login you'll be prompted to set a new admin password. A default API token
+is created automatically for you, so you can jump straight into connecting your devices.
 
-```bash
-# Run standalone with environment variables
-docker run -p 8080:8080 \
-  -e POSTGIS_HOST=postgres \
-  -e POSTGIS_PORT=5432 \
-  -e POSTGIS_DB=reittidb \
-  -e POSTGIS_USER=reitti \
-  -e POSTGIS_PASSWORD=reitti \
-  -e REDIS_HOST=redis \
-  -e REDIS_PORT=6379 \
-  -e REDIS_USERNAME= \
-  -e REDIS_PASSWORD= 
-  dedicatedcode/reitti:latest
-```
+> **ARM64 users** (Apple Silicon, etc.):
+> Until [postgis/docker-postgis#216](https://github.com/postgis/docker-postgis/issues/216) is resolved, change the PostGIS
+> image in the compose file to `imresamu/postgis:17-3.5-alpine`.
 
-### Docker Compose Configuration
+### Next Steps
 
-The included `docker-compose.yml` provides a complete setup with:
-- PostgreSQL with PostGIS extensions
-- Redis for caching and queueing
-- Reitti application with proper networking
-- Persistent data volumes
-- Health checks and restart policies
+1. **Set Up Devices** – `Settings → Devices` → see
+   the [Devices Guide](https://www.dedicatedcode.com/projects/reitti/5.0/configurations/devices/).
+2. **Connect a Mobile App** – `Settings → Integrations` → see
+   the [Mobile App Guide](https://www.dedicatedcode.com/projects/reitti/5.0/integrations/mobile-apps/). Your default API
+   token is ready to use.
+3. **Import Data** – `Settings → Import Data` → see
+   the [Data Import Guide](https://www.dedicatedcode.com/projects/reitti/5.0/usage/import-data/).
+4. **Customize Your Map** – `Settings → Map Styles` → see
+   the [Map Styles Guide](https://www.dedicatedcode.com/projects/reitti/5.0/configurations/map-styles/).
+5. **Share Your Live Location** – `Settings → Live Sharing` → see
+   the [Live Sharing Guide](https://www.dedicatedcode.com/projects/reitti/5.0/usage/live-sharing/).
 
-### Environment Variables
+---
 
-| Variable                       | Description                                                                                                                                                                     | Default             | Example                          |
-|--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|----------------------------------|
-| `POSTGIS_HOST`                 | PostgreSQL database host                                                                                                                                                        | postgis             | postgis                          |
-| `POSTGIS_PORT`                 | PostgreSQL database port                                                                                                                                                        | 5432                | 5432                             |
-| `POSTGIS_DB`                   | PostgreSQL database name                                                                                                                                                        | reittidb            | reittidb                         |
-| `POSTGIS_USER`                 | Database username                                                                                                                                                               | reitti              | reitti                           |
-| `POSTGIS_PASSWORD`             | Database password                                                                                                                                                               | reitti              | reitti                           |
-| `REDIS_HOST`                   | Redis host                                                                                                                                                                      | redis               | redis                            |
-| `REDIS_PORT`                   | Redis port                                                                                                                                                                      | 6379                | 6379                             |
-| `REDIS_USERNAME`               | Redis username (optional)                                                                                                                                                       |                     | username                         |
-| `REDIS_PASSWORD`               | Redis password (optional)                                                                                                                                                       |                     | password                         |
-| `REDIS_DATABASE`               | Redis database to use (optional)                                                                                                                                                | 0                   | 1                                |
-| `REDIS_CACHE_PREFIX`           | Redis cache key prefix (optional)                                                                                                                                               |                     | reitti_cache:                    |
-| `ADVERTISE_URI`                | Routable URL of the instance. Used for federation of multiple instances. (optional)                                                                                             |                     | https://reitti.lab               |
-| `DISABLE_LOCAL_LOGIN`          | Whether to disable the local login form (username/password) This only works, if OIDC login is configured.                                                                       | false               | true                             |
-| `OIDC_ENABLED`                 | Whether to enable OIDC sign-ins                                                                                                                                                 | false               | true                             |
-| `OIDC_CLIENT_ID`               | Your OpenID Connect Client ID (from your provider)                                                                                                                              |                     | google                           |
-| `OIDC_CLIENT_SECRET`           | Your OpenID Connect Client secret (from your provider)                                                                                                                          |                     | F0oxfg8b2rp5X97YPS92C2ERxof1oike |
-| `OIDC_ISSUER_URI`              | Your OpenID Connect Provider Discovery URI (don't include the /.well-known/openid-configuration part of the URI)                                                                |                     | https://github.com/login/oauth   |
-| `OIDC_SCOPE`                   | Your OpenID Connect scopes for your user (optional)                                                                                                                             | openid,profile      | openid,profile                   |
-| `OIDC_AUTHENTICATION_METHOD`   | The authentication method the OIDC Client should use (optional)                                                                                                                 | client_secret_basic | client_secret_basic,none         |
-| `OIDC_SIGN_UP_ENABLED`         | Whether new users should be signed up automatically if they first login via the OIDC Provider. (optional)                                                                       | true                | false                            |
-| `DANGEROUS_LIFE`               | Enables data management features that can reset/delete all database data (⚠️ USE WITH CAUTION)                                                                                  | false               | true                             |
-| `TILES_CACHE`                  | The url of the tile caching proxy (Set to ''  to disable the cache)                                                                                                            | http://tile-cache   |                                  |
-| `PROCESSING_BATCH_SIZE`        | How many geo points should we handle at once. For low-memory environment it could be needed to set this to 100.                                                                 | 1000                | 100                              |
-| `SERVER_PORT`                  | Application server port                                                                                                                                                         | 8080                | 8080                             |
-| `APP_UID`                      | User ID to run the application as                                                                                                                                               | 1000                | 1000                             |
-| `APP_GID`                      | Group ID to run the application as                                                                                                                                              | 1000                | 1000                             |
-| `JAVA_OPTS`                    | JVM options                                                                                                                                                                     |                     |                                  |
-| `BASE_PATH`                    | Set to server reitti under a path.                                                                                                                                              | /                   | /reitti                          |
-| `LOGGING_LEVEL`                | Used to adjust the verbosity of the logs                                                                                                                                        | INFO                | DEBUG                            |
+## Data Import & Integrations
 
-### Tags
+| Source                 | Type        | Docs                                                                                                 |
+|------------------------|-------------|------------------------------------------------------------------------------------------------------|
+| GPX files              | File upload | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/api/gpx-import/)                           |
+| Google Takeout JSON    | File upload | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/usage/import-data/)                        |
+| Google Timeline Export | File upload | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/usage/import-data/)                        |
+| GeoJSON                | File upload | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/api/geojson/)                              |
+| OwnTracks              | Real-time   | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/integrations/mobile-apps/#owntracks-setup) |
+| GPSLogger              | Real-time   | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/integrations/mobile-apps/#gpslogger-setup) |
+| Overland               | Real-time   | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/integrations/mobile-apps/#overland-setup)  |
+| Home Assistant         | Real-time   | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/integrations/home-assistant/)              |
+| REST API               | Custom      | [Guide](https://www.dedicatedcode.com/projects/reitti/5.0/api/ingest/)                               |
 
-- `next` - **⚠️ DANGER: ALPHA BUILD ⚠️** This is an alpha build that is recreated on every push to the `next` branch. **DO NOT USE THIS TAG** unless you are a developer testing the next version. It is guaranteed to have bugs, may delete your database, and can break your data. **NOT FOR PRODUCTION OR IMPORTANT DATA.**
-- `develop` - **Bleeding Edge**: Built from every push to the main branch. For developers and early adopters who want the newest features and don't mind potential instability.
-- `latest` - **Stable Release**: Updated with each stable release. For most users who want reliable, tested functionality with new features.
-- `x.y.z` - **Conservative**: Specific version releases for users who want full control over updates and prefer to manually choose when to upgrade.
+---
 
-## Data Flow & Architecture
+## Configuration
 
-### Location Data Processing Pipeline
+### Docker Image Tags
 
-1. **Data Ingestion**: Location data enters the system via:
-   - File uploads (GPX, Google Takeout, GeoJSON)
-   - Real-time mobile app integration (OwnTracks, GPSLogger)
-   - REST API endpoints
+Reitti publishes several Docker image tags to serve different needs:
 
-2. **Analysis & Detection**: The application directly processes the data to:
-   - Detect significant places where you spend time
-   - Identify trips between locations
-   - Determine transport modes (walking, cycling, driving)
-   - Calculate distances and durations
+| Tag       | Stability     | Use Case                                                                                                                                                                                                                                     |
+|-----------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `latest`  | Stable        | Points to the most recent stable release. Use this if you want updates as soon as they're published and don't mind occasionally pulling a new major version.                                                                                 |
+| `5`       | Stable        | Points to the latest release within the 5.x series. You get bug fixes and minor features without the risk of a major version jump — a good balance of freshness and stability.                                                               |
+| `5.0.2`   | Stable        | A pinned specific release. Use this in production when you need reproducible deployments and full control over when you upgrade.                                                                                                             |
+| `develop` | Bleeding edge | Rebuilt on every push to `main`. Includes features and fixes that haven't been released yet. Use this if you want to test upcoming changes or contribute — but expect occasional rough edges.                                                |
+| `next`    | Alpha         | Represents the next major version in development. **Do not use in production** — the database schema may change in ways that aren't backward-compatible, which can corrupt or lose your data. Only for testing the next major release cycle. |
 
-3. **Storage & Indexing**: Results are stored in PostgreSQL with:
-   - Spatial indexing for efficient geographic queries
-   - Temporal indexing for timeline operations
-   - User data isolation and security
+> **Recommendation:** For most self-hosters we recommend using the major-version tag (e.g. `reitti:5`). It gives you bug
+> fixes and new features within the current major version automatically, while protecting you from breaking changes that
+> come with a new major release. Pin a full version (e.g. `reitti:5.0.2`) if you need strict reproducibility — for
+> example, in automated deployments or when you want to upgrade manually after testing.
 
-4. **Task Scheduling**: Redis is used for scheduling background tasks:
-   - Reverse geocoding requests
-   - User notifications
-   - Other asynchronous operations
+### Key Environment Variables
 
-5. **Visualization**: Web interface displays processed data as:
-   - Interactive timeline with visits and trips
-   - Map visualization with location markers
-   - Photo integration showing images taken at locations
-   - Statistical summaries and insights
+| Variable                | Description                                       | Default    |
+|-------------------------|---------------------------------------------------|------------|
+| `POSTGIS_HOST`          | PostgreSQL host                                   | `postgis`  |
+| `POSTGIS_PORT`          | PostgreSQL port                                   | `5432`     |
+| `POSTGIS_DB`            | PostgreSQL database name                          | `reittidb` |
+| `POSTGIS_USER`          | PostgreSQL user                                   | `reitti`   |
+| `POSTGIS_PASSWORD`      | PostgreSQL password                               | `reitti`   |
+| `REDIS_HOST`            | Redis host                                        | `redis`    |
+| `REDIS_PORT`            | Redis port                                        | `6379`     |
+| `REDIS_PASSWORD`        | Redis password                                    | —          |
+| `OIDC_ENABLED`          | Enable OpenID Connect login                       | `false`    |
+| `OIDC_ISSUER_URI`       | OIDC provider issuer URI                          | —          |
+| `OIDC_CLIENT_ID`        | OIDC client ID                                    | —          |
+| `OIDC_CLIENT_SECRET`    | OIDC client secret                                | —          |
+| `BASE_PATH`             | Serve Reitti under a sub-path                     | `/`        |
+| `DANGEROUS_LIFE`        | Enable data-reset features (**use with caution**) | `false`    |
+| `PROCESSING_BATCH_SIZE` | Geo points processed per batch                    | `1000`     |
 
-### Mobile App Integration
+> For the full list of environment variables, deployment options, and OIDC setup, see
+> the [Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/5.0/infrastructure/oidc/).
 
-Configure mobile apps for automatic location tracking:
+---
 
-- **[OwnTracks](https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/#owntracks-setup)**:
-  Privacy-focused location sharing
-- **[GPSLogger](https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/#gpslogger-setup)**:
-  Lightweight Android GPS logging
-- **[Overland](https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/#overland-setup)**:
-  Lightweight IOS GPS logging
-- **[Home-Assistant](https://www.dedicatedcode.com/projects/reitti/latest/integrations/home-assistant/)**: Use
-  Home-Assistant to send location data
-- **[Custom Apps](https://www.dedicatedcode.com/projects/reitti/latest/integrations/custom-file-upload/)**: Use the REST
-  API for custom integrations
+## Backup
 
-### Photo Integration
+- **Back up regularly:** the PostGIS database **and** the Reitti storage volume (uploaded files).
+- Redis and other stateless services do **not** need to be backed up.
 
-Connect with Immich photo servers to:
-- Display photos taken at specific locations
-- Show images on the timeline map
-- Browse photo galleries by location and date
+→ [Backup Guide](https://www.dedicatedcode.com/projects/reitti/5.0/backup/)
 
-## Reverse Geocoding Options
+---
 
-Reitti supports multiple approaches for reverse geocoding (converting coordinates to human-readable addresses). You can choose the option that best fits your privacy, performance, and storage requirements.
-For more information, visit
-the [Reverse Geocoding Guide](https://www.dedicatedcode.com/projects/reitti/latest/guides/reverse-geocoding/).
+## Contributing & Support
 
-## Open ID Connect (OIDC)
-Reitti supports using a third party OIDC provider for sign-ins. It provides the following environment variables which are required for OIDC authentication.
+Contributions are welcome! Please feel free to open a Pull Request.
 
-- `OIDC_ENABLED`
-- `OIDC_CLIENT_ID`
-- `OIDC_CLIENT_SECRET`
-- `OIDC_ISSUER_URI`
-- `OIDC_SCOPE` (optional: should usually be set to "openid,profile")
+**Get support:**
 
-Setting `OIDC_ENABLED = true` enables OIDC, whereas the remaining need to be found from your OIDC provider, e.g. github. See the [Environment Variables](#environment-variables) section for examples.
-
-For detailed OIDC configuration instructions and provider-specific examples, see the [OIDC documentation](https://www.dedicatedcode.com/projects/reitti/configurations/oidc/).
-
-There are two URLs provided by reitti that you should give to your OIDC provider (see their documentation for further information on this), one of which is required.
-- (Required) Callback URL: https://<your-reitti-url>/login/oauth2/code/oauth (e.g. `https://reitti.internal/login/oauth2/code/oauth`)
-- (Optional) Logout callback URL: https://<your-reitti-url>/logout/connect/back-channel/oauth
-
-The logout callback URL will allow your OIDC provider to sign you out of Reitti when you sign out from your provider. If you don't set it, you will have to manually sign out of Reitti even if you sign out from your OIDC provider.
-
-### Login Requirements
-
-Reitti's OIDC authentication follows a flexible user matching and creation process:
-
-#### User Matching Process
-1. **Primary Match**: First attempts to find an existing user by `external_id` (format: `{issuer}:{subject}`)
-2. **Fallback Match**: If no external_id match, searches for a user with the OIDC `preferred_username`
-3. **Account Linking**: When a username match is found, the account is updated with the external_id for future logins
-
-#### User Creation
-- **Automatic Registration**: When `OIDC_SIGN_UP_ENABLED=true` (default), new users are automatically created if no match is found
-- **Registration Disabled**: When `OIDC_SIGN_UP_ENABLED=false`, login fails with an error if no existing user matches
-
-#### User Data Handling
-- **Username**: Set to the OIDC `preferred_username` 
-- **Display Name**: Updated from OIDC `name` claim on each login
-- **External ID**: Set to `{issuer}:{subject}` for permanent account linking
-- **Profile URL**: Updated from OIDC `profile` claim if available
-- **Avatar**: Automatically downloaded from OIDC `picture` claim if provided
-
-#### Password Management
-- **Local Login Enabled** (`DISABLE_LOCAL_LOGIN=false`): Existing passwords are preserved, allowing both OIDC and local authentication
-- **Local Login Disabled** (`DISABLE_LOCAL_LOGIN=true`): Passwords are cleared from accounts to enforce OIDC-only authentication
-
-#### Required OIDC Claims
-Your OIDC provider must provide these claims for successful authentication:
-- `sub` (subject) Required for external_id generation
-- `preferred_username` - Required for username assignment
-- `name` - Recommended for display name
-- `profile` - Optional for profile URL
-- `picture` - Optional for avatar download
-
-#### PKCE
-
-To enable PKCE for the OIDC Client, you need to set `OIDC_AUTHENTICATION_METHOD` to `none` and make sure that you do not set `OIDC_CLIENT_SECRET`.
-
-
-#### Security Considerations
-- External IDs are immutable once set, ensuring account security even if usernames change in the OIDC provider
-- User data is updated on each login to keep information current
-- Avatar downloads are performed securely with error handling for network failures
-
-## Technologies
-
-## Backup & Data Persistence
-
-- **Backup Requirements:** 
-  - The PostGIS database needs to be backed up regularly. This database contains all user location data, analysis results, and other persistent information.
-  - The storage path used by Reitti needs to be backed up regularly. This contains uploaded files.
-- **Stateless Services:** All other components (Redis, Photon, etc.) are stateless and do not store any important data. These can be redeployed or restarted without risk of data loss.
-
-**Recommended Backup Strategy:**
-- Use standard PostgreSQL backup tools (such as `pg_dump` or physical volume snapshots) to back up your database.
-- Back up the entire storage directory/volume used by Reitti for file storage.
-- Ensure backups are performed regularly and stored securely.
-- No backup is needed for Redis and Photon.
-
-**Restore:**
-- In case of disaster recovery, restore both the PostGIS database and the storage path to recover all user data and history.
-
-For more details, see the [Reitti backup documentation](https://www.dedicatedcode.com/projects/reitti/latest/backup/).
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Getting support
-
-There are multiple ways of getting support:
-
-- create a [new issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
-- tag me on [Lemmy](https://discuss.tchncs.de/u/danielgraf)
-- or join **#reitti** on [libera.chat](https://libera.chat)
+- Open a [new issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
+- Tag [@danielgraf](https://discuss.tchncs.de/u/danielgraf) on Lemmy
+- Join **#reitti** on [libera.chat](https://libera.chat)
 
 ## Translations
 
-We are using [weblate](https://hosted.weblate.org/engage/reitti/) to translate Reitti. If you want to add your language,
-click on this [link](https://hosted.weblate.org/engage/reitti/)
+We use [Weblate](https://hosted.weblate.org/engage/reitti/) for translations. Help us add your language!
 
 [![Translation status](https://hosted.weblate.org/widget/reitti/reitti/multi-auto.svg)](https://hosted.weblate.org/engage/reitti/)
 
-## Support the Project
-
-<a href='https://ko-fi.com/K3K01HDAUW' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+---
 
 ## Star History
 
@@ -399,4 +229,5 @@ click on this [link](https://hosted.weblate.org/engage/reitti/)
 
 ## License
 
-This project is licensed under the GNU Affero General Public License Version 3 (AGPLv3), see the LICENSE file for details.
+This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). See the [LICENSE](LICENSE)
+file for details.
