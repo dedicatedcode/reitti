@@ -17,7 +17,7 @@
         <th:block th:each="userData, iterStat : ${timelineData.users}">
             <div th:title="${userData.displayName}" th:if="${userData}"
                  class="user-header"
-                 th:classappend="${iterStat.first} ? 'active' : ''"
+                 th:classappend="${userData.active} ? 'active' : ''"
                  th:data-user-id="${userData.userId}"
                  onclick="selectUser(this)">
                 <img th:src="@{${userData.userAvatarUrl}}"
@@ -46,6 +46,7 @@
             </div>
             <div th:title="${device.name()}" th:if="${device}" th:each="device : ${userData.devices}"
                  class="device-header"
+                 th:classappend="${device.active} ? 'active' : ''"
                  th:data-user-id="${userData.userId}"
                  th:data-device-id="${device.id()}"
                  th:data-device-color="${device.color()}"
@@ -65,7 +66,7 @@
     </div>
     <div th:if="${userData}" th:each="userData, iterStat : ${timelineData.users}"
          class="user-timeline-section"
-         th:classappend="${iterStat.first} ? 'active' : ''"
+         th:classappend="${userData.active} ? 'active' : ''"
          th:data-user-id="${userData?.userId}"
          th:data-base-color="${userData?.baseColor}"
          th:data-raw-location-points-url="${userData?.rawLocationPointsUrl}"
