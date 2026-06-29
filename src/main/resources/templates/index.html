@@ -38,7 +38,7 @@
     <script th:src="@{/js/map-controls.js}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
-    <script th:src="@{/js/SettingsMenu.js}"></script>
+    <script th:src="@{/js/map-settings.js}"></script>
     <script th:src="@{/js/auto-complete.js}"></script>
     <script th:src="@{/js/vendor/chart.js}"></script>
     <style>
@@ -230,37 +230,6 @@
         document.getElementById('time-display')
     );
 
-    let lastAnimatingState = null;
-
-    timelineControl.on('offsetChanged', () => {
-        const isIdle = timelineControl.isIdle();
-        const shouldAnimate = !isIdle;
-
-        // Check if the animating state has changed since the last update
-        if (lastAnimatingState !== shouldAnimate) {
-            lastAnimatingState = shouldAnimate;
-
-            // State changed: we need a full structural rebuild to add/remove TripsLayers
-            const newState = createViewState([]);
-            newState.animating = shouldAnimate;
-
-            if (shouldAnimate) {
-                // Starting animation: set the initial time before rebuild
-                // so the first frame shows the correct trail position
-                newState.currentTime = timelineControl.getValue();
-            }
-
-            mapRenderer.updateViewState(newState).then(() => {
-                // If we just started animating, the first currentTime is already set.
-                // If we just stopped, the static path will show.
-            });
-        } else {
-            // State is the same. If we are animating, just do a lightweight time update.
-            if (shouldAnimate) {
-                mapRenderer.setCurrentTime(timelineControl.getValue());
-            }
-        }
-    });
     const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
     const settingsMenu = new SettingsMenu('settings-menu-container');
 
@@ -381,9 +350,16 @@
         }
     }
 
+
     let linearProgress = 0;
+    let isFollowing = localStorage.getItem('followTrail') !== 'false';
 
     function animate(now) {
+        console.log('mapRenderer keys:', Object.keys(mapRenderer));
+        console.log('has map:', !!mapRenderer.map);
+        console.log('has getMap:', typeof mapRenderer.getMap);
+        console.log('selectedManager:', mapRenderer.selectedManager)
+        console.log('isFollowing:', isFollowing)
         if (!isPlaying) return;
         if (lastFrameTime === null) {
             lastFrameTime = now;
@@ -391,10 +367,9 @@
             return;
         }
 
-        const deltaTime = (now - lastFrameTime) / 1000; // seconds
+        const deltaTime = (now - lastFrameTime) / 1000;
         lastFrameTime = now;
 
-        // Prevent large jumps (e.g., tab switching)
         if (deltaTime > 0.1) {
             animationId = requestAnimationFrame(animate);
             return;
@@ -402,14 +377,12 @@
 
         const manager = gpsDataManagers[0];
 
-        // Calculate linear progress (0 → 1) over the full loop
-
         const totalLoopTime = parseFloat(timelineControl.getMaxOffset()) / timeMultiplier;
         const activityPerSecond = manager.totalActivity / totalLoopTime;
         linearProgress += (deltaTime * activityPerSecond) / manager.totalActivity;
 
         if (linearProgress >= 1) {
-            linearProgress -= 1; // loop back to start
+            linearProgress -= 1;
         }
 
         const warp = document.getElementById('speed-selector').value === 'adaptive';
@@ -417,7 +390,6 @@
         if (manager && typeof manager.getDisplayTimestamp === 'function') {
             const minTs = manager.minTimestamp;
             if (timelineControl.aggregate) {
-                // aggregate mode: timestamp is seconds-of-day (0–86400)
                 adaptedOffset = linearProgress * 86400;
             } else {
                 const adaptedTimestamp = manager.getDisplayTimestamp(linearProgress, warp, timelineControl.aggregate);
@@ -426,9 +398,27 @@
         } else {
             adaptedOffset = linearProgress * parseFloat(timelineControl.getMaxOffset());
         }
-        // Apply the adapted offset to the slider and the map
+
         timelineControl.setOffset(adaptedOffset);
         mapRenderer.updateViewState(createViewState([]));
+
+        if (isFollowing) {
+            const aggregateToggle = document.getElementById('aggregate-toggle');
+            const isAggregate = aggregateToggle ? aggregateToggle.checked : false;
+            const ct = timelineControl.getValue();
+            const testPos = gpsDataManagers[0].getCurrentPosition(ct, isAggregate);
+            console.log('follow debug:', {
+                currentTime: ct,
+                isAggregate: isAggregate,
+                minTimestamp: gpsDataManagers[0].minTimestamp,
+                cleanedCursor: gpsDataManagers[0].cleanedCursor,
+                testPos: testPos,
+                mapExists: !!mapRenderer.map,
+                selectedManager: mapRenderer.selectedManager
+            });
+
+            followTrail();
+        }
 
         animationId = requestAnimationFrame(animate);
     }
@@ -440,9 +430,70 @@
             case 'TWELVE_HOUR':
                 return new Date(ts).toLocaleDateString(window.userSettings.selectedLocale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         }
-
     }
 
+    let followedManagerId = null;
+
+    let lastFollowTime = 0;
+    let userInteracting = false;
+
+    // Detect user interaction
+    mapRenderer.map.on('zoomstart', () => { userInteracting = true; });
+    mapRenderer.map.on('rotatestart', () => { userInteracting = true; });
+    mapRenderer.map.on('dragstart', () => { userInteracting = true; });
+    mapRenderer.map.on('zoomend', () => { userInteracting = false; });
+    mapRenderer.map.on('rotateend', () => { userInteracting = false; });
+    mapRenderer.map.on('dragend', () => { userInteracting = false; });
+
+    function followTrail() {
+        if (userInteracting) return;  // Don't fight the user
+
+        // Throttle to every 200ms instead of every frame
+        const now = performance.now();
+        if (now - lastFollowTime < 200) return;
+        lastFollowTime = now;
+
+        const aggregateToggle = document.getElementById('aggregate-toggle');
+        const isAggregate = aggregateToggle ? aggregateToggle.checked : false;
+        const currentTime = timelineControl.getValue();
+
+        const map = mapRenderer.map;
+        if (!map) return;
+
+        if (map.getZoom() < 5) return;
+
+        const selectedManager = mapRenderer.selectedManager;
+
+        let targetPos = null;
+        let bestVelocity = -1;
+        let bestManagerId = null;
+
+        for (const manager of gpsDataManagers) {
+            if (selectedManager != null && manager.id !== selectedManager) continue;
+
+            const pos = manager.getCurrentPosition(currentTime, isAggregate);
+            if (!pos) continue;
+
+            const velocity = manager.getCurrentVelocity(currentTime, isAggregate);
+            const hysteresis = manager.id === followedManagerId ? 1.5 : 1.0;
+            const adjustedVelocity = velocity * hysteresis;
+
+            if (adjustedVelocity > bestVelocity) {
+                bestVelocity = adjustedVelocity;
+                targetPos = pos;
+                bestManagerId = manager.id;
+            }
+        }
+
+        if (!targetPos) return;
+
+        followedManagerId = bestManagerId;
+
+        // Use jumpTo instead of easeTo — instant, no animation conflict
+        map.easeTo({
+            center: [targetPos.lng, targetPos.lat]
+        });
+    }
     function updateStatus(message, current, total) {
         const bar = document.getElementById('progress-bar');
         const text = document.getElementById('status-text');
@@ -1138,12 +1189,39 @@
             }
         };
 
+        playBtn.onclick = () => {
+            if (isPlaying) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+        };
+
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 settingsMenu.open();
             });
+        }
+
+        function startAnimation() {
+            isPlaying = true;
+            playBtn.innerHTML = '<i class="lni lni-pause"></i>';
+            lastFrameTime = null;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function stopAnimation() {
+            isPlaying = false;
+            playBtn.innerHTML = '<i class="lni lni-play"></i>';
+            followedManagerId = null;    // ← reset
+            lastFollowCenter = null;     // ← reset
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            timelineControl.setOffset(0);
+            mapRenderer.updateViewState(createViewState([]));
         }
 
         document.addEventListener('click', function (event) {
@@ -1186,6 +1264,9 @@
                     break;
                 case 'showAvatars':
                     updateAvatarsVisibility();
+                    break;
+                case 'followTrail':
+                    isFollowing = value;
                     break;
             }
         });
