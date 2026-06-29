@@ -210,7 +210,7 @@
             <div th:if="${isAdmin}">
                 <div class="form-group slide-reveal-container">
                     <input type="checkbox" name="proxyTiles" id="custom-map-style-share-copy"
-                           th:checked="${style?.dataSource.proxyTiles}">
+                           th:checked="${style?.dataSource?.proxyTiles}">
                     <label for="custom-map-style-share-copy" class="slide-reveal">
                         <span class="slide-box"></span>
                         <span class="label-text" th:text="#{map.settings.dialog.map-styles.proxy-tiles}">Proxy tiles through Reitti</span>
