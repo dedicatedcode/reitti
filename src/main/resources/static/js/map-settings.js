@@ -60,6 +60,18 @@ class SettingsMenu {
                                 <span class="slide-box"></span>
                                 <span class="label-text">${t('map.settings.dialog.interface.show-avatars')}</span>
                             </label>
+                            <span class="form-description font-small">${t('map.settings.dialog.interface.show-avatars.description')}</span>
+                        </div>
+                    </div>
+                    <div class="divider left">${t('map.settings.dialog.replay.title')}</div>
+                    <div class="settings-section">
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" id="follow-trail-checkbox">
+                            <label for="follow-trail-checkbox" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text">${t('map.settings.dialog.replay.follow-trail')}</span>
+                            </label>
+                            <span class="form-description font-small">${t('map.settings.dialog.replay.follow-trail.description')}</span>
                         </div>
                     </div>
                 </div>
@@ -99,7 +111,12 @@ class SettingsMenu {
         if (showAvatarsCheckbox) {
             showAvatarsCheckbox.checked = localStorage.getItem('showAvatars') !== 'false'; // default true
         }
-        
+
+        const followTrailCheckbox = this.menu.querySelector('#follow-trail-checkbox');
+        if (followTrailCheckbox) {
+            followTrailCheckbox.checked = localStorage.getItem('followTrail') !== 'false'; // default true
+        }
+
         // Load and apply saved settings
         this.loadSettings();
     }
@@ -141,6 +158,13 @@ class SettingsMenu {
         if (showAvatarsCheckbox) {
             showAvatarsCheckbox.addEventListener('change', (e) => {
                 this.updateShowAvatars(e.target.checked);
+            });
+        }
+
+        const followTrailCheckbox = this.menu.querySelector('#follow-trail-checkbox');
+        if (followTrailCheckbox) {
+            followTrailCheckbox.addEventListener('change', (e) => {
+                this.updateFollowTrail(e.target.checked);
             });
         }
     }
@@ -229,6 +253,11 @@ class SettingsMenu {
         this.dispatchSettingsChange('showAvatars', visible);
     }
 
+    updateFollowTrail(visible) {
+        localStorage.setItem('followTrail', visible);
+        this.dispatchSettingsChange('followTrail', visible);
+    }
+
     open() {
         if (this.isVisible) return;
         
@@ -266,7 +295,8 @@ class SettingsMenu {
             timelineHidden: localStorage.getItem('timelineHidden') === 'true',
             datepickerHidden: localStorage.getItem('datepickerHidden') === 'true',
             timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true',
-            showAvatars: localStorage.getItem('showAvatars') !== 'false'
+            showAvatars: localStorage.getItem('showAvatars') !== 'false',
+            followTrail: localStorage.getItem('followTrail') !== 'false'
         };
         
         this.applySettings(settings);
@@ -289,6 +319,11 @@ class SettingsMenu {
         const showAvatarsCheckbox = this.menu.querySelector('#show-avatars-checkbox');
         if (showAvatarsCheckbox) {
             showAvatarsCheckbox.checked = settings.showAvatars;
+        }
+
+        const followTrailCheckbox = this.menu.querySelector('#follow-trail-checkbox');
+        if (followTrailCheckbox) {
+            followTrailCheckbox.checked = settings.followTrail;
         }
 
         // Apply timeline visibility

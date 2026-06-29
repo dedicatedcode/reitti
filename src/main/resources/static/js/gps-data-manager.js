@@ -628,5 +628,78 @@ class GpsDataManager {
         return [r, g, b];
     }
 
+    getCurrentVelocity(currentTime, isAggregate, lookbackSeconds = 30) {
+        const current = this.getCurrentPosition(currentTime, isAggregate);
+        if (!current) return 0;
 
+        let pastTime;
+        if (isAggregate) {
+            pastTime = currentTime - lookbackSeconds;
+            if (pastTime < 0) return 0;
+        } else {
+            pastTime = currentTime - lookbackSeconds;  // ← absolute timestamp minus lookback
+        }
+
+        const past = this.getCurrentPosition(pastTime, isAggregate);
+        if (!past) return 0;
+
+        const dLng = current.lng - past.lng;
+        const dLat = current.lat - past.lat;
+        return Math.sqrt(dLng * dLng + dLat * dLat) / lookbackSeconds;
+    }
+    getCurrentPosition(currentTime, isAggregate) {
+        if (this.cleanedCursor === 0) {
+            return null;
+        }
+
+        const buffer = this.cleanedBuffer;
+        const stride = 6;
+
+        if (isAggregate) {
+            // Aggregate mode: currentTime is seconds-of-day (0–86400)
+            let bestIdx = -1;
+            let bestDiff = Infinity;
+            for (let i = 0; i < this.cleanedCursor; i++) {
+                const aggTs = buffer[i * stride + 5];
+                const diff = Math.abs(aggTs - currentTime);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestIdx = i;
+                }
+            }
+            if (bestIdx === -1) return null;
+            return {
+                lng: buffer[bestIdx * stride],
+                lat: buffer[bestIdx * stride + 1]
+            };
+        } else {
+            // Non-aggregate: currentTime IS the absolute timestamp
+            const targetTs = currentTime;  // ← FIX: don't add minTimestamp
+
+            // Binary search by LinTs (index 3)
+            let lo = 0, hi = this.cleanedCursor - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (buffer[mid * stride + 3] < targetTs) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            let bestIdx = lo;
+            if (lo > 0) {
+                const diffLo = Math.abs(buffer[lo * stride + 3] - targetTs);
+                const diffPrev = Math.abs(buffer[(lo - 1) * stride + 3] - targetTs);
+                if (diffPrev < diffLo) bestIdx = lo - 1;
+            }
+
+            if (bestIdx >= this.cleanedCursor) bestIdx = this.cleanedCursor - 1;
+
+            return {
+                lng: buffer[bestIdx * stride],
+                lat: buffer[bestIdx * stride + 1]
+            };
+        }
+    }
 }
