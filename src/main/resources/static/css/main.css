@@ -289,12 +289,15 @@ header {
     -webkit-user-select: none;
 }
 
+.font-small {
+    font-size: 0.8rem;
+}
+
 .settings-menu {
     position: fixed;
     bottom: 180px;
     right: 20px;
     width: 300px;
-    max-height: 400px;
     background: var(--color-background-dark);
     color: var(--color-text-white);
     border-radius: 12px;
@@ -348,7 +351,6 @@ header {
 
 .settings-menu-content {
     padding: 16px;
-    max-height: 320px;
     overflow-y: auto;
 }
 

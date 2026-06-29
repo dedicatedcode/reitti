@@ -125,7 +125,7 @@ class MapRenderer {
 
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         MapRenderer.ensureRTLTextPlugin();
-
+        this._debug = false;
         this.userSettings = userSettings;
         this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
@@ -265,9 +265,583 @@ class MapRenderer {
         this.highlightLayer = null;
         this._initialLoadPromise = this._initializeInitialStyle();
 
+        this._layerInstances = [];           // Current array of deck.gl layer instances
+        this._layerContextKey = null;         // Structural fingerprint of current layers
+        this._terrainExtension = null;        // Cached TerrainExtension instance
+        this._terrainExtensionsArray = null;  // Cached [extension] array (stable ref)
+        this._emptyExtensionsArray = [];      // Stable empty array ref
+        this._cachedVisitPlaces = new Map();  // managerId -> places array (stable ref)
+        this._cachedFilteredPolygons = new Map(); // managerId -> filtered places (stable ref)
+        this._cachedLayerData = new Map();    // cacheKey -> layerData (per-build cache)
+        this._currentZoom = 0;
+        this._zoomDebounceId = null;
+
+
         this._setup();
     }
 
+    /**
+     * Returns a FRESH extensions array each call, but reuses the
+     * same TerrainExtension instance. deck.gl diffs extensions by
+     * the extension OBJECT identity, not the array reference, so
+     * this avoids re-initialization while preventing array mutation
+     * conflicts between layers.
+     */
+    _getTerrainExtensions() {
+        if (this.viewState.renderTerrain) {
+            if (!this._terrainExtension) {
+                this._terrainExtension = new deck._TerrainExtension({
+                    elevationLayerId: 'terrain-loader'
+                });
+            }
+            // New array each call — deck.gl mutates the array during init
+            return [this._terrainExtension];
+        }
+        return [];
+    }
+
+    /**
+     * PathLayer has no getTimestamps accessor. When the data object
+     * from getLayerData() contains getTimestamps in attributes,
+     * deck.gl asserts that every attribute maps to a known accessor.
+     *
+     * This creates a lightweight wrapper that only exposes getPath.
+     * The inner Float32Array buffer retains the SAME reference, so
+     * deck.gl will not re-upload to GPU despite the new wrapper object.
+     *
+     * Only called during structural rebuilds (_buildLayers), not during
+     * animation updates (_updateAnimatedLayers), so the wrapper overhead
+     * is negligible.
+     */
+    _stripForPathLayer(layerData) {
+        if (!layerData || !layerData.attributes) return layerData;
+        return {
+            length: layerData.length,
+            startIndices: layerData.startIndices,
+            attributes: {
+                getPath: layerData.attributes.getPath
+            }
+        };
+    }
+
+    /**
+     * Returns a string that captures every structural input to the layer tree.
+     * If this string hasn't changed, we skip the full rebuild and only
+     * update animation/zoom-dependent props.
+     */
+    _getLayerContextKey() {
+        const managers = this.gpsDataManagers
+            .filter(m => this.selectedManager == null || m.id === this.selectedManager)
+            .map(m => `${m.id}:${m.cursor}:${m.cleanedCursor}:${m.snappedVersion}:${m.loadingState}:${m.visits?.length || 0}`)
+            .join('|');
+
+        return JSON.stringify({
+            managers,
+            viewMode: this.viewState.viewMode,
+            aggregated: this.viewState.aggregated,
+            renderTerrain: this.viewState.renderTerrain,
+            animating: this.viewState.animating,
+            selectedManager: this.selectedManager,
+            highlight: this.highlightLayer ? '1' : '0',
+        });
+    }
+
+    /**
+     * Within a single _buildLayers call, getLayerData is called multiple
+     * times with identical arguments (once per layer type). Cache the
+     * result per-build so we only call the manager once.
+     */
+    _getCachedLayerData(manager, mode, isAggregate) {
+        const key = `${manager.id}:${mode}:${isAggregate}`;
+        if (this._cachedLayerData.has(key)) {
+            return this._cachedLayerData.get(key);
+        }
+        const data = manager.getLayerData(mode, isAggregate);
+        this._cachedLayerData.set(key, data);
+        return data;
+    }
+
+    /**
+     * Returns STABLE references for visit data arrays.
+     * `places.filter(...)` creates a new array each call, which forces
+     * deck.gl to re-upload. We cache until visits change.
+     */
+    _getCachedVisitPlaces(manager) {
+        const version = `${manager.id}:${manager.visits?.length || 0}:${manager.snappedVersion}`;
+        if (this._cachedVisitPlaces.has(version)) {
+            return this._cachedVisitPlaces.get(version);
+        }
+        // Clear old entries for this manager
+        for (const key of this._cachedVisitPlaces.keys()) {
+            if (key.startsWith(`${manager.id}:`)) {
+                this._cachedVisitPlaces.delete(key);
+            }
+        }
+        const places = manager.visits || [];
+        const filteredPolygons = places.filter(p => p.polygon);
+        this._cachedVisitPlaces.set(version, {places, filteredPolygons});
+        return {places, filteredPolygons};
+    }
+    /**
+     * Debug: Log the raw layer data from getLayerData
+     */
+    _debugLogLayerData(label, layerKey, layerData, bufferMode) {
+        console.groupCollapsed(`%c  [DEBUG] layerData for ${label} (${layerKey})`, 'color: #888');
+        console.log('  buffer mode:', bufferMode);
+        console.log('  length (paths):', layerData?.length);
+        console.log('  startIndices:', layerData?.startIndices);
+        console.log('  startIndices.length:', layerData?.startIndices?.length);
+        console.log('  startIndices[0..5]:', Array.from(layerData?.startIndices?.slice(0, 6) || []));
+        console.log('  startIndices[last]:', layerData?.startIndices?.[layerData.startIndices.length - 1]);
+        console.log('  attributes keys:', Object.keys(layerData?.attributes || {}));
+
+        if (layerData?.attributes?.getPath) {
+            const pa = layerData.attributes.getPath;
+            console.log('  getPath:');
+            console.log('    value type:', pa.value?.constructor?.name);
+            console.log('    value.length:', pa.value?.length);
+            console.log('    value.byteLength:', pa.value?.byteLength);
+            console.log('    size:', pa.size);
+            console.log('    stride (bytes):', pa.stride);
+            console.log('    offset (bytes):', pa.offset);
+            console.log('    stride/4 (floats):', pa.stride / 4);
+            console.log('    offset/4 (floats):', pa.offset / 4);
+
+            // Sample first 3 values
+            if (pa.value && pa.value.length > 0) {
+                const floatsPerVertex = pa.stride / 4;
+                const firstIdx = pa.offset / 4;
+                console.log('    first vertex [0]:', [pa.value[firstIdx], pa.value[firstIdx + 1], pa.value[firstIdx + 2]]);
+                if (pa.value.length > floatsPerVertex) {
+                    console.log('    first vertex [1]:', [pa.value[firstIdx + floatsPerVertex], pa.value[firstIdx + floatsPerVertex + 1], pa.value[firstIdx + floatsPerVertex + 2]]);
+                }
+            }
+        }
+
+        if (layerData?.attributes?.getTimestamps) {
+            const ta = layerData.attributes.getTimestamps;
+            console.log('  getTimestamps:');
+            console.log('    value type:', ta.value?.constructor?.name);
+            console.log('    value.length:', ta.value?.length);
+            console.log('    size:', ta.size);
+            console.log('    stride (bytes):', ta.stride);
+            console.log('    offset (bytes):', ta.offset);
+        }
+
+        // Validate: total points should match startIndices[last]
+        const lastIdx = layerData?.startIndices?.[layerData.startIndices.length - 1];
+        const expectedPoints = layerData?.attributes?.getPath?.value?.length / (layerData.attributes.getPath.stride / 4);
+        console.log('  validation:');
+        console.log('    startIndices[last]:', lastIdx);
+        console.log('    expected points (value.length / strideFloats):', expectedPoints);
+        console.log('    match:', lastIdx === expectedPoints);
+        console.log('    length == startIndices.length - 1:', layerData.length === layerData.startIndices.length - 1);
+
+        console.groupEnd();
+    }
+
+    /**
+     * Debug: Log the stripped data that goes to PathLayer
+     */
+    _debugLogStrippedData(layerKey, strippedData) {
+        console.groupCollapsed(`%c  [DEBUG] strippedData for PathLayer (${layerKey})`, 'color: #888');
+        console.log('  length:', strippedData?.length);
+        console.log('  startIndices:', strippedData?.startIndices);
+        console.log('  startIndices.length:', strippedData?.startIndices?.length);
+        console.log('  attributes keys:', Object.keys(strippedData?.attributes || {}));
+
+        const pa = strippedData?.attributes?.getPath;
+        if (pa) {
+            console.log('  getPath.value === original value?', pa.value != null);
+            console.log('  getPath.value type:', pa.value?.constructor?.name);
+            console.log('  getPath.value.length:', pa.value?.length);
+            console.log('  getPath.size:', pa.size);
+            console.log('  getPath.stride:', pa.stride);
+            console.log('  getPath.offset:', pa.offset);
+        }
+
+        // Check for common assertion triggers
+        const issues = [];
+        if (strippedData.length !== strippedData.startIndices.length - 1) {
+            issues.push(`length (${strippedData.length}) !== startIndices.length - 1 (${strippedData.startIndices.length - 1})`);
+        }
+        if (pa && pa.stride % 4 !== 0) {
+            issues.push(`stride (${pa.stride}) is not divisible by 4`);
+        }
+        if (pa && pa.offset % 4 !== 0) {
+            issues.push(`offset (${pa.offset}) is not divisible by 4`);
+        }
+        if (pa && pa.size !== 2 && pa.size !== 3) {
+            issues.push(`size (${pa.size}) is not 2 or 3`);
+        }
+        if (strippedData.startIndices && strippedData.length > 0) {
+            const last = strippedData.startIndices[strippedData.startIndices.length - 1];
+            const strideFloats = pa.stride / 4;
+            const offsetFloats = pa.offset / 4;
+            const maxPossiblePoints = (pa.value.length - offsetFloats) / strideFloats;
+            if (last > maxPossiblePoints) {
+                issues.push(`startIndices[last] (${last}) > max possible points (${maxPossiblePoints})`);
+            }
+            if (last === 0 && strippedData.length === 1) {
+                issues.push('SINGLE EMPTY PATH: length=1, startIndices=[0,0] — PathLayer may assert on zero-length path');
+            }
+        }
+
+        if (issues.length > 0) {
+            console.warn('%c  ISSUES FOUND:', 'color: #ff0000; font-weight: bold');
+            issues.forEach(i => console.warn('    ⚠', i));
+        } else {
+            console.log('  ✓ no issues detected by heuristic checks');
+        }
+
+        console.groupEnd();
+    }
+    /**
+     * Full layer rebuild. Called only when structural inputs change
+     * (data loaded, viewMode/aggregated/terrain/animating toggled, manager set changed).
+     *
+     * If nothing structural changed since last call, delegates to
+     * _updateAnimatedLayers() for a lightweight currentTime-only update.
+     */
+    _buildLayers() {
+        const contextKey = this._getLayerContextKey();
+        const keyChanged = contextKey !== this._layerContextKey;
+
+        if (this._debug && keyChanged) {
+            console.log('%c[_buildLayers] FULL REBUILD', 'color: #ff6600; font-weight: bold');
+            console.log('  old key:', this._layerContextKey);
+            console.log('  new key:', contextKey);
+        } else if (this._debug && !keyChanged && this._layerInstances.length > 0) {
+            console.log('%c[_buildLayers] SKIP → _updateAnimatedLayers', 'color: #00aa00');
+        }
+
+        if (!keyChanged && this._layerInstances.length > 0) {
+            this._updateAnimatedLayers();
+            return;
+        }
+
+        // If key changed, figure out WHY
+        if (this._debug && keyChanged && this._layerContextKey !== null) {
+            const oldParsed = JSON.parse(this._layerContextKey);
+            const newParsed = JSON.parse(contextKey);
+            const changes = [];
+            for (const k of Object.keys(newParsed)) {
+                if (JSON.stringify(oldParsed[k]) !== JSON.stringify(newParsed[k])) {
+                    changes.push(`  ${k}: ${JSON.stringify(oldParsed[k])} → ${JSON.stringify(newParsed[k])}`);
+                }
+            }
+            if (changes.length > 0) {
+                console.log('%c[_buildLayers] CHANGED FIELDS:', 'color: #ff0000');
+                changes.forEach(c => console.log(c));
+            }
+        }
+
+        this._layerContextKey = contextKey;
+        this._cachedLayerData.clear();
+
+        const allLayers = [];
+
+        if (this.viewState.renderTerrain && this.terrainLayer) {
+            allLayers.push(this.terrainLayer);
+        }
+
+        const extensions = this._getTerrainExtensions();
+        const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
+
+        this.gpsDataManagers.forEach(manager => {
+            if (this.selectedManager != null && manager.id !== this.selectedManager) return;
+
+            const layerKey = `${manager.id}-${this.viewState.aggregated ? 'agg' : 'lin'}-${this.viewState.renderTerrain ? 'terrain' : 'flat'}`;
+            const totalTimeSpanSec = this.viewState.aggregated ? 24 * 60 * 60 : (manager.maxTimestamp - manager.minTimestamp);
+            const calculatedTrail = Math.max(1800, totalTimeSpanSec * 0.02);
+
+            if (manager.cursor > 0) {
+                if (this.viewState.viewMode === 'BUNDLED') {
+                    allLayers.push(...this._buildBundleLayers(layerKey, manager, extensions, terrainDrawMode, calculatedTrail));
+                } else {
+                    const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
+                    const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
+                    const layerData = this._getCachedLayerData(manager, buffer, this.viewState.aggregated);
+
+                    if (this._debug) {
+                        this._debugLogLayerData('static-fixed', layerKey, layerData, buffer);
+                    }
+
+                    const strippedData = this._stripForPathLayer(layerData);
+
+                    if (this._debug) {
+                        this._debugLogStrippedData(layerKey, strippedData);
+                    }
+
+                    try {
+                        allLayers.push(new deck.PathLayer({
+                            id: `paths-static-fixed-${layerKey}`,
+                            data: strippedData,
+                            positionFormat: 'XYZ',
+                            getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
+                            getWidth: this.deckParams.trips.staticPathWidth,
+                            widthMinPixels: this.deckParams.trips.staticPathWidth,
+                            visible: true,
+                            capRounded: true,
+                            jointRounded: true,
+                            extensions: extensions,
+                            ...(terrainDrawMode && { terrainDrawMode }),
+                            parameters: {
+                                depthTest: true,
+                                polygonOffsetFill: true
+                            },
+                            updateTriggers: {
+                                data: [manager.buffer?.length, buffer],
+                                getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                getColor: [manager.color],
+                            }
+                        }));
+                    } catch (e) {
+                        console.error('%c[_buildLayers] PathLayer creation FAILED', 'color: #ff0000; font-weight: bold');
+                        console.error('  layerKey:', layerKey);
+                        console.error('  error:', e);
+                        console.error('  strippedData:', strippedData);
+                        throw e;
+                    }
+
+                    if (this.viewState.animating) {
+                        allLayers.push(new deck.TripsLayer({
+                            id: `trips-shadow-${layerKey}`,
+                            data: layerData,
+                            positionFormat: 'XYZ',
+                            getColor: manager.color,
+                            opacity: this.deckParams.trips.shadowOpacity,
+                            widthMinPixels: this.deckParams.trips.shadowWidth,
+                            trailLength: calculatedTrail,
+                            visible: this.viewState.animating,
+                            currentTime: this.viewState.currentTime,
+                            capRounded: true,
+                            jointRounded: true,
+                            parameters: { depthTest: false },
+                            extensions: extensions,
+                            ...(terrainDrawMode && { terrainDrawMode }),
+                            updateTriggers: {
+                                data: [manager.buffer?.length, buffer],
+                                getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                getTimestamps: [this.viewState.aggregated],
+                            }
+                        }));
+
+                        allLayers.push(new deck.TripsLayer({
+                            id: `trips-core-${layerKey}`,
+                            data: layerData,
+                            positionFormat: 'XYZ',
+                            getColor: [255, 255, 255, 100],
+                            opacity: this.deckParams.trips.cometOpacity * this.viewState.animating,
+                            widthMinPixels: this.deckParams.trips.cometWidth,
+                            trailLength: calculatedTrail * 1.2,
+                            currentTime: this.viewState.currentTime,
+                            capRounded: true,
+                            jointRounded: true,
+                            extensions: extensions,
+                            ...(terrainDrawMode && { terrainDrawMode }),
+                            updateTriggers: {
+                                data: [manager.buffer?.length, buffer],
+                                getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                currentTime: [this.viewState.currentTime],
+                                getTimestamps: [this.viewState.aggregated],
+                            }
+                        }));
+                    }
+                }
+            }
+
+            allLayers.push(...this._buildVisitLayers(layerKey, manager, extensions, terrainDrawMode));
+
+
+        });
+
+        if (this.highlightLayer) {
+            allLayers.push(this.highlightLayer);
+        }
+
+        if (this._debug) {
+            console.log('%c[_buildLayers] LAYERS BUILT', 'color: #0066ff; font-weight: bold');
+            allLayers.forEach((l, i) => {
+                console.log(`  [${i}] ${l.constructor.name} id="${l.props.id}" dataLen=${l.props.data?.length ?? 'n/a'} ext=${l.props.extensions?.length ?? 0}`);
+            });
+        }
+
+        this._layerInstances = allLayers;
+        this.deckOverlay.setProps({ layers: allLayers });
+
+
+        if (this.map && typeof this.map.triggerRepaint === 'function') {
+            this.map.resize();
+        }
+    }
+    _updateAnimatedLayers() {
+        if (this._layerInstances.length === 0) {
+            if (this._debug) console.warn('[_updateAnimatedLayers] NO LAYERS — was _buildLayers ever called?');
+            return;
+        }
+
+        if (this._debug) {
+            console.log('%c[_updateAnimatedLayers] called', 'color: #00aa00');
+            console.log('  currentTime:', this.viewState.currentTime);
+            console.log('  _currentZoom:', this._currentZoom);
+            console.log('  layer count:', this._layerInstances.length);
+        }
+
+        const isOverview = !this.viewState.animating;
+        const currentTime = this.viewState.currentTime;
+        const zoom = this._currentZoom;
+
+        let reused = 0, cloned = 0, recreated = 0;
+
+        const updated = this._layerInstances.map(layer => {
+            const id = layer.props.id;
+
+            if (id.includes('paths-static-fixed') ||
+                id.includes('bundled-paths-static') ||
+                id === 'highlight-segment' ||
+                id === 'terrain-loader') {
+                reused++;
+                return layer;
+            }
+
+            if (layer instanceof deck.TripsLayer) {
+                cloned++;
+                return layer.clone({ currentTime: this.viewState.currentTime });
+            }
+
+            if (id.startsWith('visit-') || id.startsWith('place-')) {
+                recreated++;
+                const manager = this.gpsDataManagers.find(m => id.includes(`${m.id}-`));
+                if (manager) {
+                    const extensions = this._getTerrainExtensions();
+                    const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
+                    return this._recreateVisitLayer(id, manager, extensions, terrainDrawMode, isOverview, currentTime, zoom);
+                }
+            }
+
+            return layer;
+        });
+
+        if (this._debug) {
+            console.log(`  reused=${reused} cloned=${cloned} recreated=${recreated}`);
+        }
+
+        this._layerInstances = updated;
+        this.deckOverlay.setProps({ layers: updated });
+    }
+
+    _recreateVisitLayer(id, manager, extensions, terrainDrawMode, isOverview, currentTime, zoom) {
+        const {places, filteredPolygons} = this._getCachedVisitPlaces(manager);
+        const color = manager.color;
+        const dp = this.deckParams.visits;
+
+        if (id.startsWith('visit-polygons')) {
+            const layerKey = id.replace('visit-polygons-', '');
+            return new deck.PolygonLayer({
+                id: id,
+                data: filteredPolygons, // STABLE ref from cache
+                getPolygon: d => {
+                    if (!d.polygon || !Array.isArray(d.polygon)) return [];
+                    return d.polygon.map(point => [point.longitude, point.latitude]);
+                },
+                getFillColor: d => [...color, dp.polygonOpacity],
+                getLineColor: d => [...color, 255],
+                pickable: true,
+                depthTest: true,
+                onHover: info => this._updateTooltip(info),
+                visible: isOverview && zoom > dp.polygonMinZoom,
+                extensions: extensions,
+                terrainDrawMode: terrainDrawMode,
+                updateTriggers: {
+                    getFillColor: [currentTime],
+                    visible: [isOverview, zoom],
+                    data: manager.visits?.length
+                }
+            });
+        }
+
+        if (id.startsWith('place-outer-circles')) {
+            return new deck.ScatterplotLayer({
+                id: id,
+                data: places, // STABLE ref from cache
+                getPosition: d => d.coordinates,
+                getRadius: d => {
+                    if (isOverview && zoom > dp.polygonMinZoom && d.polygon) return 0;
+                    const duration = isOverview
+                        ? (d.totalDurationSec || 0)
+                        : this._getActiveVisitEffect(d).seconds;
+                    if (duration <= 0) return 0;
+                    const minRadius = isOverview ? dp.radius : (dp.radius * 1.5);
+                    const maxRadius = isOverview ? 100 : 150;
+                    const scalingFactor = isOverview ? 0.8 : 1.2;
+                    const calculated = minRadius + (Math.sqrt(duration) * scalingFactor);
+                    return Math.min(calculated, maxRadius);
+                },
+                getFillColor: d => [...color, isOverview ? dp.opacity : (this._getActiveVisitEffect(d).opacity * dp.opacity)],
+                getLineColor: d => [...color, 255],
+                stroked: true,
+                getLineWidth: dp.lineWidth,
+                pickable: true,
+                depthTest: true,
+                onHover: info => this._updateTooltip(info),
+                visible: !isOverview || (isOverview && zoom > dp.minZoom),
+                extensions: extensions,
+                terrainDrawMode: terrainDrawMode,
+                updateTriggers: {
+                    getRadius: [currentTime, isOverview, zoom],
+                    getFillColor: [currentTime, isOverview],
+                    data: manager.visits?.length
+                },
+                transitions: {
+                    getRadius: {
+                        type: 'spring',
+                        stiffness: 0.1,
+                        damping: 0.15,
+                        enter: d => [0]
+                    }
+                }
+            });
+        }
+
+        if (id.startsWith('place-inner-circles')) {
+            return new deck.ScatterplotLayer({
+                id: id,
+                data: places, // STABLE ref from cache
+                getPosition: d => d.coordinates,
+                getRadius: d => {
+                    if (isOverview && zoom > dp.polygonMinZoom && d.polygon) return 0;
+                    return 8;
+                },
+                stroked: true,
+                lineWidthMinPixels: dp.lineWidth,
+                depthTest: false,
+                getLineColor: d => {
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
+                    const alpha = (isOverview || isActive) ? 255 : 0;
+                    return [0, 0, 0, alpha];
+                },
+                getFillColor: d => {
+                    const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
+                    const alpha = (isOverview || isActive) ? 255 : 0;
+                    return [255, 255, 255, alpha];
+                },
+                extensions: extensions,
+                terrainDrawMode: terrainDrawMode,
+                updateTriggers: {
+                    getRadius: [currentTime, isOverview, zoom],
+                    getFillColor: [currentTime, isOverview],
+                    getLineColor: [currentTime, isOverview],
+                    data: manager.visits?.length
+                },
+                pickable: true,
+                onHover: info => this._updateTooltip(info),
+            });
+        }
+
+        // Fallback: return original
+        return this._layerInstances.find(l => l.props.id === id);
+    }
     async _initializeInitialStyle() {
         let loaded = await this._waitForStyleLoad(this.currentMapStyle);
         if (!loaded) {
@@ -288,6 +862,7 @@ class MapRenderer {
         this._syncPitchBearingState(false);
         this.element.classList.remove('is-loading');
         this.element.classList.add('is-loaded');
+        console.log('Map style loaded successfully.');
     }
 
     async updateViewState(next) {
@@ -430,6 +1005,7 @@ class MapRenderer {
     }
 
     async _waitForStyleLoad(mapStyle, timeoutMs = 10000) {
+        console.log('Waiting for map style to load...');
         if (this.map.isStyleLoaded()) {
             return true;
         }
@@ -446,6 +1022,7 @@ class MapRenderer {
                 this.map.off('error', handleError);
             };
             const handleLoad = () => {
+                console.log('Map style loaded successfully.');
                 cleanup();
                 resolve(true);
             };
@@ -550,8 +1127,20 @@ class MapRenderer {
     }
 
     setGpsDataManagers(managers) {
-        this.gpsDataManagers = [...managers].reverse();
+        // Deduplicate by manager.id, preserving order
+        const seen = new Set();
+        const unique = [];
+        for (const m of managers) {
+            if (!seen.has(m.id)) {
+                seen.add(m.id);
+                unique.push(m);
+            }
+        }
+        this.gpsDataManagers = unique.reverse();
         this.bounds = [];
+        this._layerContextKey = null;
+        this._cachedVisitPlaces.clear();
+        this._cachedFilteredPolygons.clear();
     }
 
     fitMapToBounds(bounds) {
@@ -575,7 +1164,7 @@ class MapRenderer {
         const performFit = async () => {
             try {
                 await this._initialLoadPromise;
-                this._refitBounds();
+                this._doRefitBounds();
                 this.element.classList.remove('is-loading');
                 this.element.classList.add('is-loaded');
             } catch (error) {
@@ -586,25 +1175,49 @@ class MapRenderer {
         return performFit();
     }
 
-    _refitBounds() {
+    _doRefitBounds() {
         this.bounds = [];
         console.log('Attempting to fit bounds...');
         this.gpsDataManagers
             .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
             .forEach(manager => this._extendBounds(manager.bounds));
         console.log('Bounds calculated:', this.bounds);
+
         if (this.bounds.length === 0) {
             this._flyToHomeLocation();
         } else {
             this.fitMapToBounds(this.bounds);
         }
+
+        this.map.once('idle', () => {
+            console.log('Idle after fit, recreating overlay for globe sync...');
+
+            // Remove the old overlay
+            if (this._deckOverlay) {
+                this.map.removeControl(this._deckOverlay);
+            }
+
+            // Recreate it — this forces deck.gl to re-read the globe
+            // projection from the current map state
+            this._deckOverlay = new deck.MapboxOverlay({
+                interleaved: true,
+                layers: []
+            });
+
+            this.map.addControl(this._deckOverlay);
+
+            // Now rebuild all layers into the fresh overlay
+            this._layerContextKey = null;
+            this._buildLayers();
+        });
     }
 
     reset() {
         this.highlightLayer = null;
-        this.deckOverlay.setProps([]);
+        this._layerInstances = [];
+        this._layerContextKey = null;
+        this.deckOverlay.setProps({layers: []});
     }
-
     setBearing(number) {
         this.map.easeTo({
             bearing: number,
@@ -737,7 +1350,7 @@ class MapRenderer {
                         getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
                         getWidth: this.deckParams.trips.staticPathWidth,
                         widthMinPixels: this.deckParams.trips.staticPathWidth,
-                        visibility: !this.viewState.animating,
+                        visibility: true,
                         capRounded: true,
                         jointRounded: true,
                         extensions: extensions,
@@ -751,7 +1364,6 @@ class MapRenderer {
                             getPath: [cursor, buffer, this.viewState.renderTerrain],
                             extensions: [this.viewState.renderTerrain],
                             getTimestamps: [this.viewState.aggregated],
-                            visibility: [this.viewState.animating],
                             getColor: [manager.color],
                         }
                     }));
@@ -816,52 +1428,51 @@ class MapRenderer {
         })
     }
 
-    _getBundleLayers(layerKey, manager) {
-        const timeSpan = this.viewState.aggregated ? 86400 : (manager.maxTimestamp - manager.minTimestamp);
-        const calculatedTrail = Math.max(1800, timeSpan * 0.02);
-
-        // Check if bundling is complete
+    _buildBundleLayers(layerKey, manager, extensions, terrainDrawMode, calculatedTrail) {
         if (manager.loadingState !== 'complete' || !manager.snappedBuffer || manager.snappedBuffer.length === 0) {
             return [];
         }
+
+        // Single cached call per build
+        const layerData = this._getCachedLayerData(manager, 'bundled', this.viewState.aggregated);
+        const color = manager.color;
+        const dp = this.deckParams.bundled;
+        const isAnimating = this.viewState.animating;
+        const currentTime = this.viewState.currentTime;
+
         const layers = [];
-        const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
+
+        // Static bundled path — millions of points, only built on structural change
         layers.push(new deck.PathLayer({
             id: `bundled-paths-static-${layerKey}`,
-            data: manager.getLayerData('bundled', this.viewState.aggregated),
+            data: this._stripForPathLayer(layerData),          // ← strip getTimestamps
             positionFormat: 'XY',
-            getColor: [...manager.color, this.deckParams.bundled.staticPathOpacity],
-            widthMinPixels: this.deckParams.bundled.staticPathWidth,
+            getColor: [...color, dp.staticPathOpacity],
+            widthMinPixels: dp.staticPathWidth,
             capRounded: true,
             jointRounded: true,
             depthTest: false,
             extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
-                data: [
-                    manager.snappedVersion,
-                    this.viewState.aggregated
-                ],
-                getPath: [
-                    manager.snappedVersion,
-                    this.viewState.aggregated
-                ],
-                getColor: [
-                    manager.color,
-                ],
+                data: [manager.snappedVersion, this.viewState.aggregated],
+                getPath: [manager.snappedVersion, this.viewState.aggregated],
+                getColor: [color],
             }
         }));
 
 
+
+        // Semi-transparent overlay path
         layers.push(new deck.PathLayer({
             id: `bundled-path-${layerKey}`,
-            data: manager.getLayerData('bundled', this.viewState.aggregated),
+            data: this._stripForPathLayer(layerData),          // ← strip getTimestamps
             positionFormat: 'XY',
-            widthMinPixels: this.deckParams.bundled.pathWidth,
-            getColor: [...manager.color, this.deckParams.bundled.pathOpacity],
+            widthMinPixels: dp.pathWidth,
+            getColor: [...color, dp.pathOpacity],
             parameters: {
-                blendFunc: [770, 1], // GL_SRC_ALPHA, GL_ONE
-                blendEquation: 32774, // GL_FUNC_ADD
+                blendFunc: [770, 1],
+                blendEquation: 32774,
                 depthTest: false
             },
             capRounded: true,
@@ -872,158 +1483,141 @@ class MapRenderer {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
             }
-
         }));
 
+        // Shadow trip (animated)
         layers.push(new deck.TripsLayer({
             id: `bundled-path-shadow-${layerKey}`,
-            data: manager.getLayerData('bundled', this.viewState.aggregated),
+            data: layerData,                                  // ← keep getTimestamps
             positionFormat: 'XY',
             getColor: [255, 255, 255],
-            opacity: this.deckParams.bundled.shadowOpacity,
-            visible: this.viewState.animating,
-            widthMinPixels: this.deckParams.bundled.shadowWidth,
+            opacity: dp.shadowOpacity,
+            visible: isAnimating,
+            widthMinPixels: dp.shadowWidth,
             trailLength: calculatedTrail * 1.2,
-            currentTime: this.viewState.currentTime,
+            currentTime: currentTime,
             capRounded: true,
             jointRounded: true,
-            parameters: {depthTest: false},
+            parameters: { depthTest: false },
             extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
-                currentTime: [this.viewState.currentTime],
+                currentTime: [currentTime],
+                // Removed: nothing was invalid here, already clean
             }
         }));
 
-        // CORE TRIP (Animated)
+// Core trip (animated)
         layers.push(new deck.TripsLayer({
             id: `bundled-path-core-${layerKey}`,
-            data: manager.getLayerData('bundled', this.viewState.aggregated),
+            data: layerData,                                  // ← keep getTimestamps
             positionFormat: 'XY',
-            getColor: manager.color,
-            opacity: this.deckParams.bundled.cometOpacity,
-            visible: this.viewState.animating,
-            widthMinPixels: this.deckParams.bundled.cometWidth,
+            getColor: color,
+            opacity: dp.cometOpacity,
+            visible: isAnimating,
+            widthMinPixels: dp.cometWidth,
             trailLength: calculatedTrail,
-            currentTime: this.viewState.currentTime,
+            currentTime: currentTime,
             capRounded: true,
             jointRounded: true,
             depthTest: false,
-            blendFunc: [770, 771], // Standard Alpha Blending
+            blendFunc: [770, 771],
             blendEquation: 32774,
             extensions: extensions,
             terrainDrawMode: 'offset',
             updateTriggers: {
                 data: [manager.snappedVersion],
                 getPath: [manager.snappedVersion],
-                currentTime: [this.viewState.currentTime],
+                currentTime: [currentTime],
             }
         }));
 
         return layers;
     }
 
-    _getVisitLayers(layerKey, manager) {
+    _buildVisitLayers(layerKey, manager, extensions, terrainDrawMode) {
+        if (manager.visits === undefined) return [];
+
+        const {places, filteredPolygons} = this._getCachedVisitPlaces(manager);
         const isOverview = !this.viewState.animating;
         const currentTime = this.viewState.currentTime;
+        const zoom = this._currentZoom;
+        const color = manager.color;
+        const dp = this.deckParams.visits;
 
-        const places = manager.visits;
-        if (places === undefined) {
-            return [];
-        }
-        const extensions = this.viewState.renderTerrain ? [new deck._TerrainExtension()] : [];
         return [
-            // 1. Polygon Layer
             new deck.PolygonLayer({
                 id: `visit-polygons-${layerKey}`,
-                data: places.filter(p => p.polygon),
+                data: filteredPolygons, // STABLE cached ref
                 getPolygon: d => {
                     if (!d.polygon || !Array.isArray(d.polygon)) return [];
                     return d.polygon.map(point => [point.longitude, point.latitude]);
                 },
-                getFillColor: d => [...manager.color, this.deckParams.visits.polygonOpacity],
-                getLineColor: d => [...manager.color, 255],
+                getFillColor: d => [...color, dp.polygonOpacity],
+                getLineColor: d => [...color, 255],
                 pickable: true,
                 depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom,
+                visible: isOverview && zoom > dp.polygonMinZoom,
                 extensions: extensions,
-                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                terrainDrawMode: terrainDrawMode,
                 updateTriggers: {
                     getFillColor: [currentTime],
-                    visible: [isOverview, this.map.getZoom()],
+                    visible: [isOverview, zoom],
                     data: manager.visits?.length
                 }
             }),
             new deck.ScatterplotLayer({
                 id: `place-outer-circles-${layerKey}`,
-                data: places,
+                data: places, // STABLE cached ref
                 getPosition: d => d.coordinates,
                 getRadius: d => {
-                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
-                        return 0;
-                    }
-
+                    if (isOverview && zoom > dp.polygonMinZoom && d.polygon) return 0;
                     const duration = isOverview
                         ? (d.totalDurationSec || 0)
                         : this._getActiveVisitEffect(d).seconds;
-
-                    if (duration <= 0) {
-                        return 0;
-                    }
-
-                    const minRadius = isOverview ? this.deckParams.visits.radius : (this.deckParams.visits.radius * 1.5);
+                    if (duration <= 0) return 0;
+                    const minRadius = isOverview ? dp.radius : (dp.radius * 1.5);
                     const maxRadius = isOverview ? 100 : 150;
-
-                    // This treats the duration as the "Area" of the circle
-                    // Adjusted so 1 day (86400s) hits a reasonable size
                     const scalingFactor = isOverview ? 0.8 : 1.2;
-
-                    const calculated = minRadius + (Math.sqrt(duration) * scalingFactor);
-
-                    return Math.min(calculated, maxRadius);
+                    return Math.min(minRadius + (Math.sqrt(duration) * scalingFactor), maxRadius);
                 },
-                getFillColor: d => [...manager.color, isOverview ? this.deckParams.visits.opacity : (this._getActiveVisitEffect(d).opacity * this.deckParams.visits.opacity)],
-                getLineColor: d => [...manager.color, 255],
+                getFillColor: d => [...color, isOverview ? dp.opacity : (this._getActiveVisitEffect(d).opacity * dp.opacity)],
+                getLineColor: d => [...color, 255],
                 stroked: true,
-                getLineWidth: this.deckParams.visits.lineWidth,
+                getLineWidth: dp.lineWidth,
                 pickable: true,
                 depthTest: true,
                 onHover: info => this._updateTooltip(info),
-                visible: !isOverview || (isOverview && this.map.getZoom() > this.deckParams.visits.minZoom),
+                visible: !isOverview || (isOverview && zoom > dp.minZoom),
                 extensions: extensions,
-                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                terrainDrawMode: terrainDrawMode,
                 updateTriggers: {
-                    getRadius: [currentTime, isOverview, this.map.getZoom()],
+                    getRadius: [currentTime, isOverview, zoom],
                     getFillColor: [currentTime, isOverview],
                     data: manager.visits?.length
                 },
-                // Optional: Smooth the appearance/disappearance
                 transitions: {
                     getRadius: {
                         type: 'spring',
                         stiffness: 0.1,
                         damping: 0.15,
-                        enter: d => [0] // Starts at 0 radius when appearing
+                        enter: d => [0]
                     }
                 }
             }),
-
             new deck.ScatterplotLayer({
                 id: `place-inner-circles-${layerKey}`,
-                data: places,
+                data: places, // STABLE cached ref
                 getPosition: d => d.coordinates,
-                getRadius: d =>{
-                    if (isOverview && this.map.getZoom() > this.deckParams.visits.polygonMinZoom && d.polygon) {
-                        return 0;
-                    } else {
-                        return 8;
-                    }
+                getRadius: d => {
+                    if (isOverview && zoom > dp.polygonMinZoom && d.polygon) return 0;
+                    return 8;
                 },
                 stroked: true,
-                lineWidthMinPixels: this.deckParams.visits.lineWidth,
+                lineWidthMinPixels: dp.lineWidth,
                 depthTest: false,
                 getLineColor: d => {
                     const isActive = d.activeRanges.some(r => currentTime >= r.start && currentTime <= r.end);
@@ -1036,9 +1630,9 @@ class MapRenderer {
                     return [255, 255, 255, alpha];
                 },
                 extensions: extensions,
-                terrainDrawMode: this.viewState.renderTerrain ? 'offset' : undefined,
+                terrainDrawMode: terrainDrawMode,
                 updateTriggers: {
-                    getRadius: [currentTime, isOverview, this.map.getZoom()],
+                    getRadius: [currentTime, isOverview, zoom],
                     getFillColor: [currentTime, isOverview],
                     getLineColor: [currentTime, isOverview],
                     data: manager.visits?.length
@@ -1049,6 +1643,21 @@ class MapRenderer {
         ];
     }
 
+    /**
+     * Called by the external time control (replay slider) to advance the track.
+     * This is a LIGHTWEIGHT update — only TripsLayer `currentTime` props
+     * and visit layer accessors are re-evaluated. Static path layers
+     * (millions of points) are not touched at all.
+     *
+     * @param {number} time - The new currentTime value
+     */
+    setCurrentTime(time) {
+        if (this._debug) {
+            console.log(`%c[setCurrentTime] ${time}`, 'color: #9933cc');
+        }
+        this.viewState.currentTime = time;
+        this._updateAnimatedLayers();
+    }
     async _waitForIdle() {
         if (this.map.loaded() && !this.map.isMoving()) {
             return; // Already idle, resolve immediately
@@ -1057,30 +1666,79 @@ class MapRenderer {
     }
 
     _rerenderOverlays() {
-        this._updateLayers();
+        if (this._debug) console.log('%c[_rerenderOverlays] → _buildLayers', 'color: #336699');
+        this._buildLayers();
         if (this.showAvatars) this.updateAvatarPositions();
         this.viewConfig.mapDataProviders.forEach(provider => provider.render(this.map));
     }
 
     _setup = () => {
-        this.map.on('move', () => {
-            this._updateLayers()
+        this._currentZoom = this.map.getZoom();
+        this._zoomDebounceId = null;
+
+        // -------------------------------------------------------------
+        // ZOOM HANDLING
+        // Update the stored zoom immediately, but debounce the actual
+        // layer update so we don't recreate layers on every zoom frame.
+        // -------------------------------------------------------------
+        this.map.on('zoom', () => {
+            this._currentZoom = this.map.getZoom();
+
+            if (this._zoomDebounceId !== null) {
+                clearTimeout(this._zoomDebounceId);
+            }
+            this._zoomDebounceId = setTimeout(() => {
+                this._zoomDebounceId = null;
+                this._updateAnimatedLayers();
+            }, 100);
         });
 
+        // On zoomend: cancel any pending debounce, do a final update,
+        // and sync pitch/bearing state.
         this.map.on('zoomend', () => {
+            this._currentZoom = this.map.getZoom();
             this._syncPitchBearingState();
+
+            if (this._zoomDebounceId !== null) {
+                clearTimeout(this._zoomDebounceId);
+                this._zoomDebounceId = null;
+            }
+            this._updateAnimatedLayers();
         });
 
+        // -------------------------------------------------------------
+        // PITCH / BEARING GUARD
+        // If pitch/bearing is not allowed and globe projection resets
+        // the camera, force it back to flat.
+        // -------------------------------------------------------------
         this.map.on('zoom', (e) => {
             if (e.originalEvent && !this._pitchBearingAllowed) {
                 if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
                     this.map.jumpTo({ pitch: 0, bearing: 0 });
                 }
             }
-
         });
 
-    }
+        // -------------------------------------------------------------
+        // GLOBE PROJECTION SYNC
+        // When the map style finishes loading (which happens again when
+        // globe projection activates), force a full layer rebuild so
+        // deck.gl picks up the corrected viewport.
+        // -------------------------------------------------------------
+        this.map.on('style.load', () => {
+            console.log('Map style loaded, rebuilding layers for globe sync...');
+            this._layerContextKey = null; // force full rebuild
+            this._buildLayers();
+        });
+
+        // -------------------------------------------------------------
+        // RESIZE HANDLING
+        // Ensure deck.gl stays in sync if the container resizes.
+        // -------------------------------------------------------------
+        this.map.on('resize', () => {
+            this._updateAnimatedLayers();
+        });
+    };
 
     _getActiveVisitEffect(visit) {
         const exitFadeDuration = 3000;
@@ -1337,8 +1995,13 @@ class MapRenderer {
             if (hasHillshading) {
                 this.map.setLayoutProperty(hillshadeLayerId, 'visibility', 'none');
             }
+
             this.map.setTerrain(null);
         }
+        this._terrainExtension = null;
+        this._terrainExtensionsArray = null;
+        this._layerContextKey = null; // Force rebuild
+
     }
 
     _switchMapBuildingLayer(is3d) {
@@ -1668,8 +2331,10 @@ class MapRenderer {
     setSelectedManager(managerId) {
         console.log("setting selected manager to", managerId);
         this.selectedManager = managerId;
+        // Invalidate context so next _buildLayers does a full rebuild
+        this._layerContextKey = null;
         if (this.element.classList.contains('is-loaded') && this.gpsDataManagers.length > 0) {
-            this._refitBounds();
+            this._doRefitBounds();
         }
     }
 }
