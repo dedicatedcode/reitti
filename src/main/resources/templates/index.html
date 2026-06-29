@@ -485,7 +485,6 @@
                         if (current - lastRenderedPointCount >= RENDER_CHUNK_SIZE) {
                             lastRenderedPointCount = current;
                             requestAnimationFrame(() => {
-                                mapRenderer._refitBounds();
                                 mapRenderer.updateViewState(createViewState());
                             });
                         }
@@ -506,6 +505,7 @@
                         mapRenderer.updateViewState(createViewState());
                         completedManagers.add(index);
                         if (completedManagers.size === gpsDataManagers.length) {
+                            console.log('All managers completed');
                             mapRenderer.finishedLoading();
                         }
 

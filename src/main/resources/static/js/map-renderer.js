@@ -1164,7 +1164,7 @@ class MapRenderer {
         const performFit = async () => {
             try {
                 await this._initialLoadPromise;
-                this._refitBounds();
+                this._doRefitBounds();
                 this.element.classList.remove('is-loading');
                 this.element.classList.add('is-loaded');
             } catch (error) {
@@ -1175,41 +1175,40 @@ class MapRenderer {
         return performFit();
     }
 
-    _refitBounds() {
-        if (this.bounds.length === 0) return;
+    _doRefitBounds() {
+        this.bounds = [];
+        console.log('Attempting to fit bounds...');
+        this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
+            .forEach(manager => this._extendBounds(manager.bounds));
+        console.log('Bounds calculated:', this.bounds);
 
-        const bounds = [
-            Math.min(...this.bounds.map(b => b[0])),
-            Math.min(...this.bounds.map(b => b[1])),
-            Math.max(...this.bounds.map(b => b[0])),
-            Math.max(...this.bounds.map(b => b[1]))
-        ];
-
-        // Check if globe projection is active but not yet initialized
-        const projection = this.map.getProjection?.();
-        const isGlobe = projection?.type === 'globe';
-
-        if (isGlobe && !this._globeReady) {
-            // Globe projection is set but camera helper hasn't switched yet.
-            // Wait for the next 'idle' event (style fully loaded + rendered),
-            // then re-fit with the correct globe camera math.
-            console.log('[_refitBounds] Globe projection not ready, deferring fitBounds...');
-            this.map.once('idle', () => {
-                this._globeReady = true;
-                this._doFitBounds(bounds);
-                // After re-fitting, rebuild layers so deck.gl picks up the corrected viewport
-                this._buildLayers();
-            });
+        if (this.bounds.length === 0) {
+            this._flyToHomeLocation();
         } else {
-            this._globeReady = true;
-            this._doFitBounds(bounds);
+            this.fitMapToBounds(this.bounds);
         }
-    }
 
-    _doFitBounds(bounds) {
-        this.map.fitBounds(bounds, {
-            padding: 60,
-            duration: 0  // instant, no animation — important for deck.gl sync
+        this.map.once('idle', () => {
+            console.log('Idle after fit, recreating overlay for globe sync...');
+
+            // Remove the old overlay
+            if (this._deckOverlay) {
+                this.map.removeControl(this._deckOverlay);
+            }
+
+            // Recreate it — this forces deck.gl to re-read the globe
+            // projection from the current map state
+            this._deckOverlay = new deck.MapboxOverlay({
+                interleaved: true,
+                layers: []
+            });
+
+            this.map.addControl(this._deckOverlay);
+
+            // Now rebuild all layers into the fresh overlay
+            this._layerContextKey = null;
+            this._buildLayers();
         });
     }
 
@@ -1674,39 +1673,32 @@ class MapRenderer {
     }
 
     _setup = () => {
-        // Track current zoom for visit layer visibility decisions
         this._currentZoom = this.map.getZoom();
+        this._zoomDebounceId = null;
 
-        if (this._debug) {
-            console.log('%c[_setup] move listener removed, zoom listeners added', 'color: #336699; font-weight: bold');
-        }
-
-        // REMOVED: this.map.on('move', () => this._updateLayers())
-        //
-        // Pan/zoom do NOT require layer rebuilds. deck.gl handles viewport
-        // uniforms internally. The only zoom-dependent thing is visit polygon
-        // visibility, handled by the debounced handler below.
-
+        // -------------------------------------------------------------
+        // ZOOM HANDLING
+        // Update the stored zoom immediately, but debounce the actual
+        // layer update so we don't recreate layers on every zoom frame.
+        // -------------------------------------------------------------
         this.map.on('zoom', () => {
             this._currentZoom = this.map.getZoom();
 
-            // Debounce: only update visit layer visibility after zoom settles.
-            // During continuous zoom, visit circles/polygons can be slightly
-            // stale — this is an acceptable visual tradeoff for 60fps panning.
             if (this._zoomDebounceId !== null) {
                 clearTimeout(this._zoomDebounceId);
             }
             this._zoomDebounceId = setTimeout(() => {
                 this._zoomDebounceId = null;
-                // Only update if we're not in a structural rebuild scenario
                 this._updateAnimatedLayers();
             }, 100);
         });
 
+        // On zoomend: cancel any pending debounce, do a final update,
+        // and sync pitch/bearing state.
         this.map.on('zoomend', () => {
             this._currentZoom = this.map.getZoom();
             this._syncPitchBearingState();
-            // Final visit layer visibility update
+
             if (this._zoomDebounceId !== null) {
                 clearTimeout(this._zoomDebounceId);
                 this._zoomDebounceId = null;
@@ -1714,6 +1706,11 @@ class MapRenderer {
             this._updateAnimatedLayers();
         });
 
+        // -------------------------------------------------------------
+        // PITCH / BEARING GUARD
+        // If pitch/bearing is not allowed and globe projection resets
+        // the camera, force it back to flat.
+        // -------------------------------------------------------------
         this.map.on('zoom', (e) => {
             if (e.originalEvent && !this._pitchBearingAllowed) {
                 if (this.map.getPitch() !== 0 || this.map.getBearing() !== 0) {
@@ -1721,7 +1718,28 @@ class MapRenderer {
                 }
             }
         });
+
+        // -------------------------------------------------------------
+        // GLOBE PROJECTION SYNC
+        // When the map style finishes loading (which happens again when
+        // globe projection activates), force a full layer rebuild so
+        // deck.gl picks up the corrected viewport.
+        // -------------------------------------------------------------
+        this.map.on('style.load', () => {
+            console.log('Map style loaded, rebuilding layers for globe sync...');
+            this._layerContextKey = null; // force full rebuild
+            this._buildLayers();
+        });
+
+        // -------------------------------------------------------------
+        // RESIZE HANDLING
+        // Ensure deck.gl stays in sync if the container resizes.
+        // -------------------------------------------------------------
+        this.map.on('resize', () => {
+            this._updateAnimatedLayers();
+        });
     };
+
     _getActiveVisitEffect(visit) {
         const exitFadeDuration = 3000;
         let accumulated = 0;
@@ -2316,7 +2334,7 @@ class MapRenderer {
         // Invalidate context so next _buildLayers does a full rebuild
         this._layerContextKey = null;
         if (this.element.classList.contains('is-loaded') && this.gpsDataManagers.length > 0) {
-            this._refitBounds();
+            this._doRefitBounds();
         }
     }
 }
