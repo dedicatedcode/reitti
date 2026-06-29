@@ -230,10 +230,37 @@
         document.getElementById('time-display')
     );
 
-    timelineControl.on('offsetChanged', () => {
-        mapRenderer.updateViewState(createViewState([]))
-    })
+    let lastAnimatingState = null;
 
+    timelineControl.on('offsetChanged', () => {
+        const isIdle = timelineControl.isIdle();
+        const shouldAnimate = !isIdle;
+
+        // Check if the animating state has changed since the last update
+        if (lastAnimatingState !== shouldAnimate) {
+            lastAnimatingState = shouldAnimate;
+
+            // State changed: we need a full structural rebuild to add/remove TripsLayers
+            const newState = createViewState([]);
+            newState.animating = shouldAnimate;
+
+            if (shouldAnimate) {
+                // Starting animation: set the initial time before rebuild
+                // so the first frame shows the correct trail position
+                newState.currentTime = timelineControl.getValue();
+            }
+
+            mapRenderer.updateViewState(newState).then(() => {
+                // If we just started animating, the first currentTime is already set.
+                // If we just stopped, the static path will show.
+            });
+        } else {
+            // State is the same. If we are animating, just do a lightweight time update.
+            if (shouldAnimate) {
+                mapRenderer.setCurrentTime(timelineControl.getValue());
+            }
+        }
+    });
     const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
     const settingsMenu = new SettingsMenu('settings-menu-container');
 
