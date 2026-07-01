@@ -16,6 +16,7 @@ import java.util.UUID;
 import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Service
+@DisallowConcurrentExecution
 public class UpdateCuratedTimelineTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(UpdateCuratedTimelineTask.class);
 

@@ -205,3 +205,5 @@ CREATE INDEX IDX_QRTZ_FT_TG
 
 
 COMMIT;
+
+DROP TABLE scheduled_tasks;

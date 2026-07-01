@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
+@DisallowConcurrentExecution
 public class PatchDeviceOntoTimelineTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(PatchDeviceOntoTimelineTask.class);
 
