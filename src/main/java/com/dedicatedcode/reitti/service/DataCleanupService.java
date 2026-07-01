@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
@@ -8,9 +7,11 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -21,7 +22,7 @@ import java.util.UUID;
 import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Service
-public class DataCleanupService {
+public class DataCleanupService implements Job {
     private static final Logger log = LoggerFactory.getLogger(DataCleanupService.class);
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
@@ -29,7 +30,7 @@ public class DataCleanupService {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final JobSchedulingService jobScheduler;
     private final SignificantPlaceJdbcService placeJdbcService;
-    private final Task<TriggerProcessingEvent> processingEventTask;
+    private final JobDetail processingPipelineTask;
 
 
     public DataCleanupService(TripJdbcService tripJdbcService,
@@ -37,14 +38,20 @@ public class DataCleanupService {
                               SignificantPlaceJdbcService significantPlaceJdbcService,
                               RawLocationPointJdbcService rawLocationPointJdbcService,
                               JobSchedulingService jobScheduler, SignificantPlaceJdbcService placeJdbcService,
-                              Task<TriggerProcessingEvent> processingEventTask) {
+                              @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.jobScheduler = jobScheduler;
         this.placeJdbcService = placeJdbcService;
-        this.processingEventTask = processingEventTask;
+        this.processingPipelineTask = processingPipelineTask;
+    }
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
     }
 
     public void execute(TaskData taskData) {
@@ -59,7 +66,7 @@ public class DataCleanupService {
         cleanupForGeometryChange(user, placesToRemove, affectedDays, taskData.jobId);
     }
 
-    public void cleanupForGeometryChange(User user, List<SignificantPlace> placesToRemove, List<LocalDate> affectedDays, UUID jobId) {
+    void cleanupForGeometryChange(User user, List<SignificantPlace> placesToRemove, List<LocalDate> affectedDays, UUID jobId) {
         long start = System.nanoTime();
 
         log.info("Cleanup for geometry change. Removing [{}] places and starting recalculation for days [{}]", placesToRemove.size(), affectedDays);
@@ -76,8 +83,8 @@ public class DataCleanupService {
         this.rawLocationPointJdbcService.markAllAsUnprocessedForUser(user, affectedDays);
         log.info("clearing processed points for days [{}] completed in {}ms", affectedDays, (System.nanoTime() - start) / 1000000);
 
-        jobScheduler.enqueueTask(processingEventTask,
-                                 new TriggerProcessingEvent(user.getUsername(), null, null).withParentJobId(jobId),
+        jobScheduler.enqueueTask(processingPipelineTask,
+                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(jobId),
                                   JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                           .user(user)
                                           .friendlyName("Detect Visits and Trips").build()

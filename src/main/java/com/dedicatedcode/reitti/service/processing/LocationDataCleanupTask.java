@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
@@ -8,9 +7,10 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -19,22 +19,23 @@ import java.util.UUID;
 import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Component
-public class LocationDataCleanupJob {
-    private static final Logger log = LoggerFactory.getLogger(LocationDataCleanupJob.class);
+public class LocationDataCleanupTask implements Job {
+    private static final Logger log = LoggerFactory.getLogger(LocationDataCleanupTask.class);
     private final ExcessDensityHandler excessDensityHandler;
     private final AnomalyProcessingService anomalyProcessingService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobScheduler;
-    private final Task<UpdateCuratedTimelineJob.TaskData> updateCuratedTimelineTask;
+    private final JobDetail updateCuratedTimelineTask;
     private final JobMetadataRepository metadataRepository;
 
-    public LocationDataCleanupJob(ExcessDensityHandler excessDensityHandler,
-                                  AnomalyProcessingService anomalyProcessingService,
-                                  UserSettingsJdbcService userSettingsJdbcService,
-                                  UserJdbcService userJdbcService,
-                                  JobSchedulingService jobScheduler,
-                                  Task<UpdateCuratedTimelineJob.TaskData> updateCuratedTimelineTask, JobMetadataRepository metadataRepository) {
+    public LocationDataCleanupTask(ExcessDensityHandler excessDensityHandler,
+                                   AnomalyProcessingService anomalyProcessingService,
+                                   UserSettingsJdbcService userSettingsJdbcService,
+                                   UserJdbcService userJdbcService,
+                                   JobSchedulingService jobScheduler,
+                                   @Qualifier("updateCuratedTimelineJob") JobDetail updateCuratedTimelineTask,
+                                   JobMetadataRepository metadataRepository) {
         this.excessDensityHandler = excessDensityHandler;
         this.anomalyProcessingService = anomalyProcessingService;
         this.userSettingsJdbcService = userSettingsJdbcService;
@@ -42,6 +43,13 @@ public class LocationDataCleanupJob {
         this.jobScheduler = jobScheduler;
         this.updateCuratedTimelineTask = updateCuratedTimelineTask;
         this.metadataRepository = metadataRepository;
+    }
+
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
     }
 
     public void execute(TaskData data) {
@@ -61,7 +69,7 @@ public class LocationDataCleanupJob {
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device.defaultDevice()) {
             jobScheduler.enqueueTask(updateCuratedTimelineTask,
-                                      new UpdateCuratedTimelineJob.TaskData(user, device, processedTimeRange.extend(densityTimeRange)),
+                                      new UpdateCuratedTimelineTask.TaskData(user, device, processedTimeRange.extend(densityTimeRange)),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                               .user(user)
                                               .friendlyName("Detect Visits and Trips").build()

@@ -1,14 +1,14 @@
 package com.dedicatedcode.reitti.service.processing;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -16,24 +16,30 @@ import java.util.UUID;
 import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Service
-public class UpdateCuratedTimelineJob {
-    private static final Logger log = LoggerFactory.getLogger(UpdateCuratedTimelineJob.class);
+public class UpdateCuratedTimelineTask implements Job {
+    private static final Logger log = LoggerFactory.getLogger(UpdateCuratedTimelineTask.class);
 
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final SyntheticPointInserter syntheticPointInserter;
     private final JobSchedulingService jobSchedulingService;
-    private final Task<TriggerProcessingEvent> processingEventTask;
+    private final JobDetail processingPipelineTask;
 
-    public UpdateCuratedTimelineJob(RawLocationPointJdbcService rawLocationPointJdbcService,
-                                    SyntheticPointInserter syntheticPointInserter,
-                                    JobSchedulingService jobSchedulingService,
-                                    Task<TriggerProcessingEvent> processingEventTask) {
+    public UpdateCuratedTimelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                     SyntheticPointInserter syntheticPointInserter,
+                                     JobSchedulingService jobSchedulingService,
+                                     @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.syntheticPointInserter = syntheticPointInserter;
         this.jobSchedulingService = jobSchedulingService;
-        this.processingEventTask = processingEventTask;
+        this.processingPipelineTask = processingPipelineTask;
     }
 
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
+    }
     public void execute(TaskData data) {
         log.debug("Starting updating main timeline for user [{}] and device[{}] in timeRange [{}]", data.user, data.device, data.timeRange);
         //1. clear main timeline
@@ -44,8 +50,8 @@ public class UpdateCuratedTimelineJob {
         //3. insert new possible synthetic points
         this.syntheticPointInserter.fillGaps(data.user, data.timeRange);
         //4. trigger new processing job
-        this.jobSchedulingService.enqueueTask(processingEventTask,
-                                 new TriggerProcessingEvent(data.user.getUsername(), null, null),
+        this.jobSchedulingService.enqueueTask(processingPipelineTask,
+                                 new ProcessingPipelineTask.TaskData(data.user.getUsername(), null, null),
                                               JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                                       .user(data.user)
                                                       .friendlyName("Detect Visits and Trips").build());

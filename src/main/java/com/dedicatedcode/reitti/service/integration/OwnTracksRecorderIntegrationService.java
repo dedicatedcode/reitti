@@ -14,9 +14,10 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -44,7 +45,7 @@ public class OwnTracksRecorderIntegrationService {
     private final DeviceJdbcService deviceJdbcService;
     private final RestTemplate restTemplate;
     private final LocationPointStagingService stagingService;
-    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final LocationBatchingService locationBatchingService;
 
@@ -52,7 +53,7 @@ public class OwnTracksRecorderIntegrationService {
                                                UserJdbcService userJdbcService,
                                                DeviceJdbcService deviceJdbcService,
                                                LocationPointStagingService stagingService,
-                                               Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                               @Qualifier("promotionJob") JobDetail promotionTask,
                                                JobSchedulingService jobSchedulingService,
                                                LocationBatchingService locationBatchingService) {
         this.jdbcService = jdbcService;
@@ -276,7 +277,7 @@ public class OwnTracksRecorderIntegrationService {
                     .friendlyName("Owntracks History Import")
                     .build();
             jobSchedulingService.enqueueTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              new PromotionJobHandler.TaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               metadata);
             
             logger.info("Loaded {} total historical location points for user {}", totalLocationPoints, user.getUsername());

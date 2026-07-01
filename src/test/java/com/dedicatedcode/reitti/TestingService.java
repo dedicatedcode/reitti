@@ -11,9 +11,12 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.UserService;
 import com.dedicatedcode.reitti.service.importer.GeoJsonImporter;
 import com.dedicatedcode.reitti.service.importer.GpxImporter;
-import com.github.kagkarlsson.scheduler.ScheduledExecution;
-import com.github.kagkarlsson.scheduler.Scheduler;
 import org.awaitility.Awaitility;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -26,7 +29,6 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,10 +101,7 @@ public class TestingService {
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
                 .until(() -> {
-                    List<ScheduledExecution<Object>> instances = scheduler.getScheduledExecutions()
-                            .stream().filter(t -> !t.getTaskInstance().getTaskName().equals("sse-emitter-task")).toList();
-
-                    if (!instances.isEmpty()) {
+                    if (!isSchedulerIdle()) {
                         stableChecks.set(0);
                         return false;
                     }
@@ -132,6 +131,26 @@ public class TestingService {
         this.tripRepository.deleteAll();
         this.processedVisitRepository.deleteAll();
         this.rawLocationPointRepository.deleteAll();
+    }
+
+    private boolean isSchedulerIdle() throws SchedulerException {
+        // Check if any jobs are currently executing
+        if (!scheduler.getCurrentlyExecutingJobs().isEmpty()) {
+            return false;
+        }
+
+        // Check if any triggers are pending, excluding the SSE emitter job
+        for (TriggerKey triggerKey : scheduler.getTriggerKeys(GroupMatcher.anyTriggerGroup())) {
+            Trigger trigger = scheduler.getTrigger(triggerKey);
+            if (trigger != null && !trigger.getJobKey().getName().equals("sse-emitter-job")) {
+                Trigger.TriggerState state = scheduler.getTriggerState(triggerKey);
+                // NORMAL means waiting to fire, BLOCKED means currently running
+                if (state == Trigger.TriggerState.NORMAL || state == Trigger.TriggerState.BLOCKED) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public void importAndProcess(User user, String path) {

@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
@@ -12,13 +11,15 @@ import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.MetadataOverrideService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
+import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.github.kagkarlsson.scheduler.task.Task;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -57,7 +58,7 @@ public class UnifiedLocationProcessingService {
     private final GeometryFactory geometryFactory;
     private final MetadataOverrideService metadataOverrideService;
     private final JobSchedulingService jobScheduler;
-    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
+    private final JobDetail reverseGeocodingTask;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -77,7 +78,7 @@ public class UnifiedLocationProcessingService {
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             JobSchedulingService jobScheduler,
-            Task<SignificantPlaceCreatedEvent> reverseGeocodingTask) {
+            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -863,7 +864,7 @@ public class UnifiedLocationProcessingService {
     }
 
     private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId, String traceId) {
-        SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+        ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
                 user.getUsername(),
                 previewId,
                 place.getId(),
