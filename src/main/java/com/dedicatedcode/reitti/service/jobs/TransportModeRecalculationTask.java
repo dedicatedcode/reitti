@@ -8,10 +8,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
+@DisallowConcurrentExecution
 public class TransportModeRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(TransportModeRecalculationTask.class);
     private final TripJdbcService tripJdbcService;

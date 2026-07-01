@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 @Service
+@DisallowConcurrentExecution
 public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(VisitSensitivityConfigurationRecalculationTask.class);
     private final VisitDetectionParametersJdbcService configurationService;

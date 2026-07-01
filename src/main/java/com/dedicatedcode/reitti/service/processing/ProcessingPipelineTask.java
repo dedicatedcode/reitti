@@ -9,10 +9,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.JobContext;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@DisallowConcurrentExecution
 public class ProcessingPipelineTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(ProcessingPipelineTask.class);
 

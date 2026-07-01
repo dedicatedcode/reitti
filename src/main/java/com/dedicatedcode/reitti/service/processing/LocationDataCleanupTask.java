@@ -19,6 +19,7 @@ import java.util.UUID;
 import static com.dedicatedcode.reitti.service.jobs.JobType.VISIT_TRIP_DETECTION;
 
 @Component
+@DisallowConcurrentExecution
 public class LocationDataCleanupTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(LocationDataCleanupTask.class);
     private final ExcessDensityHandler excessDensityHandler;
