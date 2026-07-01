@@ -6,8 +6,8 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.kagkarlsson.scheduler.task.Task;
 import org.junit.jupiter.api.Test;
+import org.quartz.JobDetail;
 
 import java.time.Instant;
 import java.util.Map;
@@ -25,7 +25,7 @@ class GoogleAndroidTimelineImporterTest {
         GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(),
                                                                                         new ImportStateHolder(),
                                                                                         mock(LocationPointStagingService.class),
-                                                                                        mock(Task.class),
+                                                                                        mock(JobDetail.class),
                                                                                         jobScheduler,
                                                                                         0);
         User user = new User("test", "Test User");
@@ -35,6 +35,6 @@ class GoogleAndroidTimelineImporterTest {
         assertTrue((Boolean) result.get("success"));
 
         // Verify that jobScheduler.enqueue was called since graceTimeSeconds is 0
-        verify(jobScheduler, times(1)).scheduleTask(any(Task.class), any(PromotionJobHandler.PromotionTaskData.class), any(Instant.class), any(JobSchedulingService.Metadata.class));
+        verify(jobScheduler, times(1)).scheduleTask(any(JobDetail.class), any(PromotionJobHandler.TaskData.class), any(Instant.class), any(JobSchedulingService.Metadata.class));
     }
 }

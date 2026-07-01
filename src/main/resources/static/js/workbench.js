@@ -1972,6 +1972,15 @@ document.getElementById('commitConfirm').addEventListener('click', async () => {
         toast(data.message, !data.success);
         if (data.success) {
             closeCommit();
+
+            // Clear all local changes
+            EditStore.patches = [];
+            EditStore.deletedPoints.clear();
+            EditStore.movedPoints.clear();
+            History.length = 0;
+            clearSelection();
+            renderHistory();
+
             triggerDebouncedDataLoad();
         }
     } catch (err) {

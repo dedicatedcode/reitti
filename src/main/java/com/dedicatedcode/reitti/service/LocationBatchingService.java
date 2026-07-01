@@ -3,15 +3,16 @@ package com.dedicatedcode.reitti.service;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import jakarta.annotation.PreDestroy;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class LocationBatchingService {
     private final Map<String, UserBatch> userBatches = new ConcurrentHashMap<>();
     private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
     private final LocationPointStagingService locationPointStagingService;
-    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobDetail promotionTask;
     private final JobSchedulingService jobScheduler;
 
     private final int maxBatchSize;
@@ -40,7 +41,7 @@ public class LocationBatchingService {
     
     @Autowired
     public LocationBatchingService(LocationPointStagingService locationPointStagingService,
-                                   Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                   @Qualifier("promotionJob") JobDetail promotionTask,
                                    JobSchedulingService jobScheduler,
                                    @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
                                    @Value("${reitti.batching.max-wait-time-ms:5000}") int maxWaitTimeMs) {
@@ -96,7 +97,7 @@ public class LocationBatchingService {
             );
             batch.clear();
             this.jobScheduler.enqueueTask(promotionTask,
-                                          new PromotionJobHandler.PromotionTaskData(batch.user, batch.device, pKey, false),
+                                          new PromotionJobHandler.TaskData(batch.user, batch.device, pKey, false),
                                           JobSchedulingService.Metadata.builder()
                                                   .user(batch.user)
                                                   .jobType(JobType.GPS_INGESTION)

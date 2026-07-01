@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
@@ -9,19 +8,23 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ImportStateHolder;
+import com.dedicatedcode.reitti.service.JobContext;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
-public class ProcessingPipelineTrigger {
-    private static final Logger log = LoggerFactory.getLogger(ProcessingPipelineTrigger.class);
+@DisallowConcurrentExecution
+public class ProcessingPipelineTask implements Job {
+    private static final Logger log = LoggerFactory.getLogger(ProcessingPipelineTask.class);
 
     private final ImportStateHolder stateHolder;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
@@ -31,13 +34,13 @@ public class ProcessingPipelineTrigger {
     private final JobMetadataRepository jobMetadataRepository;
     private final int batchSize;
 
-    public ProcessingPipelineTrigger(ImportStateHolder stateHolder,
-                                     RawLocationPointJdbcService rawLocationPointJdbcService,
-                                     PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
-                                     UserJdbcService userJdbcService,
-                                     JobMetadataRepository jobMetadataRepository,
-                                     @Value("${reitti.import.batch-size:100}") int batchSize,
-                                     UnifiedLocationProcessingService locationProcessTask) {
+    public ProcessingPipelineTask(ImportStateHolder stateHolder,
+                                  RawLocationPointJdbcService rawLocationPointJdbcService,
+                                  PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
+                                  UserJdbcService userJdbcService,
+                                  JobMetadataRepository jobMetadataRepository,
+                                  @Value("${reitti.import.batch-size:100}") int batchSize,
+                                  UnifiedLocationProcessingService locationProcessTask) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -47,7 +50,14 @@ public class ProcessingPipelineTrigger {
         this.locationProcessTask = locationProcessTask;
     }
 
-    public void execute(TriggerProcessingEvent event) {
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
+    }
+
+    public void execute(TaskData event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
             handleDataForUser(event.getJobId(), byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
@@ -94,5 +104,68 @@ public class ProcessingPipelineTrigger {
         }
         stateHolder.importFinished();
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
+    }
+
+    public static class TaskData extends JobContext<TaskData> implements Serializable {
+        private final String username;
+        private final String previewId;
+        private final Instant receivedAt;
+        private final String traceId;
+
+        public TaskData(
+                String username,
+                String previewId,
+                String traceId) {
+            this(username, previewId, traceId, null, null);
+        }
+
+        public TaskData(
+                String username,
+                String previewId,
+                String traceId,
+                UUID jobId,
+                UUID parentJobId) {
+            super(jobId, parentJobId);
+            this.username = username;
+            this.previewId = previewId;
+            this.traceId = traceId;
+            this.receivedAt = Instant.now();
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public Instant getReceivedAt() {
+            return receivedAt;
+        }
+
+        public String getPreviewId() {
+            return this.previewId;
+        }
+
+        public String getTraceId() {
+            return traceId;
+        }
+
+        @Override
+        public TaskData withJobId(UUID jobId) {
+            return new TaskData(username, previewId, traceId, jobId, parentJobId);
+        }
+
+        @Override
+        public TaskData withParentJobId(UUID parentJobId) {
+            return new TaskData(username, previewId, traceId, jobId, parentJobId);
+        }
+
+        @Override
+        public String toString() {
+            return "TaskData{" +
+                    "username='" + username + '\'' +
+                    ", previewId='" + previewId + '\'' +
+                    ", receivedAt=" + receivedAt +
+                    ", traceId='" + traceId + '\'' +
+                    '}';
+        }
     }
 }

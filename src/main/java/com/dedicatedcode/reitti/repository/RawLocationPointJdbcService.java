@@ -528,17 +528,20 @@ public class RawLocationPointJdbcService {
     }
 
     public void dropForReSeeding(User user, TimeRange timeRange) {
-        this.jdbcTemplate.update("DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp <= ?", user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
+        this.jdbcTemplate.update("DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ?",
+                                 user.getId(),
+                                 Timestamp.from(timeRange.start()),
+                                 Timestamp.from(timeRange.end()));
     }
 
     public int updateFromDevices(User user, TimeRange timeRange) {
        return this.jdbcTemplate.update("""
                 INSERT INTO raw_location_points
                 (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status)
-                SELECT
+                SELECT DISTINCT
                   accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status
                 FROM v_source_stream
-                WHERE user_id = ? AND timestamp  >= ? AND timestamp <= ?
+                WHERE user_id = ? AND timestamp  >= ? AND timestamp < ?
                 """
                ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
     }

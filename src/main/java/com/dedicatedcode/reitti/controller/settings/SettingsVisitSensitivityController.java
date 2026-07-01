@@ -1,19 +1,20 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.VisitDetectionParametersJdbcService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
-import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -29,7 +30,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/settings/visit-sensitivity")
@@ -43,7 +43,7 @@ public class SettingsVisitSensitivityController {
     private final boolean dataManagementEnabled;
     private final JobSchedulingService jobScheduler;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final Task<VisitSensitivityConfigurationRecalculationTask.TaskData> recalculationJobTask;
+    private final JobDetail visitSensitivityRecalculationTask;
 
     public SettingsVisitSensitivityController(VisitDetectionParametersJdbcService configurationService,
                                               VisitDetectionPreviewService visitDetectionPreviewService,
@@ -51,14 +51,14 @@ public class SettingsVisitSensitivityController {
                                               @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                               JobSchedulingService jobScheduler,
                                               RawLocationPointJdbcService rawLocationPointJdbcService,
-                                              Task<VisitSensitivityConfigurationRecalculationTask.TaskData> recalculationJobTask) {
+                                              @Qualifier("visitSensitivityRecalculationJob") JobDetail visitSensitivityRecalculationTask) {
         this.configurationService = configurationService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
         this.messageSource = messageSource;
         this.dataManagementEnabled = dataManagementEnabled;
         this.jobScheduler = jobScheduler;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.recalculationJobTask = recalculationJobTask;
+        this.visitSensitivityRecalculationTask = visitSensitivityRecalculationTask;
     }
     
     @GetMapping
@@ -266,7 +266,7 @@ public class SettingsVisitSensitivityController {
         needsRecalculation.forEach(dp -> this.configurationService.updateConfiguration(dp.withRecalculationState(RecalculationState.RUNNING)));
 
         log.debug("Scheduling recalculation task");
-        this.jobScheduler.enqueueTask(recalculationJobTask,
+        this.jobScheduler.enqueueTask(visitSensitivityRecalculationTask,
                                       new VisitSensitivityConfigurationRecalculationTask.TaskData(user),
                                       JobSchedulingService.Metadata.builder()
                                               .user(user)

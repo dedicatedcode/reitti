@@ -11,9 +11,10 @@ import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -33,18 +34,18 @@ public class TransportationModesController {
     private static final Logger log = LoggerFactory.getLogger(TransportationModesController.class);
     private final TransportModeJdbcService transportModeJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
-    private final Task<TransportModeRecalculationTask.TaskData> recalculationJobTask;
+    private final JobDetail recalculationJobTask;
     private final JobSchedulingService jobSchedulingService;
     private final boolean dataManagementEnabled;
 
     public TransportationModesController(TransportModeJdbcService transportModeJdbcService,
                                          UserSettingsJdbcService userSettingsJdbcService,
-                                         Task<TransportModeRecalculationTask.TaskData> recalculationJobTask,
+                                         @Qualifier("transportModeRecalculationJob") JobDetail transportModeRecalculationTask,
                                          JobSchedulingService jobSchedulingService,
                                          @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.transportModeJdbcService = transportModeJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
-        this.recalculationJobTask = recalculationJobTask;
+        this.recalculationJobTask = transportModeRecalculationTask;
         this.jobSchedulingService = jobSchedulingService;
         this.dataManagementEnabled = dataManagementEnabled;
     }
