@@ -16,9 +16,10 @@ import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -39,13 +40,13 @@ public class UserNotificationService {
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
     private final JobSchedulingService jobScheduler;
-    private final Task<UserSseEmitterService.TaskData> userSSEEmitterTask;
+    private final JobDetail userSSEEmitterTask;
 
     public UserNotificationService(JobSchedulingService jobScheduler,
                                    ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
                                    UserSharingJdbcService userSharingJdbcService,
-                                   Task<UserSseEmitterService.TaskData> userSSEEmitterTask) {
+                                   @Qualifier("userSSEEmitterJob") JobDetail userSSEEmitterTask) {
         this.jobScheduler = jobScheduler;
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;

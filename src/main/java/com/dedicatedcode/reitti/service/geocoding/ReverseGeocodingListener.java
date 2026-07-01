@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.service.geocoding;
 
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
@@ -8,16 +7,23 @@ import com.dedicatedcode.reitti.repository.PreviewSignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.UserNotificationService;
+import org.quartz.Job;
+import org.quartz.JobDataMap;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.Serializable;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
-public class ReverseGeocodingListener {
+public class ReverseGeocodingListener implements Job {
     private static final Logger logger = LoggerFactory.getLogger(ReverseGeocodingListener.class);
 
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
@@ -40,7 +46,14 @@ public class ReverseGeocodingListener {
         this.userJdbcService = userJdbcService;
     }
 
-    public void handleSignificantPlaceCreated(SignificantPlaceCreatedEvent event) {
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
+    }
+
+    public void execute(TaskData event) {
         logger.info("Received SignificantPlaceCreatedEvent for place ID: {}", event.placeId());
 
         User user = userJdbcService.findByUsername(event.username()).orElseThrow();
@@ -95,6 +108,87 @@ public class ReverseGeocodingListener {
             }
         } catch (Exception e) {
             logger.error("Error during reverse geocoding for place ID: {}", place.getId(), e);
+        }
+    }
+
+    public static final class TaskData extends JobContext<TaskData> implements Serializable {
+        private final String username;
+        private final String previewId;
+        private final Long placeId;
+        private final Double latitude;
+        private final Double longitude;
+        private final String traceId;
+
+        public TaskData(String username,
+                        String previewId,
+                        Long placeId,
+                        Double latitude,
+                        Double longitude,
+                        String traceId,
+                        UUID jobId,
+                        UUID parentJobId) {
+            super(jobId, parentJobId);
+            this.username = username;
+            this.previewId = previewId;
+            this.placeId = placeId;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.traceId = traceId;
+        }
+
+        public TaskData(String username,
+                        String previewId,
+                        Long placeId,
+                        Double latitude,
+                        Double longitude,
+                        String traceId) {
+            this(username, previewId, placeId, latitude, longitude, traceId, null, null);
+        }
+
+        @Override
+        public String toString() {
+            return "SignificantPlaceCreatedEvent{" +
+                    "username='" + username + '\'' +
+                    ", previewId='" + previewId + '\'' +
+                    ", placeId=" + placeId +
+                    ", latitude=" + latitude +
+                    ", longitude=" + longitude +
+                    ", traceId='" + traceId + '\'' +
+                    '}';
+        }
+
+        public String username() {
+            return username;
+        }
+
+        public String previewId() {
+            return previewId;
+        }
+
+        public Long placeId() {
+            return placeId;
+        }
+
+        public Double latitude() {
+            return latitude;
+        }
+
+        public Double longitude() {
+            return longitude;
+        }
+
+        public String traceId() {
+            return traceId;
+        }
+
+        @Override
+        public TaskData withJobId(UUID jobId) {
+            return new TaskData(username, previewId, placeId, latitude, longitude, traceId, jobId, parentJobId);
+        }
+
+        @Override
+        public TaskData withParentJobId(UUID parentJobId) {
+            return new TaskData(username, previewId, placeId, latitude, longitude, traceId, jobId, parentJobId);
         }
     }
 }

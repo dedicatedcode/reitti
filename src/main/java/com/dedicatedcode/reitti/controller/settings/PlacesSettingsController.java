@@ -24,12 +24,13 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.kagkarlsson.scheduler.task.Task;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -58,7 +59,7 @@ public class PlacesSettingsController {
     private final I18nService i18nService;
     private final PlaceChangeDetectionService placeChangeDetectionService;
     private final JobSchedulingService jobSchedulingService;
-    private final Task<DataCleanupService.TaskData> cleanupTask;
+    private final JobDetail locationDataCleanupTask;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
 
@@ -70,7 +71,7 @@ public class PlacesSettingsController {
                                     GeometryFactory geometryFactory,
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService, JobSchedulingService jobSchedulingService,
-                                    Task<DataCleanupService.TaskData> cleanupTask,
+                                    @Qualifier("polygonUpdateJob") JobDetail locationDataCleanupTask,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper) {
         this.placeService = placeService;
@@ -82,7 +83,7 @@ public class PlacesSettingsController {
         this.i18nService = i18nService;
         this.placeChangeDetectionService = placeChangeDetectionService;
         this.jobSchedulingService = jobSchedulingService;
-        this.cleanupTask = cleanupTask;
+        this.locationDataCleanupTask = locationDataCleanupTask;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
     }
@@ -201,8 +202,7 @@ public class PlacesSettingsController {
                 if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
                     placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
-
-                    this.jobSchedulingService.enqueueTask(cleanupTask, new DataCleanupService.TaskData(user, updatedPlace),
+                    this.jobSchedulingService.enqueueTask(locationDataCleanupTask, new DataCleanupService.TaskData(user, updatedPlace),
                                                           JobSchedulingService.Metadata.builder()
                                                                   .user(user)
                                                                   .friendlyName("Update Polygon of " + significantPlace.getName())

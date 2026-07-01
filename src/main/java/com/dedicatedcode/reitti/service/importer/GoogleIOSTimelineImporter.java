@@ -14,9 +14,10 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -32,14 +33,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleIOSTimelineImporter.class);
     private final ImportStateHolder stateHolder;
-    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
                                      ImportStateHolder stateHolder,
                                      LocationPointStagingService stagingService,
-                                     Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                                     @Qualifier("promotionJob") JobDetail promotionTask,
                                      JobSchedulingService jobSchedulingService,
                                      @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         super(objectMapper, stagingService);
@@ -103,7 +104,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                     .friendlyName("GPS Data Promotion")
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              new PromotionJobHandler.TaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
 

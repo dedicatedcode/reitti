@@ -1,24 +1,25 @@
 package com.dedicatedcode.reitti.service.jobs;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.JobContext;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
 @Service
-public class VisitSensitivityConfigurationRecalculationTask {
+public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(VisitSensitivityConfigurationRecalculationTask.class);
     private final VisitDetectionParametersJdbcService configurationService;
     private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository jobMetadataRepository;
-    private final Task<TriggerProcessingEvent> processingEventTask;
+    private final JobDetail processingPipelineTask;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
@@ -27,18 +28,25 @@ public class VisitSensitivityConfigurationRecalculationTask {
     public VisitSensitivityConfigurationRecalculationTask(VisitDetectionParametersJdbcService configurationService,
                                                           JobSchedulingService jobSchedulingService,
                                                           JobMetadataRepository jobMetadataRepository,
-                                                          Task<TriggerProcessingEvent> processingEventTask,
+                                                          @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
                                                           TripJdbcService tripJdbcService,
                                                           ProcessedVisitJdbcService processedVisitJdbcService,
                                                           SignificantPlaceJdbcService significantPlaceJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.configurationService = configurationService;
         this.jobSchedulingService = jobSchedulingService;
         this.jobMetadataRepository = jobMetadataRepository;
-        this.processingEventTask = processingEventTask;
+        this.processingPipelineTask = processingPipelineTask;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+    }
+
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
     }
 
     public void execute(TaskData taskData) {
@@ -57,8 +65,8 @@ public class VisitSensitivityConfigurationRecalculationTask {
                     .forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
             log.debug("Starting recalculation of all configurations");
             this.jobMetadataRepository.updateProgress(taskData.getJobId(), 5, 5, "Starting recalculation ... ");
-            jobSchedulingService.enqueueTask(processingEventTask,
-                                             new TriggerProcessingEvent(user.getUsername(), null, null).withParentJobId(taskData.getJobId()),
+            jobSchedulingService.enqueueTask(processingPipelineTask,
+                                             new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(taskData.getJobId()),
                                              new JobSchedulingService.Metadata(user, JobType.LOCATION_PROCESSING, "Processing location data ..."));
         } catch (Exception e) {
             log.error("Error clearing time range", e);

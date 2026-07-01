@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.event.SignificantPlaceCreatedEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
@@ -12,9 +11,11 @@ import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
+import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,7 +39,7 @@ public class GeoCodingSettingsController {
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobScheduler;
-    private final Task<SignificantPlaceCreatedEvent> reverseGeocodingTask;
+    private final JobDetail reverseGeocodingTask;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -51,7 +52,7 @@ public class GeoCodingSettingsController {
                                        SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
                                        UserJdbcService userJdbcService,
                                        JobSchedulingService jobScheduler,
-                                       Task<SignificantPlaceCreatedEvent> reverseGeocodingTask,
+                                       @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
@@ -253,7 +254,7 @@ public class GeoCodingSettingsController {
                 model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
             } else {
                 for (SignificantPlace place : nonGeocodedPlaces) {
-                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                    ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
                             username,
                             null,
                             place.getId(),
@@ -298,7 +299,7 @@ public class GeoCodingSettingsController {
                 }
 
                 for (SignificantPlace place : allPlaces) {
-                    SignificantPlaceCreatedEvent event = new SignificantPlaceCreatedEvent(
+                    ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
                             username,
                             null,
                             place.getId(),

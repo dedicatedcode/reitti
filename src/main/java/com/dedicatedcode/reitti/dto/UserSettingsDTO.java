@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Locale;
 
 public record UserSettingsDTO(
         Language selectedLanguage,
@@ -16,7 +15,6 @@ public record UserSettingsDTO(
         UnitSystem unitSystem,
         Double homeLatitude,
         Double homeLongitude,
-        @Deprecated(forRemoval = true)
         TilesCustomizationDTO tiles,
         UIMode uiMode,
         PhotoMode photoMode,
