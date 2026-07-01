@@ -9,11 +9,12 @@ import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
-import com.dedicatedcode.reitti.service.processing.LocationDataCleanupJob;
-import com.dedicatedcode.reitti.service.processing.PatchDeviceOntoTimelineJob;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
+import com.dedicatedcode.reitti.service.processing.PatchDeviceOntoTimelineTask;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -28,15 +29,15 @@ public class WorkbenchService {
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final DeviceJdbcService deviceJdbcService;
     private final JobSchedulingService jobSchedulingService;
-    private final Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask;
-    private final Task<PatchDeviceOntoTimelineJob.TaskData> patchDeviceOntoTimelineTask;
+    private final JobDetail locationDataCleanupTask;
+    private final JobDetail patchDeviceOntoTimelineTask;
     private final I18nService i18n;
 
     public WorkbenchService(SourceLocationPointJdbcService sourceLocationPointJdbcService,
                             DeviceJdbcService deviceJdbcService,
                             JobSchedulingService jobSchedulingService,
-                            Task<LocationDataCleanupJob.TaskData> locationDataCleanupTask,
-                            Task<PatchDeviceOntoTimelineJob.TaskData> patchDeviceOntoTimelineTask,
+                            @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask,
+                            @Qualifier("patchDeviceOntoTimelineJob") JobDetail patchDeviceOntoTimelineTask,
                             I18nService i18n) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
@@ -74,7 +75,7 @@ public class WorkbenchService {
                             .jobType(JobType.TIMELINE_STITCHING)
                             .friendlyName(i18n.translate("jobs.timeline_stitching.friendly_name", device.name(), start, end)).build();
                     this.jobSchedulingService.enqueueTask(patchDeviceOntoTimelineTask,
-                                                          new PatchDeviceOntoTimelineJob.TaskData(user, device, start, end).withParentJobId(parentJob),
+                                                          new PatchDeviceOntoTimelineTask.TaskData(user, device, start, end).withParentJobId(parentJob),
                                                           metadata);
                 });
     }
@@ -108,7 +109,7 @@ public class WorkbenchService {
                     .friendlyName("Location Data Cleanup")
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupJob.TaskData(user, device, deviceTimeRange.timeRange().start(), deviceTimeRange.timeRange().end().plus(1, ChronoUnit.MILLIS))
+                                                  new LocationDataCleanupTask.TaskData(user, device, deviceTimeRange.timeRange().start(), deviceTimeRange.timeRange().end().plus(1, ChronoUnit.MILLIS))
                                                           .withParentJobId(parentJob),
                                                   metadata);
         }

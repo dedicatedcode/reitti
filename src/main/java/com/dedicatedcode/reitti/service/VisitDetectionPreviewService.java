@@ -1,12 +1,13 @@
 package com.dedicatedcode.reitti.service;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -28,15 +29,15 @@ public class VisitDetectionPreviewService {
 
     private final JdbcTemplate jdbcTemplate;
     private final JobSchedulingService jobScheduler;
-    private final Task<TriggerProcessingEvent> processingEventTask;
+    private final JobDetail processingPipelineTask;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
 
     public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate,
                                         JobSchedulingService jobScheduler,
-                                        Task<TriggerProcessingEvent> processingEventTask) {
+                                        @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
         this.jdbcTemplate = jdbcTemplate;
         this.jobScheduler = jobScheduler;
-        this.processingEventTask = processingEventTask;
+        this.processingPipelineTask = processingPipelineTask;
     }
 
     public String startPreview(User user, DetectionParameter config, Instant date) {
@@ -71,9 +72,9 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         UUID parentJob = this.jobScheduler.createParentJob(user, VISIT_TRIP_DETECTION, previewId);
-        TriggerProcessingEvent triggerEvent = new TriggerProcessingEvent(user.getUsername(), previewId, UUID.randomUUID().toString()).withParentJobId(parentJob);
-        this.jobScheduler.enqueueTask(processingEventTask, triggerEvent,
-                                  JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
+        ProcessingPipelineTask.TaskData triggerEvent = new ProcessingPipelineTask.TaskData(user.getUsername(), previewId, UUID.randomUUID().toString()).withParentJobId(parentJob);
+        this.jobScheduler.enqueueTask(processingPipelineTask, triggerEvent,
+                                      JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
                                           .friendlyName("Preview Visit Detection")
                                           .build());
         updatePreviewStatus(previewId);

@@ -1,14 +1,15 @@
 package com.dedicatedcode.reitti.controller.settings;
 
-import com.dedicatedcode.reitti.event.TriggerProcessingEvent;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.github.kagkarlsson.scheduler.task.Task;
+import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
 import jakarta.servlet.http.HttpServletRequest;
+import org.quartz.JobDetail;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -17,8 +18,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.UUID;
-
 @Controller
 public class ManageDataController {
 
@@ -26,7 +25,7 @@ public class ManageDataController {
     private final boolean deleteAllHostnameVerificationEnabled;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final Task<TriggerProcessingEvent> processingTask;
+    private final JobDetail processingTask;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final I18nService i18n;
@@ -37,7 +36,7 @@ public class ManageDataController {
                                 @Value("${reitti.data-management.delete-all.hostname-verification.enabled:true}") boolean deleteAllHostnameVerificationEnabled,
                                 TripJdbcService tripJdbcService,
                                 ProcessedVisitJdbcService processedVisitJdbcService,
-                                Task<TriggerProcessingEvent> processingTask,
+                                @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
                                 RawLocationPointJdbcService rawLocationPointJdbcService,
                                 UserSettingsJdbcService userSettingsJdbcService,
                                 I18nService i18nService,
@@ -46,7 +45,7 @@ public class ManageDataController {
         this.deleteAllHostnameVerificationEnabled = deleteAllHostnameVerificationEnabled;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.processingTask = processingTask;
+        this.processingTask = processingPipelineTask;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.i18n = i18nService;
@@ -92,7 +91,7 @@ public class ManageDataController {
         }
 
         try {
-            jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+            jobScheduler.enqueueTask(processingTask, new ProcessingPipelineTask.TaskData(user.getUsername(), null, null),
                                      JobSchedulingService.Metadata.builder()
                                              .user(user)
                                              .friendlyName("Manual processing")
@@ -114,7 +113,7 @@ public class ManageDataController {
         try {
             clearProcessedDataExceptPlaces(user);
             markRawLocationPointsAsUnprocessed(user);
-            this.jobScheduler.enqueueTask(processingTask, new TriggerProcessingEvent(user.getUsername(), null, null),
+            this.jobScheduler.enqueueTask(processingTask, new ProcessingPipelineTask.TaskData(user.getUsername(), null, null),
                                  JobSchedulingService.Metadata.builder()
                                          .user(user)
                                          .friendlyName("Manual processing")

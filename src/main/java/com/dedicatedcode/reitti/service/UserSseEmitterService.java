@@ -4,6 +4,10 @@ import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import org.quartz.Job;
+import org.quartz.JobDataMap;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -16,13 +20,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 @Service
-public class UserSseEmitterService implements SmartLifecycle {
+public class UserSseEmitterService implements SmartLifecycle, Job {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
     private final ReittiIntegrationService reittiIntegrationService;
     private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
     public UserSseEmitterService(ReittiIntegrationService reittiIntegrationService) {
         this.reittiIntegrationService = reittiIntegrationService;
+    }
+
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        JobDataMap dataMap = context.getMergedJobDataMap();
+        TaskData data = (TaskData) dataMap.get("data");
+        execute(data);
     }
 
     public SseEmitter addEmitter(User user) {
@@ -50,6 +61,10 @@ public class UserSseEmitterService implements SmartLifecycle {
         }
         log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
         return emitter;
+    }
+
+    private void execute(TaskData data) {
+        sendEventToUser(data.user, data.eventData);
     }
 
     public void sendEventToUser(User user, SSEEvent eventData) {

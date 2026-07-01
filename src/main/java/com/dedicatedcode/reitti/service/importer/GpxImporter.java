@@ -7,9 +7,10 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
-import com.github.kagkarlsson.scheduler.task.Task;
+import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -34,13 +35,13 @@ public class GpxImporter {
 
     private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
-    private final Task<PromotionJobHandler.PromotionTaskData> promotionTask;
+    private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GpxImporter(ImportStateHolder stateHolder,
                        LocationPointStagingService stagingService,
-                       Task<PromotionJobHandler.PromotionTaskData> promotionTask,
+                       @Qualifier("promotionJob") JobDetail promotionTask,
                        @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds,
                        JobSchedulingService jobSchedulingService) {
         this.stateHolder = stateHolder;
@@ -197,7 +198,7 @@ public class GpxImporter {
                     .friendlyName("GPS Data Promotion")
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.PromotionTaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              new PromotionJobHandler.TaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
 
