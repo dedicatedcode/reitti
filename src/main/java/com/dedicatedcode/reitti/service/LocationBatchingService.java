@@ -44,12 +44,12 @@ public class LocationBatchingService {
                                    @Qualifier("promotionJob") JobDetail promotionTask,
                                    JobSchedulingService jobScheduler,
                                    @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
-                                   @Value("${reitti.batching.max-wait-time-ms:5000}") int maxWaitTimeMs) {
+                                   @Value("${reitti.batching.max-wait-time:5}") long maxWaitTime) {
         this.locationPointStagingService = locationPointStagingService;
         this.promotionTask = promotionTask;
         this.jobScheduler = jobScheduler;
         this.maxBatchSize = maxBatchSize;
-        this.maxWaitTimeMs = maxWaitTimeMs;
+        this.maxWaitTimeMs = maxWaitTime * 1000;
     }
 
     public void addLocationPoint(User user, Device device, LocationPoint locationPoint) {

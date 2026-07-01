@@ -39,7 +39,7 @@ public class ProcessingPipelineTask implements Job {
                                   PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                   UserJdbcService userJdbcService,
                                   JobMetadataRepository jobMetadataRepository,
-                                  @Value("${reitti.import.batch-size:100}") int batchSize,
+                                  @Value("${reitti.import.batch-size:1000}") int batchSize,
                                   UnifiedLocationProcessingService locationProcessTask) {
         this.stateHolder = stateHolder;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;

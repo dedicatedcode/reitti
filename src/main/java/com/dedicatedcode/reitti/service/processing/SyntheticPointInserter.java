@@ -34,7 +34,7 @@ public class SyntheticPointInserter {
                                   RawLocationPointJdbcService rawLocationPointService,
                                   SyntheticLocationPointGenerator syntheticGenerator,
                                   VisitDetectionParametersService visitDetectionParametersService,
-                                  @Value("${reitti.import.batch-size:10000}") int maxBatchSize) {
+                                  @Value("${reitti.import.batch-size:1000}") int maxBatchSize) {
         this.config = config;
         this.rawLocationPointService = rawLocationPointService;
         this.syntheticGenerator = syntheticGenerator;
