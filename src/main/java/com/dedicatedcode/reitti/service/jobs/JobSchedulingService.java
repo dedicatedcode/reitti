@@ -7,6 +7,8 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Date;
@@ -65,7 +67,7 @@ public class JobSchedulingService implements JobListener {
     }
 
     // --- Scheduling Methods ---
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void scheduleTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
         UUID jobId = UUID.randomUUID();
         Instant now = Instant.now();
@@ -98,6 +100,7 @@ public class JobSchedulingService implements JobListener {
     }
 
     public void cancel(UUID jobId) {
+        log.info("Cancelling job {}", jobId);
         Optional<JobMetadataRepository.JobMetadata> meta = jobMetadataRepository.findById(jobId);
         if (meta.isPresent() && meta.get().getTaskId() != null) {
             try {

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Component
+@DisallowConcurrentExecution
 public class PromotionJobHandler implements Job {
     private static final Logger log = LoggerFactory.getLogger(PromotionJobHandler.class);
     private final LocationPointStagingService stagingService;
