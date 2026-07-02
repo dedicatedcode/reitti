@@ -1030,6 +1030,8 @@
                     previousCameraState = mapRenderer.getCameraState();
                 }
 
+                mapRenderer.clearHighlight();
+
                 const startTimeMs = Date.parse(trip.startTime);
                 const endTimeMs = Date.parse(trip.endTime);
 

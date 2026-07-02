@@ -67,7 +67,6 @@ public class JobSchedulingService implements JobListener {
     }
 
     // --- Scheduling Methods ---
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void scheduleTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
         UUID jobId = UUID.randomUUID();
         Instant now = Instant.now();
@@ -95,7 +94,6 @@ public class JobSchedulingService implements JobListener {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void enqueueTask(JobDetail jobDetail, T data, Metadata meta) {
         scheduleTask(jobDetail, data, Instant.now(), meta);
     }
