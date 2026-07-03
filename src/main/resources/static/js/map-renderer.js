@@ -11,73 +11,6 @@ class MapRenderer {
         ];
     }
 
-    static getMapStyleValue(mapStyle) {
-        if (mapStyle?.mapType === 'vector') {
-            if (mapStyle?.styleInputType === 'url') {
-                return mapStyle?.styleUrl;
-            } else if (mapStyle?.styleInputType === 'json') {
-                return MapRenderer._cloneStaticStyleDefinition(mapStyle.styleInput);
-            } else {
-                throw new Error('Invalid vector style input type');
-            }
-        } else if (mapStyle?.mapType === 'raster') {
-            if (mapStyle?.rasterSourceInputType === 'json-url') {
-                const tileJsonUrl = mapStyle?.dataSource?.tileJsonUrl;
-                if (!tileJsonUrl) {
-                    throw new Error('Raster style missing tileJsonUrl');
-                }
-                return {
-                    version: 8,
-                    name: mapStyle.label || 'Raster',
-                    sources: {
-                        'raster-tiles': {
-                            type: 'raster',
-                            url: tileJsonUrl,
-                            tileSize: mapStyle?.dataSource?.tileSize || 256,
-                            attribution: mapStyle?.dataSource?.attribution || ''
-                        }
-                    },
-                    layers: [{
-                        id: 'raster-layer',
-                        type: 'raster',
-                        source: 'raster-tiles',
-                        minzoom: mapStyle?.dataSource?.minzoom || 0,
-                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
-                    }]
-                };
-            } else if (mapStyle?.rasterSourceInputType === 'url-template') {
-                // Return a complete raster style object
-                const tileUrl = mapStyle?.dataSource?.tileUrlTemplate;
-                if (!tileUrl) {
-                    throw new Error('Raster style missing tile URL template');
-                }
-                return {
-                    version: 8,
-                    name: mapStyle.label || 'Raster',
-                    sources: {
-                        'raster-tiles': {
-                            type: 'raster',
-                            tiles: [tileUrl],
-                            tileSize: mapStyle?.dataSource?.tileSize || 256,
-                            attribution: mapStyle?.dataSource?.attribution || ''
-                        }
-                    },
-                    layers: [{
-                        id: 'raster-layer',
-                        type: 'raster',
-                        source: 'raster-tiles',
-                        minzoom: mapStyle?.dataSource?.minzoom || 0,
-                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
-                    }]
-                };
-            } else {
-                throw new Error('Invalid raster style input type');
-            }
-        } else {
-            throw new Error('Invalid map type');
-        }
-    }
-
     static _cloneStaticStyleDefinition(definition) {
         if (typeof definition === 'string') {
             return JSON.parse(definition);
@@ -125,7 +58,6 @@ class MapRenderer {
 
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         MapRenderer.ensureRTLTextPlugin();
-        this._debug = false;
         this.userSettings = userSettings;
         this.transitionQueue = Promise.resolve();
         this.element = document.getElementById(element);
@@ -181,7 +113,7 @@ class MapRenderer {
         const mapOptions = {
             interleaved: true,
             container: element,
-            style: MapRenderer.getMapStyleValue(this.currentMapStyle),
+            style: getMapStyleValue(this.currentMapStyle),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
@@ -202,7 +134,7 @@ class MapRenderer {
                 iconSize: 56
             });
         }
-        this.avatarMarkers = new Map(); // Store markers by user ID
+        this.avatarMarkers = new Map();
         this.showAvatars = false;
 
         this.terrainLayer = null;
@@ -268,15 +200,11 @@ class MapRenderer {
         this._layerInstances = [];           // Current array of deck.gl layer instances
         this._layerContextKey = null;         // Structural fingerprint of current layers
         this._terrainExtension = null;        // Cached TerrainExtension instance
-        this._terrainExtensionsArray = null;  // Cached [extension] array (stable ref)
-        this._emptyExtensionsArray = [];      // Stable empty array ref
         this._cachedVisitPlaces = new Map();  // managerId -> places array (stable ref)
         this._cachedFilteredPolygons = new Map(); // managerId -> filtered places (stable ref)
         this._cachedLayerData = new Map();    // cacheKey -> layerData (per-build cache)
         this._currentZoom = 0;
         this._zoomDebounceId = null;
-
-
         this._setup();
     }
 
@@ -382,120 +310,7 @@ class MapRenderer {
         this._cachedVisitPlaces.set(version, {places, filteredPolygons});
         return {places, filteredPolygons};
     }
-    /**
-     * Debug: Log the raw layer data from getLayerData
-     */
-    _debugLogLayerData(label, layerKey, layerData, bufferMode) {
-        console.groupCollapsed(`%c  [DEBUG] layerData for ${label} (${layerKey})`, 'color: #888');
-        console.log('  buffer mode:', bufferMode);
-        console.log('  length (paths):', layerData?.length);
-        console.log('  startIndices:', layerData?.startIndices);
-        console.log('  startIndices.length:', layerData?.startIndices?.length);
-        console.log('  startIndices[0..5]:', Array.from(layerData?.startIndices?.slice(0, 6) || []));
-        console.log('  startIndices[last]:', layerData?.startIndices?.[layerData.startIndices.length - 1]);
-        console.log('  attributes keys:', Object.keys(layerData?.attributes || {}));
 
-        if (layerData?.attributes?.getPath) {
-            const pa = layerData.attributes.getPath;
-            console.log('  getPath:');
-            console.log('    value type:', pa.value?.constructor?.name);
-            console.log('    value.length:', pa.value?.length);
-            console.log('    value.byteLength:', pa.value?.byteLength);
-            console.log('    size:', pa.size);
-            console.log('    stride (bytes):', pa.stride);
-            console.log('    offset (bytes):', pa.offset);
-            console.log('    stride/4 (floats):', pa.stride / 4);
-            console.log('    offset/4 (floats):', pa.offset / 4);
-
-            // Sample first 3 values
-            if (pa.value && pa.value.length > 0) {
-                const floatsPerVertex = pa.stride / 4;
-                const firstIdx = pa.offset / 4;
-                console.log('    first vertex [0]:', [pa.value[firstIdx], pa.value[firstIdx + 1], pa.value[firstIdx + 2]]);
-                if (pa.value.length > floatsPerVertex) {
-                    console.log('    first vertex [1]:', [pa.value[firstIdx + floatsPerVertex], pa.value[firstIdx + floatsPerVertex + 1], pa.value[firstIdx + floatsPerVertex + 2]]);
-                }
-            }
-        }
-
-        if (layerData?.attributes?.getTimestamps) {
-            const ta = layerData.attributes.getTimestamps;
-            console.log('  getTimestamps:');
-            console.log('    value type:', ta.value?.constructor?.name);
-            console.log('    value.length:', ta.value?.length);
-            console.log('    size:', ta.size);
-            console.log('    stride (bytes):', ta.stride);
-            console.log('    offset (bytes):', ta.offset);
-        }
-
-        // Validate: total points should match startIndices[last]
-        const lastIdx = layerData?.startIndices?.[layerData.startIndices.length - 1];
-        const expectedPoints = layerData?.attributes?.getPath?.value?.length / (layerData.attributes.getPath.stride / 4);
-        console.log('  validation:');
-        console.log('    startIndices[last]:', lastIdx);
-        console.log('    expected points (value.length / strideFloats):', expectedPoints);
-        console.log('    match:', lastIdx === expectedPoints);
-        console.log('    length == startIndices.length - 1:', layerData.length === layerData.startIndices.length - 1);
-
-        console.groupEnd();
-    }
-
-    /**
-     * Debug: Log the stripped data that goes to PathLayer
-     */
-    _debugLogStrippedData(layerKey, strippedData) {
-        console.groupCollapsed(`%c  [DEBUG] strippedData for PathLayer (${layerKey})`, 'color: #888');
-        console.log('  length:', strippedData?.length);
-        console.log('  startIndices:', strippedData?.startIndices);
-        console.log('  startIndices.length:', strippedData?.startIndices?.length);
-        console.log('  attributes keys:', Object.keys(strippedData?.attributes || {}));
-
-        const pa = strippedData?.attributes?.getPath;
-        if (pa) {
-            console.log('  getPath.value === original value?', pa.value != null);
-            console.log('  getPath.value type:', pa.value?.constructor?.name);
-            console.log('  getPath.value.length:', pa.value?.length);
-            console.log('  getPath.size:', pa.size);
-            console.log('  getPath.stride:', pa.stride);
-            console.log('  getPath.offset:', pa.offset);
-        }
-
-        // Check for common assertion triggers
-        const issues = [];
-        if (strippedData.length !== strippedData.startIndices.length - 1) {
-            issues.push(`length (${strippedData.length}) !== startIndices.length - 1 (${strippedData.startIndices.length - 1})`);
-        }
-        if (pa && pa.stride % 4 !== 0) {
-            issues.push(`stride (${pa.stride}) is not divisible by 4`);
-        }
-        if (pa && pa.offset % 4 !== 0) {
-            issues.push(`offset (${pa.offset}) is not divisible by 4`);
-        }
-        if (pa && pa.size !== 2 && pa.size !== 3) {
-            issues.push(`size (${pa.size}) is not 2 or 3`);
-        }
-        if (strippedData.startIndices && strippedData.length > 0) {
-            const last = strippedData.startIndices[strippedData.startIndices.length - 1];
-            const strideFloats = pa.stride / 4;
-            const offsetFloats = pa.offset / 4;
-            const maxPossiblePoints = (pa.value.length - offsetFloats) / strideFloats;
-            if (last > maxPossiblePoints) {
-                issues.push(`startIndices[last] (${last}) > max possible points (${maxPossiblePoints})`);
-            }
-            if (last === 0 && strippedData.length === 1) {
-                issues.push('SINGLE EMPTY PATH: length=1, startIndices=[0,0] — PathLayer may assert on zero-length path');
-            }
-        }
-
-        if (issues.length > 0) {
-            console.warn('%c  ISSUES FOUND:', 'color: #ff0000; font-weight: bold');
-            issues.forEach(i => console.warn('    ⚠', i));
-        } else {
-            console.log('  ✓ no issues detected by heuristic checks');
-        }
-
-        console.groupEnd();
-    }
     /**
      * Full layer rebuild. Called only when structural inputs change
      * (data loaded, viewMode/aggregated/terrain/animating toggled, manager set changed).
@@ -507,33 +322,9 @@ class MapRenderer {
         const contextKey = this._getLayerContextKey();
         const keyChanged = contextKey !== this._layerContextKey;
 
-        if (this._debug && keyChanged) {
-            console.log('%c[_buildLayers] FULL REBUILD', 'color: #ff6600; font-weight: bold');
-            console.log('  old key:', this._layerContextKey);
-            console.log('  new key:', contextKey);
-        } else if (this._debug && !keyChanged && this._layerInstances.length > 0) {
-            console.log('%c[_buildLayers] SKIP → _updateAnimatedLayers', 'color: #00aa00');
-        }
-
         if (!keyChanged && this._layerInstances.length > 0) {
             this._updateAnimatedLayers();
             return;
-        }
-
-        // If key changed, figure out WHY
-        if (this._debug && keyChanged && this._layerContextKey !== null) {
-            const oldParsed = JSON.parse(this._layerContextKey);
-            const newParsed = JSON.parse(contextKey);
-            const changes = [];
-            for (const k of Object.keys(newParsed)) {
-                if (JSON.stringify(oldParsed[k]) !== JSON.stringify(newParsed[k])) {
-                    changes.push(`  ${k}: ${JSON.stringify(oldParsed[k])} → ${JSON.stringify(newParsed[k])}`);
-                }
-            }
-            if (changes.length > 0) {
-                console.log('%c[_buildLayers] CHANGED FIELDS:', 'color: #ff0000');
-                changes.forEach(c => console.log(c));
-            }
         }
 
         this._layerContextKey = contextKey;
@@ -563,15 +354,7 @@ class MapRenderer {
                     const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
                     const layerData = this._getCachedLayerData(manager, buffer, this.viewState.aggregated);
 
-                    if (this._debug) {
-                        this._debugLogLayerData('static-fixed', layerKey, layerData, buffer);
-                    }
-
                     const strippedData = this._stripForPathLayer(layerData);
-
-                    if (this._debug) {
-                        this._debugLogStrippedData(layerKey, strippedData);
-                    }
 
                     try {
                         allLayers.push(new deck.PathLayer({
@@ -660,32 +443,17 @@ class MapRenderer {
             allLayers.push(this.highlightLayer);
         }
 
-        if (this._debug) {
-            console.log('%c[_buildLayers] LAYERS BUILT', 'color: #0066ff; font-weight: bold');
-            allLayers.forEach((l, i) => {
-                console.log(`  [${i}] ${l.constructor.name} id="${l.props.id}" dataLen=${l.props.data?.length ?? 'n/a'} ext=${l.props.extensions?.length ?? 0}`);
-            });
-        }
-
         this._layerInstances = allLayers;
         this.deckOverlay.setProps({ layers: allLayers });
-
 
         if (this.map && typeof this.map.triggerRepaint === 'function') {
             this.map.resize();
         }
     }
+
     _updateAnimatedLayers() {
         if (this._layerInstances.length === 0) {
-            if (this._debug) console.warn('[_updateAnimatedLayers] NO LAYERS — was _buildLayers ever called?');
             return;
-        }
-
-        if (this._debug) {
-            console.log('%c[_updateAnimatedLayers] called', 'color: #00aa00');
-            console.log('  currentTime:', this.viewState.currentTime);
-            console.log('  _currentZoom:', this._currentZoom);
-            console.log('  layer count:', this._layerInstances.length);
         }
 
         const isOverview = !this.viewState.animating;
@@ -722,10 +490,6 @@ class MapRenderer {
 
             return layer;
         });
-
-        if (this._debug) {
-            console.log(`  reused=${reused} cloned=${cloned} recreated=${recreated}`);
-        }
 
         this._layerInstances = updated;
         this.deckOverlay.setProps({ layers: updated });
@@ -1059,7 +823,7 @@ class MapRenderer {
             this.map.on('error', handleError);
 
             try {
-                this.map.setStyle(MapRenderer.getMapStyleValue(mapStyle));
+                this.map.setStyle(getMapStyleValue(mapStyle));
             } catch (error) {
                 cleanup();
                 console.warn(`Unable to apply map style ${mapStyle?.id || 'unknown'}:`, error);
@@ -1643,21 +1407,6 @@ class MapRenderer {
         ];
     }
 
-    /**
-     * Called by the external time control (replay slider) to advance the track.
-     * This is a LIGHTWEIGHT update — only TripsLayer `currentTime` props
-     * and visit layer accessors are re-evaluated. Static path layers
-     * (millions of points) are not touched at all.
-     *
-     * @param {number} time - The new currentTime value
-     */
-    setCurrentTime(time) {
-        if (this._debug) {
-            console.log(`%c[setCurrentTime] ${time}`, 'color: #9933cc');
-        }
-        this.viewState.currentTime = time;
-        this._updateAnimatedLayers();
-    }
     async _waitForIdle() {
         if (this.map.loaded() && !this.map.isMoving()) {
             return; // Already idle, resolve immediately
@@ -1666,7 +1415,6 @@ class MapRenderer {
     }
 
     _rerenderOverlays() {
-        if (this._debug) console.log('%c[_rerenderOverlays] → _buildLayers', 'color: #336699');
         this._buildLayers();
         if (this.showAvatars) this.updateAvatarPositions();
         this.viewConfig.mapDataProviders.forEach(provider => provider.render(this.map));
@@ -1999,7 +1747,6 @@ class MapRenderer {
             this.map.setTerrain(null);
         }
         this._terrainExtension = null;
-        this._terrainExtensionsArray = null;
         this._layerContextKey = null; // Force rebuild
 
     }
