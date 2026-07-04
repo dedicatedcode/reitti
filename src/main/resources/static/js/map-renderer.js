@@ -56,6 +56,73 @@ class MapRenderer {
         }
     }
 
+    static getMapStyleValue(mapStyle) {
+        if (mapStyle?.mapType === 'vector') {
+            if (mapStyle?.styleInputType === 'url') {
+                return mapStyle?.styleUrl;
+            } else if (mapStyle?.styleInputType === 'json') {
+                return MapRenderer._cloneStaticStyleDefinition(mapStyle.styleInput);
+            } else {
+                throw new Error('Invalid vector style input type');
+            }
+        } else if (mapStyle?.mapType === 'raster') {
+            if (mapStyle?.rasterSourceInputType === 'json-url') {
+                const tileJsonUrl = mapStyle?.dataSource?.tileJsonUrl;
+                if (!tileJsonUrl) {
+                    throw new Error('Raster style missing tileJsonUrl');
+                }
+                return {
+                    version: 8,
+                    name: mapStyle.label || 'Raster',
+                    sources: {
+                        'raster-tiles': {
+                            type: 'raster',
+                            url: tileJsonUrl,
+                            tileSize: mapStyle?.dataSource?.tileSize || 256,
+                            attribution: mapStyle?.dataSource?.attribution || ''
+                        }
+                    },
+                    layers: [{
+                        id: 'raster-layer',
+                        type: 'raster',
+                        source: 'raster-tiles',
+                        minzoom: mapStyle?.dataSource?.minzoom || 0,
+                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
+                    }]
+                };
+            } else if (mapStyle?.rasterSourceInputType === 'url-template') {
+                // Return a complete raster style object
+                const tileUrl = mapStyle?.dataSource?.tileUrlTemplate;
+                if (!tileUrl) {
+                    throw new Error('Raster style missing tile URL template');
+                }
+                return {
+                    version: 8,
+                    name: mapStyle.label || 'Raster',
+                    sources: {
+                        'raster-tiles': {
+                            type: 'raster',
+                            tiles: [tileUrl],
+                            tileSize: mapStyle?.dataSource?.tileSize || 256,
+                            attribution: mapStyle?.dataSource?.attribution || ''
+                        }
+                    },
+                    layers: [{
+                        id: 'raster-layer',
+                        type: 'raster',
+                        source: 'raster-tiles',
+                        minzoom: mapStyle?.dataSource?.minzoom || 0,
+                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
+                    }]
+                };
+            } else {
+                throw new Error('Invalid raster style input type');
+            }
+        } else {
+            throw new Error('Invalid map type');
+        }
+    }
+
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         MapRenderer.ensureRTLTextPlugin();
         this.userSettings = userSettings;
@@ -113,7 +180,7 @@ class MapRenderer {
         const mapOptions = {
             interleaved: true,
             container: element,
-            style: getMapStyleValue(this.currentMapStyle),
+            style: MapRenderer.getMapStyleValue(this.currentMapStyle),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
             pitch: this.viewState.is3d ? 45 : 0,
             maxPitch: 85,
@@ -823,7 +890,7 @@ class MapRenderer {
             this.map.on('error', handleError);
 
             try {
-                this.map.setStyle(getMapStyleValue(mapStyle));
+                this.map.setStyle(MapRenderer.getMapStyleValue(mapStyle));
             } catch (error) {
                 cleanup();
                 console.warn(`Unable to apply map style ${mapStyle?.id || 'unknown'}:`, error);
