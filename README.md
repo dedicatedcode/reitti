@@ -41,7 +41,7 @@ Reitti lets you share your live location with others — and see theirs in retur
 
 ### Devices
 
-![Workbench](.github/screenshots/workbench.gif)
+![Workbench](.github/screenshots/workbench-2.gif)
 
 *The workbench — drag misplaced GPS points to their correct location and stitch data from different devices together.*
 
