@@ -182,7 +182,9 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ needs.prepare.outputs.is_beta == 'true' }}
           make_latest: ${{ needs.prepare.outputs.is_beta == 'false' }}
-          files: "*.jar"
+          files: |
+            docker-compose.yml
+            *.jar
 
       - name: Close verification issue
         run: |
