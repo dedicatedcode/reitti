@@ -230,6 +230,10 @@
         document.getElementById('time-display')
     );
 
+    timelineControl.on('offsetChanged', () => {
+        mapRenderer.updateViewState(createViewState([]));
+    });
+
     const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
     const settingsMenu = new SettingsMenu('settings-menu-container');
 
