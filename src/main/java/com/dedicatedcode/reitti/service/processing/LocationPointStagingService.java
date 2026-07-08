@@ -7,20 +7,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class LocationPointStagingService {
     private static final Logger log = LoggerFactory.getLogger(LocationPointStagingService.class);
+    private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
 
     private final JdbcTemplate jdbcTemplate;
     private final int batchSize;
@@ -32,19 +33,26 @@ public class LocationPointStagingService {
     }
 
     public void ensurePartitionExists(String partitionKey) {
-        String tableName = getTableName(partitionKey);
-        String sql = String.format(
-                "CREATE TABLE IF NOT EXISTS %s PARTITION OF staging_location_points FOR VALUES IN ('%s')",
-                tableName, partitionKey
-        );
-        this.jdbcTemplate.execute(sql);
-        log.debug("Ensured partition [{}] exists", tableName);
+        if (!initializedPartitions.contains(partitionKey)) {
+            String tableName = getTableName(partitionKey);
+            String sql = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s PARTITION OF staging_location_points FOR VALUES IN ('%s')",
+                    tableName, partitionKey
+            );
+            this.jdbcTemplate.execute(sql);
+            this.jdbcTemplate.update("INSERT INTO partition_registry(partition_name) VALUES(?)", partitionKey);
+            log.debug("Ensured partition [{}] exists", tableName);
+            initializedPartitions.add(partitionKey);
+        }
     }
 
     @SuppressWarnings("SqlSourceToSinkFlow")
     public void dropPartition(String partitionKey) {
         String tableName = getTableName(partitionKey);
         this.jdbcTemplate.execute("DROP TABLE IF EXISTS " + tableName);
+        this.jdbcTemplate.update("DELETE FROM partition_registry WHERE partition_name = ?", partitionKey);
+        this.initializedPartitions.remove(partitionKey);
+
         log.debug("Dropped partition [{}]", tableName);
     }
 
@@ -134,35 +142,38 @@ public class LocationPointStagingService {
 
     @Scheduled(cron = "${reitti.import.staging.cleanup.cron}")
     public void nightlyCleanup() {
-        List<String> partitions = jdbcTemplate.queryForList(
-                "SELECT relid::regclass::text FROM pg_partition_tree('staging_location_points') WHERE isleaf = true",
-                String.class
-        );
+        String sql = """
+                 SELECT partition_name
+                 FROM partition_registry
+                 WHERE created_at < (now() - interval '7 days')
+                 """;
 
-        for (String part : partitions) {
+        List<String> stalePartitions = jdbcTemplate.queryForList(sql, String.class);
+
+        for (String part : stalePartitions) {
+            // 2. Perform the drop
             try {
-                String tableNameOnly = part.contains(".") ? part.substring(part.lastIndexOf('.') + 1) : part;
+                log.info("Janitor: Dropping stale partition [{}]", part);
+                dropPartitionSafely(getTableName(part));
 
-                Boolean isInactive = jdbcTemplate.queryForObject("""
-                                                                         SELECT (now() - GREATEST(last_vacuum, last_analyze, last_autoanalyze, now() - interval '1 year')) > interval '12 hours'
-                                                                         FROM pg_stat_user_tables WHERE relname = ?
-                                                                         """, Boolean.class, tableNameOnly);
-
-                // 3. Check Promotion Status: Any data left behind?
-                Integer unpromotedCount = jdbcTemplate.queryForObject(
-                        "SELECT count(*) FROM " + part + " WHERE promoted = FALSE", Integer.class);
-
-                // 4. Execution: Only drop if it's quiet AND finished
-                if (Boolean.TRUE.equals(isInactive) && unpromotedCount != null && unpromotedCount == 0) {
-                    log.info("Janitor: Dropping fully promoted and inactive partition [{}]", part);
-                    jdbcTemplate.execute("DROP TABLE " + part);
-                } else {
-                    log.debug("Janitor: Skipping partition [{}]. Inactive: {}, Unpromoted: {}",
-                              part, isInactive, unpromotedCount);
-                }
+                // 3. Remove from registry
+                this.jdbcTemplate.update("DELETE FROM partition_registry WHERE partition_name = ?", part);
+                this.initializedPartitions.remove(part);
             } catch (Exception e) {
-                log.error("Janitor: Failed to process cleanup for partition [{}]", part, e);
+                log.error("Janitor: Failed to drop partition [{}]", part, e);
             }
         }
     }
+
+    private void dropPartitionSafely(String tableName) {
+        jdbcTemplate.execute((ConnectionCallback<Void>) conn -> {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("SET LOCAL lock_timeout = '5s'");
+                stmt.execute("ALTER TABLE staging_location_points DETACH PARTITION " + tableName + " CONCURRENTLY");
+                stmt.execute("DROP TABLE IF EXISTS " + tableName);
+            }
+            return null;
+        });
+    }
+
 }
