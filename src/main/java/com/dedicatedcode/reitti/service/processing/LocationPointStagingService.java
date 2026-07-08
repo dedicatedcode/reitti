@@ -15,10 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.*;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class LocationPointStagingService {
     private static final Logger log = LoggerFactory.getLogger(LocationPointStagingService.class);
+    private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
 
     private final JdbcTemplate jdbcTemplate;
     private final int batchSize;
@@ -30,14 +33,17 @@ public class LocationPointStagingService {
     }
 
     public void ensurePartitionExists(String partitionKey) {
-        String tableName = getTableName(partitionKey);
-        String sql = String.format(
-                "CREATE TABLE IF NOT EXISTS %s PARTITION OF staging_location_points FOR VALUES IN ('%s')",
-                tableName, partitionKey
-        );
-        this.jdbcTemplate.execute(sql);
-        this.jdbcTemplate.update("INSERT INTO partition_registry(partition_name) VALUES(?)", partitionKey);
-        log.debug("Ensured partition [{}] exists", tableName);
+        if (!initializedPartitions.contains(partitionKey)) {
+            String tableName = getTableName(partitionKey);
+            String sql = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s PARTITION OF staging_location_points FOR VALUES IN ('%s')",
+                    tableName, partitionKey
+            );
+            this.jdbcTemplate.execute(sql);
+            this.jdbcTemplate.update("INSERT INTO partition_registry(partition_name) VALUES(?)", partitionKey);
+            log.debug("Ensured partition [{}] exists", tableName);
+            initializedPartitions.add(partitionKey);
+        }
     }
 
     @SuppressWarnings("SqlSourceToSinkFlow")
@@ -45,6 +51,8 @@ public class LocationPointStagingService {
         String tableName = getTableName(partitionKey);
         this.jdbcTemplate.execute("DROP TABLE IF EXISTS " + tableName);
         this.jdbcTemplate.update("DELETE FROM partition_registry WHERE partition_name = ?", partitionKey);
+        this.initializedPartitions.remove(partitionKey);
+
         log.debug("Dropped partition [{}]", tableName);
     }
 
@@ -149,7 +157,8 @@ public class LocationPointStagingService {
                 dropPartitionSafely(getTableName(part));
 
                 // 3. Remove from registry
-                jdbcTemplate.update("DELETE FROM partition_registry WHERE partition_name = ?", part);
+                this.jdbcTemplate.update("DELETE FROM partition_registry WHERE partition_name = ?", part);
+                this.initializedPartitions.remove(part);
             } catch (Exception e) {
                 log.error("Janitor: Failed to drop partition [{}]", part, e);
             }

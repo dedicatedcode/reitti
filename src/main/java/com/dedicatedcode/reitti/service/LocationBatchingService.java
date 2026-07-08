@@ -22,7 +22,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -31,7 +30,6 @@ public class LocationBatchingService {
     private static final Logger logger = LoggerFactory.getLogger(LocationBatchingService.class);
     
     private final Map<String, UserBatch> userBatches = new ConcurrentHashMap<>();
-    private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
     private final LocationPointStagingService locationPointStagingService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobScheduler;
@@ -84,10 +82,7 @@ public class LocationBatchingService {
         try {
             String pKey = batch.getPartitionKey();
 
-            if (!initializedPartitions.contains(pKey)) {
-                locationPointStagingService.ensurePartitionExists(pKey);
-                initializedPartitions.add(pKey);
-            }
+            locationPointStagingService.ensurePartitionExists(pKey);
 
             logger.debug("Flushing batch of {} location points for partition {}", batch.getLocationPoints().size(), pKey);
             locationPointStagingService.insertBatch(pKey,
