@@ -73,7 +73,7 @@ public class LocationBatchingService {
     private String getSessionKey(User user, Device device) {
         return String.format("stream_%d_%s_%s",
                              user.getId(),
-                             device != null ? device.id() : "main",
+                             device.id(),
                              LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
                 .toLowerCase();
     }
