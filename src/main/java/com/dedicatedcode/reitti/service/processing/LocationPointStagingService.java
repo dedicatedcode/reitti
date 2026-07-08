@@ -40,7 +40,7 @@ public class LocationPointStagingService {
                     tableName, partitionKey
             );
             this.jdbcTemplate.execute(sql);
-            this.jdbcTemplate.update("INSERT INTO partition_registry(partition_name) VALUES(?)", partitionKey);
+            this.jdbcTemplate.update("INSERT INTO partition_registry(partition_name) VALUES(?) ON CONFLICT DO NOTHING", partitionKey);
             log.debug("Ensured partition [{}] exists", tableName);
             initializedPartitions.add(partitionKey);
         }
