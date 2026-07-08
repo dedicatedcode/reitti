@@ -497,6 +497,8 @@ class MapRenderer {
                                 getTimestamps: [this.viewState.aggregated],
                             }
                         }));
+                        allLayers.push(this._buildCurrentPositionLayer(manager));
+
                     }
                 }
             }
@@ -543,6 +545,14 @@ class MapRenderer {
             if (layer instanceof deck.TripsLayer) {
                 cloned++;
                 return layer.clone({ currentTime: this.viewState.currentTime });
+            }
+
+            if (id.startsWith('current-position-')) {
+                const managerId = id.replace('current-position-', '');
+                const manager = this.gpsDataManagers.find(m => m.id === managerId);
+                if (manager) {
+                    return this._buildCurrentPositionLayer(manager);
+                }
             }
 
             if (id.startsWith('visit-') || id.startsWith('place-')) {
@@ -1364,6 +1374,7 @@ class MapRenderer {
                 currentTime: [currentTime],
             }
         }));
+        layers.push(this._buildCurrentPositionLayer(manager));
 
         return layers;
     }
@@ -1472,6 +1483,38 @@ class MapRenderer {
                 onHover: info => this._updateTooltip(info),
             })
         ];
+    }
+
+    _buildCurrentPositionLayer(manager) {
+        const color = manager.color;
+        const extensions = this._getTerrainExtensions();
+        const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
+
+        const currentPosition = manager.getCurrentPosition(this.viewState.currentTime, this.viewState.aggregated);
+        return new deck.ScatterplotLayer({
+            id: `current-position-${manager.id}`,
+            data: [currentPosition],
+            getPosition: d => {
+                const pos = d;
+                const newVar = pos ?  [pos.lng, pos.lat, 0]: null;
+                console.log("newVar", newVar);
+                return newVar;
+            },
+            getRadius: 2,
+            radiusMinPixels: 1,
+            getColor: [color[0], color[1], color[2], 255],
+            stroked: true,
+            getLineColor: [255, 255, 255, 255],
+            lineWidthMinPixels: 2,
+            pickable: false,
+            depthTest: false,
+            parameters: { depthTest: false },
+            extensions: extensions,
+            terrainDrawMode: terrainDrawMode,
+            updateTriggers: {
+                getPosition: [this.viewState.currentTime, this.viewState.aggregated],
+            }
+        });
     }
 
     async _waitForIdle() {
