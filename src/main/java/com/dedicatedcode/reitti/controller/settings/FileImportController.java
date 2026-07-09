@@ -32,6 +32,7 @@ public class FileImportController {
     private final GoogleAndroidTimelineImporter googleAndroidTimelineImporter;
     private final GoogleIOSTimelineImporter googleTimelineIOSImporter;
     private final GeoJsonImporter geoJsonImporter;
+    private final FitFileImporter fitFileImporter;
     private final DeviceJdbcService deviceJdbcService;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
@@ -42,7 +43,7 @@ public class FileImportController {
                                 GoogleRecordsImporter googleRecordsImporter,
                                 GoogleAndroidTimelineImporter googleAndroidTimelineImporter,
                                 GoogleIOSTimelineImporter googleTimelineIOSImporter,
-                                GeoJsonImporter geoJsonImporter, DeviceJdbcService deviceJdbcService,
+                                GeoJsonImporter geoJsonImporter, FitFileImporter fitFileImporter, DeviceJdbcService deviceJdbcService,
                                 I18nService i18n,
                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                 @Value("${server.tomcat.max-part-count}") int maxFileSupported,
@@ -52,6 +53,7 @@ public class FileImportController {
         this.googleAndroidTimelineImporter = googleAndroidTimelineImporter;
         this.googleTimelineIOSImporter = googleTimelineIOSImporter;
         this.geoJsonImporter = geoJsonImporter;
+        this.fitFileImporter = fitFileImporter;
         this.deviceJdbcService = deviceJdbcService;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
@@ -237,6 +239,59 @@ public class FileImportController {
             String filename = file.getOriginalFilename();
             try (InputStream inputStream = file.getInputStream()) {
                 Map<String, Object> result = this.geoJsonImporter.importGeoJson(inputStream, user, device, filename);
+
+                if ((Boolean) result.get("success")) {
+                    totalProcessed += (Integer) result.get("pointsReceived");
+                    successCount++;
+                } else {
+                    errorMessages.append("Error processing ").append(filename).append(": ")
+                            .append(result.get("error")).append(". ");
+                }
+            } catch (IOException e) {
+                errorMessages.append("Error processing ").append(filename).append(": ")
+                        .append(e.getMessage()).append(". ");
+            }
+        }
+
+        if (successCount > 0) {
+            String message = "Successfully processed " + successCount + " file(s) with " + totalProcessed + " location points.";
+            if (!errorMessages.isEmpty()) {
+                message += " Errors: " + errorMessages;
+            }
+            model.addAttribute("uploadSuccessMessage", message);
+        } else {
+            model.addAttribute("uploadErrorMessage", "No files were processed successfully. " + errorMessages);
+        }
+
+        return "settings/import-data :: file-upload-content";
+    }
+    @PostMapping("/fit")
+    public String importFitFile(@RequestParam("files") MultipartFile[] files,
+                                @RequestParam("device") Long deviceId,
+                                Authentication authentication,
+                                Model model) {
+        User user = (User) authentication.getPrincipal();
+        Device device = this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
+
+        if (files.length == 0) {
+            model.addAttribute("uploadErrorMessage", "No files selected");
+            return "settings/import-data :: file-upload-content";
+        }
+
+        int totalProcessed = 0;
+        int successCount = 0;
+        StringBuilder errorMessages = new StringBuilder();
+
+        for (MultipartFile file : files) {
+            if (!validateFile(file, errorMessages, "fit")) {
+                model.addAttribute("uploadErrorMessage", errorMessages.toString());
+                continue;
+            }
+
+            String filename = file.getOriginalFilename();
+            try (InputStream inputStream = file.getInputStream()) {
+                Map<String, Object> result = this.fitFileImporter.importFile(inputStream, user, device, filename);
 
                 if ((Boolean) result.get("success")) {
                     totalProcessed += (Integer) result.get("pointsReceived");

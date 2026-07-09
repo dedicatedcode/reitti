@@ -105,6 +105,41 @@
                         <progress id='progress-geojson' value='0' max='100' style="display: none"></progress>
                     </div>
                     <div class="settings-card">
+                        <h3 th:text="#{upload.fit.title}">FIT Files</h3>
+                        <p class="description" th:text="#{upload.fit.description}">
+                            Upload FIT files from your Garmin or other fitness devices. FIT files contain location and fitness data that can be processed into your location history.
+                        </p>
+                        <form id="fit-upload-form"
+                              th:hx-post="@{/settings/import/fit}"
+                              hx-target="#file-upload"
+                              hx-swap="innerHTML"
+                              hx-encoding="multipart/form-data">
+
+                            <div class="form-group">
+                                <input type="file" name="files" accept=".fit" multiple required>
+                            </div>
+                            <div class="form-group" th:if="${#lists.size(devices) == 1}">
+                                <input th:type="hidden" name="device" th:value="${devices[0].id}">
+                            </div>
+                            <div class="form-group" th:unless="${#lists.size(devices) == 1}">
+                                <label for="fit-device-select" th:text="#{upload.select.device}">Device</label>
+                                <select name="device" id="fit-device-select">
+                                    <option th:each="device : ${devices}"
+                                            th:value="${device.id}"
+                                            th:text="${device.name}">Device Name</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn upload-btn" th:text="#{upload.button.fit}">Upload FIT File</button>
+                            <div class="spinner" style="display: none;">
+                                <div class="spinner-border" role="status">
+                                    <span class="sr-only">Processing...</span>
+                                </div>
+                                <span>Processing ...</span>
+                            </div>
+                        </form>
+                        <progress id='progress-fit' value='0' max='100' style="display: none"></progress>
+                    </div>
+                    <div class="settings-card">
                         <h3 th:text="#{upload.google.android.format.title}">📱 Android Timeline (timeline.json)</h3>
                         <p><strong>Android:</strong> <span th:text="#{upload.google.new.format.instructions}">From your Android phone: Settings → Location → Location Services → Timeline → Export Timeline</span></p>
                         <p class="description" th:text="#{upload.google.android.format.description}">This exports a timeline.json file with your recent location data from Android devices.</p>
