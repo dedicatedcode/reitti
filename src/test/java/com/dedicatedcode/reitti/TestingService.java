@@ -1,10 +1,7 @@
 package com.dedicatedcode.reitti;
 
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import com.dedicatedcode.reitti.model.geo.TransportMode;
-import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -29,6 +26,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,6 +43,8 @@ public class TestingService {
     private GpxImporter gpxImporter;
     @Autowired
     private GeoJsonImporter geoJsonImporter;
+    @Autowired
+    private SourceLocationPointJdbcService sourceLocationPointRepository;
     @Autowired
     private RawLocationPointJdbcService rawLocationPointRepository;
     @Autowired
@@ -258,5 +258,10 @@ public class TestingService {
 
     public void awaitExpected(Function<JdbcTemplate, Boolean> consumer, int seconds) {
         Awaitility.await().atMost(seconds, TimeUnit.SECONDS).until(() -> consumer.apply(this.jdbcTemplate));
+    }
+
+    public List<SourceLocationPoint> loadPoints(User user, Device device) {
+        return this.sourceLocationPointRepository.
+                findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, Instant.parse("2000-01-01T00:00:00Z"), Instant.parse("2100-01-01T00:00:00Z"), true, true);
     }
 }

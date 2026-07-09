@@ -3,14 +3,20 @@ package com.dedicatedcode.reitti.controller.api.v2;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,5 +52,12 @@ public class FitApiControllerIntegrationTest {
 
         testingService
                 .awaitExpected(t -> t.queryForObject("SELECT COUNT(*) FROM raw_source_points WHERE user_id = ? AND device_id = ?", Long.class, user.getId(), device.id()) == 591, 100);
+
+        List<SourceLocationPoint> savedPoints = testingService.loadPoints(user, device);
+
+        assertEquals(591, savedPoints.size());
+
+        assertEquals(Instant.parse("2026-06-28T13:51:10+02:00"), savedPoints.getFirst().getTimestamp());
+        assertEquals(Instant.parse("2026-06-28T14:05:45+02:00"), savedPoints.getLast().getTimestamp());
     }
 }

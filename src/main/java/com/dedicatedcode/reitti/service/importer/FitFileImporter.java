@@ -62,13 +62,15 @@ public class FitFileImporter {
             MesgBroadcaster mesgBroadcaster = new MesgBroadcaster(decode);
             mesgBroadcaster.addListener((RecordMesgListener) mesg -> {
                 if (mesg.getTimestamp() != null && mesg.getPositionLat() != null) {
-                    long timestamp = mesg.getTimestamp().getTimestamp();
                     double lat = mesg.getPositionLat() * (180.0 / Math.pow(2, 31));
                     double lon = mesg.getPositionLong() * (180.0 / Math.pow(2, 31));
-                    Float altitude = mesg.getAltitude();
+                    Float altitude = mesg.getEnhancedAltitude();
+                    if (altitude == null) {
+                        altitude = mesg.getAltitude();
+                    }
                     Short accuracy = mesg.getGpsAccuracy();
                     LocationPoint point = new LocationPoint();
-                    point.setTimestamp(Instant.ofEpochMilli(timestamp));
+                    point.setTimestamp(mesg.getTimestamp().getInstant());
                     point.setLatitude(lat);
                     point.setLongitude(lon);
                     if (accuracy != null) {
@@ -90,10 +92,6 @@ public class FitFileImporter {
                 }
             });
 
-            if (!new Decode().isFileFit(inputStream)) {
-                return Map.of("success", false, "error", "Invalid Fit file. Could not be decoded.");
-            }
-            inputStream.reset();
             mesgBroadcaster.run(inputStream);
 
             UUID parentJobId = jobSchedulingService.createParentJob(
