@@ -33,6 +33,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Service
 public class TestingService {
@@ -252,5 +254,9 @@ public class TestingService {
             return ps;
         }, keyHolder);
         return this.tripRepository.findById(keyHolder.getKey().longValue()).orElseThrow();
+    }
+
+    public void awaitExpected(Function<JdbcTemplate, Boolean> consumer, int seconds) {
+        Awaitility.await().atMost(seconds, TimeUnit.SECONDS).until(() -> consumer.apply(this.jdbcTemplate));
     }
 }

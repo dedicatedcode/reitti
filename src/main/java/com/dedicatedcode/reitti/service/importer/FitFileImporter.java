@@ -52,7 +52,7 @@ public class FitFileImporter {
         AtomicInteger processedCount = new AtomicInteger(0);
         try {
             stateHolder.importStarted();
-            logger.info("Importing GeoJSON file for user {}", user.getUsername());
+            logger.info("Importing Fit file for user {} with device {}", user.getUsername(), device.name());
             String partitionKey = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(partitionKey);
 
@@ -62,19 +62,20 @@ public class FitFileImporter {
             MesgBroadcaster mesgBroadcaster = new MesgBroadcaster(decode);
             mesgBroadcaster.addListener((RecordMesgListener) mesg -> {
                 if (mesg.getTimestamp() != null && mesg.getPositionLat() != null) {
-                    // Extracting your required fields
                     long timestamp = mesg.getTimestamp().getTimestamp();
                     double lat = mesg.getPositionLat() * (180.0 / Math.pow(2, 31));
                     double lon = mesg.getPositionLong() * (180.0 / Math.pow(2, 31));
                     Float altitude = mesg.getAltitude();
                     Short accuracy = mesg.getGpsAccuracy();
-                    // Process your data here (e.g., send to pipeline)
-                    System.out.println("Time: " + timestamp + " Lat: " + lat + " Lon: " + lon + " Acc: " + accuracy);
                     LocationPoint point = new LocationPoint();
                     point.setTimestamp(Instant.ofEpochMilli(timestamp));
                     point.setLatitude(lat);
                     point.setLongitude(lon);
-                    point.setAccuracyMeters(Double.valueOf(accuracy));
+                    if (accuracy != null) {
+                        point.setAccuracyMeters(Double.valueOf(accuracy));
+                    } else {
+                        point.setAccuracyMeters(10.0);
+                    }
                     if (altitude != null) {
                         point.setElevationMeters(Double.valueOf(altitude));
                     } else {
@@ -89,10 +90,11 @@ public class FitFileImporter {
                 }
             });
 
-            if (!decode.isFileFit(inputStream)) {
+            if (!new Decode().isFileFit(inputStream)) {
                 return Map.of("success", false, "error", "Invalid Fit file. Could not be decoded.");
             }
-            decode.read(inputStream);
+            inputStream.reset();
+            mesgBroadcaster.run(inputStream);
 
             UUID parentJobId = jobSchedulingService.createParentJob(
                     user,

@@ -30,13 +30,11 @@ public class FitApiControllerIntegrationTest {
         Device device = testingService.createRandomDevice(user);
         ApiToken apiToken = testingService.createApiToken(user, "test-token", device);
 
-        // Placeholder for the actual fit file resource.
-        // Replace "sample.fit" with the actual file name once provided.
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "sample.fit",
                 "application/octet-stream",
-                new ClassPathResource("sample.fit").getInputStream()
+                new ClassPathResource("data/fit/sample.fit").getInputStream()
         );
 
         mockMvc.perform(multipart("/api/v2/fit/import")
@@ -44,5 +42,9 @@ public class FitApiControllerIntegrationTest {
                         .header("Authorization", "Bearer " + apiToken.getToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+
+
+        testingService
+                .awaitExpected(t -> t.queryForObject("SELECT COUNT(*) FROM raw_source_points WHERE user_id = ? AND device_id = ?", Long.class, user.getId(), device.id()) == 591, 100);
     }
 }
