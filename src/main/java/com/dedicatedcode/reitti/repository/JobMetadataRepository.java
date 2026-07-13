@@ -91,16 +91,12 @@ public class JobMetadataRepository {
     }
 
     public Optional<JobState> getState(UUID jobId) {
-        String state = jdbcTemplate.queryForObject(
+        List<String> state = jdbcTemplate.queryForList(
             "SELECT status FROM job_meta_data WHERE id = ?",
             String.class,
             jobId
         );
-        if (state != null) {
-            return Optional.of(JobState.valueOf(state));
-        } else {
-            return Optional.empty();
-        }
+        return state.stream().map(JobState::valueOf).findFirst();
     }
 
     public List<JobMetadata> findByStates(List<JobState> states) {
@@ -120,7 +116,8 @@ public class JobMetadataRepository {
     }
 
     public Optional<JobMetadata> findById(UUID jobId) {
-        return Optional.ofNullable(this.jdbcTemplate.queryForObject("SELECT * FROM job_meta_data WHERE id = ?", jobMetadataRowMapper, jobId));
+        List<JobMetadata> query = this.jdbcTemplate.query("SELECT * FROM job_meta_data WHERE id = ?", jobMetadataRowMapper, jobId);
+        return query.stream().findFirst();
     }
 
     public void updateParentJobState(UUID parentJobId, JobState newState) {
