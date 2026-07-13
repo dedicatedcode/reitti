@@ -2121,11 +2121,11 @@ class MapRenderer {
                 </span>
             </div>
             <div class="sel-info-row">
-                <span class="k">${t('common.position')}:</span>
+                <span class="k">${t('common.time')}:</span>
                 <span class="v mono">${formatTimestamp(userData.timestamp)}</span>
             </div>
            <div class="sel-info-row">
-                <span class="k">${t('common.time')}:</span>
+                <span class="k">${t('common.position')}:</span>
                 <span class="v mono">${formatCoordinates(lat, lng)}</span>
             </div>
             <div class="sel-info-row">
