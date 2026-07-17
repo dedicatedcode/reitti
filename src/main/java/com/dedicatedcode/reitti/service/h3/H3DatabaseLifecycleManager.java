@@ -1,12 +1,13 @@
 package com.dedicatedcode.reitti.service.h3;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,9 +17,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@Component
-@ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
-public class H3DatabaseLifecycleManager {
+@DisallowConcurrentExecution
+public class H3DatabaseLifecycleManager implements Job {
 
     private static final Logger log = LoggerFactory.getLogger(H3DatabaseLifecycleManager.class);
 
@@ -51,11 +51,10 @@ public class H3DatabaseLifecycleManager {
         this.localManifestPath = rootDbDir.resolve("local-manifest.json");
         this.tempZipPath = Path.of(h3TmpZipPah);
         this.remoteManifestUrl = manifestDownloadUrl;
-        checkAndPrepareDatabase();
     }
 
-    @Scheduled(cron = "0 0 2 * * ?")
-    public void checkAndPrepareDatabase() {
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
         try {
             Files.createDirectories(rootDbDir);
 

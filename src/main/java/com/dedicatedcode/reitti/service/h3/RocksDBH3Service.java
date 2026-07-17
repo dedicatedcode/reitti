@@ -107,6 +107,10 @@ public class RocksDBH3Service {
         }
     }
 
+    public boolean isAvailable() {
+        return h3ToOsmDb != null && regionMetadataDb != null;
+    }
+
     private Set<Long> getOsmIdsForCell(long cellId) {
         byte[] key = ByteBuffer.allocate(8).putLong(cellId).array();
         try {
