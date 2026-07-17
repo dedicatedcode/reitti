@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.service.h3;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +17,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Component
+@ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
 public class H3DatabaseLifecycleManager {
+
+    private static final Logger log = LoggerFactory.getLogger(H3DatabaseLifecycleManager.class);
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -48,11 +54,7 @@ public class H3DatabaseLifecycleManager {
         checkAndPrepareDatabase();
     }
 
-    /**
-     * Periodically check for database updates (e.g., every 24 hours).
-     * Also runs on application startup.
-     */
-    @Scheduled(cron = "0 0 2 * * ?") // Runs at 2 AM every day
+    @Scheduled(cron = "0 0 2 * * ?")
     public void checkAndPrepareDatabase() {
         try {
             Files.createDirectories(rootDbDir);
@@ -63,42 +65,33 @@ public class H3DatabaseLifecycleManager {
             Path targetVersionDir = rootDbDir.resolve("version_" + remoteVersion);
             Path tempExtractionDir = rootDbDir.resolve("version_" + remoteVersion + "_temp");
 
-            // If the version folder already exists, we are already up to date!
             if (Files.exists(targetVersionDir)) {
-                System.out.println("H3 database is up to date at version: " + remoteVersion);
+                log.info("H3 database is up to date at version: {}", remoteVersion);
                 return;
             }
 
-            System.out.println("New database version detected: " + remoteVersion + ". Commencing background upgrade...");
+            log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
 
-            // 1. Download database package
             downloadService.downloadDatabaseWithResume(remoteManifest.getDownloadUrl(), tempZipPath);
             boolean checksumMatches = verificationService.verifyChecksum(tempZipPath, remoteManifest.getSha256());
             if (!checksumMatches) {
                 throw new IllegalStateException("Checksum mismatch");
             }
 
-            // 2. Extract to a isolated Temp directory
             Files.createDirectories(tempExtractionDir);
             extractorService.extractZipStreaming(tempZipPath, tempExtractionDir);
 
-            // 3. Atomic File System Rename (extremely fast OS operation)
-            // If we crash before this line, we simply leave a trash folder we can clean up next boot.
             Files.move(tempExtractionDir, targetVersionDir);
 
-            // 4. Trigger the safe JNI hot-swap!
             rocksDbService.hotSwapDatabase(targetVersionDir);
 
-            // 5. Save the local manifest meta-file
             saveLocalManifest(remoteManifest);
 
-            // 6. Clean up the downloaded ZIP
             Files.deleteIfExists(tempZipPath);
-            System.out.println("Database successfully updated to version: " + remoteVersion);
+            log.info("Database successfully updated to version: {}", remoteVersion);
 
         } catch (Exception e) {
-            System.err.println("Critical failure during H3 database upgrade lifecycle: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Critical failure during H3 database upgrade lifecycle: {}", e.getMessage(), e);
         }
     }
 

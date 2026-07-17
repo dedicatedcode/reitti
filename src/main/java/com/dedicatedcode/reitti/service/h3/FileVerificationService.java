@@ -1,6 +1,10 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -9,36 +13,30 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 @Service
+@ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
 public class FileVerificationService {
 
-    private static final int BUFFER_SIZE = 8192; // 8KB buffer to conserve heap memory
+    private static final Logger log = LoggerFactory.getLogger(FileVerificationService.class);
 
-    /**
-     * Streams a downloaded file and calculates its SHA-256 checksum to verify integrity.
-     * 
-     * @param file The downloaded ZIP package
-     * @param expectedSha256 The hex-encoded checksum provided by the manifest
-     * @return true if the calculated hash matches the expected hash
-     */
+    private static final int BUFFER_SIZE = 8192;
+
     public boolean verifyChecksum(Path file, String expectedSha256) {
         if (file == null || !Files.exists(file)) {
-            System.err.println("Verification failed: Target file does not exist.");
+            log.error("Verification failed: Target file does not exist.");
             return false;
         }
 
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             
-            // Stream the file progressively
             try (InputStream is = Files.newInputStream(file)) {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 int bytesRead;
                 while ((bytesRead = is.read(buffer)) != -1) {
-                    digest.update(buffer, 0, bytesRead); // Feed chunk into MD5 digest
+                    digest.update(buffer, 0, bytesRead);
                 }
             }
 
-            // Convert byte array to hexadecimal format
             byte[] hashBytes = digest.digest();
             StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
             for (byte b : hashBytes) {
@@ -55,7 +53,7 @@ public class FileVerificationService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 digest algorithm is not available in this JVM context.", e);
         } catch (IOException e) {
-            System.err.println("Failed to read database package during checksum verification: " + e.getMessage());
+            log.error("Failed to read database package during checksum verification: {}", e.getMessage());
             return false;
         }
     }
