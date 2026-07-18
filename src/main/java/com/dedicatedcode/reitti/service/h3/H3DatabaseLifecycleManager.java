@@ -112,7 +112,7 @@ public class H3DatabaseLifecycleManager implements Job {
         objectMapper.writeValue(localManifestPath.toFile(), manifest);
     }
 
-    private void loadOsmNames(Path tsvFilePath) throws Exception {
+    private void loadOsmNames(Path tsvFilePath) {
         String createTableSql = """
                 CREATE TABLE IF NOT EXISTS public.osm_names (
                     osm_id bigint,
@@ -126,7 +126,6 @@ public class H3DatabaseLifecycleManager implements Job {
                 ON public.osm_names (osm_id, osm_type);
                 """;
 
-        // 🌟 ADDED: GIN Index for internal JSONB key/value lookups
         String createGinIndexSql = """
                 CREATE INDEX IF NOT EXISTS idx_osm_names_all_names_gin
                 ON public.osm_names USING gin (all_names);
