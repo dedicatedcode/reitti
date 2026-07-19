@@ -22,7 +22,8 @@ public record UserSettingsDTO(
         TimeMode timeMode,
         ZoneId timezoneOverride,
         String customCssUrl,
-        String timelineColor
+        String timelineColor,
+        boolean h3Enabled
 ) {
 
     public enum UIMode {

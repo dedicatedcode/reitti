@@ -12,6 +12,7 @@ import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -41,6 +42,7 @@ public class TimelineController {
     private final TransportModeService transportModeService;
     private final TripJdbcService tripJdbcService;
     private final TimelineOverviewStatisticsService timelineOverviewStatisticsService;
+    private final boolean h3Enabled;
 
     @Autowired
     public TimelineController(UserJdbcService userJdbcService,
@@ -52,7 +54,8 @@ public class TimelineController {
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
                               TripJdbcService tripJdbcService,
-                              TimelineOverviewStatisticsService timelineOverviewStatisticsService) {
+                              TimelineOverviewStatisticsService timelineOverviewStatisticsService,
+                              @Value("${reitti.h3.enabled:false}") boolean h3Enabled) {
         this.userJdbcService = userJdbcService;
         this.avatarService = avatarService;
         this.reittiIntegrationService = reittiIntegrationService;
@@ -63,6 +66,7 @@ public class TimelineController {
         this.transportModeService = transportModeService;
         this.tripJdbcService = tripJdbcService;
         this.timelineOverviewStatisticsService = timelineOverviewStatisticsService;
+        this.h3Enabled = h3Enabled;
     }
 
     @GetMapping("/content/range")
@@ -130,6 +134,7 @@ public class TimelineController {
         String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId());
         String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/h3/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
 
@@ -160,6 +165,7 @@ public class TimelineController {
                                     currentUserProcessedVisitsUrl,
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
+                                    h3CellUrl,
                                     enabledDevices,
                                     userDeviceRequest == null || (Objects.equals(user.getId().toString(), userDeviceRequest.userId()) && userDeviceRequest.deviceId() == null));
     }
@@ -254,6 +260,7 @@ public class TimelineController {
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        String h3CellUrl = h3Enabled ? String.format("/api/v2/h3/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
@@ -267,6 +274,7 @@ public class TimelineController {
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
                                                     mapStreamDataUrl,
+                                                    h3CellUrl,
                                                     Collections.emptyList(),
                                                     userDeviceRequest != null && sharedWithUser.getId().toString().equals(userDeviceRequest.userId()));
                     });

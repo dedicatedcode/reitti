@@ -13,6 +13,7 @@ public record UserTimelineData(
         String processedVisitsUrl,
         String mapMetaDataUrl,
         String mapStreamDataUrl,
+        String h3CellUrl,
         List<DeviceTimelineData> devices,
         boolean active) {
 }

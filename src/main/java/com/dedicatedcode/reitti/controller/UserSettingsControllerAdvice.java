@@ -12,6 +12,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.TilesCustomizationProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,15 +34,18 @@ public class UserSettingsControllerAdvice {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TilesCustomizationProvider tilesCustomizationProvider;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final boolean h3Enabled;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
                                         TilesCustomizationProvider tilesCustomizationProvider,
-                                        RawLocationPointJdbcService rawLocationPointJdbcService) {
+                                        RawLocationPointJdbcService rawLocationPointJdbcService,
+                                        @Value("${reitti.h3.enabled:false}") boolean h3Enabled) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.h3Enabled = h3Enabled;
     }
     
     @ModelAttribute("userSettings")
@@ -63,7 +67,8 @@ public class UserSettingsControllerAdvice {
                                        TimeMode.TWENTY_FOUR_HOUR,
                                        null,
                                        null,
-                                       DEFAULT_COLOR
+                                       DEFAULT_COLOR,
+                                       h3Enabled
                                        );
         }
         
@@ -92,7 +97,8 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getTimeMode(),
                                        dbSettings.getTimeZoneOverride(),
                                        dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null,
-                                       dbSettings.getColor());
+                                       dbSettings.getColor(),
+                                       h3Enabled);
         }
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(Language.EN,
@@ -108,7 +114,8 @@ public class UserSettingsControllerAdvice {
                                    TimeMode.TWENTY_FOUR_HOUR,
                                    null,
                                    null,
-                                   DEFAULT_COLOR);
+                                   DEFAULT_COLOR,
+                                   h3Enabled);
 
     }
 

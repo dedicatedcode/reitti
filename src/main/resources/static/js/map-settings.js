@@ -80,6 +80,13 @@ class SettingsMenu {
     }
     
     init() {
+        if (window.userSettings.h3Enabled) {
+            const elementById = document.getElementById('view-mode');
+            const h3Option = document.createElement('option');
+            h3Option.value = 'H3';
+            h3Option.textContent = t('map.settings.dialog.appearance.view-mode.h3');
+            elementById.appendChild(h3Option);
+        }
         const closeBtn = this.menu.querySelector('.close-settings-btn');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
@@ -298,6 +305,10 @@ class SettingsMenu {
             showAvatars: localStorage.getItem('showAvatars') !== 'false',
             followTrail: localStorage.getItem('followTrail') !== 'false'
         };
+
+        if (!window.userSettings.h3Enabled && settings.viewMode === 'H3') {
+            settings.viewMode = 'LINEAR';
+        }
         
         this.applySettings(settings);
         return settings;

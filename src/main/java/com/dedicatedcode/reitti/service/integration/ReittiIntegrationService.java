@@ -682,6 +682,7 @@ public class ReittiIntegrationService {
 
         String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
         String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
+        String h3CellUrl = String.format("/reitti-integration/h3/cells/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
 
         String timelineId = "remote:" + integration.getId();
         return new UserTimelineData(timelineId,
@@ -694,6 +695,7 @@ public class ReittiIntegrationService {
                                     String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
+                                    h3CellUrl,
                                     Collections.emptyList(),
                                     userDeviceRequest != null && Objects.equals(timelineId, userDeviceRequest.userId()));
     }
