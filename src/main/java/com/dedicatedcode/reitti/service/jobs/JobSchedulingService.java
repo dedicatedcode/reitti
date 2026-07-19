@@ -66,18 +66,26 @@ public class JobSchedulingService implements JobListener {
         }
     }
 
-    // --- Scheduling Methods ---
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public <T extends JobContext<T>> void scheduleSystemTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
+        scheduleTask(jobDetail, data, scheduledAt, meta);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void scheduleTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
         UUID jobId = UUID.randomUUID();
         Instant now = Instant.now();
 
         JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
-        jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        if (meta.user() == null) {
+            jobMetadataRepository.insert(jobId, jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        } else {
+            jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        }
 
         JobDataMap jobDataMap = new JobDataMap();
         jobDataMap.put("jobId", jobId.toString());
-        jobDataMap.put("data", data);
+        jobDataMap.put("data", data.withJobId(jobId));
 
         // Use jobId as the trigger name so we can easily retrieve it in the listener
         Trigger trigger = TriggerBuilder.newTrigger()
@@ -97,6 +105,11 @@ public class JobSchedulingService implements JobListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void enqueueTask(JobDetail jobDetail, T data, Metadata meta) {
         scheduleTask(jobDetail, data, Instant.now(), meta);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public <T extends JobContext<T>> void enqueueSystemTask(JobDetail jobDetail, T data, Metadata meta) {
+        scheduleSystemTask(jobDetail, data, Instant.now(), meta);
     }
 
     public void cancel(UUID jobId) {
@@ -136,6 +149,8 @@ public class JobSchedulingService implements JobListener {
             private User user;
             private JobType jobType;
             private String friendlyName;
+            private boolean resume = true;
+
             public Builder user(User user) {
                 this.user = user;
                 return this;
@@ -153,6 +168,11 @@ public class JobSchedulingService implements JobListener {
 
             public Metadata build() {
                 return new Metadata(user, jobType, friendlyName);
+            }
+
+            public Builder resume(boolean resume) {
+                this.resume = resume;
+                return this;
             }
         }
 

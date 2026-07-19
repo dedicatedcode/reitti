@@ -40,12 +40,15 @@ public class JobMetadataRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public void insert(UUID jobId, String taskId, JobType jobType, String friendlyName, JobState initialState, Instant enqueuedAt, Instant scheduledAt, UUID parentId) {
+        insert(jobId, null, taskId, jobType, friendlyName, initialState, enqueuedAt, scheduledAt, parentId);
+    }
     public void insert(UUID jobId, User user, String taskId, JobType jobType, String friendlyName, JobState initialState, Instant enqueuedAt, Instant scheduledAt, UUID parentId) {
         jdbcTemplate.update(
             "INSERT INTO job_meta_data (id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, parent_job_id, created_at, updated_at) " +
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
             jobId,
-            user.getId(),
+            user != null ? user.getId() : null,
             taskId,
             jobType.name(),
             friendlyName,

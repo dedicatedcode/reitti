@@ -22,13 +22,23 @@ public class H3TaskConfig {
     private static final String JOB_GROUP = "h3-indexing";
 
     @Configuration
-    @ConditionalOnProperty(name = "h3.enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
     public static class H3EnabledConfiguration {
         @Bean("h3IndexUpdateJob")
         public JobDetail h3IndexUpdateJobDetail() {
             return JobBuilder.newJob(H3DatabaseLifecycleManager.class)
                     .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
-                    .storeDurably().build();
+                    .withDescription("H3 Database Lifecycle Manager")
+                    .storeDurably()
+                    .build();
+        }
+
+        @Bean("h3RecalculationJob")
+        public JobDetail h3RecalculationJobDetail() {
+            return JobBuilder.newJob(H3RecalculationJob.class)
+                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .storeDurably()
+                    .build();
         }
 
         @Bean
@@ -38,7 +48,7 @@ public class H3TaskConfig {
                     .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
                     .startAt(DateBuilder.futureDate(10, DateBuilder.IntervalUnit.SECOND))
                     .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                                          .withMisfireHandlingInstructionFireNow())
+                                          .withMisfireHandlingInstructionNowWithExistingCount())
                     .build();
         }
 
@@ -54,7 +64,7 @@ public class H3TaskConfig {
     }
 
     @Configuration
-    @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "false")
+    @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "false", matchIfMissing = true)
     public static class H3DisabledHousekeeper {
 
         private final Scheduler scheduler;

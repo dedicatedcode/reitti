@@ -1,14 +1,14 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
-import org.quartz.DisallowConcurrentExecution;
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -20,6 +20,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 @DisallowConcurrentExecution
 public class H3DatabaseLifecycleManager implements Job {
@@ -41,6 +42,8 @@ public class H3DatabaseLifecycleManager implements Job {
 
     private final String remoteManifestUrl;
 
+    private final JobSchedulingService jobSchedulingService;
+    private final JobDetail h3RecalculationJob;
 
     public H3DatabaseLifecycleManager(RocksDBH3Service rocksDbService,
                                       ZipFileExtractionService extractorService,
@@ -49,13 +52,17 @@ public class H3DatabaseLifecycleManager implements Job {
                                       JdbcTemplate jdbcTemplate,
                                       @Value("${reitti.h3.root-dir}") String h3RootDir,
                                       @Value("${reitti.h3.tmp-zip-path}") String h3TmpZipPah,
-                                      @Value("${reitti.h3.manifest-url}") String manifestDownloadUrl) {
+                                      @Value("${reitti.h3.manifest-url}") String manifestDownloadUrl,
+                                      JobSchedulingService jobSchedulingService,
+                                      @Qualifier("h3RecalculationJob") JobDetail h3RecalculationJob) {
         this.downloadService = downloadService;
         this.verificationService = verificationService;
         this.jdbcTemplate = jdbcTemplate;
         this.rootDbDir = Path.of(h3RootDir);
         this.rocksDbService = rocksDbService;
         this.extractorService = extractorService;
+        this.jobSchedulingService = jobSchedulingService;
+        this.h3RecalculationJob = h3RecalculationJob;
         this.localManifestPath = rootDbDir.resolve("local-manifest.json");
         this.tempZipPath = Path.of(h3TmpZipPah);
         this.remoteManifestUrl = manifestDownloadUrl;
@@ -74,28 +81,35 @@ public class H3DatabaseLifecycleManager implements Job {
 
             if (Files.exists(targetVersionDir)) {
                 log.info("H3 database is up to date at version: {}", remoteVersion);
-                return;
+            } else {
+                log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
+
+                downloadService.downloadDatabaseWithResume(remoteManifest.getDownloadUrl(), tempZipPath);
+                boolean checksumMatches = verificationService.verifyChecksum(tempZipPath, remoteManifest.getSha256());
+                if (!checksumMatches) {
+                    throw new IllegalStateException("Checksum mismatch");
+                }
+
+                Files.createDirectories(tempExtractionDir);
+                extractorService.extractZipStreaming(tempZipPath, tempExtractionDir);
+
+                Files.move(tempExtractionDir, targetVersionDir);
+
+                rocksDbService.hotSwapDatabase(targetVersionDir);
+                loadOsmNames(targetVersionDir.resolve("osm_names.tsv"));
+                saveLocalManifest(remoteManifest);
+
+                Files.deleteIfExists(tempZipPath);
+                log.info("Database successfully updated to version: {}", remoteVersion);
             }
 
-            log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
-
-            downloadService.downloadDatabaseWithResume(remoteManifest.getDownloadUrl(), tempZipPath);
-            boolean checksumMatches = verificationService.verifyChecksum(tempZipPath, remoteManifest.getSha256());
-            if (!checksumMatches) {
-                throw new IllegalStateException("Checksum mismatch");
-            }
-
-            Files.createDirectories(tempExtractionDir);
-            extractorService.extractZipStreaming(tempZipPath, tempExtractionDir);
-
-            Files.move(tempExtractionDir, targetVersionDir);
-
-            rocksDbService.hotSwapDatabase(targetVersionDir);
-            loadOsmNames(targetVersionDir.resolve("osm_names.tsv"));
-            saveLocalManifest(remoteManifest);
-
-            Files.deleteIfExists(tempZipPath);
-            log.info("Database successfully updated to version: {}", remoteVersion);
+            this.jobSchedulingService.enqueueTask(h3RecalculationJob,
+                                                   new H3RecalculationJob.TaskData(),
+                                                    JobSchedulingService.Metadata.builder()
+                                                          .friendlyName("Recalculating H3 location cells")
+                                                          .jobType(JobType.H3_RECALCULATION)
+                                                          .resume(false)
+                                                          .build());
 
         } catch (Exception e) {
             log.error("Critical failure during H3 database upgrade lifecycle: {}", e.getMessage(), e);

@@ -145,23 +145,45 @@ public class JobStatusController {
         AverageRuntime avgRuntime = averageRuntimes.get(parent.getJobType());
         Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
 
-        return new JobInfo(
-                base.id(),
-                base.name(),
-                base.description(),
-                base.state(),
-                base.enqueuedAt(),
-                base.scheduledAt(),
-                base.processingAt(),
-                base.finishedAt(),
-                base.canCancel(),
-                children,
-                completedChildren,
-                totalChildren,
-                estimatedDuration,
-                0,  // no progress for parent grouping
-                null
-        );
+        if (totalChildren == 0) {
+
+            return new JobInfo(
+                    base.id(),
+                    base.name(),
+                    base.description(),
+                    base.state(),
+                    base.enqueuedAt(),
+                    base.scheduledAt(),
+                    base.processingAt(),
+                    base.finishedAt(),
+                    base.canCancel(),
+                    children,
+                    completedChildren,
+                    totalChildren,
+                    estimatedDuration,
+                    base.progressPercent(),  // no progress for parent grouping
+                    base.progressMessage()
+            );
+
+        } else {
+            return new JobInfo(
+                    base.id(),
+                    base.name(),
+                    base.description(),
+                    base.state(),
+                    base.enqueuedAt(),
+                    base.scheduledAt(),
+                    base.processingAt(),
+                    base.finishedAt(),
+                    base.canCancel(),
+                    children,
+                    completedChildren,
+                    totalChildren,
+                    estimatedDuration,
+                    0,  // no progress for parent grouping
+                    null
+            );
+        }
     }
 
     private Map<JobType, AverageRuntime> calculateAverageRuntimes(List<JobMetadataRepository.JobMetadata> fullyCompleteParents) {
