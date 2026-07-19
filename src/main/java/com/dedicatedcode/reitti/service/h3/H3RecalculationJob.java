@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
@@ -22,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class H3RecalculationJob implements Job {
     private static final Logger log = LoggerFactory.getLogger(H3RecalculationJob.class);
 
-    private static final int BATCH_SIZE = 10000;
+    private static final int BATCH_SIZE = 2000;
 
     private final RocksDBH3Service rocksDBH3Service;
     private final PointReaderWriter pointReaderWriter;
@@ -53,22 +52,19 @@ public class H3RecalculationJob implements Job {
             long start = System.currentTimeMillis();
             log.info("Need to recalculate h3 cells for {} missing data points", missingDataPoints);
             String selectSql = "SELECT source_point_id, ST_AsText(geom) as geom FROM raw_location_points WHERE source_point_id IS NOT NULL AND h3_res9 IS NULL";
-            String updateSourcePointSql = "UPDATE raw_location_points SET h3_res9 = ? WHERE source_point_id = ?";
-            String updateLocationPointSql = "UPDATE raw_source_points SET h3_res9 = ? WHERE id = ?";
+            String updateLocationPointSql = "UPDATE raw_location_points SET h3_res9 = ? WHERE source_point_id = ?";
+            String updateSourcePointSql = "UPDATE raw_source_points SET h3_res9 = ? WHERE id = ?";
 
             List<Object[]> batchBuffer = new ArrayList<>(BATCH_SIZE);
 
-            // 1. Stream rows one by one from the DB
             jdbcTemplate.query(selectSql, rs -> {
                 long sourceId = rs.getLong("source_point_id");
                 GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
 
                 long h3Res9Cell = rocksDBH3Service.getLevel9CellForPoint(geom.latitude(), geom.longitude());
 
-                // 3. Add to batch buffer
                 batchBuffer.add(new Object[]{h3Res9Cell, sourceId});
 
-                // 4. If buffer is full, flush it to the DB
                 if (batchBuffer.size() >= BATCH_SIZE) {
                     current.addAndGet(BATCH_SIZE);
                     flushBatch(updateSourcePointSql, updateLocationPointSql, batchBuffer, current);
@@ -76,7 +72,6 @@ public class H3RecalculationJob implements Job {
                 }
             });
 
-            // 5. Flush any remaining rows
             if (!batchBuffer.isEmpty()) {
                 current.addAndGet(batchBuffer.size());
                 flushBatch(updateSourcePointSql, updateLocationPointSql, batchBuffer, current);
