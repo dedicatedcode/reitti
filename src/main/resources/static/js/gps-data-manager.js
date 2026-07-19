@@ -12,6 +12,7 @@ class GpsDataManager {
         this.cleanedBuffer = new Float32Array(16000 * 6);
         this.snappedBuffer = null;
         this.snappedVersion = 0;
+        this.h3Cells = [];
 
         // 2. State
         this.cursor = 0;
@@ -38,7 +39,7 @@ class GpsDataManager {
                 name: p.name,
                 activeRanges: []
         }));
-        return  this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
+        return this.load(0, Number.MAX_SAFE_INTEGER, onProgress)
     }
 
     destroy() {
@@ -86,12 +87,28 @@ class GpsDataManager {
             if (this.config.map.visitsUrl) {
                 requests.push(fetch(window.contextPath + this.config.map.visitsUrl, {signal}))
             }
+            const h3Promise = this.config.map.h3CellUrl
+                ? fetch(window.contextPath + this.config.map.h3CellUrl, {signal}).then(r => r.json())
+                : Promise.resolve(null);
+
             if (this.config.mapDataProviders) {
                 this.config.mapDataProviders.forEach(provider => {
                     requests.push(provider.load({signal}))
                 });
             }
             const responses = await Promise.all(requests);
+            const h3Data = await h3Promise;
+            if (h3Data) {
+                const h3Map = new Map();
+                h3Data.forEach(entry => {
+                    if (!h3Map.has(entry.hexagon)) {
+                        h3Map.set(entry.hexagon, []);
+                    }
+                    h3Map.get(entry.hexagon).push({ time: entry.time, count: entry.count });
+                });
+                h3Map.forEach(buckets => buckets.sort((a, b) => a.time - b.time));
+                this.h3Cells = h3Map;
+            }
 
             const meta = await responses[0].json();
             this.lastLocation = meta.latestLocation;

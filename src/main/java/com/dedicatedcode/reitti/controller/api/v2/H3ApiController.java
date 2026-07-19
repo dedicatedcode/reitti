@@ -2,11 +2,9 @@ package com.dedicatedcode.reitti.controller.api.v2;
 
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,23 +17,31 @@ import java.util.List;
 
 public class H3ApiController {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserSharingJdbcService userSharingJdbcService;
 
-    public H3ApiController(RawLocationPointJdbcService rawLocationPointJdbcService) {
+    public H3ApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
+                           UserSharingJdbcService userSharingJdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userSharingJdbcService = userSharingJdbcService;
     }
 
-    @GetMapping("/cells")
+    @GetMapping("/cells/{userId}")
     public List<H3CellCount> getH3Cells(
             @AuthenticationPrincipal User user,
-            @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+            @PathVariable long userId,
+            @RequestParam LocalDate start,
+            @RequestParam LocalDate end,
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
 
-        Instant startOfRange = startDate.atStartOfDay(timezone).toInstant();
-        Instant endOfRange = endDate.plusDays(1).atStartOfDay(timezone).toInstant();
-        return rawLocationPointJdbcService.findVisitedH3CellsCounts(user, startOfRange, endOfRange);
+        if (user.getId() != userId) {
+            if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
+                throw new IllegalAccessException("User not allowed to fetch cells for other user with id " + userId);
+            }
+        }
+        Instant startOfRange = start.atStartOfDay(timezone).toInstant();
+        Instant endOfRange = end.plusDays(1).atStartOfDay(timezone).toInstant();
+        return rawLocationPointJdbcService.findVisitedH3CellsCounts(userId, startOfRange, endOfRange);
     }
 
-    public record H3CellCount(String hexagon, Instant lastVisited, long count) {}
-
+    public record H3CellCount(String hexagon, Instant time, long count) {}
 }

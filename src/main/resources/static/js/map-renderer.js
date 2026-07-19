@@ -394,6 +394,31 @@ class MapRenderer {
             return;
         }
 
+        if (this.viewState.viewMode === 'H3') {
+            const allLayers = [];
+            this.gpsDataManagers.forEach(manager => {
+                if (manager.h3Cells && manager.h3Cells.size > 0) {
+                    const hexagons = Array.from(manager.h3Cells.keys());
+                    allLayers.push(new deck.H3HexagonLayer({
+                        id: `h3-cluster-${manager.id}`,
+                        data: hexagons,
+                        extruded: false,
+                        getHexagon: hex => hex,
+                        getFillColor: d => [255, 255, 0],
+                        getLineColor: [255, 255, 255],
+                        lineWidthMinPixels: 2,
+                        updateTriggers: {
+                            getColorWeight: [this.viewState.currentTime, manager.cursor] ,
+                            getElevationWeight: [this.viewState.currentTime, manager.cursor]
+                        }
+                    }));
+                }
+            });
+            this._layerInstances = allLayers;
+            this.deckOverlay.setProps({ layers: allLayers });
+            return;
+        }
+
         this._layerContextKey = contextKey;
         this._cachedLayerData.clear();
 

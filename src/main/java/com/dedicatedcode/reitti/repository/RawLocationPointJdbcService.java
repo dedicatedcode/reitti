@@ -547,12 +547,12 @@ public class RawLocationPointJdbcService {
                ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
     }
 
-    public List<H3ApiController.H3CellCount> findVisitedH3CellsCounts(User user, Instant startOfRange, Instant endOfRange) {
+    public List<H3ApiController.H3CellCount> findVisitedH3CellsCounts(Long userId, Instant startOfRange, Instant endOfRange) {
         return this.jdbcTemplate.query("""
-                                        SELECT h3_res9, COUNT(*), max(timestamp) as last_visited
-                                        FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_res9 IS NOT NULL GROUP BY h3_res9;
-                                        """, (rs, _) -> new H3ApiController.H3CellCount(rs.getString("h3_res9"), rs.getTimestamp("last_visited").toInstant(), rs.getLong("count")),
-                                user.getId(),
+                                           SELECT h3_res9, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
+                                           FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_res9 IS NOT NULL GROUP BY h3_res9, time_bucket;
+                                           """, (rs, _) -> new H3ApiController.H3CellCount(rs.getString("h3_res9"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
+                                userId,
                                 Timestamp.from(startOfRange),
                                 Timestamp.from(endOfRange));
     }
