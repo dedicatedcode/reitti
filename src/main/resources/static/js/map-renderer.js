@@ -400,16 +400,43 @@ class MapRenderer {
                 if (manager.h3Cells && manager.h3Cells.size > 0) {
                     const hexagons = Array.from(manager.h3Cells.keys());
                     allLayers.push(new deck.H3HexagonLayer({
-                        id: `h3-cluster-${manager.id}`,
+                        id: `h3-hexagon-${manager.id}`,
                         data: hexagons,
+                        getHexagon: hex => {
+                            const bigIntVal = BigInt(hex);
+                            const lower = Number(bigIntVal & 0xFFFFFFFFn);
+                            const upper = Number((bigIntVal >> 32n) & 0xFFFFFFFFn);
+                            return h3.splitLongToH3Index(lower, upper);
+                        },
                         extruded: false,
-                        getHexagon: hex => hex,
-                        getFillColor: d => [255, 255, 0],
-                        getLineColor: [255, 255, 255],
-                        lineWidthMinPixels: 2,
+                        getFillColor: hex => {
+                            const buckets = manager.h3Cells.get(hex);
+                            let cumulative = 0;
+
+                            if (!this.viewState.animating) {
+                                cumulative = buckets.reduce((sum, b) => sum + b.count, 0);
+                            } else {
+                                for (const bucket of buckets) {
+                                    const bucketTime = new Date(bucket.time).getTime() / 1000;
+                                    if (bucketTime <= this.viewState.currentTime) {
+                                        cumulative += bucket.count;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                            const alpha = Math.min(255, cumulative * 1.8);
+                            return [...manager.color, alpha];
+                        },
+                        stroked: true,
+                        getLineColor: [...manager.color, 255],
+                        getLineWidth: 4,
+                        lineWidthMinPixels: 1,
+                        pickable: true,
+                        coverage: 0.95,
+                        opacity: 0.75,
                         updateTriggers: {
-                            getColorWeight: [this.viewState.currentTime, manager.cursor] ,
-                            getElevationWeight: [this.viewState.currentTime, manager.cursor]
+                            getFillColor: [this.viewState.animating, this.viewState.currentTime, manager.cursor]
                         }
                     }));
                 }
