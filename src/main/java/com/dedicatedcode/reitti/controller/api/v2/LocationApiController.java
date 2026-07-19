@@ -226,6 +226,7 @@ public class LocationApiController {
         return userJdbcService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
+
     private Instant parseInstant(String input, ZoneId timezone, boolean end) {
         try {
             return LocalDateTime.parse(input).atZone(timezone).toInstant();
