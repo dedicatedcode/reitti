@@ -308,8 +308,8 @@ public class RawLocationPointJdbcService {
             synthetic,
             version
             FROM relevant_points
-            ORDER BY 
-                date_trunc('hour', timestamp) + 
+            ORDER BY
+                date_trunc('hour', timestamp) +
                 (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes',
                 timestamp
         )
