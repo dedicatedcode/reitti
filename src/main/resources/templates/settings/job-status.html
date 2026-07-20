@@ -90,7 +90,7 @@
                                         </div>
                                         <div class="job-progress">
                                             <div class="job-progress-bar">
-                                                <div class="job-progress-fill" th:style="'width: ' + ${child.progressPercent()} + '%'"></div>
+                                                <div class="job-progress-fill" th:title="#{common.percentage}(${job.progressPercent()})" th:style="'width: ' + ${child.progressPercent()} + '%'"></div>
                                             </div>
                                             <div class="job-progress-text" th:text="${child.progressText()}"></div>
                                         </div>

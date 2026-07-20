@@ -484,16 +484,16 @@ class MapRenderer {
                                 }
                             }
 
-                            const alpha = Math.min(255, cumulative * 1.8);
+                            const alpha = Math.min(255, cumulative * 2.5);
                             return [...manager.color, alpha];
                         },
                         stroked: true,
                         getLineColor: [...manager.color, 255],
-                        getLineWidth: 2,
+                        getLineWidth: 1.5,
                         lineWidthMinPixels: 0.5,
                         pickable: true,
                         coverage: 0.90,
-                        opacity: 0.75,
+                        opacity: 0.9,
                         updateTriggers: {
                             getFillColor: [this.viewState.animating, this.viewState.currentTime, manager.cursor]
                         }
