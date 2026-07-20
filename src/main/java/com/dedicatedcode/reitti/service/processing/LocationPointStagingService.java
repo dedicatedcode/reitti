@@ -118,11 +118,11 @@ public class LocationPointStagingService {
         String sql = """
             INSERT INTO raw_source_points (
                 user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, invalid, status
+                geom, invalid, status, h3_cell
             )
             SELECT
                 user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, false, 0
+                geom, false, 0, h3_cell
             FROM staging_location_points
                     WHERE partition_key = ? AND promoted = FALSE
             ON CONFLICT (user_id, device_id, timestamp) DO NOTHING;
