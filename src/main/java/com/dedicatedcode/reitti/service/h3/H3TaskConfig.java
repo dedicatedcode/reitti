@@ -99,8 +99,8 @@ public class H3TaskConfig {
             }
             try {
                 String structuralSwapSql = """
-                        ALTER TABLE raw_location_points DROP COLUMN IF EXISTS h3_res10, ADD COLUMN h3_res10 BIGINT NULL;
-                        ALTER TABLE raw_source_points DROP COLUMN IF EXISTS h3_res10, ADD COLUMN h3_res10 BIGINT NULL;
+                        ALTER TABLE raw_location_points DROP COLUMN IF EXISTS h3_cell, ADD COLUMN h3_cell BIGINT NULL;
+                        ALTER TABLE raw_source_points DROP COLUMN IF EXISTS h3_cell, ADD COLUMN h3_cell BIGINT NULL;
                         """;
 
                 log.info("Executing atomic column metadata swap...");
@@ -108,8 +108,8 @@ public class H3TaskConfig {
                 log.info("Column swapped successfully. Data has been entirely purged.");
 
                 String rebuildIndexSql = """
-                        CREATE INDEX CONCURRENTLY idx_points_h3_res10 ON raw_location_points (h3_res10)
-                        WHERE h3_res10 IS NOT NULL;
+                        CREATE INDEX CONCURRENTLY idx_points_h3_cell ON raw_location_points (h3_cell)
+                        WHERE h3_cell IS NOT NULL;
                         """;
 
                 log.info("Rebuilding partial index concurrently in the background...");

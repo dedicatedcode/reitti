@@ -549,9 +549,9 @@ public class RawLocationPointJdbcService {
 
     public List<H3ApiController.H3CellCount> findVisitedH3CellsCounts(Long userId, Instant startOfRange, Instant endOfRange) {
         return this.jdbcTemplate.query("""
-                                           SELECT h3_res10, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
-                                           FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_res10 IS NOT NULL GROUP BY h3_res10, time_bucket;
-                                           """, (rs, _) -> new H3ApiController.H3CellCount(rs.getString("h3_res10"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
+                                           SELECT h3_cell, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
+                                           FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_cell IS NOT NULL GROUP BY h3_cell, time_bucket;
+                                           """, (rs, _) -> new H3ApiController.H3CellCount(rs.getString("h3_cell"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
                                 userId,
                                 Timestamp.from(startOfRange),
                                 Timestamp.from(endOfRange));

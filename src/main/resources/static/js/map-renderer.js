@@ -430,10 +430,10 @@ class MapRenderer {
                         },
                         stroked: true,
                         getLineColor: [...manager.color, 255],
-                        getLineWidth: 4,
-                        lineWidthMinPixels: 1,
+                        getLineWidth: 2,
+                        lineWidthMinPixels: 0.5,
                         pickable: true,
-                        coverage: 0.95,
+                        coverage: 0.90,
                         opacity: 0.75,
                         updateTriggers: {
                             getFillColor: [this.viewState.animating, this.viewState.currentTime, manager.cursor]
