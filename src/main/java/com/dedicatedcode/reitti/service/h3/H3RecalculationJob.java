@@ -11,7 +11,6 @@ import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,16 +24,16 @@ public class H3RecalculationJob implements Job {
     private static final int BATCH_SIZE = 10_000;
     private static final int H3_RESOLUTION = 12;
 
-    private final RocksDBH3Service rocksDBH3Service;
+    private final H3SpatialCoverageService spatialCoverageService;
     private final PointReaderWriter pointReaderWriter;
     private final JdbcTemplate jdbcTemplate;
     private final JobMetadataRepository jobMetadataRepository;
 
-    public H3RecalculationJob(RocksDBH3Service rocksDBH3Service,
+    public H3RecalculationJob(H3SpatialCoverageService spatialCoverageService,
                               PointReaderWriter pointReaderWriter,
                               JdbcTemplate jdbcTemplate,
                               JobMetadataRepository jobMetadataRepository) {
-        this.rocksDBH3Service = rocksDBH3Service;
+        this.spatialCoverageService = spatialCoverageService;
         this.pointReaderWriter = pointReaderWriter;
         this.jdbcTemplate = jdbcTemplate;
         this.jobMetadataRepository = jobMetadataRepository;
@@ -65,7 +64,7 @@ public class H3RecalculationJob implements Job {
                 long sourceId = rs.getLong("source_point_id");
                 GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
 
-                long h3Cell = rocksDBH3Service.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
+                Long h3Cell = spatialCoverageService.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
 
                 batchBuffer.add(new Object[]{h3Cell, id, sourceId});
 
@@ -91,7 +90,7 @@ public class H3RecalculationJob implements Job {
                 long id = rs.getLong("id");
                 GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
 
-                long h3Cell = rocksDBH3Service.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
+                Long h3Cell = spatialCoverageService.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
                 batchBuffer.add(new Object[]{h3Cell, id});
                 if (batchBuffer.size() >= BATCH_SIZE) {
                     current.addAndGet(BATCH_SIZE);

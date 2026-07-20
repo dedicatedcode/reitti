@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,11 +25,14 @@ public class LocationPointStagingService {
     private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
 
     private final JdbcTemplate jdbcTemplate;
+    private final SpatialCoverageService spatialCoverageService;
     private final int batchSize;
 
     public LocationPointStagingService(JdbcTemplate jdbcTemplate,
+                                       SpatialCoverageService spatialCoverageService,
                                        @Value("${reitti.import.batch-size:1000}") int batchSize) {
         this.jdbcTemplate = jdbcTemplate;
+        this.spatialCoverageService = spatialCoverageService;
         this.batchSize = batchSize;
     }
 
@@ -74,8 +78,9 @@ public class LocationPointStagingService {
                 device_id,
                 geom,
                 elevation_meters,
-                accuracy_meters
-            ) VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
+                accuracy_meters,
+                h3_cell
+            ) VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
         """;
 
         List<LocationPoint> filtered = batch.stream().filter(LocationPoint::isValid).toList();
@@ -98,6 +103,7 @@ public class LocationPointStagingService {
                     ps.setNull(7, Types.DOUBLE);
                 }
                 ps.setDouble(8, point.getAccuracyMeters());
+                ps.setLong(9, spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12));
             }
 
             @Override

@@ -84,10 +84,6 @@ public class RocksDBH3Service {
         return cells;
     }
 
-    public long getLevelCellForPoint(double latitude, double longitude, int resolution) {
-        return h3.latLngToCell(latitude, longitude, resolution);
-    }
-
     public List<CellWithBoundaries> getCellsWithBoundaries(double lat, double lng) {
         rwLock.readLock().lock();
         try {
