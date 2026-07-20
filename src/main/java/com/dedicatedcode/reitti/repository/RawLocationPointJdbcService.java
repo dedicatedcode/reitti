@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -28,10 +29,14 @@ import java.util.stream.Collectors;
 public class RawLocationPointJdbcService {
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
+    private final SpatialCoverageService spatialCoverageService;
     private final PointReaderWriter pointReaderWriter;
     private final GeometryFactory geometryFactory;
 
-    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory) {
+    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate,
+                                       PointReaderWriter pointReaderWriter,
+                                       SpatialCoverageService spatialCoverageService,
+                                       GeometryFactory geometryFactory) {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
@@ -46,6 +51,7 @@ public class RawLocationPointJdbcService {
         );
 
         this.pointReaderWriter = pointReaderWriter;
+        this.spatialCoverageService = spatialCoverageService;
         this.geometryFactory = geometryFactory;
     }
 
@@ -452,8 +458,8 @@ public class RawLocationPointJdbcService {
             return 0;
         }
         
-        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic) " +
-                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true) ON CONFLICT DO NOTHING;";
+        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, h3_cell) " +
+                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, ?) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
         for (LocationPoint point : syntheticPoints) {
@@ -462,7 +468,8 @@ public class RawLocationPointJdbcService {
                     Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
-                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
+                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString(),
+                    spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12)
             });
         }
         int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
@@ -538,9 +545,9 @@ public class RawLocationPointJdbcService {
     public int updateFromDevices(User user, TimeRange timeRange) {
        return this.jdbcTemplate.update("""
                 INSERT INTO raw_location_points
-                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status)
+                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status, h3_cell)
                 SELECT DISTINCT
-                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status
+                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status, h3_cell
                 FROM v_source_stream
                 WHERE user_id = ? AND timestamp  >= ? AND timestamp < ?
                 """
