@@ -39,8 +39,26 @@ public class H3CellUpdateJob implements Job {
             return;
         }
 
+        // Process in batches to avoid memory issues and database timeouts
+        final int batchSize = 1000;
+        List<Long> ids = data.newPromotedIds;
+        
+        for (int i = 0; i < ids.size(); i += batchSize) {
+            int endIndex = Math.min(i + batchSize, ids.size());
+            List<Long> batch = ids.subList(i, endIndex);
+            
+            log.debug("Processing batch {}/{}: {} points", 
+                     (i / batchSize) + 1, 
+                     (ids.size() + batchSize - 1) / batchSize, 
+                     batch.size());
+            
+            processBatch(batch);
+        }
+    }
+
+    private void processBatch(List<Long> batchIds) {
         // Create placeholders for IN clause
-        String placeholders = String.join(",", Collections.nCopies(data.newPromotedIds.size(), "?"));
+        String placeholders = String.join(",", Collections.nCopies(batchIds.size(), "?"));
         String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status " +
                      "FROM raw_source_points WHERE id IN (" + placeholders + ")";
 
@@ -56,7 +74,7 @@ public class H3CellUpdateJob implements Job {
                 GeoPoint geoPoint = pointReaderWriter.read(geomWkt);
                 return new PointData(userId, deviceId, id, geoPoint.latitude(), geoPoint.longitude(), h3Cell, status);
             },
-            data.newPromotedIds.toArray()
+            batchIds.toArray()
         );
 
         for (PointData point : points) {
