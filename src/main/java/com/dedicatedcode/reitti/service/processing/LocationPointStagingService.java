@@ -125,11 +125,14 @@ public class LocationPointStagingService {
                 geom, false, 0, h3_cell
             FROM staging_location_points
                     WHERE partition_key = ? AND promoted = FALSE
-            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING;
+            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING
+            RETURNING id;
         """;
-        int update = jdbcTemplate.update(sql, partitionKey);
+
+        List<Long> insertedIds = jdbcTemplate.queryForList(sql, Long.class, partitionKey);
+        spatialCoverageService.postPromotion(insertedIds);
         this.jdbcTemplate.update("UPDATE staging_location_points SET promoted = TRUE WHERE partition_key = ? AND promoted = FALSE", partitionKey);
-        return update;
+        return insertedIds.size();
     }
 
     public TimeRange getTimeRange(String partitionKey) {

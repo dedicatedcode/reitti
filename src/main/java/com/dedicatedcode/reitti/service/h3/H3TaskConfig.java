@@ -24,6 +24,12 @@ public class H3TaskConfig {
     @Configuration
     @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
     public static class H3EnabledConfiguration {
+        @Bean("h3CellUpdateTask")
+        public JobDetail h3CellUpdateJobDetail() {
+            return JobBuilder.newJob(H3CellUpdateJob.class)
+                    .withDescription("H3 Cell Update Job")
+                    .build();
+        }
         @Bean("h3IndexUpdateJob")
         public JobDetail h3IndexUpdateJobDetail() {
             return JobBuilder.newJob(H3DatabaseLifecycleManager.class)
