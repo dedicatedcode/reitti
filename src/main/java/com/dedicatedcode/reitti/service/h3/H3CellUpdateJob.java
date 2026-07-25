@@ -42,7 +42,7 @@ public class H3CellUpdateJob implements Job {
         // Create placeholders for IN clause
         String placeholders = String.join(",", Collections.nCopies(data.newPromotedIds.size(), "?"));
         String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status " +
-                     "FROM raw_location_points WHERE id IN (" + placeholders + ")";
+                     "FROM raw_source_points WHERE id IN (" + placeholders + ")";
 
         List<PointData> points = jdbcTemplate.query(sql, 
             (rs, rowNum) -> {
