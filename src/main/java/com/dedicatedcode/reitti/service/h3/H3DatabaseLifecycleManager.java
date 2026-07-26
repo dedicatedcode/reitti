@@ -27,11 +27,11 @@ public class H3DatabaseLifecycleManager implements Job {
 
     private static final Logger log = LoggerFactory.getLogger(H3DatabaseLifecycleManager.class);
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final RocksDBH3Service rocksDbService;
     private final ZipFileExtractionService extractorService;
+    private final H3ManifestDownloadService manifestDownloadService;
     private final H3IndexDownloadService downloadService;
     private final FileVerificationService verificationService;
     private final JdbcTemplate jdbcTemplate;
@@ -40,21 +40,21 @@ public class H3DatabaseLifecycleManager implements Job {
     private final Path localManifestPath;
     private final Path tempZipPath;
 
-    private final String remoteManifestUrl;
 
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail h3RecalculationJob;
 
     public H3DatabaseLifecycleManager(RocksDBH3Service rocksDbService,
                                       ZipFileExtractionService extractorService,
+                                      H3ManifestDownloadService manifestDownloadService,
                                       H3IndexDownloadService downloadService,
                                       FileVerificationService verificationService,
                                       JdbcTemplate jdbcTemplate,
                                       @Value("${reitti.h3.root-dir}") String h3RootDir,
                                       @Value("${reitti.h3.tmp-zip-path}") String h3TmpZipPah,
-                                      @Value("${reitti.h3.manifest-url}") String manifestDownloadUrl,
                                       JobSchedulingService jobSchedulingService,
                                       @Qualifier("h3RecalculationJob") JobDetail h3RecalculationJob) {
+        this.manifestDownloadService = manifestDownloadService;
         this.downloadService = downloadService;
         this.verificationService = verificationService;
         this.jdbcTemplate = jdbcTemplate;
@@ -65,7 +65,6 @@ public class H3DatabaseLifecycleManager implements Job {
         this.h3RecalculationJob = h3RecalculationJob;
         this.localManifestPath = rootDbDir.resolve("local-manifest.json");
         this.tempZipPath = Path.of(h3TmpZipPah);
-        this.remoteManifestUrl = manifestDownloadUrl;
     }
 
     @Override
@@ -73,14 +72,15 @@ public class H3DatabaseLifecycleManager implements Job {
         try {
             Files.createDirectories(rootDbDir);
 
-            H3Manifest remoteManifest = fetchRemoteManifest();
+            H3Manifest remoteManifest = manifestDownloadService.fetchRemoteManifest();
             String remoteVersion = remoteManifest.getVersion();
 
             Path targetVersionDir = rootDbDir.resolve("version_" + remoteVersion);
             Path tempExtractionDir = rootDbDir.resolve("version_" + remoteVersion + "_temp");
 
             if (Files.exists(targetVersionDir)) {
-                log.info("H3 database is up to date at version: {}", remoteVersion);
+                log.info("H3 database is up to date at version: {}. Will load it now.", remoteVersion);
+                rocksDbService.hotSwapDatabase(targetVersionDir);
             } else {
                 log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
 
@@ -95,8 +95,9 @@ public class H3DatabaseLifecycleManager implements Job {
 
                 Files.move(tempExtractionDir, targetVersionDir);
 
-                rocksDbService.hotSwapDatabase(targetVersionDir);
                 loadOsmNames(targetVersionDir.resolve("osm_names.tsv"));
+
+                rocksDbService.hotSwapDatabase(targetVersionDir);
                 saveLocalManifest(remoteManifest);
 
                 Files.deleteIfExists(tempZipPath);
@@ -116,19 +117,13 @@ public class H3DatabaseLifecycleManager implements Job {
         }
     }
 
-    private H3Manifest fetchRemoteManifest() throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(remoteManifestUrl)).GET().build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return objectMapper.readValue(response.body(), H3Manifest.class);
-    }
-
     private void saveLocalManifest(H3Manifest manifest) throws IOException {
         objectMapper.writeValue(localManifestPath.toFile(), manifest);
     }
 
     private void loadOsmNames(Path tsvFilePath) {
         String createTableSql = """
-                CREATE TABLE IF NOT EXISTS public.osm_names (
+                CREATE TABLE IF NOT EXISTS osm_names (
                     osm_id bigint,
                     osm_type character(1),
                     all_names jsonb
@@ -137,15 +132,15 @@ public class H3DatabaseLifecycleManager implements Job {
 
         String createBtreeIndexSql = """
                 CREATE INDEX IF NOT EXISTS idx_osm_names_id_type
-                ON public.osm_names (osm_id, osm_type);
+                ON osm_names (osm_id, osm_type);
                 """;
 
         String createGinIndexSql = """
                 CREATE INDEX IF NOT EXISTS idx_osm_names_all_names_gin
-                ON public.osm_names USING gin (all_names);
+                ON osm_names USING gin (all_names);
                 """;
 
-        String copySql = "COPY public.osm_names (osm_id, osm_type, all_names) FROM STDIN WITH (FORMAT text, DELIMITER '\t', NULL '')";
+        String copySql = "COPY osm_names (osm_id, osm_type, all_names) FROM STDIN WITH (FORMAT text, DELIMITER '\t', NULL '')";
 
         log.info("Ensuring target table exists...");
         jdbcTemplate.execute(createTableSql);

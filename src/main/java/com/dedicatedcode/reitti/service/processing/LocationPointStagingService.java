@@ -103,7 +103,7 @@ public class LocationPointStagingService {
                     ps.setNull(7, Types.DOUBLE);
                 }
                 ps.setDouble(8, point.getAccuracyMeters());
-                ps.setLong(9, spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12));
+                ps.setObject(9, spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12));
             }
 
             @Override

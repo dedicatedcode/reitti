@@ -27,6 +27,8 @@ public class H3TaskConfig {
         @Bean("h3CellUpdateTask")
         public JobDetail h3CellUpdateJobDetail() {
             return JobBuilder.newJob(H3CellUpdateJob.class)
+                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .storeDurably()
                     .withDescription("H3 Cell Update Job")
                     .build();
         }
