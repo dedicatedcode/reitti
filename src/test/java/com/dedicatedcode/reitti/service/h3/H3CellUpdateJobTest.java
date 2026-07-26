@@ -39,8 +39,14 @@ class H3CellUpdateJobTest {
         this.testingService.importData(user, "/data/gpx/20250617.gpx");
         this.testingService.awaitDataImport(30);
 
-        Optional<CoverageInformation> coverageInformation = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
+        Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
+        Optional<CoverageInformation> innenstadt = spatialCoverageService.getCoverageInformation(user, device, 367855, Locale.GERMAN);
+        Optional<CoverageInformation> sanktJuergen = spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN);
 
-        assertTrue(coverageInformation.isPresent());
+        assertTrue(luebeck.isPresent());
+        assertFalse(innenstadt.isPresent());
+        assertTrue(sanktJuergen.isPresent());
+
+
     }
 }

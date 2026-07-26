@@ -53,18 +53,16 @@ public class RocksDBH3Service {
                 throw new IllegalStateException("H3 Database is currently offline or updating.");
             }
 
-            Set<Long> osmIds = new HashSet<>();
+            List<BoundaryInfo> results = new ArrayList<>();
             int[] resolutions = {4, 6, 9};
 
             for (int resolution : resolutions) {
                 long cellId = h3.latLngToCell(lat, lng, resolution);
-                osmIds.addAll(getOsmIdsForCell(cellId));
-            }
-
-            List<BoundaryInfo> results = new ArrayList<>();
-            for (Long osmId : osmIds) {
-                int totalCells = getTotalCells(osmId);
-                results.add(new BoundaryInfo(osmId, totalCells));
+                Set<Long> osmIdsForCell = getOsmIdsForCell(cellId);
+                for (Long osmId : osmIdsForCell) {
+                    int totalCells = getTotalCells(osmId);
+                    results.add(new BoundaryInfo(osmId, totalCells, resolution));
+                }
             }
 
             return results;
@@ -269,7 +267,7 @@ public class RocksDBH3Service {
         }
     }
 
-    public record BoundaryInfo(long osmId, int totalCells) {
+    public record BoundaryInfo(long osmId, int totalCells, int resolution) {
     }
 
     public record CellWithBoundaries(long cellId, int resolution, Set<Long> osmIds) {

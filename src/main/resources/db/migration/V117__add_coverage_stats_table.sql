@@ -6,7 +6,7 @@ CREATE TABLE h3_area_coverage_stats
     h3_resolution      INT    NOT NULL,
     visited_cell_count BIGINT DEFAULT 0,
     total_cell_count   BIGINT NOT NULL,
-    PRIMARY KEY (user_id, osm_id)
+    UNIQUE NULLS NOT DISTINCT (user_id, device_id, osm_id, h3_resolution)
 );
 
 CREATE TABLE h3_cells_stats
@@ -16,5 +16,5 @@ CREATE TABLE h3_cells_stats
     h3_index BIGINT NOT NULL,
     last_visited_at TIMESTAMP NOT NULL,
     point_count BIGINT NOT NULL,
-    PRIMARY KEY (h3_index)
+    UNIQUE NULLS NOT DISTINCT (user_id, device_id, h3_index)
 );
