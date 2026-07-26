@@ -59,6 +59,17 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     @Override
+    public void postDeletion(List<Long> deletedPointIds) {
+        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                              H3CellUpdateJob.TaskData.forDeletion(deletedPointIds),
+                                              JobSchedulingService.Metadata.builder()
+                                                      .jobType(JobType.H3_CELL_UPDATE)
+                                                      .friendlyName("Updating H3 Spatial Statistics")
+                                                      .build()
+        );
+    }
+
+    @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         // Get coverage stats from database
         String coverageSql = """
@@ -101,7 +112,6 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 visitedCellIds
         ));
     }
-
 
     private List<Long> getVisitedCellIds(User user, long osmId) {
         return List.of();

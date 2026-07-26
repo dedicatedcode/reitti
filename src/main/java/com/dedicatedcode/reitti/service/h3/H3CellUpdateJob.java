@@ -54,12 +54,15 @@ public class H3CellUpdateJob implements Job {
                      (i / batchSize) + 1, 
                      (ids.size() + batchSize - 1) / batchSize, 
                      batch.size());
-            
-            processBatch(batch);
+            switch (data.changeType) {
+                case DELETION -> {
+                }
+                case PROMOTION -> processBatchForPromotion(batch);
+            }
         }
     }
 
-    private void processBatch(List<Long> batchIds) {
+    private void processBatchForPromotion(List<Long> batchIds) {
         String placeholders = String.join(",", Collections.nCopies(batchIds.size(), "?"));
         String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status, timestamp " +
                 "FROM raw_source_points WHERE id IN (" + placeholders + ")";
@@ -161,7 +164,7 @@ public class H3CellUpdateJob implements Job {
                              Instant timestamp) {}
 
     public enum ChangeType {
-        PROMOTION
+        DELETION, PROMOTION
 
     }
     public static class TaskData extends JobContext<TaskData> {
@@ -181,6 +184,10 @@ public class H3CellUpdateJob implements Job {
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {
             return new TaskData(ChangeType.PROMOTION, newPromotedIds);
+        }
+
+        public static TaskData forDeletion(List<Long> deletedPointIds) {
+            return new TaskData(ChangeType.DELETION, deletedPointIds);
         }
 
         @Override

@@ -15,4 +15,6 @@ public interface SpatialCoverageService {
     void postPromotion(List<Long> insertedIds);
 
     Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale);
+
+    void postDeletion(List<Long> deletedPointIds);
 }

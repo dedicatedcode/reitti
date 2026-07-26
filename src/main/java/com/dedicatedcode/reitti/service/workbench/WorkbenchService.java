@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
@@ -31,6 +32,7 @@ public class WorkbenchService {
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail locationDataCleanupTask;
     private final JobDetail patchDeviceOntoTimelineTask;
+    private final SpatialCoverageService spatialCoverageService;
     private final I18nService i18n;
 
     public WorkbenchService(SourceLocationPointJdbcService sourceLocationPointJdbcService,
@@ -38,12 +40,14 @@ public class WorkbenchService {
                             JobSchedulingService jobSchedulingService,
                             @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask,
                             @Qualifier("patchDeviceOntoTimelineJob") JobDetail patchDeviceOntoTimelineTask,
+                            SpatialCoverageService spatialCoverageService,
                             I18nService i18n) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
         this.jobSchedulingService = jobSchedulingService;
         this.locationDataCleanupTask = locationDataCleanupTask;
         this.patchDeviceOntoTimelineTask = patchDeviceOntoTimelineTask;
+        this.spatialCoverageService = spatialCoverageService;
         this.i18n = i18n;
     }
 
@@ -86,6 +90,7 @@ public class WorkbenchService {
         List<Long> deletedPointIds = deletedPoints.stream().map(DeletedPointDto::getSourceId).toList();
         List<DeviceTimeRange> affectedTimeRange = this.sourceLocationPointJdbcService.findAffectedTimeRange(user, deletedPointIds);
         this.sourceLocationPointJdbcService.bulkUpdateManuallyIgnoredStatus(user, deletedPointIds);
+        this.spatialCoverageService.postDeletion(deletedPointIds);
         scheduleUpdateJob(user, parentJob, affectedTimeRange);
     }
 

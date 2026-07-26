@@ -23,6 +23,9 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
     public void postPromotion(List<Long> insertedIds) { }
 
     @Override
+    public void postDeletion(List<Long> deletedPointIds) { }
+
+    @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         return Optional.empty();
     }
