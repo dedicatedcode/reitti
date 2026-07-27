@@ -55,47 +55,24 @@ public class H3CellUpdateJob implements Job {
                      (ids.size() + batchSize - 1) / batchSize, 
                      batch.size());
             switch (data.changeType) {
-                case DELETION -> {
-                }
+                case DELETION -> processBatchForDeletion(batch);
                 case PROMOTION -> processBatchForPromotion(batch);
             }
         }
     }
 
     private void processBatchForPromotion(List<Long> batchIds) {
-        String placeholders = String.join(",", Collections.nCopies(batchIds.size(), "?"));
-        String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status, timestamp " +
-                "FROM raw_source_points WHERE id IN (" + placeholders + ")";
-
-        List<PointData> points = jdbcTemplate.query(sql,
-                                                    (rs, rowNum) -> {
-                                                        long userId = rs.getLong("user_id");
-                                                        Long deviceId = rs.getObject("device_id", Long.class);
-                                                        long id = rs.getLong("id");
-                                                        String geomWkt = rs.getString("geom_wkt");
-                                                        long h3Cell = rs.getLong("h3_cell");
-                                                        int status = rs.getInt("status");
-                                                        Instant timestamp = rs.getTimestamp("timestamp").toInstant();
-
-                                                        GeoPoint geoPoint = pointReaderWriter.read(geomWkt);
-                                                        return new PointData(userId, deviceId, id, geoPoint.latitude(), geoPoint.longitude(), h3Cell, status, timestamp);
-                                                    },
-                                                    batchIds.toArray()
-        );
+        List<PointData> points = loadPointData(batchIds);
 
         for (PointData point : points) {
             log.debug("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                       point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
-            // Get all H3 cells for this point at different resolutions (hierarchical)
             Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
 
-            // Process each H3 cell (at different resolutions)
             for (Long h3Cell : h3Cells) {
-                // Check if this cell was already visited by this user
                 boolean isNewCell = isNewCellForUser(point.userId, h3Cell);
 
-                // Update or insert H3 cell stats
                 String upsertCellSql = """
                 INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
                 VALUES (?, ?, ?, ?, 1)
@@ -107,12 +84,33 @@ public class H3CellUpdateJob implements Job {
                 jdbcTemplate.update(upsertCellSql, point.userId, point.deviceid, h3Cell,
                                     Timestamp.from(point.timestamp), Timestamp.from(point.timestamp));
 
-                // Only update area coverage if this is a new cell for the user
                 if (isNewCell) {
                     updateAreaCoverageForCell(point, h3Cell);
                 }
             }
         }
+    }
+
+    private List<PointData> loadPointData(List<Long> batchIds) {
+        String placeholders = String.join(",", Collections.nCopies(batchIds.size(), "?"));
+        String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status, timestamp " +
+                "FROM raw_source_points WHERE id IN (" + placeholders + ")";
+
+        return jdbcTemplate.query(sql,
+                                  (rs, _) -> {
+                                                        long userId = rs.getLong("user_id");
+                                                        Long deviceId = rs.getObject("device_id", Long.class);
+                                                        long id = rs.getLong("id");
+                                                        String geomWkt = rs.getString("geom_wkt");
+                                                        long h3Cell = rs.getLong("h3_cell");
+                                                        int status = rs.getInt("status");
+                                                        Instant timestamp = rs.getTimestamp("timestamp").toInstant();
+
+                                                        GeoPoint geoPoint = pointReaderWriter.read(geomWkt);
+                                                        return new PointData(userId, deviceId, id, geoPoint.latitude(), geoPoint.longitude(), h3Cell, status, timestamp);
+                                                    },
+                                  batchIds.toArray()
+        );
     }
 
     private boolean isNewCellForUser(long userId, long h3Cell) {
@@ -154,6 +152,83 @@ public class H3CellUpdateJob implements Job {
                         jdbcTemplate.update(upsertAreaSql,
                                             point.userId, point.deviceid, osmId, resolution,
                                             totalCells, totalCells);
+                    }
+                }
+            }
+        }
+    }
+
+    private void processBatchForDeletion(List<Long> batchIds) {
+        List<PointData> points = loadPointData(batchIds);
+
+        for (PointData point : points) {
+            log.debug("Deleting point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+                      point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
+
+            Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
+
+            for (Long h3Cell : h3Cells) {
+                decrementCellAndCheckRemoval(point.userId, h3Cell, point);
+            }
+        }
+    }
+
+    private void decrementCellAndCheckRemoval(long userId, long h3Cell, PointData point) {
+        String decrementSql = """
+        UPDATE h3_cells_stats
+        SET point_count = point_count - 1 
+        WHERE user_id = ? AND h3_index = ?
+        """;
+
+        int updatedRows = jdbcTemplate.update(decrementSql, userId, h3Cell);
+
+        if (updatedRows > 0) {
+            String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
+            Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, h3Cell);
+
+            if (pointCount != null && pointCount <= 0) {
+                String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
+                jdbcTemplate.update(deleteCellSql, userId, h3Cell);
+
+                decrementAreaCoverageForCell(point, h3Cell);
+            }
+        }
+    }
+
+    private void decrementAreaCoverageForCell(PointData point, long h3Cell) {
+        List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
+                rocksDbService.getCellsWithBoundaries(point.lat, point.lng);
+
+        for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
+            if (cellWithBoundary.cellId() == h3Cell) {
+                int resolution = cellWithBoundary.resolution();
+
+                for (Long osmId : cellWithBoundary.osmIds()) {
+                    String decrementAreaSql = """
+                    UPDATE h3_area_coverage_stats
+                    SET visited_cell_count = visited_cell_count - 1
+                    WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                    """;
+
+                    int updatedRows = jdbcTemplate.update(decrementAreaSql, point.userId, osmId, resolution);
+
+                    if (updatedRows > 0) {
+                        String checkVisitedSql = """
+                        SELECT visited_cell_count
+                        FROM h3_area_coverage_stats
+                        WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                        """;
+
+                        Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
+                                                                           point.userId, osmId, resolution);
+
+                        if (visitedCount != null && visitedCount <= 0) {
+                            String deleteAreaSql = """
+                            DELETE FROM h3_area_coverage_stats
+                            WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                            """;
+                            jdbcTemplate.update(deleteAreaSql, point.userId, osmId, resolution);
+                        }
                     }
                 }
             }
