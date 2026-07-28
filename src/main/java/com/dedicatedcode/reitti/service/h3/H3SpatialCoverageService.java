@@ -19,10 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.*;
 
 @Service
 @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
@@ -87,6 +85,38 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         }).filter(Objects::nonNull).toList();
         this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forMovement(points),
+                                              JobSchedulingService.Metadata.builder()
+                                                      .jobType(JobType.H3_CELL_UPDATE)
+                                                      .friendlyName("Updating H3 Spatial Statistics")
+                                                      .build()
+        );
+    }
+
+    @Override
+    public void preDeleteSynthetic(User user, Instant start, Instant end) {
+        List<H3CellUpdateJob.CellDecrement> decrements = jdbcTemplate.query("SELECT h3_cell, COUNT(*) FROM raw_location_points WHERE user_id = ? GROUP BY h3_cell", (rs, rowNum) ->
+                new H3CellUpdateJob.CellDecrement(user.getId(), rs.getLong("h3_cell"), rs.getInt("count")));
+        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                              H3CellUpdateJob.TaskData.forDecrement(decrements),
+                                              JobSchedulingService.Metadata.builder()
+                                                      .jobType(JobType.H3_CELL_UPDATE)
+                                                      .friendlyName("Updating H3 Spatial Statistics")
+                                                      .build()
+        );
+    }
+
+    @Override
+    public void postAddSynthetic(User user, List<Long> insertedIds) {
+        if (insertedIds.isEmpty()) {
+            return;
+        }
+        String placeholders = String.join(",", Collections.nCopies(insertedIds.size(), "?"));
+        String sql = "SELECT h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_location_points WHERE id IN (" + placeholders + ") GROUP BY h3_cell";
+        List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
+                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
+                                                                            insertedIds.toArray());
+        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                              H3CellUpdateJob.TaskData.forIncrement(increments),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
                                                       .friendlyName("Updating H3 Spatial Statistics")

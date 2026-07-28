@@ -199,26 +199,24 @@ public class H3CellUpdateJob implements Job {
                 rocksDbService.getCellsWithBoundaries(h3Cell);
 
         for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
-            if (cellWithBoundary.cellId() == h3Cell) {
-                int resolution = cellWithBoundary.resolution();
+            int resolution = cellWithBoundary.resolution();
 
-                for (Long osmId : cellWithBoundary.osmIds()) {
-                    int totalCells = rocksDbService.getTotalCells(osmId);
+            for (Long osmId : cellWithBoundary.osmIds()) {
+                int totalCells = rocksDbService.getTotalCells(osmId);
 
-                    if (totalCells > 0) {
-                        // Update area coverage stats - increment visited cells for this resolution
-                        String upsertAreaSql = """
-                        INSERT INTO h3_area_coverage_stats (user_id, device_id, osm_id, h3_resolution, visited_cell_count, total_cell_count)
-                        VALUES (?, ?, ?, ?, 1, ?)
-                        ON CONFLICT (user_id, device_id, osm_id, h3_resolution) DO UPDATE SET
-                            visited_cell_count = h3_area_coverage_stats.visited_cell_count + 1,
-                            total_cell_count = ?
-                        """;
+                if (totalCells > 0) {
+                    // Update area coverage stats - increment visited cells for this resolution
+                    String upsertAreaSql = """
+                    INSERT INTO h3_area_coverage_stats (user_id, device_id, osm_id, h3_resolution, visited_cell_count, total_cell_count)
+                    VALUES (?, ?, ?, ?, 1, ?)
+                    ON CONFLICT (user_id, device_id, osm_id, h3_resolution) DO UPDATE SET
+                        visited_cell_count = h3_area_coverage_stats.visited_cell_count + 1,
+                        total_cell_count = ?
+                    """;
 
-                        jdbcTemplate.update(upsertAreaSql,
-                                            userId, deviceId, osmId, resolution,
-                                            totalCells, totalCells);
-                    }
+                    jdbcTemplate.update(upsertAreaSql,
+                                        userId, deviceId, osmId, resolution,
+                                        totalCells, totalCells);
                 }
             }
         }
@@ -322,35 +320,33 @@ public class H3CellUpdateJob implements Job {
                 rocksDbService.getCellsWithBoundaries(h3Cell);
 
         for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
-            if (cellWithBoundary.cellId() == h3Cell) {
-                int resolution = cellWithBoundary.resolution();
+            int resolution = cellWithBoundary.resolution();
 
-                for (Long osmId : cellWithBoundary.osmIds()) {
-                    String decrementAreaSql = """
-                    UPDATE h3_area_coverage_stats
-                    SET visited_cell_count = visited_cell_count - 1
+            for (Long osmId : cellWithBoundary.osmIds()) {
+                String decrementAreaSql = """
+                UPDATE h3_area_coverage_stats
+                SET visited_cell_count = visited_cell_count - 1
+                WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                """;
+
+                int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, osmId, resolution);
+
+                if (updatedRows > 0) {
+                    String checkVisitedSql = """
+                    SELECT visited_cell_count
+                    FROM h3_area_coverage_stats
                     WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
                     """;
 
-                    int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, osmId, resolution);
+                    Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
+                                                                       userId, osmId, resolution);
 
-                    if (updatedRows > 0) {
-                        String checkVisitedSql = """
-                        SELECT visited_cell_count
-                        FROM h3_area_coverage_stats
+                    if (visitedCount != null && visitedCount <= 0) {
+                        String deleteAreaSql = """
+                        DELETE FROM h3_area_coverage_stats
                         WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
                         """;
-
-                        Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
-                                                                           userId, osmId, resolution);
-
-                        if (visitedCount != null && visitedCount <= 0) {
-                            String deleteAreaSql = """
-                            DELETE FROM h3_area_coverage_stats
-                            WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
-                            """;
-                            jdbcTemplate.update(deleteAreaSql, userId, osmId, resolution);
-                        }
+                        jdbcTemplate.update(deleteAreaSql, userId, osmId, resolution);
                     }
                 }
             }
@@ -362,7 +358,7 @@ public class H3CellUpdateJob implements Job {
 
     public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
 
-    public record CellDecrement(long userId, long h3Cell, int count) {}
+    public record CellDecrement(long userId, long h3Cell, int count) implements Serializable {}
 
     public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant timestamp) implements Serializable {}
 
@@ -425,8 +421,6 @@ public class H3CellUpdateJob implements Job {
         public static TaskData forIncrement(List<CellIncrement> cellIncrements) {
             return new TaskData(ChangeType.INCREMENT, List.of(), List.of(), List.of(), cellIncrements);
         }
-
-
         @Override
         public TaskData withJobId(UUID jobId) {
             return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);

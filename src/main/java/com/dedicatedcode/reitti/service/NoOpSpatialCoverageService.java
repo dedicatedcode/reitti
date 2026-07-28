@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -28,6 +29,16 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
 
     @Override
     public void preMove(List<MovedPointDto> movedPoints) {}
+
+    @Override
+    public void preDeleteSynthetic(User user, Instant start, Instant end) {
+
+    }
+
+    @Override
+    public void postAddSynthetic(User user, List<Long> insertedIds) {
+
+    }
 
     @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {

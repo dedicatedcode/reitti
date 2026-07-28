@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.h3;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
@@ -10,7 +11,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-@ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
+@Service
+@ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
 public class H3ManifestDownloadService {
     private final String remoteManifestUrl;
     private final HttpClient httpClient = HttpClient.newHttpClient();

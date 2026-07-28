@@ -6,14 +6,19 @@ import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
+import com.dedicatedcode.reitti.service.h3.H3CellUpdateJob;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -457,26 +462,45 @@ public class RawLocationPointJdbcService {
         if (syntheticPoints.isEmpty()) {
             return 0;
         }
-        
-        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, h3_cell) " +
-                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, ?) ON CONFLICT DO NOTHING;";
 
-        List<Object[]> batchArgs = new ArrayList<>();
-        for (LocationPoint point : syntheticPoints) {
-            batchArgs.add(new Object[]{
-                    user.getId(),
-                    Timestamp.from(point.getTimestamp()),
-                    point.getAccuracyMeters(),
-                    point.getElevationMeters(),
-                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString(),
-                    spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12)
-            });
+        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, h3_cell) " +
+                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, ?) ON CONFLICT DO NOTHING RETURNING id";
+
+        List<Long> insertedIds = jdbcTemplate.execute((ConnectionCallback<List<Long>>) con -> {
+            List<Long> ids = new ArrayList<>();
+            try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                for (LocationPoint point : syntheticPoints) {
+                    ps.setLong(1, user.getId());
+                    ps.setTimestamp(2, Timestamp.from(point.getTimestamp()));
+                    ps.setObject(3, point.getAccuracyMeters());
+                    ps.setObject(4, point.getElevationMeters());
+                    ps.setString(5, geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString());
+                    ps.setLong(6, spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12));
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    while (rs.next()) {
+                        long id = rs.getLong(1);
+                        if (!rs.wasNull()) {
+                            ids.add(id);
+                        }
+                    }
+                }
+            }
+            return ids;
+        });
+
+        if (insertedIds != null && !insertedIds.isEmpty()) {
+            spatialCoverageService.postAddSynthetic(user, insertedIds);
         }
-        int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
-        return Arrays.stream(ints).sum();
+
+        return insertedIds == null ? 0 : insertedIds.size();
     }
     
     public void deleteSyntheticPointsInRange(User user, Instant start, Instant end) {
+        this.spatialCoverageService.preDeleteSynthetic(user, start, end);
         String sql = "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND synthetic = true";
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
