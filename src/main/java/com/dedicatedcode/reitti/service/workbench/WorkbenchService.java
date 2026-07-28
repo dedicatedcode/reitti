@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
+import com.dedicatedcode.reitti.service.h3.H3CellUpdateJob;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
@@ -98,6 +99,7 @@ public class WorkbenchService {
         log.debug("Handling move for user [{}] and [{}] points", user.getUsername(), editStore.getMovedPoints().size());
         List<MovedPointDto> movedPoints = editStore.getMovedPoints();
         List<Long> movedPointIds = movedPoints.stream().map(MovedPointDto::getSourceId).toList();
+        this.spatialCoverageService.preMove(movedPoints);
         List<DeviceTimeRange> affectedTimeRange = this.sourceLocationPointJdbcService.findAffectedTimeRange(user, movedPointIds);
         for (MovedPointDto movedPoint : movedPoints) {
             this.sourceLocationPointJdbcService.updateLocation(user, movedPoint.getSourceId(), movedPoint.getLat(), movedPoint.getLng());

@@ -1,8 +1,11 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -26,19 +30,18 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     private static final Logger log = LoggerFactory.getLogger(H3SpatialCoverageService.class);
 
     private final H3Core h3;
-    private final RocksDBH3Service rocksDbService;
     private final JdbcTemplate jdbcTemplate;
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail h3CellUpdateJob;
+    private final PointReaderWriter pointReaderWriter;
 
-    public H3SpatialCoverageService(RocksDBH3Service rocksDbService,
-                                    JdbcTemplate jdbcTemplate,
+    public H3SpatialCoverageService(JdbcTemplate jdbcTemplate,
                                     JobSchedulingService jobSchedulingService,
-                                    @Qualifier("h3CellUpdateTask") JobDetail h3CellUpdateJob) throws IOException {
-        this.rocksDbService = rocksDbService;
+                                    @Qualifier("h3CellUpdateTask") JobDetail h3CellUpdateJob, PointReaderWriter pointReaderWriter) throws IOException {
         this.jdbcTemplate = jdbcTemplate;
         this.jobSchedulingService = jobSchedulingService;
         this.h3CellUpdateJob = h3CellUpdateJob;
+        this.pointReaderWriter = pointReaderWriter;
         this.h3 = H3Core.newInstance();
     }
 
@@ -62,6 +65,28 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     public void postDeletion(List<Long> deletedPointIds) {
         this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forDeletion(deletedPointIds),
+                                              JobSchedulingService.Metadata.builder()
+                                                      .jobType(JobType.H3_CELL_UPDATE)
+                                                      .friendlyName("Updating H3 Spatial Statistics")
+                                                      .build()
+        );
+    }
+
+    @Override
+    public void preMove(List<MovedPointDto> movedPoints) {
+        List<H3CellUpdateJob.MovedPoint> points = movedPoints.stream().map(movedPointDto -> {
+            List<H3CellUpdateJob.MovedPoint> result = this.jdbcTemplate.query("SELECT ST_AsText(geom) AS geom_wkt FROM raw_source_points WHERE id = ? ", (rs, rowNum) -> {
+                GeoPoint geomWkt = pointReaderWriter.read(rs.getString("geom_wkt"));
+                return new H3CellUpdateJob.MovedPoint(movedPointDto.getSourceId(), geomWkt.latitude(), geomWkt.longitude(), movedPointDto.getLat(), movedPointDto.getLng());
+            }, movedPointDto.getSourceId());
+            if (result.isEmpty()) {
+                return null;
+            } else {
+                return result.getFirst();
+            }
+        }).filter(Objects::nonNull).toList();
+        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                              H3CellUpdateJob.TaskData.forMovement(points),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
                                                       .friendlyName("Updating H3 Spatial Statistics")
@@ -121,14 +146,14 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         String nameSql = """
         SELECT COALESCE(
             all_names ->> ?,          -- Try locale-specific name (e.g., 'name:de')
-            all_names ->> 'name',     -- Fallback to default 'name'
+            all_names ->> 'NAME',     -- Fallback to default 'name'
             'Area #' || ?             -- Final fallback with OSM ID
         ) as localized_name
         FROM osm_names
         WHERE osm_id = ?
         """;
 
-        String localeKey = "name:" + locale.getLanguage();
+        String localeKey = "NAME:" + locale.getLanguage();
 
         try {
             String name = jdbcTemplate.queryForObject(nameSql, String.class,

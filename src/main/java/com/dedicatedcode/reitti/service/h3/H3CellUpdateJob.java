@@ -11,12 +11,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @DisallowConcurrentExecution
 public class H3CellUpdateJob implements Job {
@@ -36,24 +39,30 @@ public class H3CellUpdateJob implements Job {
     public void execute(JobExecutionContext context) throws JobExecutionException {
         TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
 
-        log.debug("Updating H3 Spatial Statistics for {} new promoted ids", data.newPromotedIds.size());
+        if (data.changeType == ChangeType.MOVEMENT) {
+            log.debug("Processing movement for {} points", data.movedPoints.size());
+            processMovement(data.movedPoints);
+            return;
+        }
 
-        if (data.newPromotedIds.isEmpty()) {
+        log.debug("Updating H3 Spatial Statistics for {} new promoted ids", data.pointIds.size());
+
+        if (data.pointIds.isEmpty()) {
             return;
         }
 
         // Process in batches to avoid memory issues and database timeouts
         final int batchSize = 1000;
-        List<Long> ids = data.newPromotedIds;
-        
+        List<Long> ids = data.pointIds;
+
         for (int i = 0; i < ids.size(); i += batchSize) {
             int endIndex = Math.min(i + batchSize, ids.size());
             List<Long> batch = ids.subList(i, endIndex);
-            
-            log.debug("Processing batch {}/{}: {} points", 
-                     (i / batchSize) + 1, 
-                     (ids.size() + batchSize - 1) / batchSize, 
-                     batch.size());
+
+            log.debug("Processing batch {}/{}: {} points",
+                      (i / batchSize) + 1,
+                      (ids.size() + batchSize - 1) / batchSize,
+                      batch.size());
             switch (data.changeType) {
                 case DELETION -> processBatchForDeletion(batch);
                 case PROMOTION -> processBatchForPromotion(batch);
@@ -61,32 +70,58 @@ public class H3CellUpdateJob implements Job {
         }
     }
 
-    private void processBatchForPromotion(List<Long> batchIds) {
-        List<PointData> points = loadPointData(batchIds);
-
-        for (PointData point : points) {
-            log.debug("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+    private void processMovement(List<MovedPoint> movedPoints) {
+        if (movedPoints.isEmpty()) {
+            return;
+        }
+        // 1. Delete old locations
+        List<PointData> oldPoints = loadPointDataForMoved(movedPoints, true);
+        for (PointData point : oldPoints) {
+            log.debug("Processing moved point (deletion): userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                       point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
             Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
-
             for (Long h3Cell : h3Cells) {
-                boolean isNewCell = isNewCellForUser(point.userId, h3Cell);
+                decrementCellAndCheckRemoval(point.userId, h3Cell, point);
+            }
+        }
 
-                String upsertCellSql = """
-                INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
-                VALUES (?, ?, ?, ?, 1)
-                ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
-                    last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
-                    point_count = h3_cells_stats.point_count + 1
-                """;
+        // 2. Promote new locations
+        List<PointData> newPoints = loadPointDataForMoved(movedPoints, false);
+        for (PointData point : newPoints) {
+            promotePoint(point);
+        }
+    }
 
-                jdbcTemplate.update(upsertCellSql, point.userId, point.deviceid, h3Cell,
-                                    Timestamp.from(point.timestamp), Timestamp.from(point.timestamp));
+    private void processBatchForPromotion(List<Long> batchIds) {
+        List<PointData> points = loadPointData(batchIds);
+        for (PointData point : points) {
+            promotePoint(point);
+        }
+    }
 
-                if (isNewCell) {
-                    updateAreaCoverageForCell(point, h3Cell);
-                }
+    private void promotePoint(PointData point) {
+        log.debug("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+                  point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
+
+        Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
+
+        for (Long h3Cell : h3Cells) {
+            boolean isNewCell = isNewCellForUser(point.userId, h3Cell);
+
+            String upsertCellSql = """
+            INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                point_count = h3_cells_stats.point_count + 1
+            """;
+
+            jdbcTemplate.update(upsertCellSql, point.userId, point.deviceid, h3Cell,
+                                Timestamp.from(point.timestamp), Timestamp.from(point.timestamp));
+
+            if (isNewCell) {
+                updateAreaCoverageForCell(point, h3Cell);
             }
         }
     }
@@ -98,18 +133,45 @@ public class H3CellUpdateJob implements Job {
 
         return jdbcTemplate.query(sql,
                                   (rs, _) -> {
-                                                        long userId = rs.getLong("user_id");
-                                                        Long deviceId = rs.getObject("device_id", Long.class);
-                                                        long id = rs.getLong("id");
-                                                        String geomWkt = rs.getString("geom_wkt");
-                                                        long h3Cell = rs.getLong("h3_cell");
-                                                        int status = rs.getInt("status");
-                                                        Instant timestamp = rs.getTimestamp("timestamp").toInstant();
+                                      long userId = rs.getLong("user_id");
+                                      Long deviceId = rs.getObject("device_id", Long.class);
+                                      long id = rs.getLong("id");
+                                      String geomWkt = rs.getString("geom_wkt");
+                                      long h3Cell = rs.getLong("h3_cell");
+                                      int status = rs.getInt("status");
+                                      Instant timestamp = rs.getTimestamp("timestamp").toInstant();
 
-                                                        GeoPoint geoPoint = pointReaderWriter.read(geomWkt);
-                                                        return new PointData(userId, deviceId, id, geoPoint.latitude(), geoPoint.longitude(), h3Cell, status, timestamp);
-                                                    },
+                                      GeoPoint geoPoint = pointReaderWriter.read(geomWkt);
+                                      return new PointData(userId, deviceId, id, geoPoint.latitude(), geoPoint.longitude(), h3Cell, status, timestamp);
+                                  },
                                   batchIds.toArray()
+        );
+    }
+
+    private List<PointData> loadPointDataForMoved(List<MovedPoint> movedPoints, boolean useOldCoords) {
+        List<Long> ids = movedPoints.stream().map(MovedPoint::id).toList();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT user_id, device_id, id, h3_cell, status, timestamp " +
+                "FROM raw_source_points WHERE id IN (" + placeholders + ")";
+
+        Map<Long, MovedPoint> movedMap = movedPoints.stream().collect(Collectors.toMap(MovedPoint::id, mp -> mp));
+
+        return jdbcTemplate.query(sql,
+                                  (rs, _) -> {
+                                      long userId = rs.getLong("user_id");
+                                      Long deviceId = rs.getObject("device_id", Long.class);
+                                      long id = rs.getLong("id");
+                                      long h3Cell = rs.getLong("h3_cell");
+                                      int status = rs.getInt("status");
+                                      Instant timestamp = rs.getTimestamp("timestamp").toInstant();
+
+                                      MovedPoint movedPoint = movedMap.get(id);
+                                      double lat = useOldCoords ? movedPoint.oldLat() : movedPoint.newLat();
+                                      double lng = useOldCoords ? movedPoint.oldLng() : movedPoint.newLng();
+
+                                      return new PointData(userId, deviceId, id, lat, lng, h3Cell, status, timestamp);
+                                  },
+                                  ids.toArray()
         );
     }
 
@@ -238,41 +300,54 @@ public class H3CellUpdateJob implements Job {
     private record PointData(long userId, Long deviceid, long id, double lat, double lng, long h3Cell, int status,
                              Instant timestamp) {}
 
+    public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
+
     public enum ChangeType {
-        DELETION, PROMOTION
+        DELETION, PROMOTION, MOVEMENT
 
     }
     public static class TaskData extends JobContext<TaskData> {
         private final ChangeType changeType;
-        private final List<Long> newPromotedIds;
+        private final List<Long> pointIds;
+        private final List<MovedPoint> movedPoints;
 
-        public TaskData(ChangeType changeType, List<Long> newPromotedIds) {
-            this.changeType = changeType;
-            this.newPromotedIds = newPromotedIds;
+        public TaskData(ChangeType changeType, List<Long> pointIds) {
+            this(changeType, pointIds, List.of());
         }
 
-        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> newPromotedIds) {
+        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
+            this.changeType = changeType;
+            this.pointIds = pointIds;
+            this.movedPoints = movedPoints;
+        }
+
+        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
             super(jobId, parentJobId);
             this.changeType = changeType;
-            this.newPromotedIds = newPromotedIds;
+            this.pointIds = pointIds;
+            this.movedPoints = movedPoints;
         }
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {
-            return new TaskData(ChangeType.PROMOTION, newPromotedIds);
+            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of());
         }
 
         public static TaskData forDeletion(List<Long> deletedPointIds) {
-            return new TaskData(ChangeType.DELETION, deletedPointIds);
+            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of());
+        }
+
+        public static TaskData forMovement(List<MovedPoint> movedPoints) {
+            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(jobId, parentJobId, changeType, newPromotedIds);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(jobId, parentJobId, changeType, newPromotedIds);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints);
         }
     }
 }

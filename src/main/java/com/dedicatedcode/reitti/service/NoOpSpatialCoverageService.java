@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
@@ -20,10 +21,13 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
     }
 
     @Override
-    public void postPromotion(List<Long> insertedIds) { }
+    public void postPromotion(List<Long> insertedIds) {}
 
     @Override
-    public void postDeletion(List<Long> deletedPointIds) { }
+    public void postDeletion(List<Long> deletedPointIds) {}
+
+    @Override
+    public void preMove(List<MovedPointDto> movedPoints) {}
 
     @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {

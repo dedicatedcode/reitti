@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
@@ -17,4 +18,6 @@ public interface SpatialCoverageService {
     Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale);
 
     void postDeletion(List<Long> deletedPointIds);
+
+    void preMove(List<MovedPointDto> movedPoints);
 }
