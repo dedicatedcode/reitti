@@ -51,6 +51,12 @@ public class H3CellUpdateJob implements Job {
             return;
         }
 
+        if (data.changeType == ChangeType.INCREMENT) {
+            log.debug("Processing increment for {} cells", data.cellIncrements.size());
+            processIncrement(data.cellIncrements);
+            return;
+        }
+
         log.debug("Updating H3 Spatial Statistics for {} new promoted ids", data.pointIds.size());
 
         if (data.pointIds.isEmpty()) {
@@ -127,7 +133,7 @@ public class H3CellUpdateJob implements Job {
                                 Timestamp.from(point.timestamp), Timestamp.from(point.timestamp));
 
             if (isNewCell) {
-                updateAreaCoverageForCell(point, h3Cell);
+                updateAreaCoverageForCell(point.userId, point.deviceid, h3Cell);
             }
         }
     }
@@ -187,7 +193,7 @@ public class H3CellUpdateJob implements Job {
         return count == null || count == 0;
     }
 
-    private void updateAreaCoverageForCell(PointData point, long h3Cell) {
+    private void updateAreaCoverageForCell(long userId, Long deviceId, long h3Cell) {
         // Get OSM boundaries that contain this H3 cell
         List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
                 rocksDbService.getCellsWithBoundaries(h3Cell);
@@ -197,15 +203,7 @@ public class H3CellUpdateJob implements Job {
                 int resolution = cellWithBoundary.resolution();
 
                 for (Long osmId : cellWithBoundary.osmIds()) {
-                    // Get total cell count for this OSM area at this resolution from RocksDB
-                    List<RocksDBH3Service.BoundaryInfo> boundaryInfos =
-                            rocksDbService.lookup(point.lat, point.lng);
-
-                    int totalCells = boundaryInfos.stream()
-                            .filter(bi -> bi.osmId() == osmId && bi.resolution() == resolution)
-                            .mapToInt(RocksDBH3Service.BoundaryInfo::totalCells)
-                            .findFirst()
-                            .orElse(0);
+                    int totalCells = rocksDbService.getTotalCells(osmId);
 
                     if (totalCells > 0) {
                         // Update area coverage stats - increment visited cells for this resolution
@@ -218,7 +216,7 @@ public class H3CellUpdateJob implements Job {
                         """;
 
                         jdbcTemplate.update(upsertAreaSql,
-                                            point.userId, point.deviceid, osmId, resolution,
+                                            userId, deviceId, osmId, resolution,
                                             totalCells, totalCells);
                     }
                 }
@@ -266,6 +264,33 @@ public class H3CellUpdateJob implements Job {
 
                     decrementAreaCoverageForCell(userId, h3Cell);
                 }
+            }
+        }
+    }
+
+    private void processIncrement(List<CellIncrement> cellIncrements) {
+        for (CellIncrement increment : cellIncrements) {
+            long userId = increment.userId();
+            Long deviceId = increment.deviceId();
+            long h3Cell = increment.h3Cell();
+            int count = increment.count();
+            Instant timestamp = increment.timestamp();
+
+            boolean isNewCell = isNewCellForUser(userId, h3Cell);
+
+            String upsertCellSql = """
+            INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                point_count = h3_cells_stats.point_count + ?
+            """;
+
+            jdbcTemplate.update(upsertCellSql, userId, deviceId, h3Cell,
+                                Timestamp.from(timestamp), count, Timestamp.from(timestamp), count);
+
+            if (isNewCell) {
+                updateAreaCoverageForCell(userId, deviceId, h3Cell);
             }
         }
     }
@@ -339,8 +364,10 @@ public class H3CellUpdateJob implements Job {
 
     public record CellDecrement(long userId, long h3Cell, int count) {}
 
+    public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant timestamp) implements Serializable {}
+
     public enum ChangeType {
-        DELETION, PROMOTION, DECREMENT, MOVEMENT
+        DELETION, PROMOTION, DECREMENT, INCREMENT, MOVEMENT
     }
 
     public static class TaskData extends JobContext<TaskData> {
@@ -348,55 +375,66 @@ public class H3CellUpdateJob implements Job {
         private final List<Long> pointIds;
         private final List<MovedPoint> movedPoints;
         private final List<CellDecrement> cellDecrements;
+        private final List<CellIncrement> cellIncrements;
 
         public TaskData(ChangeType changeType, List<Long> pointIds) {
-            this(changeType, pointIds, List.of(), List.of());
+            this(changeType, pointIds, List.of(), List.of(), List.of());
         }
 
         public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
-            this(changeType, pointIds, movedPoints, List.of());
+            this(changeType, pointIds, movedPoints, List.of(), List.of());
         }
 
         public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements) {
+            this(changeType, pointIds, movedPoints, cellDecrements, List.of());
+        }
+
+        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements, List<CellIncrement> cellIncrements) {
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
             this.cellDecrements = cellDecrements;
+            this.cellIncrements = cellIncrements;
         }
 
-        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements) {
+        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements, List<CellIncrement> cellIncrements) {
             super(jobId, parentJobId);
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
             this.cellDecrements = cellDecrements;
+            this.cellIncrements = cellIncrements;
         }
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {
-            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of(), List.of());
+            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of(), List.of(), List.of());
         }
 
         public static TaskData forDeletion(List<Long> deletedPointIds) {
-            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of(), List.of());
+            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of(), List.of(), List.of());
         }
 
         public static TaskData forMovement(List<MovedPoint> movedPoints) {
-            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints, List.of());
+            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints, List.of(), List.of());
         }
 
         public static TaskData forDecrement(List<CellDecrement> cellDecrements) {
-            return new TaskData(ChangeType.DECREMENT, List.of(), List.of(), cellDecrements);
+            return new TaskData(ChangeType.DECREMENT, List.of(), List.of(), cellDecrements, List.of());
+        }
+
+        public static TaskData forIncrement(List<CellIncrement> cellIncrements) {
+            return new TaskData(ChangeType.INCREMENT, List.of(), List.of(), List.of(), cellIncrements);
         }
 
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);
         }
     }
 }

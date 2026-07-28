@@ -160,7 +160,7 @@ public class RocksDBH3Service {
         }
     }
 
-    private int getTotalCells(long osmId) {
+    public int getTotalCells(long osmId) {
         byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
         try {
             byte[] value = regionMetadataDb.get(key);
