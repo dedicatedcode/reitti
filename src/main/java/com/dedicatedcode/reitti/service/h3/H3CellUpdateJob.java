@@ -45,6 +45,12 @@ public class H3CellUpdateJob implements Job {
             return;
         }
 
+        if (data.changeType == ChangeType.DECREMENT) {
+            log.debug("Processing decrement for {} cells", data.cellDecrements.size());
+            processDecrement(data.cellDecrements);
+            return;
+        }
+
         log.debug("Updating H3 Spatial Statistics for {} new promoted ids", data.pointIds.size());
 
         if (data.pointIds.isEmpty()) {
@@ -184,7 +190,7 @@ public class H3CellUpdateJob implements Job {
     private void updateAreaCoverageForCell(PointData point, long h3Cell) {
         // Get OSM boundaries that contain this H3 cell
         List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
-                rocksDbService.getCellsWithBoundaries(point.lat, point.lng);
+                rocksDbService.getCellsWithBoundaries(h3Cell);
 
         for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
             if (cellWithBoundary.cellId() == h3Cell) {
@@ -237,7 +243,33 @@ public class H3CellUpdateJob implements Job {
 
 
     private void processDecrement(List<CellDecrement> cellDecrements) {
+        for (CellDecrement decrement : cellDecrements) {
+            long userId = decrement.userId();
+            long h3Cell = decrement.h3Cell();
+            int count = decrement.count();
+
+            String decrementSql = """
+            UPDATE h3_cells_stats
+            SET point_count = point_count - ?
+            WHERE user_id = ? AND h3_index = ?
+            """;
+
+            int updatedRows = jdbcTemplate.update(decrementSql, count, userId, h3Cell);
+
+            if (updatedRows > 0) {
+                String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
+                Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, h3Cell);
+
+                if (pointCount != null && pointCount <= 0) {
+                    String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
+                    jdbcTemplate.update(deleteCellSql, userId, h3Cell);
+
+                    decrementAreaCoverageForCell(userId, h3Cell);
+                }
+            }
+        }
     }
+
     private void decrementCellAndCheckRemoval(long userId, long h3Cell, PointData point) {
         String decrementSql = """
         UPDATE h3_cells_stats
@@ -255,14 +287,14 @@ public class H3CellUpdateJob implements Job {
                 String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
                 jdbcTemplate.update(deleteCellSql, userId, h3Cell);
 
-                decrementAreaCoverageForCell(point, h3Cell);
+                decrementAreaCoverageForCell(point.userId, h3Cell);
             }
         }
     }
 
-    private void decrementAreaCoverageForCell(PointData point, long h3Cell) {
+    private void decrementAreaCoverageForCell(long userId, long h3Cell) {
         List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
-                rocksDbService.getCellsWithBoundaries(point.lat, point.lng);
+                rocksDbService.getCellsWithBoundaries(h3Cell);
 
         for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
             if (cellWithBoundary.cellId() == h3Cell) {
@@ -275,7 +307,7 @@ public class H3CellUpdateJob implements Job {
                     WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
                     """;
 
-                    int updatedRows = jdbcTemplate.update(decrementAreaSql, point.userId, osmId, resolution);
+                    int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, osmId, resolution);
 
                     if (updatedRows > 0) {
                         String checkVisitedSql = """
@@ -285,14 +317,14 @@ public class H3CellUpdateJob implements Job {
                         """;
 
                         Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
-                                                                           point.userId, osmId, resolution);
+                                                                           userId, osmId, resolution);
 
                         if (visitedCount != null && visitedCount <= 0) {
                             String deleteAreaSql = """
                             DELETE FROM h3_area_coverage_stats
                             WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
                             """;
-                            jdbcTemplate.update(deleteAreaSql, point.userId, osmId, resolution);
+                            jdbcTemplate.update(deleteAreaSql, userId, osmId, resolution);
                         }
                     }
                 }
@@ -315,34 +347,41 @@ public class H3CellUpdateJob implements Job {
         private final ChangeType changeType;
         private final List<Long> pointIds;
         private final List<MovedPoint> movedPoints;
+        private final List<CellDecrement> cellDecrements;
 
         public TaskData(ChangeType changeType, List<Long> pointIds) {
-            this(changeType, pointIds, List.of());
+            this(changeType, pointIds, List.of(), List.of());
         }
 
         public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
+            this(changeType, pointIds, movedPoints, List.of());
+        }
+
+        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements) {
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
+            this.cellDecrements = cellDecrements;
         }
 
-        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
+        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements) {
             super(jobId, parentJobId);
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
+            this.cellDecrements = cellDecrements;
         }
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {
-            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of());
+            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of(), List.of());
         }
 
         public static TaskData forDeletion(List<Long> deletedPointIds) {
-            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of());
+            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of(), List.of());
         }
 
         public static TaskData forMovement(List<MovedPoint> movedPoints) {
-            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints);
+            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints, List.of());
         }
 
         public static TaskData forDecrement(List<CellDecrement> cellDecrements) {
@@ -352,12 +391,12 @@ public class H3CellUpdateJob implements Job {
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements);
         }
     }
 }

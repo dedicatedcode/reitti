@@ -95,9 +95,11 @@ public class RocksDBH3Service {
             }
             List<CellWithBoundaries> result = new ArrayList<>();
 
-            int[] resolutions = {4, 6, 9};
-
-            for (int resolution : resolutions) {
+            int cellResolution = h3.getResolution(h3Cell);
+            for (int resolution : SUPPORTED_RESOLUTIONS) {
+                if (resolution > cellResolution) {
+                    continue;
+                }
                 long cellId = h3.cellToParent(h3Cell, resolution);
                 Set<Long> osmIds = getOsmIdsForCell(cellId);
                 if (!osmIds.isEmpty()) {
