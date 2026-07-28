@@ -235,10 +235,13 @@ public class H3CellUpdateJob implements Job {
         }
     }
 
+
+    private void processDecrement(List<CellDecrement> cellDecrements) {
+    }
     private void decrementCellAndCheckRemoval(long userId, long h3Cell, PointData point) {
         String decrementSql = """
         UPDATE h3_cells_stats
-        SET point_count = point_count - 1 
+        SET point_count = point_count - 1
         WHERE user_id = ? AND h3_index = ?
         """;
 
@@ -302,10 +305,12 @@ public class H3CellUpdateJob implements Job {
 
     public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
 
-    public enum ChangeType {
-        DELETION, PROMOTION, MOVEMENT
+    public record CellDecrement(long userId, long h3Cell, int count) {}
 
+    public enum ChangeType {
+        DELETION, PROMOTION, DECREMENT, MOVEMENT
     }
+
     public static class TaskData extends JobContext<TaskData> {
         private final ChangeType changeType;
         private final List<Long> pointIds;
@@ -339,6 +344,11 @@ public class H3CellUpdateJob implements Job {
         public static TaskData forMovement(List<MovedPoint> movedPoints) {
             return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints);
         }
+
+        public static TaskData forDecrement(List<CellDecrement> cellDecrements) {
+            return new TaskData(ChangeType.DECREMENT, List.of(), List.of(), cellDecrements);
+        }
+
 
         @Override
         public TaskData withJobId(UUID jobId) {

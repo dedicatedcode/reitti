@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 @Service
 @ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
@@ -29,6 +30,7 @@ public class RocksDBH3Service {
     static {
         RocksDB.loadLibrary();
     }
+    private static final List<Integer> SUPPORTED_RESOLUTIONS = List.of(4, 6, 9);
 
     private final H3Core h3;
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
@@ -41,7 +43,6 @@ public class RocksDBH3Service {
     private Options h3ToOsmDbOptions;
     private Options regionMetadataDbOptions;
     private Options regionGeometryDbOptions;
-
     public RocksDBH3Service() throws IOException {
         this.h3 = H3Core.newInstance();
     }
@@ -71,6 +72,10 @@ public class RocksDBH3Service {
         }
     }
 
+    public Set<Long> getParentCells(long h3Cell) {
+        return SUPPORTED_RESOLUTIONS.stream().map(r -> h3.cellToParent(h3Cell,r)).collect(Collectors.toSet());
+    }
+
     public Set<Long> getCellsForPoint(double lat, double lng) {
         Set<Long> cells = new HashSet<>();
         int[] resolutions = {4, 6, 9};
@@ -80,6 +85,29 @@ public class RocksDBH3Service {
         }
 
         return cells;
+    }
+
+    public List<CellWithBoundaries> getCellsWithBoundaries(long h3Cell) {
+        rwLock.readLock().lock();
+        try {
+            if (h3ToOsmDb == null || regionMetadataDb == null) {
+                throw new IllegalStateException("H3 Database is currently offline or updating.");
+            }
+            List<CellWithBoundaries> result = new ArrayList<>();
+
+            int[] resolutions = {4, 6, 9};
+
+            for (int resolution : resolutions) {
+                long cellId = h3.cellToParent(h3Cell, resolution);
+                Set<Long> osmIds = getOsmIdsForCell(cellId);
+                if (!osmIds.isEmpty()) {
+                    result.add(new CellWithBoundaries(cellId, resolution, osmIds));
+                }
+            }
+            return result;
+        } finally {
+            rwLock.readLock().unlock();
+        }
     }
 
     public List<CellWithBoundaries> getCellsWithBoundaries(double lat, double lng) {
