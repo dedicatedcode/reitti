@@ -146,14 +146,14 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         String nameSql = """
         SELECT COALESCE(
             all_names ->> ?,          -- Try locale-specific name (e.g., 'name:de')
-            all_names ->> 'NAME',     -- Fallback to default 'name'
+            all_names ->> 'name',     -- Fallback to default 'name'
             'Area #' || ?             -- Final fallback with OSM ID
         ) as localized_name
         FROM osm_names
         WHERE osm_id = ?
         """;
 
-        String localeKey = "NAME:" + locale.getLanguage();
+        String localeKey = "name:" + locale.getLanguage();
 
         try {
             String name = jdbcTemplate.queryForObject(nameSql, String.class,
