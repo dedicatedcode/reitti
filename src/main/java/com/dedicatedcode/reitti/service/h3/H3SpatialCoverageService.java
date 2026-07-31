@@ -50,18 +50,19 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
 
     @Override
     public void postPromotion(List<Long> insertedIds) {
-        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
-                                              H3CellUpdateJob.TaskData.forPromotion(insertedIds),
-                                              JobSchedulingService.Metadata.builder()
-                                                      .jobType(JobType.H3_CELL_UPDATE)
-                                                      .friendlyName("Updating H3 Spatial Statistics")
-                                                      .build()
+        jobSchedulingService.enqueueTaskAfterCommit(
+                h3CellUpdateJob,
+                H3CellUpdateJob.TaskData.forPromotion(insertedIds),
+                JobSchedulingService.Metadata.builder()
+                        .jobType(JobType.H3_CELL_UPDATE)
+                        .friendlyName("Updating H3 Spatial Statistics")
+                        .build()
         );
     }
 
     @Override
     public void postDeletion(List<Long> deletedPointIds) {
-        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forDeletion(deletedPointIds),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
@@ -83,7 +84,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 return result.getFirst();
             }
         }).filter(Objects::nonNull).toList();
-        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forMovement(points),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
@@ -96,7 +97,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     public void preDeleteSynthetic(User user, Instant start, Instant end) {
         List<H3CellUpdateJob.CellDecrement> decrements = jdbcTemplate.query("SELECT h3_cell, COUNT(*) FROM raw_location_points WHERE user_id = ? AND source_point_id IS NULL GROUP BY h3_cell", (rs, rowNum) ->
                 new H3CellUpdateJob.CellDecrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count")), user.getId());
-        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forDecrement(decrements),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
@@ -115,7 +116,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
                                                                             (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
                                                                             insertedIds.toArray());
-        this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forIncrement(increments),
                                               JobSchedulingService.Metadata.builder()
                                                       .jobType(JobType.H3_CELL_UPDATE)
@@ -137,7 +138,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                                                                             pointIds.toArray());
 
         if (!increments.isEmpty()) {
-            this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+            this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                                   H3CellUpdateJob.TaskData.forIncrement(increments),
                                                   JobSchedulingService.Metadata.builder()
                                                           .jobType(JobType.H3_CELL_UPDATE)
@@ -159,7 +160,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                                                                             sourcePointIds.toArray());
 
         if (!increments.isEmpty()) {
-            this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+            this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
                                                   H3CellUpdateJob.TaskData.forIncrement(increments),
                                                   JobSchedulingService.Metadata.builder()
                                                           .jobType(JobType.H3_CELL_UPDATE)

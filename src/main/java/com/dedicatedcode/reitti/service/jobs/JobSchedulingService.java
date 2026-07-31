@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Date;
@@ -101,9 +103,20 @@ public class JobSchedulingService implements JobListener {
             throw new RuntimeException(e);
         }
     }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void enqueueTask(JobDetail jobDetail, T data, Metadata meta) {
         scheduleTask(jobDetail, data, Instant.now(), meta);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public <T extends JobContext<T>> void enqueueTaskAfterCommit(JobDetail jobDetail, T data, Metadata meta) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                enqueueTask(jobDetail, data, meta);
+            }
+        });
     }
 
     public void cancel(UUID jobId) {
