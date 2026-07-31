@@ -70,6 +70,7 @@ public class H3DatabaseLifecycleManager implements Job {
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         try {
+            log.info("Starting H3 database upgrade lifecycle...");
             Files.createDirectories(rootDbDir);
 
             H3Manifest remoteManifest = manifestDownloadService.fetchRemoteManifest();
@@ -109,7 +110,6 @@ public class H3DatabaseLifecycleManager implements Job {
                                                     JobSchedulingService.Metadata.builder()
                                                           .friendlyName("Recalculating H3 location cells")
                                                           .jobType(JobType.H3_RECALCULATION)
-                                                          .resume(false)
                                                           .build());
 
         } catch (Exception e) {

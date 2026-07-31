@@ -27,15 +27,16 @@ public class H3TaskConfig {
         @Bean("h3CellUpdateTask")
         public JobDetail h3CellUpdateJobDetail() {
             return JobBuilder.newJob(H3CellUpdateJob.class)
-                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .withIdentity("h3-cell-update", JOB_GROUP)
                     .storeDurably()
                     .withDescription("H3 Cell Update Job")
                     .build();
         }
+
         @Bean("h3IndexUpdateJob")
         public JobDetail h3IndexUpdateJobDetail() {
             return JobBuilder.newJob(H3DatabaseLifecycleManager.class)
-                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .withIdentity("h3-index-update", JOB_GROUP)
                     .withDescription("H3 Database Lifecycle Manager")
                     .storeDurably()
                     .build();
@@ -44,7 +45,7 @@ public class H3TaskConfig {
         @Bean("h3RecalculationJob")
         public JobDetail h3RecalculationJobDetail() {
             return JobBuilder.newJob(H3RecalculationJob.class)
-                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .withIdentity("h3-recalculation", JOB_GROUP)
                     .storeDurably()
                     .build();
         }
@@ -54,9 +55,10 @@ public class H3TaskConfig {
             return TriggerBuilder.newTrigger()
                     .forJob(jobDetail)
                     .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
-                    .startAt(DateBuilder.futureDate(10, DateBuilder.IntervalUnit.SECOND))
+                    .startNow()
                     .withSchedule(SimpleScheduleBuilder.simpleSchedule()
                                           .withMisfireHandlingInstructionNowWithExistingCount())
+                    .withPriority(100)
                     .build();
         }
 
@@ -96,8 +98,6 @@ public class H3TaskConfig {
                     log.warn("H3 Feature is disabled. Purging {} orphaned dynamic H3 job(s) from group '{}'...",
                              orphanedKeys.size(), JOB_GROUP);
 
-                    // Bulk-delete all matched jobs.
-                    // This automatically drops all their corresponding triggers simultaneously.
                     scheduler.deleteJobs(new ArrayList<>(orphanedKeys));
 
                     log.info("Successfully cleared all persistent database records for group '{}'.", JOB_GROUP);
@@ -106,17 +106,30 @@ public class H3TaskConfig {
                 log.error("Failed to execute group purge for disabled H3 feature", e);
             }
             try {
-                String structuralSwapSql = """
-                        ALTER TABLE raw_location_points DROP COLUMN IF EXISTS h3_cell, ADD COLUMN h3_cell BIGINT NULL;
-                        ALTER TABLE raw_source_points DROP COLUMN IF EXISTS h3_cell, ADD COLUMN h3_cell BIGINT NULL;
-                        """;
+                log.info("Purging H3 data in batches...");
+                jdbcTemplate.execute("ALTER TABLE raw_location_points ADD COLUMN IF NOT EXISTS h3_cell BIGINT NULL");
+                jdbcTemplate.execute("ALTER TABLE raw_source_points ADD COLUMN IF NOT EXISTS h3_cell BIGINT NULL");
 
-                log.info("Executing atomic column metadata swap...");
-                jdbcTemplate.execute(structuralSwapSql);
-                log.info("Column swapped successfully. Data has been entirely purged.");
+                int batchSize = 50000;
+                int updatedRows;
+                do {
+                    updatedRows = jdbcTemplate.update(
+                            "UPDATE raw_location_points SET h3_cell = NULL " +
+                                    "WHERE id IN (SELECT id FROM raw_location_points WHERE h3_cell IS NOT NULL LIMIT ?)",
+                            batchSize);
+                } while (updatedRows > 0);
+
+                do {
+                    updatedRows = jdbcTemplate.update(
+                            "UPDATE raw_source_points SET h3_cell = NULL " +
+                                    "WHERE id IN (SELECT id FROM raw_source_points WHERE h3_cell IS NOT NULL LIMIT ?)",
+                            batchSize);
+                } while (updatedRows > 0);
+
+                log.info("H3 data purged successfully.");
 
                 String rebuildIndexSql = """
-                        CREATE INDEX CONCURRENTLY idx_points_h3_cell ON raw_location_points (h3_cell)
+                        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_cell ON raw_location_points (h3_cell)
                         WHERE h3_cell IS NOT NULL;
                         """;
 
@@ -125,8 +138,6 @@ public class H3TaskConfig {
                 log.info("H3 structural maintenance task completed successfully.");
             } catch (Exception e) {
                 log.error("Failed to execute structural maintenance task for disabled H3 feature", e);
-
-            }
-        }
+            }        }
     }
 }

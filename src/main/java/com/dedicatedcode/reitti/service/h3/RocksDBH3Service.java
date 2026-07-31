@@ -43,33 +43,9 @@ public class RocksDBH3Service {
     private Options h3ToOsmDbOptions;
     private Options regionMetadataDbOptions;
     private Options regionGeometryDbOptions;
+
     public RocksDBH3Service() throws IOException {
         this.h3 = H3Core.newInstance();
-    }
-
-    public List<BoundaryInfo> lookup(double lat, double lng) {
-        rwLock.readLock().lock();
-        try {
-            if (h3ToOsmDb == null || regionMetadataDb == null) {
-                throw new IllegalStateException("H3 Database is currently offline or updating.");
-            }
-
-            List<BoundaryInfo> results = new ArrayList<>();
-            int[] resolutions = {4, 6, 9};
-
-            for (int resolution : resolutions) {
-                long cellId = h3.latLngToCell(lat, lng, resolution);
-                Set<Long> osmIdsForCell = getOsmIdsForCell(cellId);
-                for (Long osmId : osmIdsForCell) {
-                    int totalCells = getTotalCells(osmId);
-                    results.add(new BoundaryInfo(osmId, totalCells, resolution));
-                }
-            }
-
-            return results;
-        } finally {
-            rwLock.readLock().unlock();
-        }
     }
 
     public Set<Long> getParentCells(long h3Cell) {
@@ -112,34 +88,12 @@ public class RocksDBH3Service {
         }
     }
 
-    public List<CellWithBoundaries> getCellsWithBoundaries(double lat, double lng) {
-        rwLock.readLock().lock();
-        try {
-            if (h3ToOsmDb == null || regionMetadataDb == null) {
-                throw new IllegalStateException("H3 Database is currently offline or updating.");
-            }
-            List<CellWithBoundaries> result = new ArrayList<>();
-
-            int[] resolutions = {4, 6, 9};
-
-            for (int resolution : resolutions) {
-                long cellId = h3.latLngToCell(lat, lng, resolution);
-                Set<Long> osmIds = getOsmIdsForCell(cellId);
-                if (!osmIds.isEmpty()) {
-                    result.add(new CellWithBoundaries(cellId, resolution, osmIds));
-                }
-            }
-            return result;
-        } finally {
-            rwLock.readLock().unlock();
-        }
-    }
-
     public boolean isAvailable() {
         return h3ToOsmDb != null && regionMetadataDb != null;
     }
 
     private Set<Long> getOsmIdsForCell(long cellId) {
+        rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(cellId).array();
         try {
             byte[] value = h3ToOsmDb.get(key);
@@ -157,10 +111,13 @@ public class RocksDBH3Service {
         } catch (RocksDBException e) {
             log.error("Failed to lookup OSM IDs for cell {}: {}", cellId, e.getMessage());
             return Set.of();
+        } finally {
+            rwLock.readLock().unlock();
         }
     }
 
     public int getTotalCells(long osmId) {
+        rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
         try {
             byte[] value = regionMetadataDb.get(key);
@@ -178,6 +135,8 @@ public class RocksDBH3Service {
         } catch (RocksDBException e) {
             log.error("Failed to lookup total cells for OSM ID {}: {}", osmId, e.getMessage());
             return 0;
+        } finally {
+            rwLock.readLock().unlock();
         }
     }
 
@@ -190,6 +149,11 @@ public class RocksDBH3Service {
 
         if (!Files.isDirectory(h3ToOsmPath) || !Files.isDirectory(metadataPath) || !Files.isDirectory(geometryPath)) {
             throw new IllegalArgumentException("Target directory is missing subfolders (h3_to_osm, region_metadata, region_geometry)");
+        }
+
+        if (newDbPath.equals(this.activeDbPath)) {
+            log.info("Database [{}] is already active. Skipping hot-swap.", newDbPath);
+            return;
         }
 
         Options newH3ToOsmOptions = new Options().setCreateIfMissing(false);
@@ -288,6 +252,7 @@ public class RocksDBH3Service {
     @PreDestroy
     public void shutdown() {
         rwLock.writeLock().lock();
+        log.info("Shutting down RocksDBH3Service");
         try {
             closeDbResources(h3ToOsmDb, h3ToOsmDbOptions);
             closeDbResources(regionMetadataDb, regionMetadataDbOptions);
@@ -295,9 +260,6 @@ public class RocksDBH3Service {
         } finally {
             rwLock.writeLock().unlock();
         }
-    }
-
-    public record BoundaryInfo(long osmId, int totalCells, int resolution) {
     }
 
     public record CellWithBoundaries(long cellId, int resolution, Set<Long> osmIds) {

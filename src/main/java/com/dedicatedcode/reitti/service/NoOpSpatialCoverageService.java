@@ -31,14 +31,16 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
     public void preMove(List<MovedPointDto> movedPoints) {}
 
     @Override
-    public void preDeleteSynthetic(User user, Instant start, Instant end) {
-
-    }
+    public void preDeleteSynthetic(User user, Instant start, Instant end) {}
 
     @Override
-    public void postAddSynthetic(User user, List<Long> insertedIds) {
+    public void postAddSynthetic(User user, List<Long> insertedIds) {}
 
-    }
+    @Override
+    public void postRecalculation(List<Long> pointIds) {}
+
+    @Override
+    public void postSourceRecalculation(List<Long> sourcePointIds) {}
 
     @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {

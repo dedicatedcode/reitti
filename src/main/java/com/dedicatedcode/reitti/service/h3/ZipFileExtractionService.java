@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +16,18 @@ import java.util.zip.ZipInputStream;
 @Service
 @ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
 public class ZipFileExtractionService {
+    private static final Logger log = LoggerFactory.getLogger(ZipFileExtractionService.class);
 
     private static final int BUFFER_SIZE = 8192;
 
     public void extractZipStreaming(Path zipFile, Path targetDirectory) throws IOException {
         Path targetDirAbs = targetDirectory.toAbsolutePath().normalize();
         Files.createDirectories(targetDirAbs);
+
+        log.info("Starting extraction of [{}] to [{}]", zipFile, targetDirAbs);
+
+        long totalBytesExtracted = 0;
+        int fileCount = 0;
 
         try (InputStream fis = Files.newInputStream(zipFile);
              ZipInputStream zis = new ZipInputStream(fis)) {
@@ -43,11 +51,15 @@ public class ZipFileExtractionService {
                         int bytesRead;
                         while ((bytesRead = zis.read(buffer)) > 0) {
                             os.write(buffer, 0, bytesRead);
+                            totalBytesExtracted += bytesRead;
+
                         }
                     }
+                    fileCount++;
                 }
                 zis.closeEntry();
             }
         }
+        log.info("Extraction complete. Extracted {} files, {} bytes total.", fileCount, totalBytesExtracted);
     }
 }

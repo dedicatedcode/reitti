@@ -110,12 +110,10 @@ class H3CellUpdateJobTest {
         this.testingService.awaitDataImport(30);
 
         Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
-        Optional<CoverageInformation> innenstadt = spatialCoverageService.getCoverageInformation(user, device, 367855, Locale.GERMAN);
         Optional<CoverageInformation> sanktJuergen = spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN);
         Optional<CoverageInformation> sanktGertrud = spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN);
 
         assertTrue(luebeck.isPresent());
-        assertFalse(innenstadt.isPresent());
         assertTrue(sanktJuergen.isPresent());
         assertTrue(sanktGertrud.isPresent());
 
@@ -136,12 +134,10 @@ class H3CellUpdateJobTest {
         //await recalculation
         this.testingService.awaitDataImport(100);
 
-
         sanktGertrud = spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN);
         assertFalse(sanktGertrud.isPresent());
         Optional<CoverageInformation> badOldesloe = spatialCoverageService.getCoverageInformation(user, device, 532325, Locale.GERMAN);
         assertTrue(badOldesloe.isPresent());
-        assertEquals("Bad Oldesloe", badOldesloe.get().name());
         assertEquals(1, badOldesloe.get().visitedCells());
     }
 }

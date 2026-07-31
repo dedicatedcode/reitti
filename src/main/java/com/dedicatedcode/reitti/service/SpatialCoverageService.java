@@ -16,6 +16,8 @@ public interface SpatialCoverageService {
 
     void postPromotion(List<Long> insertedIds);
 
+    void postRecalculation(List<Long> pointIds);
+
     Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale);
 
     void postDeletion(List<Long> deletedPointIds);
@@ -23,5 +25,8 @@ public interface SpatialCoverageService {
     void preMove(List<MovedPointDto> movedPoints);
 
     void preDeleteSynthetic(User user, Instant start, Instant end);
+
     void postAddSynthetic(User user, List<Long> insertedIds);
+
+    void postSourceRecalculation(List<Long> sourcePointIds);
 }

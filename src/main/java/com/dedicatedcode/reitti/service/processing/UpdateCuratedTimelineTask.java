@@ -41,6 +41,7 @@ public class UpdateCuratedTimelineTask implements Job {
         TaskData data = (TaskData) dataMap.get("data");
         execute(data);
     }
+
     public void execute(TaskData data) {
         log.debug("Starting updating main timeline for user [{}] and device[{}] in timeRange [{}]", data.user, data.device, data.timeRange);
         //1. clear main timeline

@@ -560,6 +560,7 @@ public class RawLocationPointJdbcService {
     }
 
     public void dropForReSeeding(User user, TimeRange timeRange) {
+        this.spatialCoverageService.preDeleteSynthetic(user, timeRange.start(), timeRange.end());
         this.jdbcTemplate.update("DELETE FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ?",
                                  user.getId(),
                                  Timestamp.from(timeRange.start()),

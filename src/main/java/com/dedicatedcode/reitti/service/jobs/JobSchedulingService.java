@@ -98,18 +98,12 @@ public class JobSchedulingService implements JobListener {
         try {
             scheduler.scheduleJob(trigger);
         } catch (SchedulerException e) {
-            log.error("Failed to schedule job", e);
-            throw new RuntimeException("Failed to schedule job", e);
+            throw new RuntimeException(e);
         }
     }
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void enqueueTask(JobDetail jobDetail, T data, Metadata meta) {
         scheduleTask(jobDetail, data, Instant.now(), meta);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public <T extends JobContext<T>> void enqueueSystemTask(JobDetail jobDetail, T data, Metadata meta) {
-        scheduleSystemTask(jobDetail, data, Instant.now(), meta);
     }
 
     public void cancel(UUID jobId) {

@@ -3,10 +3,7 @@ package com.dedicatedcode.reitti.service.h3;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
-import org.quartz.DisallowConcurrentExecution;
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,11 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @DisallowConcurrentExecution
@@ -37,6 +30,21 @@ public class H3CellUpdateJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
+        if (!rocksDbService.isAvailable()) {
+            log.debug("RocksDB is not available yet. Rescheduling job.");
+            Trigger delayedTrigger = TriggerBuilder.newTrigger()
+                    .withIdentity("retry-" + UUID.randomUUID(), "retry-group")
+                    .forJob(context.getJobDetail())
+                    .startAt(Instant.now().plusSeconds(5))
+                    .build();
+
+            try {
+                context.getScheduler().scheduleJob(delayedTrigger);
+            } catch (SchedulerException e) {
+                log.error("Failed to schedule delayed job: {}", e.getMessage());
+                return;
+            }
+        }
         TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
 
         if (data.changeType == ChangeType.MOVEMENT) {
@@ -89,12 +97,12 @@ public class H3CellUpdateJob implements Job {
         // 1. Delete old locations
         List<PointData> oldPoints = loadPointDataForMoved(movedPoints, true);
         for (PointData point : oldPoints) {
-            log.debug("Processing moved point (deletion): userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+            log.trace("Processing moved point (deletion): userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                       point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
             Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
             for (Long h3Cell : h3Cells) {
-                decrementCellAndCheckRemoval(point.userId, h3Cell, point);
+                decrementCellAndCheckRemoval(point.userId, point.deviceid, h3Cell, point);
             }
         }
 
@@ -113,13 +121,13 @@ public class H3CellUpdateJob implements Job {
     }
 
     private void promotePoint(PointData point) {
-        log.debug("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+        log.trace("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                   point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
         Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
 
         for (Long h3Cell : h3Cells) {
-            boolean isNewCell = isNewCellForUser(point.userId, h3Cell);
+            boolean isNewCell = isNewCellForUser(point.userId, point.deviceid, h3Cell);
 
             String upsertCellSql = """
             INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
@@ -187,9 +195,9 @@ public class H3CellUpdateJob implements Job {
         );
     }
 
-    private boolean isNewCellForUser(long userId, long h3Cell) {
-        String checkSql = "SELECT COUNT(*) FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, userId, h3Cell);
+    private boolean isNewCellForUser(long userId, Long deviceId, long h3Cell) {
+        String checkSql = "SELECT COUNT(*) FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, userId, deviceId, h3Cell);
         return count == null || count == 0;
     }
 
@@ -226,13 +234,13 @@ public class H3CellUpdateJob implements Job {
         List<PointData> points = loadPointData(batchIds);
 
         for (PointData point : points) {
-            log.debug("Deleting point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
+            log.trace("Deleting point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                       point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
             Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
 
             for (Long h3Cell : h3Cells) {
-                decrementCellAndCheckRemoval(point.userId, h3Cell, point);
+                decrementCellAndCheckRemoval(point.userId, point.deviceid, h3Cell, point);
             }
         }
     }
@@ -241,26 +249,27 @@ public class H3CellUpdateJob implements Job {
     private void processDecrement(List<CellDecrement> cellDecrements) {
         for (CellDecrement decrement : cellDecrements) {
             long userId = decrement.userId();
+            Long deviceId = decrement.deviceId();
             long h3Cell = decrement.h3Cell();
             int count = decrement.count();
 
             String decrementSql = """
             UPDATE h3_cells_stats
             SET point_count = point_count - ?
-            WHERE user_id = ? AND h3_index = ?
+                    WHERE user_id = ? AND device_id = ? AND h3_index = ?
             """;
 
-            int updatedRows = jdbcTemplate.update(decrementSql, count, userId, h3Cell);
+            int updatedRows = jdbcTemplate.update(decrementSql, count, userId, deviceId, h3Cell);
 
             if (updatedRows > 0) {
-                String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
-                Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, h3Cell);
+                String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
+                Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, deviceId, h3Cell);
 
                 if (pointCount != null && pointCount <= 0) {
-                    String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
-                    jdbcTemplate.update(deleteCellSql, userId, h3Cell);
+                    String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
+                    jdbcTemplate.update(deleteCellSql, userId, deviceId, h3Cell);
 
-                    decrementAreaCoverageForCell(userId, h3Cell);
+                    decrementAreaCoverageForCell(userId, deviceId, h3Cell);
                 }
             }
         }
@@ -274,7 +283,7 @@ public class H3CellUpdateJob implements Job {
             int count = increment.count();
             Instant timestamp = increment.timestamp();
 
-            boolean isNewCell = isNewCellForUser(userId, h3Cell);
+            boolean isNewCell = isNewCellForUser(userId, deviceId, h3Cell);
 
             String upsertCellSql = """
             INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
@@ -293,29 +302,29 @@ public class H3CellUpdateJob implements Job {
         }
     }
 
-    private void decrementCellAndCheckRemoval(long userId, long h3Cell, PointData point) {
+    private void decrementCellAndCheckRemoval(long userId, Long deviceId, long h3Cell, PointData point) {
         String decrementSql = """
         UPDATE h3_cells_stats
         SET point_count = point_count - 1
-        WHERE user_id = ? AND h3_index = ?
+                WHERE user_id = ? AND device_id = ? AND h3_index = ?
         """;
 
-        int updatedRows = jdbcTemplate.update(decrementSql, userId, h3Cell);
+        int updatedRows = jdbcTemplate.update(decrementSql, userId, deviceId, h3Cell);
 
         if (updatedRows > 0) {
-            String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
-            Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, h3Cell);
+            String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
+            Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, deviceId, h3Cell);
 
             if (pointCount != null && pointCount <= 0) {
-                String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND h3_index = ?";
-                jdbcTemplate.update(deleteCellSql, userId, h3Cell);
+                String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
+                jdbcTemplate.update(deleteCellSql, userId, deviceId, h3Cell);
 
-                decrementAreaCoverageForCell(point.userId, h3Cell);
+                decrementAreaCoverageForCell(point.userId, point.deviceid, h3Cell);
             }
         }
     }
 
-    private void decrementAreaCoverageForCell(long userId, long h3Cell) {
+    private void decrementAreaCoverageForCell(long userId, Long deviceId, long h3Cell) {
         List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
                 rocksDbService.getCellsWithBoundaries(h3Cell);
 
@@ -326,27 +335,27 @@ public class H3CellUpdateJob implements Job {
                 String decrementAreaSql = """
                 UPDATE h3_area_coverage_stats
                 SET visited_cell_count = visited_cell_count - 1
-                WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                        WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
                 """;
 
-                int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, osmId, resolution);
+                int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, deviceId, osmId, resolution);
 
                 if (updatedRows > 0) {
                     String checkVisitedSql = """
                     SELECT visited_cell_count
                     FROM h3_area_coverage_stats
-                    WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                            WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
                     """;
 
                     Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
-                                                                       userId, osmId, resolution);
+                                                                       userId, deviceId, osmId, resolution);
 
                     if (visitedCount != null && visitedCount <= 0) {
                         String deleteAreaSql = """
                         DELETE FROM h3_area_coverage_stats
-                        WHERE user_id = ? AND osm_id = ? AND h3_resolution = ?
+                                WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
                         """;
-                        jdbcTemplate.update(deleteAreaSql, userId, osmId, resolution);
+                        jdbcTemplate.update(deleteAreaSql, userId, deviceId, osmId, resolution);
                     }
                 }
             }
@@ -358,12 +367,13 @@ public class H3CellUpdateJob implements Job {
 
     public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
 
-    public record CellDecrement(long userId, long h3Cell, int count) implements Serializable {}
+    public record CellDecrement(long userId, Long deviceId, long h3Cell, int count) implements Serializable {
+    }
 
     public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant timestamp) implements Serializable {}
 
     public enum ChangeType {
-        DELETION, PROMOTION, DECREMENT, INCREMENT, MOVEMENT
+        DELETION, PROMOTION, DECREMENT, INCREMENT, INCREMENT_SOURCE, MOVEMENT
     }
 
     public static class TaskData extends JobContext<TaskData> {
@@ -421,6 +431,7 @@ public class H3CellUpdateJob implements Job {
         public static TaskData forIncrement(List<CellIncrement> cellIncrements) {
             return new TaskData(ChangeType.INCREMENT, List.of(), List.of(), List.of(), cellIncrements);
         }
+
         @Override
         public TaskData withJobId(UUID jobId) {
             return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);

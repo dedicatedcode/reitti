@@ -48,7 +48,11 @@ public class FileVerificationService {
             }
 
             String calculatedSha256 = hexString.toString();
-            return calculatedSha256.equalsIgnoreCase(expectedSha256);
+            boolean matches = calculatedSha256.equalsIgnoreCase(expectedSha256);
+            if (!matches) {
+                log.warn("Verification failed: SHA-256 checksum mismatch. Expected: {}, Calculated: {}", expectedSha256, calculatedSha256);
+            }
+            return matches;
 
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 digest algorithm is not available in this JVM context.", e);

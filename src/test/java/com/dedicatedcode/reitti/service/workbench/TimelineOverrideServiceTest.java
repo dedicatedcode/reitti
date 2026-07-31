@@ -19,7 +19,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @IntegrationTest
-@Transactional
 class TimelineOverrideServiceTest {
 
     @Autowired

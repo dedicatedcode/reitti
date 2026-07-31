@@ -94,8 +94,8 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
 
     @Override
     public void preDeleteSynthetic(User user, Instant start, Instant end) {
-        List<H3CellUpdateJob.CellDecrement> decrements = jdbcTemplate.query("SELECT h3_cell, COUNT(*) FROM raw_location_points WHERE user_id = ? GROUP BY h3_cell", (rs, rowNum) ->
-                new H3CellUpdateJob.CellDecrement(user.getId(), rs.getLong("h3_cell"), rs.getInt("count")));
+        List<H3CellUpdateJob.CellDecrement> decrements = jdbcTemplate.query("SELECT h3_cell, COUNT(*) FROM raw_location_points WHERE user_id = ? AND source_point_id IS NULL GROUP BY h3_cell", (rs, rowNum) ->
+                new H3CellUpdateJob.CellDecrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count")), user.getId());
         this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
                                               H3CellUpdateJob.TaskData.forDecrement(decrements),
                                               JobSchedulingService.Metadata.builder()
@@ -125,12 +125,57 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     @Override
+    public void postRecalculation(List<Long> pointIds) {
+        if (pointIds.isEmpty()) {
+            return;
+        }
+        String placeholders = String.join(",", Collections.nCopies(pointIds.size(), "?"));
+        //Here we only consider points without a source, aka synthetic points. All others should already have been handled
+        String sql = "SELECT user_id, h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_location_points WHERE id IN (" + placeholders + ") AND source_point_id IS NULL GROUP BY user_id, h3_cell";
+        List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
+                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(rs.getLong("user_id"), null, rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
+                                                                            pointIds.toArray());
+
+        if (!increments.isEmpty()) {
+            this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                                  H3CellUpdateJob.TaskData.forIncrement(increments),
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .jobType(JobType.H3_CELL_UPDATE)
+                                                          .friendlyName("Updating H3 Spatial Statistics")
+                                                          .build()
+            );
+        }
+    }
+
+    @Override
+    public void postSourceRecalculation(List<Long> sourcePointIds) {
+        if (sourcePointIds.isEmpty()) {
+            return;
+        }
+        String placeholders = String.join(",", Collections.nCopies(sourcePointIds.size(), "?"));
+        String sql = "SELECT user_id, device_id, h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_source_points WHERE id IN (" + placeholders + ") GROUP BY user_id, device_id, h3_cell";
+        List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
+                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(rs.getLong("user_id"), rs.getLong("device_id"), rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
+                                                                            sourcePointIds.toArray());
+
+        if (!increments.isEmpty()) {
+            this.jobSchedulingService.enqueueTask(h3CellUpdateJob,
+                                                  H3CellUpdateJob.TaskData.forIncrement(increments),
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .jobType(JobType.H3_CELL_UPDATE)
+                                                          .friendlyName("Updating H3 Spatial Statistics")
+                                                          .build()
+            );
+        }
+    }
+
+    @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         // Get coverage stats from database
         String coverageSql = """
         SELECT osm_id, visited_cell_count, total_cell_count
         FROM h3_area_coverage_stats
-        WHERE user_id = ? AND osm_id = ?
+        WHERE user_id = ? AND device_id = ? AND osm_id = ?
         """;
 
         List<CoverageStats> stats = jdbcTemplate.query(coverageSql,
@@ -139,7 +184,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                                                                rs.getInt("visited_cell_count"),
                                                                rs.getInt("total_cell_count")
                                                        ),
-                                                       user.getId(), osmId
+                                                       user.getId(), device != null ? device.id() : null, osmId
         );
 
         if (stats.isEmpty()) {

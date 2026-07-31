@@ -75,11 +75,12 @@ public class TestConfiguration {
                 }
                 StandardOpenOption[] writeOptions = new StandardOpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING};
 
-                try (InputStream bodyStream = this.getClass().getResourceAsStream("/data/h3-index-sh/h3-rocksdb-2026-07-26-v1.zip");
-                     ReadableByteChannel readableChannel = Channels.newChannel(bodyStream);
-                     FileChannel fileChannel = FileChannel.open(targetFile, writeOptions)) {
-
-                    fileChannel.transferFrom(readableChannel, 0, Long.MAX_VALUE);
+                try (InputStream bodyStream = this.getClass().getResourceAsStream("/data/h3-index-sh/h3-rocksdb-2026-07-26-v1.zip")) {
+                    assert bodyStream != null;
+                    try (ReadableByteChannel readableChannel = Channels.newChannel(bodyStream);
+                         FileChannel fileChannel = FileChannel.open(targetFile, writeOptions)) {
+                        fileChannel.transferFrom(readableChannel, 0, Long.MAX_VALUE);
+                    }
                 }
             }
         };
