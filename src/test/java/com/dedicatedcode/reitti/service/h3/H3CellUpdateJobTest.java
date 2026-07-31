@@ -49,8 +49,7 @@ class H3CellUpdateJobTest {
         Device device = this.testingService.findDefaultDevice(user);
         this.testingService.importData(user, "/data/gpx/20250617.gpx");
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent());
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent(), 60);
 
         Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
         Optional<CoverageInformation> innenstadt = spatialCoverageService.getCoverageInformation(user, device, 367855, Locale.GERMAN);
@@ -70,10 +69,8 @@ class H3CellUpdateJobTest {
         Device device = this.testingService.findDefaultDevice(user);
         this.testingService.importData(user, "/data/gpx/20250618.gpx");
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent() &&
-                        spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isPresent() &&
-                        spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN).isPresent());
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent(), 60);
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isPresent(), 60);
 
         Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
         Optional<CoverageInformation> innenstadt = spatialCoverageService.getCoverageInformation(user, device, 367855, Locale.GERMAN);
@@ -95,11 +92,11 @@ class H3CellUpdateJobTest {
             return deletedPointDto;
         }).toList());
         request.setEditStore(editStore);
+
         workbenchService.applyCommit(user, request);
 
         //await recalculation
-        this.testingService.awaitDataImport(100);
-
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isEmpty(), 60);
 
         sanktGertrud = spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN);
         assertFalse(sanktGertrud.isPresent());
@@ -114,10 +111,9 @@ class H3CellUpdateJobTest {
         Device device = this.testingService.findDefaultDevice(user);
         this.testingService.importData(user, "/data/gpx/20250618.gpx");
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent() &&
-                        spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isPresent() &&
-                        spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN).isPresent());
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN).isPresent(), 60);
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN).isPresent(), 60);
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isPresent(), 60);
 
         Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
         Optional<CoverageInformation> sanktJuergen = spatialCoverageService.getCoverageInformation(user, device, 367868, Locale.GERMAN);
@@ -141,8 +137,7 @@ class H3CellUpdateJobTest {
         request.setEditStore(editStore);
         workbenchService.applyCommit(user, request);
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isEmpty());
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN).isEmpty(), 60);
 
         sanktGertrud = spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN);
         assertFalse(sanktGertrud.isPresent());
