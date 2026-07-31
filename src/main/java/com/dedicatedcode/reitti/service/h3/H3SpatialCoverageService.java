@@ -225,7 +225,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
             'Area #' || ?             -- Final fallback with OSM ID
         ) as localized_name
         FROM osm_names
-        WHERE osm_id = ?
+        WHERE osm_id = ? AND osm_type = 'R'
         """;
 
         String localeKey = "name:" + locale.getLanguage();

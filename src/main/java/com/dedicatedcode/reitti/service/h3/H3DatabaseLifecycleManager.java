@@ -123,10 +123,12 @@ public class H3DatabaseLifecycleManager implements Job {
 
     private void loadOsmNames(Path tsvFilePath) {
         String createTableSql = """
-                CREATE TABLE IF NOT EXISTS osm_names (
+                DROP TABLE IF EXISTS osm_names;
+                CREATE TABLE osm_names (
                     osm_id bigint,
                     osm_type character(1),
-                    all_names jsonb
+                    all_names jsonb,
+                    PRIMARY KEY (osm_id, osm_type)
                 );
                 """;
 

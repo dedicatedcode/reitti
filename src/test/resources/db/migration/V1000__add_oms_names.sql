@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS osm_names
 (
     osm_id    bigint,
     osm_type  character(1),
-    all_names jsonb
+    all_names jsonb,
+    PRIMARY KEY (osm_id, osm_type)
 );
 
 INSERT INTO osm_names (osm_id, osm_type, all_names)
