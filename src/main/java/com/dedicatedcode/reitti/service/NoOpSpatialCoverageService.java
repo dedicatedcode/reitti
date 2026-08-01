@@ -34,7 +34,22 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
     public void postSourceRecalculation(List<Long> sourcePointIds) {}
 
     @Override
+    public Optional<CoverageInformation> getCoverageInformation(User user, long osmId, Locale locale) {
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         return Optional.empty();
+    }
+
+    @Override
+    public List<CoverageInformation> getCoverage(User user, Instant until, Locale locale) {
+        return List.of();
+    }
+
+    @Override
+    public List<CoverageInformation> getDeviceCoverage(User user, Device device, Instant until, Locale locale) {
+        return List.of();
     }
 }

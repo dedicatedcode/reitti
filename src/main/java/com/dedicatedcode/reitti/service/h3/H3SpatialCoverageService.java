@@ -19,6 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -31,14 +33,18 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail h3CellUpdateJob;
     private final PointReaderWriter pointReaderWriter;
+    private final RocksDBH3Service rocksDBService;
 
     public H3SpatialCoverageService(JdbcTemplate jdbcTemplate,
                                     JobSchedulingService jobSchedulingService,
-                                    @Qualifier("h3CellUpdateTask") JobDetail h3CellUpdateJob, PointReaderWriter pointReaderWriter) throws IOException {
+                                    @Qualifier("h3CellUpdateTask") JobDetail h3CellUpdateJob,
+                                    PointReaderWriter pointReaderWriter,
+                                    RocksDBH3Service rocksDBService) throws IOException {
         this.jdbcTemplate = jdbcTemplate;
         this.jobSchedulingService = jobSchedulingService;
         this.h3CellUpdateJob = h3CellUpdateJob;
         this.pointReaderWriter = pointReaderWriter;
+        this.rocksDBService = rocksDBService;
         this.h3 = H3Core.newInstance();
     }
 
@@ -121,6 +127,58 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     @Override
+    public Optional<CoverageInformation> getCoverageInformation(User user, long osmId, Locale locale) {
+        List<Long> allVisitedCells = jdbcTemplate.queryForList(
+                "SELECT DISTINCT h3_cell FROM v_source_stream WHERE user_id = ?",
+                Long.class, user.getId());
+
+        Map<Integer, Set<Long>> resolutionToCellIds = new HashMap<>();
+        for (Long cell : allVisitedCells) {
+            List<RocksDBH3Service.CellWithBoundaries> boundaries =
+                    rocksDBService.getCellsWithBoundaries(cell);
+            for (RocksDBH3Service.CellWithBoundaries cwb : boundaries) {
+                if (cwb.osmIds().contains(osmId)) {
+                    resolutionToCellIds
+                            .computeIfAbsent(cwb.resolution(), r -> new HashSet<>())
+                            .add(cwb.cellId());
+                }
+            }
+        }
+
+        // Find the finest supported resolution for which a total exists
+        String totalSql = "SELECT total_cell_count FROM h3_area_coverage_stats " +
+                "WHERE osm_id = ? AND h3_resolution = ? LIMIT 1";
+        int totalCells = 0;
+        int bestResolution = -1;
+        List<Integer> sortedResolutions = new ArrayList<>(RocksDBH3Service.SUPPORTED_RESOLUTIONS);
+        sortedResolutions.sort(Collections.reverseOrder());
+        for (int res : sortedResolutions) {
+            List<Integer> totals = jdbcTemplate.queryForList(totalSql, Integer.class, osmId, res);
+            if (!totals.isEmpty()) {
+                totalCells = totals.getFirst();
+                bestResolution = res;
+                break;
+            }
+        }
+
+        if (bestResolution == -1) {
+            return Optional.empty();
+        }
+
+        int visitedCells = resolutionToCellIds.getOrDefault(bestResolution, new HashSet<>()).size();
+        double percentage = totalCells > 0 ? (double) visitedCells / totalCells * 100.0 : 0.0;
+
+        return Optional.of(new CoverageInformation(
+                osmId,
+                getLocalizedName(osmId, locale),
+                totalCells,
+                visitedCells,
+                percentage,
+                List.of()
+        ));
+    }
+
+    @Override
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         // Get coverage stats from database
         String coverageSql = """
@@ -162,6 +220,115 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 coveragePercentage,
                 visitedCellIds
         ));
+    }
+
+
+    /**
+     * Returns coverage for a user across all devices while respecting timeline overrides.
+     * This reads from the merged timeline view (v_source_stream) and maps the visited H3 cells
+     * to OSM boundaries via RocksDB.
+     *
+     * @param user   the user
+     * @param until  optional cut‑off timestamp; if null, all time up to now
+     * @param locale for localised area names
+     * @return coverage per OSM area (aggregated across resolutions)
+     */
+    @Override
+    public List<CoverageInformation> getCoverage(User user, Instant until, Locale locale) {
+        // 1. Get distinct H3 cells the user has ever visited, respecting timeline overrides.
+        //    Because v_source_stream already picks the correct device for each timestamp,
+        //    we can simply select distinct h3_cell values for the user up to the given time.
+        String sql;
+        List<Object> params;
+        if (until != null) {
+            sql = """
+                    SELECT h3_cell
+                    FROM v_source_stream
+                    WHERE user_id = ? AND timestamp <= ?
+                    GROUP BY h3_cell
+                    """;
+            params = List.of(user.getId(), Timestamp.from(until));
+        } else {
+            sql = """
+                    SELECT h3_cell
+                    FROM v_source_stream
+                    WHERE user_id = ?
+                    GROUP BY h3_cell
+                    """;
+            params = List.of(user.getId());
+        }
+
+        List<Long> visitedCells = jdbcTemplate.queryForList(sql, Long.class, params.toArray());
+
+        return calculateCoverageInformation(locale, visitedCells);
+    }
+
+    /**
+     * Returns a list of coverage entries for a single device. The coverage is computed
+     * from the distinct H3 cells this device has ever visited, mapped to OSM boundaries
+     * via RocksDB.
+     *
+     * @param user   the user who owns the device
+     * @param device the device whose coverage to calculate
+     * @param until  optional cut‑off timestamp; if not null, only cells with a
+     *               {@code first_visited_at} on or before this moment are considered
+     * @param locale for localised area names
+     * @return a list of {@link CoverageInformation} objects – one per (OSM id, resolution) pair
+     * where the device has at least one visited cell
+     */
+    @Override
+    public List<CoverageInformation> getDeviceCoverage(User user, Device device,
+                                                       Instant until, Locale locale) {
+        // 1. Retrieve all distinct H3 cells for the specific device, optionally limited by time
+        List<Long> cellIds;
+        if (until != null) {
+            cellIds = jdbcTemplate.query(
+                    "SELECT DISTINCT h3_index FROM h3_cells_stats " +
+                            "WHERE user_id = ? AND device_id = ? AND first_visited_at <= ?",
+                    (rs, rowNum) -> rs.getLong("h3_index"),
+                    user.getId(), device.id(), Timestamp.from(until));
+        } else {
+            cellIds = jdbcTemplate.query(
+                    "SELECT DISTINCT h3_index FROM h3_cells_stats " +
+                            "WHERE user_id = ? AND device_id = ?",
+                    (rs, rowNum) -> rs.getLong("h3_index"),
+                    user.getId(), device.id());
+        }
+        return calculateCoverageInformation(locale, cellIds);
+    }
+
+    private List<CoverageInformation> calculateCoverageInformation(Locale locale, List<Long> visitedCells) {
+        Map<Long, Map<Integer, Long>> areaToResolutionVisitedCount = new HashMap<>();
+
+        for (Long cellId : visitedCells) {
+            List<RocksDBH3Service.CellWithBoundaries> boundaries = rocksDBService.getCellsWithBoundaries(cellId);
+            for (RocksDBH3Service.CellWithBoundaries cwb : boundaries) {
+                for (Long osmId : cwb.osmIds()) {
+                    areaToResolutionVisitedCount
+                            .computeIfAbsent(osmId, k -> new HashMap<>())
+                            .merge(cwb.resolution(), 1L, Long::sum);
+                }
+            }
+        }
+
+        List<CoverageInformation> result = new ArrayList<>();
+        for (Map.Entry<Long, Map<Integer, Long>> entry : areaToResolutionVisitedCount.entrySet()) {
+            long osmId = entry.getKey();
+            Map<Integer, Long> resCounts = entry.getValue();
+            int totalCells = rocksDBService.getTotalCells(osmId);
+
+            for (Map.Entry<Integer, Long> resEntry : resCounts.entrySet()) {
+                long visited = resEntry.getValue();
+                double pct = totalCells > 0 ? (double) visited / totalCells * 100.0 : 0.0;
+                String name = getLocalizedName(osmId, locale);
+
+                result.add(new CoverageInformation(
+                        osmId, name, totalCells, (int) visited, pct,
+                        List.of()
+                ));
+            }
+        }
+        return result;
     }
 
     private List<Long> getVisitedCellIds(User user, long osmId) {

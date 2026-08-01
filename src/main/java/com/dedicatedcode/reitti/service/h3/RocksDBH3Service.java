@@ -30,7 +30,7 @@ public class RocksDBH3Service {
     static {
         RocksDB.loadLibrary();
     }
-    private static final List<Integer> SUPPORTED_RESOLUTIONS = List.of(4, 6, 9);
+    static final List<Integer> SUPPORTED_RESOLUTIONS = List.of(4, 6, 9);
 
     private final H3Core h3;
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
