@@ -134,7 +134,7 @@ public class TimelineController {
         String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId());
         String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
-        String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/h3/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
 
@@ -260,7 +260,7 @@ public class TimelineController {
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String h3CellUrl = h3Enabled ? String.format("/api/v2/h3/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
+                        String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 

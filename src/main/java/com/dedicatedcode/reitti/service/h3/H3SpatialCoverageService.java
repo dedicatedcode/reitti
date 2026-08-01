@@ -168,13 +168,16 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         int visitedCells = resolutionToCellIds.getOrDefault(bestResolution, new HashSet<>()).size();
         double percentage = totalCells > 0 ? (double) visitedCells / totalCells * 100.0 : 0.0;
 
+        Set<Long> visitedCellSet = resolutionToCellIds.getOrDefault(bestResolution, new HashSet<>());
+        List<Long> visitedCellIds = new ArrayList<>(visitedCellSet);
+
         return Optional.of(new CoverageInformation(
                 osmId,
                 getLocalizedName(osmId, locale),
                 totalCells,
-                visitedCells,
+                visitedCellIds.size(),
                 percentage,
-                List.of()
+                visitedCellIds
         ));
     }
 
