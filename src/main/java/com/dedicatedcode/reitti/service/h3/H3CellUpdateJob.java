@@ -53,12 +53,6 @@ public class H3CellUpdateJob implements Job {
             return;
         }
 
-        if (data.changeType == ChangeType.DECREMENT) {
-            log.debug("Processing decrement for {} cells", data.cellDecrements.size());
-            processDecrement(data.cellDecrements);
-            return;
-        }
-
         if (data.changeType == ChangeType.INCREMENT) {
             log.debug("Processing increment for {} cells", data.cellIncrements.size());
             processIncrement(data.cellIncrements);
@@ -130,16 +124,21 @@ public class H3CellUpdateJob implements Job {
             boolean isNewCell = isNewCellForUser(point.userId, point.deviceid, h3Cell);
 
             String upsertCellSql = """
-            INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
-            VALUES (?, ?, ?, ?, 1)
-            ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
-                last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
-                point_count = h3_cells_stats.point_count + 1
-            """;
-
-            jdbcTemplate.update(upsertCellSql, point.userId, point.deviceid, h3Cell,
-                                Timestamp.from(point.timestamp), Timestamp.from(point.timestamp));
-
+                    INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
+                                                last_visited_at, point_count, first_visited_at)
+                    VALUES (?, ?, ?, ?, 1, ?)
+                    ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                        last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                        point_count = h3_cells_stats.point_count + 1,
+                        first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
+                    """;
+            jdbcTemplate.update(upsertCellSql,
+                                point.userId, point.deviceid, h3Cell,
+                                Timestamp.from(point.timestamp),                     // last_visited_at (INSERT)
+                                Timestamp.from(point.timestamp),                     // first_visited_at (INSERT)
+                                Timestamp.from(point.timestamp),                     // GREATEST argument
+                                Timestamp.from(point.timestamp)                      // LEAST argument
+            );
             if (isNewCell) {
                 updateAreaCoverageForCell(point.userId, point.deviceid, h3Cell);
             }
@@ -246,56 +245,32 @@ public class H3CellUpdateJob implements Job {
     }
 
 
-    private void processDecrement(List<CellDecrement> cellDecrements) {
-        for (CellDecrement decrement : cellDecrements) {
-            long userId = decrement.userId();
-            Long deviceId = decrement.deviceId();
-            long h3Cell = decrement.h3Cell();
-            int count = decrement.count();
-
-            String decrementSql = """
-            UPDATE h3_cells_stats
-            SET point_count = point_count - ?
-                    WHERE user_id = ? AND device_id = ? AND h3_index = ?
-            """;
-
-            int updatedRows = jdbcTemplate.update(decrementSql, count, userId, deviceId, h3Cell);
-
-            if (updatedRows > 0) {
-                String checkCountSql = "SELECT point_count FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
-                Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, deviceId, h3Cell);
-
-                if (pointCount != null && pointCount <= 0) {
-                    String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
-                    jdbcTemplate.update(deleteCellSql, userId, deviceId, h3Cell);
-
-                    decrementAreaCoverageForCell(userId, deviceId, h3Cell);
-                }
-            }
-        }
-    }
-
     private void processIncrement(List<CellIncrement> cellIncrements) {
-        for (CellIncrement increment : cellIncrements) {
-            long userId = increment.userId();
-            Long deviceId = increment.deviceId();
-            long h3Cell = increment.h3Cell();
-            int count = increment.count();
-            Instant timestamp = increment.timestamp();
+        for (CellIncrement inc : cellIncrements) {
+            long userId = inc.userId();
+            Long deviceId = inc.deviceId();
+            long h3Cell = inc.h3Cell();
 
             boolean isNewCell = isNewCellForUser(userId, deviceId, h3Cell);
 
             String upsertCellSql = """
-            INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, point_count)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
-                last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
-                point_count = h3_cells_stats.point_count + ?
-            """;
-
-            jdbcTemplate.update(upsertCellSql, userId, deviceId, h3Cell,
-                                Timestamp.from(timestamp), count, Timestamp.from(timestamp), count);
-
+                    INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
+                                                last_visited_at, point_count, first_visited_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                        last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                        point_count = h3_cells_stats.point_count + ?,
+                        first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
+                    """;
+            jdbcTemplate.update(upsertCellSql,
+                                inc.userId(), inc.deviceId(), inc.h3Cell(),
+                                Timestamp.from(inc.lastVisitedAt()),                     // last_visited_at (INSERT)
+                                inc.count(),                                         // point_count (INSERT)
+                                Timestamp.from(inc.firstVisitedAt()),                // first_visited_at (INSERT)
+                                Timestamp.from(inc.lastVisitedAt()),                     // GREATEST argument
+                                inc.count(),                                         // increment for point_count
+                                Timestamp.from(inc.firstVisitedAt())                 // LEAST argument
+            );
             if (isNewCell) {
                 updateAreaCoverageForCell(userId, deviceId, h3Cell);
             }
@@ -367,79 +342,68 @@ public class H3CellUpdateJob implements Job {
 
     public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
 
-    public record CellDecrement(long userId, Long deviceId, long h3Cell, int count) implements Serializable {
+    public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant lastVisitedAt,
+                                Instant firstVisitedAt) implements Serializable {
     }
 
-    public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant timestamp) implements Serializable {}
-
     public enum ChangeType {
-        DELETION, PROMOTION, DECREMENT, INCREMENT, INCREMENT_SOURCE, MOVEMENT
+        DELETION, PROMOTION, INCREMENT, INCREMENT_SOURCE, MOVEMENT
     }
 
     public static class TaskData extends JobContext<TaskData> {
         private final ChangeType changeType;
         private final List<Long> pointIds;
         private final List<MovedPoint> movedPoints;
-        private final List<CellDecrement> cellDecrements;
         private final List<CellIncrement> cellIncrements;
 
         public TaskData(ChangeType changeType, List<Long> pointIds) {
-            this(changeType, pointIds, List.of(), List.of(), List.of());
+            this(changeType, pointIds, List.of(), List.of());
         }
 
         public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints) {
-            this(changeType, pointIds, movedPoints, List.of(), List.of());
+            this(changeType, pointIds, movedPoints, List.of());
         }
 
-        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements) {
-            this(changeType, pointIds, movedPoints, cellDecrements, List.of());
-        }
 
-        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements, List<CellIncrement> cellIncrements) {
+        public TaskData(ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellIncrement> cellIncrements) {
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
-            this.cellDecrements = cellDecrements;
             this.cellIncrements = cellIncrements;
         }
 
-        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellDecrement> cellDecrements, List<CellIncrement> cellIncrements) {
+        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellIncrement> cellIncrements) {
             super(jobId, parentJobId);
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
-            this.cellDecrements = cellDecrements;
             this.cellIncrements = cellIncrements;
         }
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {
-            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of(), List.of(), List.of());
+            return new TaskData(ChangeType.PROMOTION, newPromotedIds, List.of(), List.of());
         }
 
         public static TaskData forDeletion(List<Long> deletedPointIds) {
-            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of(), List.of(), List.of());
+            return new TaskData(ChangeType.DELETION, deletedPointIds, List.of(), List.of());
         }
 
         public static TaskData forMovement(List<MovedPoint> movedPoints) {
-            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints, List.of(), List.of());
-        }
-
-        public static TaskData forDecrement(List<CellDecrement> cellDecrements) {
-            return new TaskData(ChangeType.DECREMENT, List.of(), List.of(), cellDecrements, List.of());
+            return new TaskData(ChangeType.MOVEMENT, List.of(), movedPoints, List.of());
         }
 
         public static TaskData forIncrement(List<CellIncrement> cellIncrements) {
-            return new TaskData(ChangeType.INCREMENT, List.of(), List.of(), List.of(), cellIncrements);
+            return new TaskData(ChangeType.INCREMENT, List.of(), List.of(), cellIncrements);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellIncrements);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellDecrements, cellIncrements);
+            return new TaskData(jobId, parentJobId, changeType, pointIds, movedPoints, cellIncrements);
         }
     }
 }

@@ -19,7 +19,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -94,69 +93,20 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     @Override
-    public void preDeleteSynthetic(User user, Instant start, Instant end) {
-        List<H3CellUpdateJob.CellDecrement> decrements = jdbcTemplate.query("SELECT h3_cell, COUNT(*) FROM raw_location_points WHERE user_id = ? AND source_point_id IS NULL GROUP BY h3_cell", (rs, rowNum) ->
-                new H3CellUpdateJob.CellDecrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count")), user.getId());
-        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
-                                              H3CellUpdateJob.TaskData.forDecrement(decrements),
-                                              JobSchedulingService.Metadata.builder()
-                                                      .jobType(JobType.H3_CELL_UPDATE)
-                                                      .friendlyName("Updating H3 Spatial Statistics")
-                                                      .build()
-        );
-    }
-
-    @Override
-    public void postAddSynthetic(User user, List<Long> insertedIds) {
-        if (insertedIds.isEmpty()) {
-            return;
-        }
-        String placeholders = String.join(",", Collections.nCopies(insertedIds.size(), "?"));
-        String sql = "SELECT h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_location_points WHERE id IN (" + placeholders + ") GROUP BY h3_cell";
-        List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
-                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(user.getId(), null, rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
-                                                                            insertedIds.toArray());
-        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
-                                              H3CellUpdateJob.TaskData.forIncrement(increments),
-                                              JobSchedulingService.Metadata.builder()
-                                                      .jobType(JobType.H3_CELL_UPDATE)
-                                                      .friendlyName("Updating H3 Spatial Statistics")
-                                                      .build()
-        );
-    }
-
-    @Override
-    public void postRecalculation(List<Long> pointIds) {
-        if (pointIds.isEmpty()) {
-            return;
-        }
-        String placeholders = String.join(",", Collections.nCopies(pointIds.size(), "?"));
-        //Here we only consider points without a source, aka synthetic points. All others should already have been handled
-        String sql = "SELECT user_id, h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_location_points WHERE id IN (" + placeholders + ") AND source_point_id IS NULL GROUP BY user_id, h3_cell";
-        List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
-                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(rs.getLong("user_id"), null, rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
-                                                                            pointIds.toArray());
-
-        if (!increments.isEmpty()) {
-            this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
-                                                  H3CellUpdateJob.TaskData.forIncrement(increments),
-                                                  JobSchedulingService.Metadata.builder()
-                                                          .jobType(JobType.H3_CELL_UPDATE)
-                                                          .friendlyName("Updating H3 Spatial Statistics")
-                                                          .build()
-            );
-        }
-    }
-
-    @Override
     public void postSourceRecalculation(List<Long> sourcePointIds) {
         if (sourcePointIds.isEmpty()) {
             return;
         }
         String placeholders = String.join(",", Collections.nCopies(sourcePointIds.size(), "?"));
-        String sql = "SELECT user_id, device_id, h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts FROM raw_source_points WHERE id IN (" + placeholders + ") GROUP BY user_id, device_id, h3_cell";
+        String sql = "SELECT user_id, device_id, h3_cell, COUNT(*) as count, MAX(timestamp) as max_ts, MIN(timestamp) as min_ts FROM raw_source_points WHERE id IN (" + placeholders + ") GROUP BY user_id, device_id, h3_cell";
         List<H3CellUpdateJob.CellIncrement> increments = jdbcTemplate.query(sql,
-                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(rs.getLong("user_id"), rs.getLong("device_id"), rs.getLong("h3_cell"), rs.getInt("count"), rs.getTimestamp("max_ts").toInstant()),
+                                                                            (rs, rowNum) -> new H3CellUpdateJob.CellIncrement(
+                                                                                    rs.getLong("user_id"),
+                                                                                    rs.getLong("device_id"),
+                                                                                    rs.getLong("h3_cell"),
+                                                                                    rs.getInt("count"),
+                                                                                    rs.getTimestamp("max_ts").toInstant(),
+                                                                                    rs.getTimestamp("min_ts").toInstant()),
                                                                             sourcePointIds.toArray());
 
         if (!increments.isEmpty()) {

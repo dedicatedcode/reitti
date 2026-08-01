@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,18 +9,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.ZoneId;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 class GeoLocationTimezoneServiceTest {
 
     @InjectMocks
     private GeoLocationTimezoneService geoLocationTimezoneService;
-
-    @BeforeEach
-    void setUp() {
-        // Initialize the service if needed
-    }
 
     @Test
     void testTimezoneForNewYorkCity() {
