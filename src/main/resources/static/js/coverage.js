@@ -61,7 +61,6 @@
             zoom: 3,
             pitch: 0,
             bearing: 0,
-            projection: { type: 'mercator' },
             attributionControl: false,
             renderWorldCopies: false,
             interleaved: true,
@@ -83,6 +82,11 @@
         });
 
         map.on('load', () => {
+            try {
+                map.setProjection({ type: 'globe' });
+            } catch (e) {
+                console.warn('Could not enable globe projection:', e);
+            }
             loadCoverageData();
         });
     }
@@ -366,15 +370,15 @@
     }
 
     function getTargetResolution(zoom) {
-        if (zoom < 5) return 2;
-        if (zoom < 7) return 3;
-        if (zoom < 8) return 4;
-        if (zoom < 9) return 5;
-        if (zoom < 10) return 6;
-        if (zoom < 11) return 8;
-        if (zoom < 13) return 9;
-        if (zoom < 14) return 10;
-        if (zoom < 15) return 11;
+        if (zoom < 4) return 3;
+        if (zoom < 5) return 4;
+        if (zoom < 6) return 5;
+        if (zoom < 7) return 6;
+        if (zoom < 8) return 7;
+        if (zoom < 9) return 8;
+        if (zoom < 10) return 9;
+        if (zoom < 12) return 10;
+        if (zoom < 14) return 11;
         return 12;
     }
 
