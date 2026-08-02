@@ -37,14 +37,26 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobToBeExecuted(JobExecutionContext context) {
-        UUID jobId = UUID.fromString(context.getTrigger().getKey().getName());
-        this.jobMetadataRepository.updateState(jobId, JobState.RUNNING, Instant.now());
-        log.trace("Job with ID {} is now in the state of {}", jobId, JobState.RUNNING);
+        Optional<UUID> jobId = parseJobId(context);
+        jobId.ifPresent(id -> {
+            this.jobMetadataRepository.updateState(id, JobState.RUNNING, Instant.now());
+            log.trace("Job with ID {} is now in the state of {}", id, JobState.RUNNING);
 
-        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
-        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
-            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), JobState.RUNNING);
+            Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(id);
+            if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+                jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), JobState.RUNNING);
+            }
+        });
+    }
+
+    private Optional<UUID> parseJobId(JobExecutionContext context) {
+        UUID jobId = null;
+        try {
+            jobId = UUID.fromString(context.getTrigger().getKey().getName());
+        } catch (Exception e) {
+            log.warn("Failed to parse job ID from trigger key: {}", context.getTrigger().getKey().getName());
         }
+        return Optional.ofNullable(jobId);
     }
 
     @Override
@@ -52,25 +64,22 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-        UUID jobId = UUID.fromString(context.getTrigger().getKey().getName());
-        JobState state = (jobException == null) ? JobState.COMPLETED : JobState.FAILED;
-        this.jobMetadataRepository.updateState(jobId, state, Instant.now());
+        Optional<UUID> jobId = parseJobId(context);
+        jobId.ifPresent(id -> {
+            JobState state = (jobException == null) ? JobState.COMPLETED : JobState.FAILED;
+            this.jobMetadataRepository.updateState(id, state, Instant.now());
 
-        if (state == JobState.FAILED) {
-            log.error("Job with ID {} failed", jobId, jobException);
-        } else {
-            log.trace("Job with ID {} is now in the state of {}", jobId, state);
-        }
+            if (state == JobState.FAILED) {
+                log.error("Job with ID {} failed", id, jobException);
+            } else {
+                log.trace("Job with ID {} is now in the state of {}", id, state);
+            }
 
-        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
-        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
-            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public <T extends JobContext<T>> void scheduleSystemTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
-        scheduleTask(jobDetail, data, scheduledAt, meta);
+            Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(id);
+            if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+                jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
+            }
+        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -156,7 +165,6 @@ public class JobSchedulingService implements JobListener {
             private User user;
             private JobType jobType;
             private String friendlyName;
-            private boolean resume = true;
 
             public Builder user(User user) {
                 this.user = user;
@@ -178,7 +186,6 @@ public class JobSchedulingService implements JobListener {
             }
 
             public Builder resume(boolean resume) {
-                this.resume = resume;
                 return this;
             }
         }

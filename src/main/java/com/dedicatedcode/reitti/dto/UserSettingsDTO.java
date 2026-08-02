@@ -12,6 +12,7 @@ public record UserSettingsDTO(
         Language selectedLanguage,
         String selectedLocale,
         Instant newestData,
+        Instant earliestData,
         UnitSystem unitSystem,
         Double homeLatitude,
         Double homeLongitude,

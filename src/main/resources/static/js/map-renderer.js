@@ -308,7 +308,7 @@ class MapRenderer {
 
         const aggregated = new Map();
         manager.h3Cells.forEach((buckets, hexStr) => {
-            const bigIntVal = BigInt(hexStr);
+            const bigIntVal = BigInt('0x' + hexStr);
             const lower = Number(bigIntVal & 0xFFFFFFFFn);
             const upper = Number((bigIntVal >> 32n) & 0xFFFFFFFFn);
             const h3Index = h3.splitLongToH3Index(lower, upper);

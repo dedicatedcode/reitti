@@ -82,6 +82,7 @@ public class H3DatabaseLifecycleManager implements Job {
             if (Files.exists(targetVersionDir)) {
                 log.info("H3 database is up to date at version: {}. Will load it now.", remoteVersion);
                 rocksDbService.hotSwapDatabase(targetVersionDir);
+                rocksDbService.deleteOldVersions();
             } else {
                 log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
 
@@ -100,6 +101,7 @@ public class H3DatabaseLifecycleManager implements Job {
 
                 rocksDbService.hotSwapDatabase(targetVersionDir);
                 saveLocalManifest(remoteManifest);
+                rocksDbService.deleteOldVersions();
 
                 Files.deleteIfExists(tempZipPath);
                 log.info("Database successfully updated to version: {}", remoteVersion);

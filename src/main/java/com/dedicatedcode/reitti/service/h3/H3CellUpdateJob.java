@@ -209,7 +209,7 @@ public class H3CellUpdateJob implements Job {
             int resolution = cellWithBoundary.resolution();
 
             for (Long osmId : cellWithBoundary.osmIds()) {
-                int totalCells = rocksDbService.getTotalCells(osmId);
+                int totalCells = rocksDbService.getTotalCells(osmId, resolution);
 
                 if (totalCells > 0) {
                     // Update area coverage stats - increment visited cells for this resolution
@@ -243,7 +243,6 @@ public class H3CellUpdateJob implements Job {
             }
         }
     }
-
 
     private void processIncrement(List<CellIncrement> cellIncrements) {
         for (CellIncrement inc : cellIncrements) {

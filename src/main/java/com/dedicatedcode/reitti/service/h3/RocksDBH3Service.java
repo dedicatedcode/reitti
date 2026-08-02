@@ -1,12 +1,15 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uber.h3core.H3Core;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +17,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @ConditionalOnProperty(prefix = "reitti.h3", name = "enabled", havingValue = "true")
@@ -44,8 +45,41 @@ public class RocksDBH3Service {
     private Options regionMetadataDbOptions;
     private Options regionGeometryDbOptions;
 
-    public RocksDBH3Service() throws IOException {
+    private final Path rootDbDir;
+    private final Path localManifestPath;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public RocksDBH3Service(@Value("${reitti.h3.root-dir}") String h3RootDir) throws IOException {
         this.h3 = H3Core.newInstance();
+        this.rootDbDir = Path.of(h3RootDir);
+        this.localManifestPath = rootDbDir.resolve("local-manifest.json");
+    }
+
+    @PostConstruct
+    public void tryLoadLocalDatabase() {
+        try {
+            Files.createDirectories(rootDbDir);
+
+            if (!Files.exists(localManifestPath)) {
+                log.info("No local manifest found at {}. Skipping local DB load.", localManifestPath);
+                return;
+            }
+
+            H3Manifest localManifest = objectMapper.readValue(localManifestPath.toFile(), H3Manifest.class);
+            String version = localManifest.getVersion();
+            Path targetVersionDir = rootDbDir.resolve("version_" + version);
+
+            if (!Files.isDirectory(targetVersionDir)) {
+                log.info("Local manifest references version '{}' but directory {} does not exist. Skipping local DB load.", version, targetVersionDir);
+                return;
+            }
+
+            log.info("Found local manifest for version '{}'. Loading database from {}...", version, targetVersionDir);
+            hotSwapDatabase(targetVersionDir);
+            log.info("Successfully loaded local H3 database version '{}'.", version);
+        } catch (Exception e) {
+            log.warn("Failed to load local H3 database from manifest: {}. Will rely on lifecycle manager.", e.getMessage());
+        }
     }
 
     public Set<Long> getParentCells(long h3Cell) {
@@ -116,7 +150,7 @@ public class RocksDBH3Service {
         }
     }
 
-    public int getTotalCells(long osmId) {
+    public int getTotalCells(long osmId, int resolution) {
         rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
         try {
@@ -125,19 +159,34 @@ public class RocksDBH3Service {
                 return 0;
             }
 
+            int storedTotal;
             ByteBuffer buffer = ByteBuffer.wrap(value);
             if (value.length == 4) {
-                return buffer.getInt();
+                storedTotal = buffer.getInt();
             } else if (value.length == 8) {
-                return (int) buffer.getLong();
+                storedTotal = (int) buffer.getLong();
+            } else {
+                return 0;
             }
-            return 0;
+
+            return scaleTotalCells(storedTotal, resolution);
         } catch (RocksDBException e) {
             log.error("Failed to lookup total cells for OSM ID {}: {}", osmId, e.getMessage());
             return 0;
         } finally {
             rwLock.readLock().unlock();
         }
+    }
+
+    private int scaleTotalCells(int storedTotal, int targetResolution) {
+        final int baseResolution = 6;
+        if (targetResolution == baseResolution || storedTotal <= 0) {
+            return storedTotal;
+        }
+        if (targetResolution > baseResolution) {
+            return (int) Math.min((long) storedTotal * (long) Math.pow(7, targetResolution - baseResolution), Integer.MAX_VALUE);
+        }
+        return Math.max(1, storedTotal / (int) Math.pow(7, baseResolution - targetResolution));
     }
 
     public void hotSwapDatabase(Path newDbPath) throws RocksDBException {
@@ -260,6 +309,42 @@ public class RocksDBH3Service {
         } finally {
             rwLock.writeLock().unlock();
         }
+    }
+
+    public void deleteOldVersions() {
+        if (activeDbPath == null) {
+            return;
+        }
+
+        Thread.ofVirtual().start(() -> {
+            try {
+                log.info("Cleaning up old H3 database versions...");
+                try (Stream<Path> entries = Files.list(rootDbDir)) {
+                    entries.filter(Files::isDirectory)
+                            .filter(p -> p.getFileName().toString().startsWith("version_"))
+                            .filter(p -> !p.equals(activeDbPath))
+                            .forEach(p -> {
+                                try {
+                                    log.info("Deleting old database version: {}", p.getFileName());
+                                    try (Stream<Path> walk = Files.walk(p)) {
+                                        walk.sorted(Comparator.reverseOrder())
+                                                .forEach(f -> {
+                                                    try {
+                                                        Files.delete(f);
+                                                    } catch (IOException ignored) {
+                                                    }
+                                                });
+                                    }
+                                } catch (Exception e) {
+                                    log.warn("Failed to delete old version directory {}: {}", p, e.getMessage());
+                                }
+                            });
+                }
+                log.info("Old H3 database versions cleaned up.");
+            } catch (Exception e) {
+                log.error("Failed to clean up old H3 database versions: {}", e.getMessage());
+            }
+        });
     }
 
     public record CellWithBoundaries(long cellId, int resolution, Set<Long> osmIds) {

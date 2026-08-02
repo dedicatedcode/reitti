@@ -172,6 +172,15 @@ public class RawLocationPointJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
+    public Optional<RawLocationPoint> findEarliest(User user) {
+        String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? " +
+                "ORDER BY rlp.timestamp ASC LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
     @SuppressWarnings("DataFlowIssue")
     public long count() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);

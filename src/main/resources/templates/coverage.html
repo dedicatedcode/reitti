@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{page.title}">Reitti - Coverage</title>
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="/css/date-picker.css">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="/css/photo-client.css">
+    <link rel="stylesheet" th:href="@{/css/inline-edit.css}" href="/css/inline-edit.css">
+    <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
+    <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/coverage.css}" href="/css/coverage.css">
+
+    <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/HumanizeDuration.js}"></script>
+    <script th:src="@{/js/date-picker-combined.js}"></script>
+    <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/polygon-editor.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
+    <script th:src="@{/js/vendor/h3-js.umd.js}"></script>
+    <script th:src="@{/js/vendor/deckgl.9.2.6.min.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
+    <script th:src="@{/js/vendor/supercluster.7.0.0.min.js}"></script>
+    <script th:src="@{/js/timeline-control.js}"></script>
+    <script th:src="@{/js/map-customization.js}"></script>
+    <script th:src="@{/js/gps-data-manager.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/map-controls.js}"></script>
+    <script th:src="@{/js/PhotoClusterManager.js}"></script>
+    <script th:src="@{/js/LiveModeController.js}"></script>
+    <script th:src="@{/js/map-settings.js}"></script>
+    <script th:src="@{/js/auto-complete.js}"></script>
+    <script th:src="@{/js/vendor/chart.js}"></script>
+</head>
+<body>
+
+<div id="coverage-map" class="is-loaded"></div>
+
+<div id="coverage-loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading coverage data...</div>
+    </div>
+
+<div th:replace="~{fragments/main-navigation :: main-navigation('coverage')}"></div>
+
+<div id="coverage-sidebar" class="coverage-sidebar">
+    <div class="user-timeline-selection">
+        <th:block th:each="userData, iterStat : ${timelineData.users}">
+            <div th:title="${userData.displayName}" th:if="${userData}"
+                 class="user-header"
+                 th:classappend="${iterStat.first} ? 'active' : ''"
+                 th:data-user-id="${userData.userId}"
+                 th:data-base-color="${userData.baseColor}"
+                 onclick="selectCoverageUser(this.dataset.userId, this)">
+                <img th:src="@{${userData.userAvatarUrl}}"
+                     th:alt="${userData.avatarFallback}"
+                     class="avatar">
+                <div th:text="${userData.displayName}" class="username">Username</div>
+            </div>
+            <th:block th:each="device : ${userData.devices}">
+                <div th:title="${device.name()}" th:if="${device}"
+                     class="device-header"
+                     th:data-user-id="${userData.userId}"
+                     th:data-device-id="${device.id()}"
+                     th:data-device-color="${device.color()}"
+                     onclick="selectCoverageDevice(this.dataset.userId, this.dataset.deviceId, this)">
+                    <img th:if="${device.avatarUrl()}" th:src="@{${device.avatarUrl()}}"
+                         th:alt="${device.avatarFallback()}"
+                         class="avatar">
+                    <div th:text="${device.name()}" class="username">Username</div>
+                </div>
+            </th:block>
+        </th:block>
+    </div>
+</div>
+
+<div class="fab-container coverage-fab" id="coverage-fab">
+    <button type="button" class="btn fab-btn" id="coverage-prev-month" title="Previous Month">
+        <i class="lni lni-chevron-left"></i>
+    </button>
+    <span class="coverage-month-display" id="coverage-month-display"></span>
+    <button type="button" class="btn fab-btn" id="coverage-next-month" title="Next Month">
+        <i class="lni lni-chevron-right"></i>
+    </button>
+</div>
+
+<div id="time-slider-container">
+    <input type="range" id="coverage-time-slider" min="0" max="0" value="0" step="1">
+    <div id="time-slider-labels"></div>
+</div>
+
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {};
+    window.currentUserId = /*[[${currentUserId}]]*/ null;
+</script>
+<script src="/js/coverage.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.initCoverage) window.initCoverage();
+    });
+</script>
+</body>
+</html>

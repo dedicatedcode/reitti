@@ -57,6 +57,7 @@ public class UserSettingsControllerAdvice {
             return new UserSettingsDTO(Language.EN,
                                        Locale.ENGLISH.toLanguageTag(),
                                        Instant.now(),
+                                       Instant.now(),
                                        UnitSystem.METRIC,
                                        DEFAULT_HOME_LATITUDE,
                                        DEFAULT_HOME_LONGITUDE,
@@ -84,9 +85,11 @@ public class UserSettingsControllerAdvice {
                 latestData = rawLocationPointJdbcService.findLatest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             }
             Language selectedLanguage = dbSettings.getSelectedLanguage();
+            Instant earliestData = rawLocationPointJdbcService.findEarliest(user).map(RawLocationPoint::getTimestamp).orElse(null);
             return new UserSettingsDTO(selectedLanguage,
                                        selectedLanguage.getLocale().toLanguageTag(),
                                        latestData,
+                                       earliestData,
                                        dbSettings.getUnitSystem(),
                                        dbSettings.getHomeLatitude(),
                                        dbSettings.getHomeLongitude(),
@@ -103,6 +106,7 @@ public class UserSettingsControllerAdvice {
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(Language.EN,
                                    Locale.ENGLISH.toLanguageTag(),
+                                   Instant.now(),
                                    Instant.now(),
                                    UnitSystem.METRIC,
                                    DEFAULT_HOME_LATITUDE,

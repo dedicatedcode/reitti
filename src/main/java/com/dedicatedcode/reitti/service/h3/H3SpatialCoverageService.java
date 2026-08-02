@@ -318,10 +318,11 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         for (Map.Entry<Long, Map<Integer, Long>> entry : areaToResolutionVisitedCount.entrySet()) {
             long osmId = entry.getKey();
             Map<Integer, Long> resCounts = entry.getValue();
-            int totalCells = rocksDBService.getTotalCells(osmId);
 
             for (Map.Entry<Integer, Long> resEntry : resCounts.entrySet()) {
+                int resolution = resEntry.getKey();
                 long visited = resEntry.getValue();
+                int totalCells = rocksDBService.getTotalCells(osmId, resolution);
                 double pct = totalCells > 0 ? (double) visited / totalCells * 100.0 : 0.0;
                 String name = getLocalizedName(osmId, locale);
 

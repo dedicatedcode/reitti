@@ -54,7 +54,7 @@ public class H3TaskConfig {
         public Trigger h3StartupTrigger(@Qualifier("h3IndexUpdateJob") JobDetail jobDetail) {
             return TriggerBuilder.newTrigger()
                     .forJob(jobDetail)
-                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .withIdentity("h3-startup-trigger", JOB_GROUP)
                     .startNow()
                     .withSchedule(SimpleScheduleBuilder.simpleSchedule()
                                           .withMisfireHandlingInstructionNowWithExistingCount())
@@ -66,7 +66,7 @@ public class H3TaskConfig {
         public Trigger h3ScheduledTrigger(@Qualifier("h3IndexUpdateJob") JobDetail jobDetail, @Value("${reitti.h3.cron-schedule}") String cronSchedule) {
             return TriggerBuilder.newTrigger()
                     .forJob(jobDetail)
-                    .withIdentity(UUID.randomUUID().toString(), JOB_GROUP)
+                    .withIdentity("h3-cron-trigger", JOB_GROUP)
                     .withSchedule(CronScheduleBuilder.cronSchedule(cronSchedule)
                                           .withMisfireHandlingInstructionDoNothing())
                     .build();

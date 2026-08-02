@@ -61,7 +61,6 @@ public class H3RecalculationJob implements Job {
             List<Object[]> batchBuffer = new ArrayList<>(BATCH_SIZE);
             List<Long> processedPoints = new ArrayList<>(BATCH_SIZE);
 
-            AtomicLong missingPoints = new AtomicLong(missingSourcePoints);
             jdbcTemplate.query(selectSql, rs -> {
                 long id = rs.getLong("id");
                 GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
@@ -71,12 +70,12 @@ public class H3RecalculationJob implements Job {
                 batchBuffer.add(new Object[]{h3Cell, id});
 
                 if (batchBuffer.size() >= BATCH_SIZE) {
-                    writeBatchToSourceTable(current, updateSourcePointSql, batchBuffer, processedPoints, data, missingPoints);
+                    writeBatchToSourceTable(current, updateSourcePointSql, batchBuffer, processedPoints, data, missingPointCount);
                 }
             });
 
             if (!batchBuffer.isEmpty()) {
-                writeBatchToSourceTable(current, updateSourcePointSql, batchBuffer, processedPoints, data, missingPoints);
+                writeBatchToSourceTable(current, updateSourcePointSql, batchBuffer, processedPoints, data, missingPointCount);
             }
 
             String selectMissedSourcePointSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_location_points WHERE h3_cell IS NULL AND source_point_id IS NULL";
@@ -87,28 +86,28 @@ public class H3RecalculationJob implements Job {
                 Long h3Cell = spatialCoverageService.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
                 batchBuffer.add(new Object[]{h3Cell, id});
                 if (batchBuffer.size() >= BATCH_SIZE) {
-                    writeBatchToLocationPoints(current, updateLocationPointSql, batchBuffer, data, missingPoints);
+                    writeBatchToLocationPoints(current, updateLocationPointSql, batchBuffer, data, missingPointCount);
                 }
             });
             if (!batchBuffer.isEmpty()) {
-                writeBatchToLocationPoints(current, updateLocationPointSql, batchBuffer, data, missingPoints);
+                writeBatchToLocationPoints(current, updateLocationPointSql, batchBuffer, data, missingPointCount);
             }
-            log.info("Recalculation of {} H3 cells finished in {} ms, scheduling area stats updates now", missingPoints.get(), System.currentTimeMillis() - start);
+            log.info("Recalculation of {} H3 cells finished in {} ms, scheduling area stats updates now", missingPointCount, System.currentTimeMillis() - start);
         }
     }
 
-    private void writeBatchToLocationPoints(AtomicLong current, String updateLocationPointSql, List<Object[]> batchBuffer, TaskData data, AtomicLong missingPoints) {
+    private void writeBatchToLocationPoints(AtomicLong current, String updateLocationPointSql, List<Object[]> batchBuffer, TaskData data, Long missingPoints) {
         current.addAndGet(BATCH_SIZE);
         this.jdbcTemplate.batchUpdate(updateLocationPointSql, batchBuffer, batchBuffer.size(), (ps, argument) -> {
             ps.setLong(1, (Long) argument[0]); // h3_cell
             ps.setLong(2, (Long) argument[1]); // id
         });
         batchBuffer.clear();
-        jobMetadataRepository.updateProgress(data.getJobId(), current.get(), missingPoints.get(), "Recalculating H3 cells");
-        log.info("Recalculating missing Device H3 Cells Progress: {}/{}", current.get(), missingPoints.get());
+        jobMetadataRepository.updateProgress(data.getJobId(), current.get(), missingPoints, "Recalculating H3 cells");
+        log.info("Recalculating missing Device H3 Cells Progress: {}/{}", current.get(), missingPoints);
     }
 
-    private void writeBatchToSourceTable(AtomicLong current, String updateSourcePointSql, List<Object[]> batchBuffer, List<Long> processedPoints, TaskData data, AtomicLong missingPoints) {
+    private void writeBatchToSourceTable(AtomicLong current, String updateSourcePointSql, List<Object[]> batchBuffer, List<Long> processedPoints, TaskData data, long missingPoints) {
         current.addAndGet(BATCH_SIZE);
         this.jdbcTemplate.batchUpdate(updateSourcePointSql, batchBuffer, batchBuffer.size(), (ps, argument) -> {
             ps.setLong(1, (Long) argument[0]);
@@ -117,8 +116,8 @@ public class H3RecalculationJob implements Job {
         this.spatialCoverageService.postSourceRecalculation(processedPoints);
         batchBuffer.clear();
         processedPoints.clear();
-        jobMetadataRepository.updateProgress(data.getJobId(), current.get(), missingPoints.get(), "Recalculating H3 cells");
-        log.info("Recalculating H3 Cells Progress: {}/{}", current.get(), missingPoints.get());
+        jobMetadataRepository.updateProgress(data.getJobId(), current.get(), missingPoints, "Recalculating H3 cells");
+        log.info("Recalculating H3 Cells Progress: {}/{}", current.get(), missingPoints);
     }
 
     private void flushBatch(String updateSourcePointSql, String updateLocationPointSql, List<Object[]> batchBuffer) {

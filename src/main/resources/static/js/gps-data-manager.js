@@ -101,10 +101,11 @@ class GpsDataManager {
             if (h3Data) {
                 const h3Map = new Map();
                 h3Data.forEach(entry => {
-                    if (!h3Map.has(entry.hexagon)) {
-                        h3Map.set(entry.hexagon, []);
+                    const h3Hex = BigInt(entry.hexagon).toString(16);
+                    if (!h3Map.has(h3Hex)) {
+                        h3Map.set(h3Hex, []);
                     }
-                    h3Map.get(entry.hexagon).push({ time: entry.time, count: entry.count });
+                    h3Map.get(h3Hex).push({ time: entry.time, count: entry.count });
                 });
                 h3Map.forEach(buckets => buckets.sort((a, b) => a.time - b.time));
                 this.h3Cells = h3Map;
