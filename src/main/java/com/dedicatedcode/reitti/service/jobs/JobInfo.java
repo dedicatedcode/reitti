@@ -40,8 +40,11 @@ public record JobInfo(
     }
 
     public String formattedDuration() {
-        if (durationSeconds == null || durationSeconds == 0) {
+        if (durationSeconds == null) {
             return null;
+        }
+        if (durationSeconds == 0) {
+            return "0s";
         }
         long hours = durationSeconds / 3600;
         long minutes = (durationSeconds % 3600) / 60;

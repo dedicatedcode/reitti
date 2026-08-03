@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +105,7 @@ public class JobMetadataRepository {
         return state.stream().map(JobState::valueOf).findFirst();
     }
 
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByStates(List<JobState> states) {
         if (states.isEmpty()) {
             return List.of();
@@ -114,12 +116,14 @@ public class JobMetadataRepository {
         return jdbcTemplate.query(sql, jobMetadataRowMapper, states.stream().map(Enum::name).toArray());
     }
 
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByParentJobId(UUID parentId) {
         String sql = "SELECT id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
                 "FROM job_meta_data WHERE parent_job_id = ?";
         return jdbcTemplate.query(sql, jobMetadataRowMapper, parentId);
     }
 
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public Optional<JobMetadata> findById(UUID jobId) {
         List<JobMetadata> query = this.jdbcTemplate.query("SELECT * FROM job_meta_data WHERE id = ?", jobMetadataRowMapper, jobId);
         return query.stream().findFirst();

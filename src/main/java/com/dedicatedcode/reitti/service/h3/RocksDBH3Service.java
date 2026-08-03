@@ -126,6 +126,14 @@ public class RocksDBH3Service {
         return h3ToOsmDb != null && regionMetadataDb != null;
     }
 
+    public int getResolution(long h3Cell) {
+        return h3.getResolution(h3Cell);
+    }
+
+    public Set<Long> getOsmIds(long cellId) {
+        return getOsmIdsForCell(cellId);
+    }
+
     private Set<Long> getOsmIdsForCell(long cellId) {
         rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(cellId).array();
@@ -150,7 +158,7 @@ public class RocksDBH3Service {
         }
     }
 
-    public int getTotalCells(long osmId, int resolution) {
+    public int getTotalCells(long osmId, int targetResolution) {
         rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
         try {
@@ -159,17 +167,17 @@ public class RocksDBH3Service {
                 return 0;
             }
 
-            int storedTotal;
-            ByteBuffer buffer = ByteBuffer.wrap(value);
-            if (value.length == 4) {
-                storedTotal = buffer.getInt();
-            } else if (value.length == 8) {
-                storedTotal = (int) buffer.getLong();
-            } else {
+            ByteBuffer buffer = ByteBuffer.wrap(value).order(java.nio.ByteOrder.BIG_ENDIAN);
+            if (value.length != 12) {
+                log.warn("Unexpected region_metadata value length {} for OSM ID {}", value.length, osmId);
                 return 0;
             }
 
-            return scaleTotalCells(storedTotal, resolution);
+            long cellCount = buffer.getLong();
+            int storedResolution = buffer.getInt();
+            int storedTotal = cellCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) cellCount;
+
+            return scaleTotalCells(storedTotal, storedResolution, targetResolution);
         } catch (RocksDBException e) {
             log.error("Failed to lookup total cells for OSM ID {}: {}", osmId, e.getMessage());
             return 0;
@@ -178,15 +186,14 @@ public class RocksDBH3Service {
         }
     }
 
-    private int scaleTotalCells(int storedTotal, int targetResolution) {
-        final int baseResolution = 6;
-        if (targetResolution == baseResolution || storedTotal <= 0) {
+    private int scaleTotalCells(int storedTotal, int storedResolution, int targetResolution) {
+        if (targetResolution == storedResolution || storedTotal <= 0) {
             return storedTotal;
         }
-        if (targetResolution > baseResolution) {
-            return (int) Math.min((long) storedTotal * (long) Math.pow(7, targetResolution - baseResolution), Integer.MAX_VALUE);
+        if (targetResolution > storedResolution) {
+            return (int) Math.min((long) storedTotal * (long) Math.pow(7, targetResolution - storedResolution), Integer.MAX_VALUE);
         }
-        return Math.max(1, storedTotal / (int) Math.pow(7, baseResolution - targetResolution));
+        return Math.max(1, storedTotal / (int) Math.pow(7, storedResolution - targetResolution));
     }
 
     public void hotSwapDatabase(Path newDbPath) throws RocksDBException {

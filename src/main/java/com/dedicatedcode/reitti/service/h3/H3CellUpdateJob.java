@@ -88,15 +88,15 @@ public class H3CellUpdateJob implements Job {
         if (movedPoints.isEmpty()) {
             return;
         }
-        // 1. Delete old locations
+        // 1. Delete old locations using stored res-12 cells
         List<PointData> oldPoints = loadPointDataForMoved(movedPoints, true);
         for (PointData point : oldPoints) {
-            log.trace("Processing moved point (deletion): userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
-                      point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
+            log.trace("Processing moved point (deletion): userId={}, deviceId={}, id={}, h3Cell={}",
+                      point.userId, point.deviceid, point.id, point.h3Cell);
 
-            Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
-            for (Long h3Cell : h3Cells) {
-                decrementCellAndCheckRemoval(point.userId, point.deviceid, h3Cell, point);
+            Set<Long> parentCells = rocksDbService.getParentCells(point.h3Cell);
+            for (Long parentCell : parentCells) {
+                decrementCellAndCheckRemoval(point.userId, point.deviceid, parentCell);
             }
         }
 
@@ -118,31 +118,53 @@ public class H3CellUpdateJob implements Job {
         log.trace("Processing point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                   point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
-        Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
+        Set<Long> parentCells = rocksDbService.getParentCells(point.h3Cell);
 
-        for (Long h3Cell : h3Cells) {
-            boolean isNewCell = isNewCellForUser(point.userId, point.deviceid, h3Cell);
+        for (Long parentCell : parentCells) {
+            boolean isNewCell = isNewCellForUser(point.userId, point.deviceid, parentCell);
 
-            String upsertCellSql = """
-                    INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
-                                                last_visited_at, point_count, first_visited_at)
-                    VALUES (?, ?, ?, ?, 1, ?)
-                    ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
-                        last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
-                        point_count = h3_cells_stats.point_count + 1,
-                        first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
-                    """;
-            jdbcTemplate.update(upsertCellSql,
-                                point.userId, point.deviceid, h3Cell,
-                                Timestamp.from(point.timestamp),                     // last_visited_at (INSERT)
-                                Timestamp.from(point.timestamp),                     // first_visited_at (INSERT)
-                                Timestamp.from(point.timestamp),                     // GREATEST argument
-                                Timestamp.from(point.timestamp)                      // LEAST argument
-            );
+            upsertCellStats(point.userId, point.deviceid, parentCell, point.timestamp);
+
             if (isNewCell) {
-                updateAreaCoverageForCell(point.userId, point.deviceid, h3Cell);
+                int resolution = rocksDbService.getResolution(parentCell);
+                Set<Long> osmIds = rocksDbService.getOsmIds(parentCell);
+                for (Long osmId : osmIds) {
+                    incrementAreaVisitedCells(point.userId, point.deviceid, osmId, resolution);
+                }
             }
         }
+    }
+
+    private void upsertCellStats(long userId, Long deviceId, long h3Cell, Instant timestamp) {
+        String sql = """
+                INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
+                                            last_visited_at, point_count, first_visited_at)
+                VALUES (?, ?, ?, ?, 1, ?)
+                ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                    last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                    point_count = h3_cells_stats.point_count + 1,
+                    first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
+                """;
+        jdbcTemplate.update(sql,
+                            userId, deviceId, h3Cell,
+                            Timestamp.from(timestamp),
+                            Timestamp.from(timestamp),
+                            Timestamp.from(timestamp),
+                            Timestamp.from(timestamp));
+    }
+
+    private void incrementAreaVisitedCells(long userId, Long deviceId, long osmId, int resolution) {
+        int totalCells = rocksDbService.getTotalCells(osmId, resolution);
+        if (totalCells <= 0) return;
+
+        String sql = """
+                INSERT INTO h3_area_coverage_stats (user_id, device_id, osm_id, h3_resolution, visited_cell_count, total_cell_count)
+                VALUES (?, ?, ?, ?, 1, ?)
+                ON CONFLICT (user_id, device_id, osm_id, h3_resolution) DO UPDATE SET
+                    visited_cell_count = h3_area_coverage_stats.visited_cell_count + 1,
+                    total_cell_count = ?
+                """;
+        jdbcTemplate.update(sql, userId, deviceId, osmId, resolution, totalCells, totalCells);
     }
 
     private List<PointData> loadPointData(List<Long> batchIds) {
@@ -200,35 +222,6 @@ public class H3CellUpdateJob implements Job {
         return count == null || count == 0;
     }
 
-    private void updateAreaCoverageForCell(long userId, Long deviceId, long h3Cell) {
-        // Get OSM boundaries that contain this H3 cell
-        List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
-                rocksDbService.getCellsWithBoundaries(h3Cell);
-
-        for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
-            int resolution = cellWithBoundary.resolution();
-
-            for (Long osmId : cellWithBoundary.osmIds()) {
-                int totalCells = rocksDbService.getTotalCells(osmId, resolution);
-
-                if (totalCells > 0) {
-                    // Update area coverage stats - increment visited cells for this resolution
-                    String upsertAreaSql = """
-                    INSERT INTO h3_area_coverage_stats (user_id, device_id, osm_id, h3_resolution, visited_cell_count, total_cell_count)
-                    VALUES (?, ?, ?, ?, 1, ?)
-                    ON CONFLICT (user_id, device_id, osm_id, h3_resolution) DO UPDATE SET
-                        visited_cell_count = h3_area_coverage_stats.visited_cell_count + 1,
-                        total_cell_count = ?
-                    """;
-
-                    jdbcTemplate.update(upsertAreaSql,
-                                        userId, deviceId, osmId, resolution,
-                                        totalCells, totalCells);
-                }
-            }
-        }
-    }
-
     private void processBatchForDeletion(List<Long> batchIds) {
         List<PointData> points = loadPointData(batchIds);
 
@@ -236,47 +229,15 @@ public class H3CellUpdateJob implements Job {
             log.trace("Deleting point: userId={}, deviceId={}, id={}, lat={}, lng={}, h3Cell={}, status={}",
                       point.userId, point.deviceid, point.id, point.lat, point.lng, point.h3Cell, point.status);
 
-            Set<Long> h3Cells = rocksDbService.getCellsForPoint(point.lat, point.lng);
+            Set<Long> parentCells = rocksDbService.getParentCells(point.h3Cell);
 
-            for (Long h3Cell : h3Cells) {
-                decrementCellAndCheckRemoval(point.userId, point.deviceid, h3Cell, point);
+            for (Long parentCell : parentCells) {
+                decrementCellAndCheckRemoval(point.userId, point.deviceid, parentCell);
             }
         }
     }
 
-    private void processIncrement(List<CellIncrement> cellIncrements) {
-        for (CellIncrement inc : cellIncrements) {
-            long userId = inc.userId();
-            Long deviceId = inc.deviceId();
-            long h3Cell = inc.h3Cell();
-
-            boolean isNewCell = isNewCellForUser(userId, deviceId, h3Cell);
-
-            String upsertCellSql = """
-                    INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
-                                                last_visited_at, point_count, first_visited_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
-                        last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
-                        point_count = h3_cells_stats.point_count + ?,
-                        first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
-                    """;
-            jdbcTemplate.update(upsertCellSql,
-                                inc.userId(), inc.deviceId(), inc.h3Cell(),
-                                Timestamp.from(inc.lastVisitedAt()),                     // last_visited_at (INSERT)
-                                inc.count(),                                         // point_count (INSERT)
-                                Timestamp.from(inc.firstVisitedAt()),                // first_visited_at (INSERT)
-                                Timestamp.from(inc.lastVisitedAt()),                     // GREATEST argument
-                                inc.count(),                                         // increment for point_count
-                                Timestamp.from(inc.firstVisitedAt())                 // LEAST argument
-            );
-            if (isNewCell) {
-                updateAreaCoverageForCell(userId, deviceId, h3Cell);
-            }
-        }
-    }
-
-    private void decrementCellAndCheckRemoval(long userId, Long deviceId, long h3Cell, PointData point) {
+    private void decrementCellAndCheckRemoval(long userId, Long deviceId, long h3Cell) {
         String decrementSql = """
         UPDATE h3_cells_stats
         SET point_count = point_count - 1
@@ -290,46 +251,75 @@ public class H3CellUpdateJob implements Job {
             Integer pointCount = jdbcTemplate.queryForObject(checkCountSql, Integer.class, userId, deviceId, h3Cell);
 
             if (pointCount != null && pointCount <= 0) {
-                String deleteCellSql = "DELETE FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?";
-                jdbcTemplate.update(deleteCellSql, userId, deviceId, h3Cell);
+                jdbcTemplate.update("DELETE FROM h3_cells_stats WHERE user_id = ? AND device_id = ? AND h3_index = ?",
+                                    userId, deviceId, h3Cell);
 
-                decrementAreaCoverageForCell(point.userId, point.deviceid, h3Cell);
+                int resolution = rocksDbService.getResolution(h3Cell);
+                Set<Long> osmIds = rocksDbService.getOsmIds(h3Cell);
+                for (Long osmId : osmIds) {
+                    decrementAreaVisitedCells(userId, deviceId, osmId, resolution);
+                }
             }
         }
     }
 
-    private void decrementAreaCoverageForCell(long userId, Long deviceId, long h3Cell) {
-        List<RocksDBH3Service.CellWithBoundaries> cellsWithBoundaries =
-                rocksDbService.getCellsWithBoundaries(h3Cell);
+    private void decrementAreaVisitedCells(long userId, Long deviceId, long osmId, int resolution) {
+        String decrementSql = """
+        UPDATE h3_area_coverage_stats
+        SET visited_cell_count = visited_cell_count - 1
+                WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
+        """;
 
-        for (RocksDBH3Service.CellWithBoundaries cellWithBoundary : cellsWithBoundaries) {
-            int resolution = cellWithBoundary.resolution();
+        int updatedRows = jdbcTemplate.update(decrementSql, userId, deviceId, osmId, resolution);
 
-            for (Long osmId : cellWithBoundary.osmIds()) {
-                String decrementAreaSql = """
-                UPDATE h3_area_coverage_stats
-                SET visited_cell_count = visited_cell_count - 1
-                        WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
-                """;
+        if (updatedRows > 0) {
+            String checkSql = """
+            SELECT visited_cell_count FROM h3_area_coverage_stats
+                    WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
+            """;
+            Integer visitedCount = jdbcTemplate.queryForObject(checkSql, Integer.class,
+                                                               userId, deviceId, osmId, resolution);
 
-                int updatedRows = jdbcTemplate.update(decrementAreaSql, userId, deviceId, osmId, resolution);
+            if (visitedCount != null && visitedCount <= 0) {
+                jdbcTemplate.update("DELETE FROM h3_area_coverage_stats WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?",
+                                    userId, deviceId, osmId, resolution);
+            }
+        }
+    }
 
-                if (updatedRows > 0) {
-                    String checkVisitedSql = """
-                    SELECT visited_cell_count
-                    FROM h3_area_coverage_stats
-                            WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
-                    """;
+    private void processIncrement(List<CellIncrement> cellIncrements) {
+        for (CellIncrement inc : cellIncrements) {
+            long userId = inc.userId();
+            Long deviceId = inc.deviceId();
 
-                    Integer visitedCount = jdbcTemplate.queryForObject(checkVisitedSql, Integer.class,
-                                                                       userId, deviceId, osmId, resolution);
+            Set<Long> parentCells = rocksDbService.getParentCells(inc.h3Cell());
 
-                    if (visitedCount != null && visitedCount <= 0) {
-                        String deleteAreaSql = """
-                        DELETE FROM h3_area_coverage_stats
-                                WHERE user_id = ? AND device_id = ? AND osm_id = ? AND h3_resolution = ?
+            for (Long parentCell : parentCells) {
+                boolean isNewCell = isNewCellForUser(userId, deviceId, parentCell);
+
+                String upsertCellSql = """
+                        INSERT INTO h3_cells_stats (user_id, device_id, h3_index,
+                                                    last_visited_at, point_count, first_visited_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (user_id, device_id, h3_index) DO UPDATE SET
+                            last_visited_at = GREATEST(h3_cells_stats.last_visited_at, ?),
+                            point_count = h3_cells_stats.point_count + ?,
+                            first_visited_at = LEAST(h3_cells_stats.first_visited_at, ?)
                         """;
-                        jdbcTemplate.update(deleteAreaSql, userId, deviceId, osmId, resolution);
+                jdbcTemplate.update(upsertCellSql,
+                                    userId, deviceId, parentCell,
+                                    Timestamp.from(inc.lastVisitedAt()),
+                                    inc.count(),
+                                    Timestamp.from(inc.firstVisitedAt()),
+                                    Timestamp.from(inc.lastVisitedAt()),
+                                    inc.count(),
+                                    Timestamp.from(inc.firstVisitedAt()));
+
+                if (isNewCell) {
+                    int resolution = rocksDbService.getResolution(parentCell);
+                    Set<Long> osmIds = rocksDbService.getOsmIds(parentCell);
+                    for (Long osmId : osmIds) {
+                        incrementAreaVisitedCells(userId, deviceId, osmId, resolution);
                     }
                 }
             }

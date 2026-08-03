@@ -401,11 +401,17 @@
 
             const parentIndex = h3.cellToParent(h3Index, targetRes);
 
-            if (!aggregated.has(parentIndex)) {
-                aggregated.set(parentIndex, 0);
-            }
             const total = buckets.reduce((sum, b) => sum + b.count, 0);
-            aggregated.set(parentIndex, aggregated.get(parentIndex) + total);
+            const latestTime = buckets.length > 0 ? buckets[buckets.length - 1].time : null;
+
+            if (!aggregated.has(parentIndex)) {
+                aggregated.set(parentIndex, { count: 0, latestTime: null });
+            }
+            const entry = aggregated.get(parentIndex);
+            entry.count += total;
+            if (latestTime && (!entry.latestTime || latestTime > entry.latestTime)) {
+                entry.latestTime = latestTime;
+            }
         });
 
         state.h3AggregationCache.set(targetRes, aggregated);
@@ -419,6 +425,7 @@
         }
 
         const aggregatedCells = getAggregatedCells();
+        state.aggregatedCells = aggregatedCells;
         const hexagons = Array.from(aggregatedCells.keys());
 
         const h3Layer = new deck.H3HexagonLayer({
@@ -427,7 +434,8 @@
             getHexagon: hex => hex,
             extruded: false,
             getFillColor: hex => {
-                const count = aggregatedCells.get(hex) || 0;
+                const entry = aggregatedCells.get(hex);
+                const count = entry ? entry.count : 0;
                 const alpha = Math.min(255, count * 2.5);
                 return [...state.userColor, alpha];
             },
@@ -460,9 +468,9 @@
         if (!state.tooltipEl) return;
 
         if (info.picked && info.object != null) {
-            const buckets = state.visitedCells.get(info.object);
-            const count = buckets ? buckets.reduce((sum, b) => sum + b.count, 0) : 0;
-            const latest = buckets && buckets.length > 0 ? buckets[buckets.length - 1].time : null;
+            const entry = state.aggregatedCells ? state.aggregatedCells.get(info.object) : null;
+            const count = entry ? entry.count : 0;
+            const latest = entry ? entry.latestTime : null;
 
             state.tooltipEl.innerHTML = 'Visits: <b>' + count + '</b>';
             if (latest) {

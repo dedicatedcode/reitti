@@ -213,6 +213,14 @@ public class JobStatusController {
         String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
         boolean canCancel = state == JobState.AWAITING;
 
+        Long durationSeconds = null;
+        if (isTerminal(state) && metadata.getFinishedAt() != null) {
+            Instant start = metadata.getProcessingAt() != null ? metadata.getProcessingAt() : metadata.getEnqueuedAt();
+            if (start != null) {
+                durationSeconds = Duration.between(start, metadata.getFinishedAt()).getSeconds();
+            }
+        }
+
         return new JobInfo(
                 metadata.getId(),
                 jobName,
@@ -226,7 +234,7 @@ public class JobStatusController {
                 List.of(),
                 0,
                 0,
-                null,
+                durationSeconds,
                 progressPercent(metadata),
                 metadata.getProgressMessage()
         );

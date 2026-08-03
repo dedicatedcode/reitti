@@ -81,9 +81,8 @@
                                         <div style="display: flex; justify-content: space-between; align-items: center;">
                                             <span>
                                                 <span th:text="${child.name()}">Child Job</span>
-                                                <span th:if="${child.finishedAt() != null && child.enqueuedAt() != null}" 
-                                                      th:with="duration=${T(java.time.Duration).between(child.enqueuedAt(), child.finishedAt()).toSeconds()}"
-                                                      th:text="${' (' + duration + 's)'}"></span>
+                                                <span th:if="${child.formattedDuration() != null}" 
+                                                      th:text="${' (' + child.formattedDuration() + ')'}"></span>
                                             </span>
 
                                             <span class="job-state" th:classappend="${'job-state-' + #strings.toLowerCase(child.state().name())}" th:text="${child.state()}">STATE</span>
@@ -120,12 +119,12 @@
                                         <span th:text="#{jobs.enqueuedAt}">Enqueued</span>
                                         <span th:text="${#temporals.format(job.enqueuedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
                                     </span>
-                                    <span th:if="${job.finishedAt() != null}">
+                                    <span th:if="${job.finishedAt() != null && job.durationSeconds() == null}">
                                         <i class="lni lni-check-circle-1"></i>
                                         <span th:text="#{jobs.finishedAt}">Finished</span>
                                         <span th:text="${#temporals.format(job.finishedAt(), 'yyyy-MM-dd HH:mm:ss')}">-</span>
                                     </span>
-                                    <span th:if="${job.formattedDuration() != null}" class="job-duration">
+                                    <span th:if="${job.durationSeconds() != null}" class="job-duration">
                                         <i class="lni lni-hourglass"></i>
                                         <span th:text="${job.formattedDuration()}">0s</span>
                                     </span>
