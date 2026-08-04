@@ -54,7 +54,7 @@ public class JobSchedulingService implements JobListener {
         try {
             jobId = UUID.fromString(context.getTrigger().getKey().getName());
         } catch (Exception e) {
-            log.warn("Failed to parse job ID from trigger key: {}", context.getTrigger().getKey().getName());
+            log.trace("Failed to parse job ID from trigger key: {}", context.getTrigger().getKey().getName());
         }
         return Optional.ofNullable(jobId);
     }
@@ -185,9 +185,6 @@ public class JobSchedulingService implements JobListener {
                 return new Metadata(user, jobType, friendlyName);
             }
 
-            public Builder resume(boolean resume) {
-                return this;
-            }
         }
 
         public static Builder builder() {

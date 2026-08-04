@@ -19,3 +19,7 @@ CREATE TABLE h3_cells_stats
     point_count BIGINT NOT NULL,
     UNIQUE NULLS NOT DISTINCT (user_id, device_id, h3_index)
 );
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_source_points_h3_cell
+    ON raw_source_points (h3_cell)
+    WHERE h3_cell IS NOT NULL;

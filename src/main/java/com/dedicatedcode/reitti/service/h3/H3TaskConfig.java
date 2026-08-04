@@ -14,7 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.UUID;
 
 @Configuration
 public class H3TaskConfig {
@@ -85,6 +84,7 @@ public class H3TaskConfig {
             this.jdbcTemplate = jdbcTemplate;
         }
 
+        @SuppressWarnings("DataFlowIssue")
         @PostConstruct
         public void cleanupH3Leftovers() {
             Thread.ofVirtual().name("h3-cleanup").start(() -> {
@@ -104,33 +104,44 @@ public class H3TaskConfig {
 
                 try {
                     log.info("H3 disabled. Purging H3 cell data in background...");
-                    jdbcTemplate.execute("ALTER TABLE raw_location_points ADD COLUMN IF NOT EXISTS h3_cell BIGINT NULL");
-                    jdbcTemplate.execute("ALTER TABLE raw_source_points ADD COLUMN IF NOT EXISTS h3_cell BIGINT NULL");
-
                     int batchSize = 10000;
 
-                    Long rlpCount = jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM raw_location_points WHERE h3_cell IS NOT NULL", Long.class);
-                    Long rspCount = jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM raw_source_points WHERE h3_cell IS NOT NULL", Long.class);
-                    
-                    log.info("Dropping H3 partial index for faster bulk update...");
-                    jdbcTemplate.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_points_h3_cell");
+                    jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_source_points_h3_cell ON raw_source_points (h3_cell) WHERE h3_cell IS NOT NULL");
 
-                    log.info("Found H3 cells to purge: {} in raw_location_points, {} in raw_source_points",
-                            rlpCount, rspCount);
+                    boolean hasLocationPoints = Boolean.TRUE.equals(
+                            jdbcTemplate.queryForObject("SELECT EXISTS(SELECT 1 FROM raw_location_points WHERE h3_cell IS NOT NULL)", Boolean.class));
+                    boolean hasSourcePoints = Boolean.TRUE.equals(
+                            jdbcTemplate.queryForObject("SELECT EXISTS(SELECT 1 FROM raw_source_points WHERE h3_cell IS NOT NULL)", Boolean.class));
+                    boolean hasCellStats = Boolean.TRUE.equals(
+                            jdbcTemplate.queryForObject("SELECT EXISTS(SELECT 1 FROM h3_cells_stats)", Boolean.class));
+                    boolean hasAreaStats = Boolean.TRUE.equals(
+                            jdbcTemplate.queryForObject("SELECT EXISTS(SELECT 1 FROM h3_area_coverage_stats)", Boolean.class));
 
-                    purgeTable("raw_location_points", rlpCount != null ? rlpCount : 0, batchSize);
+                    if (!hasLocationPoints && !hasSourcePoints && !hasCellStats && !hasAreaStats) {
+                        log.info("No H3 cells to purge.");
+                        return;
+                    }
+                    log.info("Dropping H3 partial indexes for faster bulk update...");
+                    jdbcTemplate.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_points_h3_time");
+                    jdbcTemplate.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_source_points_h3_cell");
 
-                    purgeTable("raw_source_points", rspCount != null ? rspCount : 0, batchSize);
+                    purgeTable("raw_location_points", batchSize);
+                    purgeTable("raw_source_points", batchSize);
 
-                    String rebuildIndexSql = """
-                            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_cell ON raw_location_points (h3_cell)
-                            WHERE h3_cell IS NOT NULL;
-                            """;
+                    if (hasCellStats) {
+                        log.info("Truncating h3_cells_stats...");
+                        jdbcTemplate.execute("TRUNCATE TABLE h3_cells_stats");
+                        log.info("h3_cells_stats truncated.");
+                    }
+                    if (hasAreaStats) {
+                        log.info("Truncating h3_area_coverage_stats...");
+                        jdbcTemplate.execute("TRUNCATE TABLE h3_area_coverage_stats");
+                        log.info("h3_area_coverage_stats truncated.");
+                    }
 
-                    log.info("Rebuilding partial H3 index concurrently...");
-                    jdbcTemplate.execute(rebuildIndexSql);
+                    log.info("Rebuilding H3 partial indexes concurrently...");
+                    jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_time ON raw_location_points (h3_cell) WHERE h3_cell IS NOT NULL");
+                    jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_source_points_h3_cell ON raw_source_points (h3_cell) WHERE h3_cell IS NOT NULL");
                     log.info("H3 cleanup completed successfully.");
                 } catch (Exception e) {
                     log.error("Failed to execute H3 cleanup task", e);
@@ -138,21 +149,13 @@ public class H3TaskConfig {
             });
         }
 
-        private void purgeTable(String tableName, long totalToClear, int batchSize) {
-            if (totalToClear == 0) {
-                log.info("{}: no H3 cells to purge.", tableName);
-                return;
-            }
-
+        private void purgeTable(String tableName, int batchSize) {
             int cleared = 0;
-            int batchNum = 0;
-            long batchDurationMs = 0;
             int updatedRows;
             long startedAt = System.currentTimeMillis();
 
-            log.info("Purging {} h3_cells ({} rows to clear)...", tableName, totalToClear);
+            log.info("Purging {} h3_cells...", tableName);
             do {
-                batchNum++;
                 long batchStart = System.currentTimeMillis();
                 updatedRows = jdbcTemplate.update(
                         "UPDATE " + tableName + " SET h3_cell = NULL " +
@@ -161,28 +164,12 @@ public class H3TaskConfig {
                 cleared += updatedRows;
                 long elapsed = System.currentTimeMillis() - batchStart;
 
-                if (batchNum == 1 && updatedRows > 0) {
-                    batchDurationMs = elapsed;
-                }
-
                 if (updatedRows > 0) {
-                    long remaining = totalToClear - cleared;
-                    String eta = batchDurationMs > 0
-                            ? formatEta(remaining * batchDurationMs / batchSize)
-                            : "calculating...";
-                    log.info("{}: cleared {} / {} rows ({} in last batch, {}ms). ETA: {}",
-                            tableName, cleared, totalToClear, updatedRows, elapsed, eta);
+                    log.info("{}: cleared {} cells ({} in last batch, {}ms)", tableName, cleared, updatedRows, elapsed);
                 }
             } while (updatedRows > 0);
             long totalElapsed = System.currentTimeMillis() - startedAt;
             log.info("{} purge complete. Total cleared: {} in {}ms", tableName, cleared, totalElapsed);
-        }
-
-        private String formatEta(long ms) {
-            if (ms < 1000) return "<1s";
-            long seconds = ms / 1000;
-            if (seconds < 60) return seconds + "s";
-            return (seconds / 60) + "m " + (seconds % 60) + "s";
         }
     }
 }

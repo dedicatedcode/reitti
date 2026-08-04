@@ -301,27 +301,28 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     private List<CoverageInformation> calculateCoverageInformation(Locale locale, List<Long> visitedCells) {
-        Map<Long, Map<Integer, Long>> areaToResolutionVisitedCount = new HashMap<>();
+        Map<Long, Map<Integer, Set<Long>>> areaToResolutionVisitedCells = new HashMap<>();
 
         for (Long cellId : visitedCells) {
             List<RocksDBH3Service.CellWithBoundaries> boundaries = rocksDBService.getCellsWithBoundaries(cellId);
             for (RocksDBH3Service.CellWithBoundaries cwb : boundaries) {
                 for (Long osmId : cwb.osmIds()) {
-                    areaToResolutionVisitedCount
+                    areaToResolutionVisitedCells
                             .computeIfAbsent(osmId, k -> new HashMap<>())
-                            .merge(cwb.resolution(), 1L, Long::sum);
+                            .computeIfAbsent(cwb.resolution(), k -> new HashSet<>())
+                            .add(cwb.cellId());
                 }
             }
         }
 
         List<CoverageInformation> result = new ArrayList<>();
-        for (Map.Entry<Long, Map<Integer, Long>> entry : areaToResolutionVisitedCount.entrySet()) {
+        for (Map.Entry<Long, Map<Integer, Set<Long>>> entry : areaToResolutionVisitedCells.entrySet()) {
             long osmId = entry.getKey();
-            Map<Integer, Long> resCounts = entry.getValue();
+            Map<Integer, Set<Long>> resCounts = entry.getValue();
 
-            for (Map.Entry<Integer, Long> resEntry : resCounts.entrySet()) {
+            for (Map.Entry<Integer, Set<Long>> resEntry : resCounts.entrySet()) {
                 int resolution = resEntry.getKey();
-                long visited = resEntry.getValue();
+                long visited = resEntry.getValue().size();
                 int totalCells = rocksDBService.getTotalCells(osmId, resolution);
                 double pct = totalCells > 0 ? (double) visited / totalCells * 100.0 : 0.0;
                 String name = getLocalizedName(osmId, locale);

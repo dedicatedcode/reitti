@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.service.h3;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,31 +23,32 @@ public class H3CellUpdateJob implements Job {
     private final JdbcTemplate jdbcTemplate;
     private final RocksDBH3Service rocksDbService;
     private final PointReaderWriter pointReaderWriter;
+    private final JobSchedulingService jobSchedulingService;
 
-    public H3CellUpdateJob(JdbcTemplate jdbcTemplate, RocksDBH3Service rocksDbService, PointReaderWriter pointReaderWriter) {
+    public H3CellUpdateJob(JdbcTemplate jdbcTemplate, RocksDBH3Service rocksDbService, PointReaderWriter pointReaderWriter, JobSchedulingService jobSchedulingService) {
         this.jdbcTemplate = jdbcTemplate;
         this.rocksDbService = rocksDbService;
         this.pointReaderWriter = pointReaderWriter;
+        this.jobSchedulingService = jobSchedulingService;
     }
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
+        TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
+
         if (!rocksDbService.isAvailable()) {
             log.debug("RocksDB is not available yet. Rescheduling job.");
-            Trigger delayedTrigger = TriggerBuilder.newTrigger()
-                    .withIdentity("retry-" + UUID.randomUUID(), "retry-group")
-                    .forJob(context.getJobDetail())
-                    .startAt(Instant.now().plusSeconds(5))
-                    .build();
-
-            try {
-                context.getScheduler().scheduleJob(delayedTrigger);
-            } catch (SchedulerException e) {
-                log.error("Failed to schedule delayed job: {}", e.getMessage());
-                return;
-            }
+            jobSchedulingService.scheduleTask(
+                    context.getJobDetail(),
+                    data,
+                    Instant.now().plusSeconds(5),
+                    JobSchedulingService.Metadata.builder()
+                            .jobType(JobType.H3_CELL_UPDATE)
+                            .friendlyName("Updating H3 Spatial Statistics (retry)")
+                            .build()
+            );
+            return;
         }
-        TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
 
         if (data.changeType == ChangeType.MOVEMENT) {
             log.debug("Processing movement for {} points", data.movedPoints.size());
