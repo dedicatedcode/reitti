@@ -8,5 +8,7 @@ public record CoverageInformation(
         int totalCells,
         int visitedCells,
         double coveragePercentage,
+        int resolution,
+        int adminLevel,
         List<Long> visitedCellIds) {
 }

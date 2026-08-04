@@ -1,0 +1,8 @@
+CREATE TABLE osm_bounds
+(
+    osm_id  BIGINT PRIMARY KEY,
+    min_lat DOUBLE PRECISION NOT NULL,
+    min_lon DOUBLE PRECISION NOT NULL,
+    max_lat DOUBLE PRECISION NOT NULL,
+    max_lon DOUBLE PRECISION NOT NULL
+);

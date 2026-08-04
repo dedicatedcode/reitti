@@ -17,9 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/v2/coverage")
@@ -50,10 +48,6 @@ public class CoverageController {
         return coverageService.getCoverage(user, until, locale);
     }
 
-    /**
-     * Coverage for a specific OSM area (all‑time, all devices).
-     * visitedCellIds are returned so the front‑end can render H3 hexagons.
-     */
     @GetMapping("/{osmId}")
     public ResponseEntity<CoverageInformation> getAreaCoverage(
             @AuthenticationPrincipal User user,
@@ -64,10 +58,6 @@ public class CoverageController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * All visited H3 cell indices for a given OSM area as a flat array.
-     * deck.gl’s H3HexagonLayer can consume {hex: number} objects directly.
-     */
     @GetMapping("/{osmId}/cells")
     public ResponseEntity<List<HexCellDto>> getAreaCells(
             @AuthenticationPrincipal User user,
@@ -76,12 +66,11 @@ public class CoverageController {
         return coverageService.getCoverageInformation(user, osmId, locale)
                 .map(ci -> ci.visitedCellIds().stream()
                         .map(id -> new HexCellDto(id, 1))
-                        .collect(Collectors.toList()))
+                        .toList())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Device‑specific endpoints follow the same pattern:
     @GetMapping("/device/{deviceId}")
     public List<CoverageInformation> getDeviceCoverage(
             @AuthenticationPrincipal User user,
@@ -120,6 +109,43 @@ public class CoverageController {
         Instant startOfRange = start.atStartOfDay(timezone).toInstant();
         Instant endOfRange = end.plusDays(1).atStartOfDay(timezone).toInstant();
         return rawLocationPointJdbcService.findVisitedH3CellsCounts(userId, startOfRange, endOfRange);
+    }
+
+    @GetMapping("/boundary/{osmId}")
+    public ResponseEntity<Map<String, Object>> getBoundary(
+            @PathVariable long osmId) {
+        String geojson = coverageService.getBoundaryGeoJson(osmId);
+        if (geojson == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        H3SpatialCoverageService.BoundingBox bbox = coverageService.getOrComputeBounds(osmId);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("geojson", geojson);
+        if (bbox != null) {
+            result.put("bbox", Map.of(
+                    "minLat", bbox.minLat(),
+                    "minLon", bbox.minLon(),
+                    "maxLat", bbox.maxLat(),
+                    "maxLon", bbox.maxLon()
+            ));
+        } else {
+            result.put("bbox", null);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/areas")
+    public List<CoverageInformation> getFilteredAreas(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) Double minLat,
+            @RequestParam(required = false) Double minLon,
+            @RequestParam(required = false) Double maxLat,
+            @RequestParam(required = false) Double maxLon,
+            @RequestParam(required = false) Instant until) {
+        Locale locale = LocaleContextHolder.getLocale();
+        return coverageService.getCoverageFiltered(user, until, locale, minLat, minLon, maxLat, maxLon);
     }
 
     public record H3CellCount(String hexagon, Instant time, long count) {}

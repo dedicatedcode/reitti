@@ -98,54 +98,156 @@
     white-space: nowrap;
 }
 
-.coverage-area-info {
+.coverage-tree-panel {
     position: fixed;
-    bottom: 140px;
+    top: 60px;
     right: 10px;
     z-index: 100;
     background: rgba(14, 24, 42, 0.85);
     border: 1px solid var(--color-highlight);
     border-radius: 8px;
-    padding: 10px 14px;
-    max-height: 200px;
+    width: 280px;
+    max-height: calc(100vh - 180px);
     overflow-y: auto;
-    font-size: 12px;
-    color: var(--color-text);
     backdrop-filter: blur(8px);
-    min-width: 180px;
-}
-
-.coverage-area-info .area-row {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 2px 0;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-highlight) rgba(14, 24, 42, 0.5);
 }
 
-.coverage-area-info .area-name {
+.tree-header {
+    position: sticky;
+    top: 0;
+    background: rgba(14, 24, 42, 0.95);
+    padding: 10px 14px;
+    color: var(--color-highlight);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+.tree-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tree-section.pinned {
+    border-bottom: 1px solid var(--color-highlight);
+    margin-bottom: 4px;
+}
+
+.tree-section.pinned .tree-item.pinned-item {
     color: var(--color-highlight);
 }
 
-.coverage-area-info .area-pct {
-    font-family: monospace;
+.tree-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    cursor: pointer;
+    color: var(--color-text-white);
     font-size: 12px;
-    color: var(--color-text-muted, #999);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    user-select: none;
+    transition: background 0.15s;
 }
 
-.coverage-area-info .area-bar {
-    width: 60px;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+.tree-section-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tree-section-header .tree-chevron {
+    font-size: 10px;
+    transition: transform 0.2s;
+    opacity: 0.6;
+}
+
+.tree-section-header.open .tree-chevron {
+    transform: rotate(90deg);
+}
+
+.tree-section-items {
+    display: none;
+    padding-bottom: 4px;
+}
+
+.tree-section-items.open {
+    display: block;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px 5px 22px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--color-text-white);
+    transition: background 0.15s;
+}
+
+.tree-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.tree-item.selected {
+    background: rgba(245, 222, 179, 0.1);
+}
+
+.tree-item .tree-item-name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
-    align-self: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.coverage-area-info .area-bar-fill {
+.tree-item .tree-item-pct {
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--color-highlight, #666);
+    min-width: 44px;
+    text-align: right;
+}
+
+.tree-item .tree-item-bar {
+    width: 50px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.tree-item .tree-item-bar-fill {
     height: 100%;
     background: var(--color-highlight);
-    border-radius: 4px;
+    border-radius: 3px;
     transition: width 0.3s;
+}
+
+.tree-item.selected .tree-item-bar-fill {
+    background: #fff;
+}
+
+.tree-empty {
+    padding: 20px 14px;
+    font-size: 12px;
+    color: var(--color-text-gray);
+    text-align: center;
+}
+
+.tree-loading {
+    padding: 12px 14px;
+    font-size: 11px;
+    color: var(--color-text-gray, #666);
+    text-align: center;
 }
 
 .coverage-tooltip {
@@ -177,6 +279,13 @@
     }
     .coverage-fab {
         bottom: 60px !important;
+    }
+    .coverage-tree-panel {
+        width: 240px;
+        right: 4px;
+        top: 48px;
+        max-height: calc(100vh - 160px);
+        font-size: 11px;
     }
 }
 
@@ -220,5 +329,5 @@
 }
 
 #coverage-loading-overlay .loading-text {
-    color: var(--color-text, #aaa);
+    color: var(--color-text-gray, #aaa);
 }

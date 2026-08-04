@@ -10,6 +10,10 @@ import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.uber.h3core.H3Core;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.io.WKBReader;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,6 +181,8 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 totalCells,
                 visitedCellIds.size(),
                 percentage,
+                bestResolution,
+                rocksDBService.getAdminLevel(osmId),
                 visitedCellIds
         ));
     }
@@ -185,7 +191,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     public Optional<CoverageInformation> getCoverageInformation(User user, Device device, long osmId, Locale locale) {
         // Get coverage stats from database
         String coverageSql = """
-        SELECT osm_id, visited_cell_count, total_cell_count
+        SELECT osm_id, h3_resolution, visited_cell_count, total_cell_count
         FROM h3_area_coverage_stats
         WHERE user_id = ? AND device_id = ? AND osm_id = ?
         """;
@@ -193,6 +199,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         List<CoverageStats> stats = jdbcTemplate.query(coverageSql,
                                                        (rs, rowNum) -> new CoverageStats(
                                                                rs.getLong("osm_id"),
+                                                               rs.getInt("h3_resolution"),
                                                                rs.getInt("visited_cell_count"),
                                                                rs.getInt("total_cell_count")
                                                        ),
@@ -221,6 +228,8 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 coverageStats.totalCells,
                 coverageStats.visitedCells,
                 coveragePercentage,
+                coverageStats.resolution,
+                rocksDBService.getAdminLevel(osmId),
                 visitedCellIds
         ));
     }
@@ -315,10 +324,14 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
             }
         }
 
+        Map<Long, Integer> adminLevelCache = new HashMap<>();
         List<CoverageInformation> result = new ArrayList<>();
         for (Map.Entry<Long, Map<Integer, Set<Long>>> entry : areaToResolutionVisitedCells.entrySet()) {
             long osmId = entry.getKey();
             Map<Integer, Set<Long>> resCounts = entry.getValue();
+
+            int adminLevel = adminLevelCache.computeIfAbsent(osmId,
+                    id -> rocksDBService.getAdminLevel(id));
 
             for (Map.Entry<Integer, Set<Long>> resEntry : resCounts.entrySet()) {
                 int resolution = resEntry.getKey();
@@ -328,7 +341,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                 String name = getLocalizedName(osmId, locale);
 
                 result.add(new CoverageInformation(
-                        osmId, name, totalCells, (int) visited, pct,
+                        osmId, name, totalCells, (int) visited, pct, resolution, adminLevel,
                         List.of()
                 ));
             }
@@ -363,5 +376,117 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         }
     }
 
-    private record CoverageStats(long osmId, int visitedCells, int totalCells) {}
+    public BoundingBox getOrComputeBounds(long osmId) {
+        List<BoundingBox> cached = jdbcTemplate.query(
+                "SELECT min_lat, min_lon, max_lat, max_lon FROM osm_bounds WHERE osm_id = ?",
+                (rs, rowNum) -> new BoundingBox(
+                        rs.getDouble("min_lat"), rs.getDouble("min_lon"),
+                        rs.getDouble("max_lat"), rs.getDouble("max_lon")),
+                osmId);
+        if (!cached.isEmpty()) {
+            return cached.getFirst();
+        }
+
+        byte[] wkb = rocksDBService.getBoundaryGeometry(osmId);
+        if (wkb == null || wkb.length == 0) {
+            return null;
+        }
+
+        try {
+            WKBReader reader = new WKBReader(new GeometryFactory());
+            Geometry geom = reader.read(wkb);
+            org.locationtech.jts.geom.Envelope env = geom.getEnvelopeInternal();
+            BoundingBox box = new BoundingBox(
+                    env.getMinY(), env.getMinX(), env.getMaxY(), env.getMaxX());
+
+            jdbcTemplate.update(
+                    "INSERT INTO osm_bounds (osm_id, min_lat, min_lon, max_lat, max_lon) VALUES (?, ?, ?, ?, ?) ON CONFLICT (osm_id) DO NOTHING",
+                    osmId, box.minLat, box.minLon, box.maxLat, box.maxLon);
+
+            return box;
+        } catch (Exception e) {
+            log.warn("Failed to compute bounds for OSM ID {}: {}", osmId, e.getMessage());
+            return null;
+        }
+    }
+
+    public String getBoundaryGeoJson(long osmId) {
+        byte[] wkb = rocksDBService.getBoundaryGeometry(osmId);
+        if (wkb == null || wkb.length == 0) {
+            return null;
+        }
+
+        try {
+            WKBReader reader = new WKBReader(new GeometryFactory());
+            Geometry geom = reader.read(wkb);
+            return geometryToGeoJson(geom);
+        } catch (Exception e) {
+            log.warn("Failed to convert geometry for OSM ID {}: {}", osmId, e.getMessage());
+            return null;
+        }
+    }
+
+    private String geometryToGeoJson(Geometry geom) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"type\":\"").append(geom.getGeometryType()).append("\",\"coordinates\":");
+        appendCoordinates(sb, geom);
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private void appendCoordinates(StringBuilder sb, Geometry geom) {
+        String type = geom.getGeometryType();
+        switch (type) {
+            case "MultiPolygon" -> {
+                sb.append("[");
+                for (int i = 0; i < geom.getNumGeometries(); i++) {
+                    if (i > 0) sb.append(",");
+                    appendPolygonCoordinates(sb, geom.getGeometryN(i));
+                }
+                sb.append("]");
+            }
+            case "Polygon" -> appendPolygonCoordinates(sb, geom);
+            default -> sb.append("[]");
+        }
+    }
+
+    private void appendPolygonCoordinates(StringBuilder sb, Geometry polygon) {
+        sb.append("[");
+        for (int i = 0; i < polygon.getNumGeometries(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("[");
+            Coordinate[] coords = polygon.getGeometryN(i).getCoordinates();
+            for (int j = 0; j < coords.length; j++) {
+                if (j > 0) sb.append(",");
+                sb.append("[").append(coords[j].x).append(",").append(coords[j].y).append("]");
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+    }
+
+    public List<CoverageInformation> getCoverageFiltered(User user, Instant until, Locale locale,
+                                                          Double minLat, Double minLon,
+                                                          Double maxLat, Double maxLon) {
+        List<CoverageInformation> all = getCoverage(user, until, locale);
+
+        if (minLat == null || maxLat == null) {
+            return all;
+        }
+
+        return all.stream().filter(ci -> {
+            BoundingBox box = getOrComputeBounds(ci.osmId());
+            if (box == null) return true;
+            return box.overlaps(minLat, minLon, maxLat, maxLon);
+        }).toList();
+    }
+
+    public record BoundingBox(double minLat, double minLon, double maxLat, double maxLon) {
+        public boolean overlaps(double qMinLat, double qMinLon, double qMaxLat, double qMaxLon) {
+            return minLat <= qMaxLat && maxLat >= qMinLat
+                    && minLon <= qMaxLon && maxLon >= qMinLon;
+        }
+    }
+
+    private record CoverageStats(long osmId, int resolution, int visitedCells, int totalCells) {}
 }

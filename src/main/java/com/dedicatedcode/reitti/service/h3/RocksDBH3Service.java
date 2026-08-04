@@ -158,6 +158,44 @@ public class RocksDBH3Service {
         }
     }
 
+    public byte[] getBoundaryGeometry(long osmId) {
+        rwLock.readLock().lock();
+        try {
+            if (regionGeometryDb == null) {
+                return null;
+            }
+            byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
+            return regionGeometryDb.get(key);
+        } catch (RocksDBException e) {
+            log.error("Failed to lookup geometry for OSM ID {}: {}", osmId, e.getMessage());
+            return null;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public int getAdminLevel(long osmId) {
+        rwLock.readLock().lock();
+        try {
+            if (regionMetadataDb == null) {
+                return -1;
+            }
+            byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
+            byte[] value = regionMetadataDb.get(key);
+            if (value == null || value.length < 16) {
+                return -1;
+            }
+            ByteBuffer buffer = ByteBuffer.wrap(value).order(java.nio.ByteOrder.BIG_ENDIAN);
+            buffer.position(12);
+            return buffer.getInt();
+        } catch (RocksDBException e) {
+            log.error("Failed to lookup admin level for OSM ID {}: {}", osmId, e.getMessage());
+            return -1;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
     public int getTotalCells(long osmId, int targetResolution) {
         rwLock.readLock().lock();
         byte[] key = ByteBuffer.allocate(8).putLong(osmId).array();
@@ -168,7 +206,7 @@ public class RocksDBH3Service {
             }
 
             ByteBuffer buffer = ByteBuffer.wrap(value).order(java.nio.ByteOrder.BIG_ENDIAN);
-            if (value.length != 12) {
+            if (value.length != 12 && value.length != 16) {
                 log.warn("Unexpected region_metadata value length {} for OSM ID {}", value.length, osmId);
                 return 0;
             }

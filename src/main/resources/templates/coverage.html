@@ -44,8 +44,15 @@
 
 <div id="coverage-loading-overlay" class="hidden">
         <div class="spinner"></div>
-        <div class="loading-text">Loading coverage data...</div>
+        <div class="loading-text" th:text="#{coverage.loading}">Loading coverage data...</div>
     </div>
+
+<div id="coverage-tree-panel" class="coverage-tree-panel">
+    <div class="tree-header" th:text="#{coverage.tree.header}">Coverage</div>
+    <div id="tree-content">
+        <div class="tree-empty" th:text="#{coverage.tree.usage}">Pan and zoom to see areas</div>
+    </div>
+</div>
 
 <div th:replace="~{fragments/main-navigation :: main-navigation('coverage')}"></div>
 
@@ -82,11 +89,11 @@
 
 <div class="fab-container coverage-fab" id="coverage-fab">
     <button type="button" class="btn fab-btn" id="coverage-prev-month" title="Previous Month">
-        <i class="lni lni-chevron-left"></i>
+        <i class="lni lni-arrow-left"></i>
     </button>
     <span class="coverage-month-display" id="coverage-month-display"></span>
     <button type="button" class="btn fab-btn" id="coverage-next-month" title="Next Month">
-        <i class="lni lni-chevron-right"></i>
+        <i class="lni lni-arrow-right"></i>
     </button>
 </div>
 
@@ -97,6 +104,8 @@
 
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {};
+    window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+    window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
     window.currentUserId = /*[[${currentUserId}]]*/ null;
 </script>
 <script src="/js/coverage.js"></script>
