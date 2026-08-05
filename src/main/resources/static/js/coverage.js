@@ -80,6 +80,8 @@
             zoom: 3,
             pitch: 0,
             bearing: 0,
+            maxPitch: 0,
+            dragRotate: false,
             attributionControl: false,
             renderWorldCopies: false,
             interleaved: true,
@@ -128,49 +130,21 @@
 
     function getMapStyle() {
         if (window.reittiCustomMapStyles && window.reittiCustomMapStyles.length > 0) {
-            const activeId = window.reittiActiveMapStyleId || window.reittiCustomMapStyles[0].id;
-            const style = window.reittiCustomMapStyles.find(s => s.id === activeId) || window.reittiCustomMapStyles[0];
-            if (style.url) return style.url;
-            if (style.json) return JSON.parse(style.json);
-            if (style.tiles) {
-                return {
-                    version: 8,
-                    sources: {
-                        'raster-tiles': {
-                            type: 'raster',
-                            tiles: [style.tiles],
-                            tileSize: 256,
-                            attribution: style.attribution || '',
-                        }
-                    },
-                    layers: [{
-                        id: 'raster-tiles-layer',
-                        type: 'raster',
-                        source: 'raster-tiles',
-                        minzoom: 0,
-                        maxzoom: 22,
-                    }]
-                };
+            const mapStyle = MapRenderer.getMapStyle(MapRenderer.getActiveMapStyleId());
+            if (mapStyle) {
+                try {
+                    return MapRenderer.getMapStyleValue(mapStyle);
+                } catch (e) {
+                    console.warn('Failed to resolve active map style, falling back to default:', e);
+                    const fallback = MapRenderer.getMapStyles()[0];
+                    try {
+                        return MapRenderer.getMapStyleValue(fallback);
+                    } catch (e2) {
+                        console.warn('Default style also failed:', e2);
+                    }
+                }
             }
         }
-        return {
-            version: 8,
-            sources: {
-                'dark-matter': {
-                    type: 'raster',
-                    tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'],
-                    tileSize: 256,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-                }
-            },
-            layers: [{
-                id: 'dark-matter-layer',
-                type: 'raster',
-                source: 'dark-matter',
-                minzoom: 0,
-                maxzoom: 22,
-            }]
-        };
     }
 
     function initFabButtons() {

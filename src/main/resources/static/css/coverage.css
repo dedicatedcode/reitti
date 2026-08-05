@@ -43,7 +43,7 @@
     max-width: 800px;
     z-index: 1000;
     padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-background-dark-transparent);
     border-radius: 10px;
     backdrop-filter: blur(8px);
 }
