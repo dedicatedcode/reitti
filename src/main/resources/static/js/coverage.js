@@ -16,15 +16,6 @@
         t('month.12')
     ];
 
-    const ADMIN_LEVEL_LABELS = {
-        2: 'Countries',
-        4: 'States',
-        6: 'Counties',
-        8: 'Cities',
-        9: 'Districts',
-        10: 'Neighborhoods',
-    };
-
     const state = {
         map: null,
         deckOverlay: null,
@@ -49,7 +40,7 @@
         zoomDebounceId: null,
         viewportDebounceId: null,
         userColor: [51, 136, 255],
-        treeSections: {2: true, 4: true, 6: true, 8: true, 9: true, 10: true},
+        treeSections: {countries: true, states: true, cities_regions: true, districts: true, other: true},
         lastViewportBounds: null,
     };
 
@@ -529,6 +520,10 @@
     }
 
     async function loadFilteredAreas() {
+        const content = document.getElementById('tree-content');
+        if (content) {
+            content.innerHTML = '<div class="tree-loading">' + t('coverage.tree.loading') + '</div>';
+        }
         try {
             const deviceId = state.selectedDeviceId;
             let url;
@@ -555,7 +550,6 @@
     }
 
     function renderTree() {
-        debugger
         const content = document.getElementById('tree-content');
         if (!content) return;
 
@@ -574,19 +568,28 @@
             }
         });
 
+        const CATEGORY_GROUPS = {
+            'countries': [2],
+            'states': [4],
+            'cities_regions': [5, 6, 7, 8],
+            'districts': [9, 10],
+        };
+
+        const LEVEL_TO_CATEGORY = {};
+        for (const [cat, levels] of Object.entries(CATEGORY_GROUPS)) {
+            for (const l of levels) {
+                LEVEL_TO_CATEGORY[l] = cat;
+            }
+        }
+
         const grouped = new Map();
         bestPerOsm.forEach(a => {
-            const level = a.adminLevel >= 0 ? a.adminLevel : 99;
-            if (!grouped.has(level)) grouped.set(level, []);
-            grouped.get(level).push(a);
+            const category = LEVEL_TO_CATEGORY[a.adminLevel] || 'other';
+            if (!grouped.has(category)) grouped.set(category, []);
+            grouped.get(category).push(a);
         });
 
-        const order = [2, 4, 6, 8, 9, 10];
-        const fallbackOrder = [];
-        grouped.forEach((v, k) => {
-            if (!order.includes(k)) fallbackOrder.push(k);
-        });
-        fallbackOrder.sort((a, b) => a - b);
+        const order = ['countries', 'states', 'cities_regions', 'districts', 'other'];
         let html = '';
 
         if (state.selectedOsmId && !bestPerOsm.has(state.selectedOsmId)) {
@@ -605,8 +608,7 @@
             }
         }
 
-        const allOrder = [...order, ...fallbackOrder];
-        allOrder.forEach(level => {
+        order.forEach(level => {
             const levelAreas = grouped.get(level) || [];
             if (levelAreas.length === 0) return;
 
@@ -616,7 +618,7 @@
 
             if (sorted.length === 0) return;
 
-            const label = ADMIN_LEVEL_LABELS[level] || t('coverage.admin_level.label.fallback', [level]);
+            const label = t('coverage.admin_level.label.' + level);
             const isOpen = state.treeSections[level] !== false;
             const count = sorted.length;
 
