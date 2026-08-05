@@ -141,6 +141,9 @@ class H3CellUpdateJobTest {
 
         sanktGertrud = spatialCoverageService.getCoverageInformation(user, device, 367872, Locale.GERMAN);
         assertFalse(sanktGertrud.isPresent());
+
+        this.testingService.awaitExpected((t) -> spatialCoverageService.getCoverageInformation(user, device, 532325, Locale.GERMAN).isPresent(), 60);
+
         Optional<CoverageInformation> badOldesloe = spatialCoverageService.getCoverageInformation(user, device, 532325, Locale.GERMAN);
         assertTrue(badOldesloe.isPresent());
         assertEquals(1, badOldesloe.get().visitedCells());

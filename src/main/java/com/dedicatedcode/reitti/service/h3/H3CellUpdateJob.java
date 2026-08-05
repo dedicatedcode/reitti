@@ -195,7 +195,7 @@ public class H3CellUpdateJob implements Job {
     private List<PointData> loadPointDataForMoved(List<MovedPoint> movedPoints, boolean useOldCoords) {
         List<Long> ids = movedPoints.stream().map(MovedPoint::id).toList();
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-        String sql = "SELECT user_id, device_id, id, h3_cell, status, timestamp " +
+        String sql = "SELECT user_id, device_id, id, status, timestamp " +
                 "FROM raw_source_points WHERE id IN (" + placeholders + ")";
 
         Map<Long, MovedPoint> movedMap = movedPoints.stream().collect(Collectors.toMap(MovedPoint::id, mp -> mp));
@@ -205,15 +205,15 @@ public class H3CellUpdateJob implements Job {
                                       long userId = rs.getLong("user_id");
                                       Long deviceId = rs.getObject("device_id", Long.class);
                                       long id = rs.getLong("id");
-                                      long h3Cell = rs.getLong("h3_cell");
                                       int status = rs.getInt("status");
                                       Instant timestamp = rs.getTimestamp("timestamp").toInstant();
 
                                       MovedPoint movedPoint = movedMap.get(id);
                                       double lat = useOldCoords ? movedPoint.oldLat() : movedPoint.newLat();
                                       double lng = useOldCoords ? movedPoint.oldLng() : movedPoint.newLng();
+                                      long effectiveH3Cell = useOldCoords ? movedPoint.oldH3Cell() : movedPoint.newH3Cell();
 
-                                      return new PointData(userId, deviceId, id, lat, lng, h3Cell, status, timestamp);
+                                      return new PointData(userId, deviceId, id, lat, lng, effectiveH3Cell, status, timestamp);
                                   },
                                   ids.toArray()
         );
@@ -332,7 +332,7 @@ public class H3CellUpdateJob implements Job {
     private record PointData(long userId, Long deviceid, long id, double lat, double lng, long h3Cell, int status,
                              Instant timestamp) {}
 
-    public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng) implements Serializable {}
+    public record MovedPoint(long id, double oldLat, double oldLng, double newLat, double newLng, long oldH3Cell, long newH3Cell) implements Serializable {}
 
     public record CellIncrement(long userId, Long deviceId, long h3Cell, int count, Instant lastVisitedAt,
                                 Instant firstVisitedAt) implements Serializable {

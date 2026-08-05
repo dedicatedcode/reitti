@@ -83,9 +83,11 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     @Override
     public void preMove(List<MovedPointDto> movedPoints) {
         List<H3CellUpdateJob.MovedPoint> points = movedPoints.stream().map(movedPointDto -> {
-            List<H3CellUpdateJob.MovedPoint> result = this.jdbcTemplate.query("SELECT ST_AsText(geom) AS geom_wkt FROM raw_source_points WHERE id = ? ", (rs, rowNum) -> {
+            List<H3CellUpdateJob.MovedPoint> result = this.jdbcTemplate.query("SELECT ST_AsText(geom) AS geom_wkt, h3_cell FROM raw_source_points WHERE id = ? ", (rs, rowNum) -> {
                 GeoPoint geomWkt = pointReaderWriter.read(rs.getString("geom_wkt"));
-                return new H3CellUpdateJob.MovedPoint(movedPointDto.getSourceId(), geomWkt.latitude(), geomWkt.longitude(), movedPointDto.getLat(), movedPointDto.getLng());
+                long oldH3Cell = rs.getLong("h3_cell");
+                long newH3Cell = h3.latLngToCell(movedPointDto.getLat(), movedPointDto.getLng(), 12);
+                return new H3CellUpdateJob.MovedPoint(movedPointDto.getSourceId(), geomWkt.latitude(), geomWkt.longitude(), movedPointDto.getLat(), movedPointDto.getLng(), oldH3Cell, newH3Cell);
             }, movedPointDto.getSourceId());
             if (result.isEmpty()) {
                 return null;
