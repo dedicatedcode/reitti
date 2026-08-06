@@ -4,10 +4,6 @@ import com.dedicatedcode.reitti.event.SSEEvent;
 import com.dedicatedcode.reitti.event.SSEType;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -18,22 +14,19 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
-public class UserSseEmitterService implements SmartLifecycle, Job {
+public class UserSseEmitterService implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
     private final ReittiIntegrationService reittiIntegrationService;
     private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+    private final LinkedBlockingQueue<TaskData> queue = new LinkedBlockingQueue<>();
+    private volatile boolean running;
+    private Thread drainThread;
 
     public UserSseEmitterService(ReittiIntegrationService reittiIntegrationService) {
         this.reittiIntegrationService = reittiIntegrationService;
-    }
-
-    @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
-        JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
     }
 
     public SseEmitter addEmitter(User user) {
@@ -63,8 +56,8 @@ public class UserSseEmitterService implements SmartLifecycle, Job {
         return emitter;
     }
 
-    private void execute(TaskData data) {
-        sendEventToUser(data.user, data.eventData);
+    public void enqueue(TaskData data) {
+        queue.add(data);
     }
 
     public void sendEventToUser(User user, SSEEvent eventData) {
@@ -88,84 +81,47 @@ public class UserSseEmitterService implements SmartLifecycle, Job {
         if (emitters != null) {
             emitters.remove(emitter);
             if (emitters.isEmpty()) {
-                    userEmitters.remove(user.getId());
-                    reittiIntegrationService.unsubscribeFromIntegrations(user);
-                }
+                userEmitters.remove(user.getId());
+                reittiIntegrationService.unsubscribeFromIntegrations(user);
+            }
             log.info("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
         }
     }
 
     @Override
     public void start() {
+        running = true;
+        drainThread = new Thread(() -> {
+            while (running) {
+                try {
+                    TaskData data = queue.take();
+                    if (data != null) {
+                        sendEventToUser(data.user, data.eventData);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            log.info("SSE drain thread stopped");
+        }, "sse-drain");
+        drainThread.setDaemon(true);
+        drainThread.start();
     }
 
     @Override
     public void stop() {
-        userEmitters.values().forEach(sseEmitters ->  sseEmitters.forEach(SseEmitter::complete));
+        running = false;
+        if (drainThread != null) {
+            drainThread.interrupt();
+        }
+        userEmitters.values().forEach(sseEmitters -> sseEmitters.forEach(SseEmitter::complete));
     }
 
     @Override
     public boolean isRunning() {
-        return true;
+        return running;
     }
 
-    public static final class TaskData extends JobContext<TaskData> {
-        private final User user;
-        private final SSEEvent eventData;
-
-        public TaskData(User user, SSEEvent eventData) {
-            this(user, eventData, null,  null);
-        }
-
-        public TaskData(User user, SSEEvent eventData, UUID jobId, UUID parentJobId) {
-            super(jobId, parentJobId);
-            this.user = user;
-            this.eventData = eventData;
-        }
-
-        public User user() {
-            return user;
-        }
-
-        public SSEEvent eventData() {
-            return eventData;
-        }
-
-        public UUID parentJobId() {
-            return parentJobId;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (TaskData) obj;
-            return Objects.equals(this.user, that.user) &&
-                    Objects.equals(this.eventData, that.eventData) &&
-                    Objects.equals(this.parentJobId, that.parentJobId);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(user, eventData, parentJobId);
-        }
-
-        @Override
-        public String toString() {
-            return "TaskData[" +
-                    "user=" + user + ", " +
-                    "eventData=" + eventData + ", " +
-                    "parentJobId=" + parentJobId + ']';
-        }
-
-        @Override
-        public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, eventData, jobId, parentJobId);
-        }
-
-        @Override
-        public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, eventData, jobId, parentJobId);
-        }
-    }
+    public record TaskData(User user, SSEEvent eventData) {}
 }
