@@ -93,7 +93,15 @@ public class DeviceSettingsController {
         boolean hasAvatar = this.avatarService.getInfo(user.getId(), device.id()).isPresent();
         model.addAttribute("hasAvatar", hasAvatar);
 
-        return "settings/devices :: device-edit-form";
+        return "settings/fragments/devices :: device-edit-form";
+    }
+
+    @GetMapping("/create-form")
+    public String createForm(@AuthenticationPrincipal User user,
+                             Model model) {
+        model.addAttribute("defaultColors", getDefaultColors());
+        model.addAttribute("defaultAvatars", DEFAULT_AVATARS);
+        return "settings/fragments/devices :: device-edit-form";
     }
 
     @PostMapping

@@ -75,4 +75,8 @@ public class ApiToken {
     public ApiToken withDevice(Device device) {
         return new ApiToken(this.id, this.token, this.user, device, this.name, this.createdAt, this.lastUsedAt);
     }
+
+    public ApiToken withName(String name) {
+        return new ApiToken(this.id, this.token, this.user, this.device, name, this.createdAt, this.lastUsedAt);
+    }
 }

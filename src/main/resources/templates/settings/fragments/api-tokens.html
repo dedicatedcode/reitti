@@ -26,5 +26,60 @@
         </div>
     </form>
 </div>
+
+<div th:fragment="edit-form">
+    <form th:hx-post="@{'/settings/api-tokens/'+${token.id()}+'/rename'}"
+          hx-target="#api-tokens"
+          hx-vals='js:{"timezone": getUserTimezone()}'
+          hx-swap="innerHTML">
+        <div class="form-group">
+            <label for="tokenEditName" th:text="#{tokens.name.label}">Token Name</label>
+            <input type="text" id="tokenEditName" name="name" required
+                   class="form-control"
+                   th:placeholder="#{tokens.name.placeholder}"
+                   th:value="${token.name()}">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">
+                <span th:text="#{form.update}">update</span>
+            </button>
+            <button type="button" class="btn btn-link"
+                    th:hx-get="@{/settings/api-tokens/tokens}"
+                    hx-swap="innerHTML"
+                    hx-target="#api-tokens">
+                <span th:text="#{form.cancel}">Cancel</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<div th:fragment="create-form">
+    <form th:hx-post="@{/settings/api-tokens}"
+          hx-target="#api-tokens"
+          hx-swap="innerHTML"
+          hx-vals='js:{"timezone": getUserTimezone()}'>
+        <div class="form-group">
+            <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>
+            <input type="text" id="tokenName" name="name" required th:placeholder="#{tokens.name.placeholder}">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn" th:text="#{form.create}">Create New Token</button>
+            <button type="button" class="btn btn-link"
+                    th:hx-get="@{/settings/api-tokens/tokens}"
+                    hx-swap="innerHTML"
+                    hx-target="#api-tokens">
+                <span th:text="#{form.cancel}">Cancel</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<div th:fragment="token-form-container">
+    <button class="btn"
+            th:hx-get="@{/settings/api-tokens/create-form}"
+            hx-target="this"
+            hx-swap="outerHTML"
+            th:text="#{tokens.create.title}">Create New Token</button>
+</div>
 </body>
 </html>

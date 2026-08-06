@@ -52,6 +52,13 @@
                             <td th:text="${#temporals.format(token.createdAt(), 'yyyy-MM-dd HH:mm')}"></td>
                             <td th:text="${token.lastUsedAt() != null ? #temporals.format(token.lastUsedAt(), 'yyyy-MM-dd HH:mm') : 'Never'}"></td>
                             <td>
+                                <button class="btn"
+                                        th:attr="hx-get=@{/settings/api-tokens/{id}/edit(id=${token.id()})}"
+                                        hx-target="#token-form-container"
+                                        hx-swap="innerHTML"
+                                        hx-vals='js:{"timezone": getUserTimezone()}'
+                                        th:text="#{form.edit}">Edit
+                                </button>
                                 <th:block  th:if="${token.deviceId() != null}">
                                     <span class="token-device-linked">
                                         <a th:href="@{/settings/devices}" class="btn" th:text="#{tokens.link.to.device}">View Device</a>
@@ -89,15 +96,8 @@
                     </table>
                 </div>
 
-                <div class="settings-card">
-                    <form th:hx-post="@{/settings/api-tokens}" hx-target="#api-tokens" hx-swap="innerHTML" hx-vals='js:{"timezone": getUserTimezone()}' class="token-form"
-                          style="margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label for="tokenName" th:text="#{tokens.name.label}">Token Name</label>
-                            <input type="text" id="tokenName" name="name" required th:placeholder="#{tokens.name.placeholder}">
-                        </div>
-                        <button type="submit" class="btn" th:text="#{form.create}">Create New Token</button>
-                    </form>
+                <div class="settings-card" id="token-form-container">
+                    <div th:replace="~{settings/fragments/api-tokens :: token-form-container}"></div>
                 </div>
 
 
