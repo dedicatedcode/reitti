@@ -206,7 +206,7 @@ class DeviceSettingsControllerTest {
         // When
         mockMvc.perform(get("/settings/devices/edit/{deviceId}", device.id()).with(user(admin)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("settings/devices :: device-edit-form"))
+                .andExpect(view().name("settings/fragments/devices :: device-edit-form"))
                 .andExpect(model().attributeExists("device", "selectedColor", "defaultColors"));
     }
 
