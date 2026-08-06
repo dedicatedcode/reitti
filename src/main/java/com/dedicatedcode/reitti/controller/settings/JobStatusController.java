@@ -47,17 +47,15 @@ public class JobStatusController {
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(@RequestParam(defaultValue = "UTC") ZoneId timezone, Model model) {
         // Fetch all non-SSE jobs in active states
-        List<JobMetadataRepository.JobMetadata> activeJobs = filterNonSSE(
+        List<JobMetadataRepository.JobMetadata> activeJobs =
                 jobMetadataRepository.findByStates(
                         List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
-                )
-        );
-        // Fetch all non-SSE jobs in terminal states (completed/failed)
-        List<JobMetadataRepository.JobMetadata> terminalJobs = filterNonSSE(
+                );
+
+        List<JobMetadataRepository.JobMetadata> terminalJobs =
                 jobMetadataRepository.findByStates(
                         List.of(JobState.COMPLETED, JobState.FAILED)
-                )
-        );
+                );
 
         // Combine to get full picture of parents and children
         List<JobMetadataRepository.JobMetadata> allJobs = new ArrayList<>(activeJobs);
@@ -118,12 +116,6 @@ public class JobStatusController {
 
     private boolean isTerminal(JobState state) {
         return state == JobState.COMPLETED || state == JobState.FAILED;
-    }
-
-    private List<JobMetadataRepository.JobMetadata> filterNonSSE(List<JobMetadataRepository.JobMetadata> jobs) {
-        return jobs.stream()
-                .filter(job -> job.getJobType() != JobType.SSE_EVENT)
-                .toList();
     }
 
     private JobInfo buildPendingJobInfo(ZoneId timezone, JobMetadataRepository.JobMetadata parent,
