@@ -183,9 +183,16 @@ public class SourceLocationPointJdbcService {
 
 
     public int updateLocation(User user, Long id, double lat, double lng) {
+        return updateLocation(user, id, lat, lng, null);
+    }
+
+    public int updateLocation(User user, Long id, double lat, double lng, Long h3Cell) {
+        if (h3Cell != null) {
+            return this.jdbcTemplate.update("UPDATE raw_source_points SET geom = CAST(? AS geometry), h3_cell = ? WHERE id = ? AND user_id = ?",
+                    geometryFactory.createPoint(new Coordinate(lng, lat)).toString(), h3Cell, id, user.getId());
+        }
         return this.jdbcTemplate.update("UPDATE raw_source_points SET geom = CAST(? AS geometry) WHERE id = ? AND user_id = ?",
-                geometryFactory.createPoint(new Coordinate(lng, lat)).toString()
-                , id, user.getId());
+                geometryFactory.createPoint(new Coordinate(lng, lat)).toString(), id, user.getId());
     }
 
     public MapMetadata getMetadata(User user, Device device, Instant start, Instant end) {

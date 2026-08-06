@@ -190,6 +190,7 @@ Reitti publishes several Docker image tags to serve different needs:
 | `BASE_PATH`             | Serve Reitti under a sub-path                     | `/`        |
 | `DANGEROUS_LIFE`        | Enable data-reset features (**use with caution**) | `false`    |
 | `PROCESSING_BATCH_SIZE` | Geo points processed per batch                    | `1000`     |
+| `SPATIAL_COVERAGE`      | Enable the spatial coverage feature               | `false`    |
 
 > For the full list of environment variables, deployment options, and OIDC setup, see
 > the [Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/5.0/infrastructure/oidc/).

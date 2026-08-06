@@ -12,6 +12,7 @@ public record UserSettingsDTO(
         Language selectedLanguage,
         String selectedLocale,
         Instant newestData,
+        Instant earliestData,
         UnitSystem unitSystem,
         Double homeLatitude,
         Double homeLongitude,
@@ -22,7 +23,8 @@ public record UserSettingsDTO(
         TimeMode timeMode,
         ZoneId timezoneOverride,
         String customCssUrl,
-        String timelineColor
+        String timelineColor,
+        boolean h3Enabled
 ) {
 
     public enum UIMode {

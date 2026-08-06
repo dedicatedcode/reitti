@@ -82,7 +82,6 @@ public class DynamicMqttProvider {
 
         return builder.send()
                 .thenCompose(ack -> {
-                    // Success! Disconnect immediately
                     log.info("Test connection successful.");
                     return testClient.disconnect().thenApply(v -> new MqttTestResult(true, "Connection successful"));
                 })
@@ -93,7 +92,6 @@ public class DynamicMqttProvider {
     }
 
     public void register(User user, MqttIntegration config) {
-        // Validation: No wildcards allowed
         if (config.getTopic().contains("+") || config.getTopic().contains("#")) {
             throw new IllegalArgumentException("Reitti requires explicit topics. No wildcards allowed.");
         }

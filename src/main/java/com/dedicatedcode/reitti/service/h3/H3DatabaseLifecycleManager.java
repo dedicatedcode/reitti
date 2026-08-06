@@ -1,0 +1,174 @@
+package com.dedicatedcode.reitti.service.h3;
+
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
+import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
+
+@DisallowConcurrentExecution
+public class H3DatabaseLifecycleManager implements Job {
+
+    private static final Logger log = LoggerFactory.getLogger(H3DatabaseLifecycleManager.class);
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final RocksDBH3Service rocksDbService;
+    private final ZipFileExtractionService extractorService;
+    private final H3ManifestDownloadService manifestDownloadService;
+    private final H3IndexDownloadService downloadService;
+    private final FileVerificationService verificationService;
+    private final JdbcTemplate jdbcTemplate;
+
+    private final Path rootDbDir;
+    private final Path localManifestPath;
+    private final Path tempZipPath;
+
+
+    private final JobSchedulingService jobSchedulingService;
+    private final JobDetail h3RecalculationJob;
+
+    public H3DatabaseLifecycleManager(RocksDBH3Service rocksDbService,
+                                      ZipFileExtractionService extractorService,
+                                      H3ManifestDownloadService manifestDownloadService,
+                                      H3IndexDownloadService downloadService,
+                                      FileVerificationService verificationService,
+                                      JdbcTemplate jdbcTemplate,
+                                      @Value("${reitti.h3.root-dir}") String h3RootDir,
+                                      @Value("${reitti.h3.tmp-zip-path}") String h3TmpZipPah,
+                                      JobSchedulingService jobSchedulingService,
+                                      @Qualifier("h3RecalculationJob") JobDetail h3RecalculationJob) {
+        this.manifestDownloadService = manifestDownloadService;
+        this.downloadService = downloadService;
+        this.verificationService = verificationService;
+        this.jdbcTemplate = jdbcTemplate;
+        this.rootDbDir = Path.of(h3RootDir);
+        this.rocksDbService = rocksDbService;
+        this.extractorService = extractorService;
+        this.jobSchedulingService = jobSchedulingService;
+        this.h3RecalculationJob = h3RecalculationJob;
+        this.localManifestPath = rootDbDir.resolve("local-manifest.json");
+        this.tempZipPath = Path.of(h3TmpZipPah);
+    }
+
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        try {
+            log.info("Starting H3 database upgrade lifecycle...");
+            Files.createDirectories(rootDbDir);
+
+            H3Manifest remoteManifest = manifestDownloadService.fetchRemoteManifest();
+            String remoteVersion = remoteManifest.getVersion();
+
+            Path targetVersionDir = rootDbDir.resolve("version_" + remoteVersion);
+            Path tempExtractionDir = rootDbDir.resolve("version_" + remoteVersion + "_temp");
+
+            if (Files.exists(targetVersionDir)) {
+                log.info("H3 database is up to date at version: {}. Will load it now.", remoteVersion);
+                rocksDbService.hotSwapDatabase(targetVersionDir);
+                rocksDbService.deleteOldVersions();
+            } else {
+                log.info("New database version detected: {}. Commencing background upgrade...", remoteVersion);
+
+                downloadService.downloadDatabaseWithResume(remoteManifest.getDownloadUrl(), tempZipPath);
+                boolean checksumMatches = verificationService.verifyChecksum(tempZipPath, remoteManifest.getSha256());
+                if (!checksumMatches) {
+                    throw new IllegalStateException("Checksum mismatch");
+                }
+
+                Files.createDirectories(tempExtractionDir);
+                extractorService.extractZipStreaming(tempZipPath, tempExtractionDir);
+
+                Files.move(tempExtractionDir, targetVersionDir);
+
+                loadOsmNames(targetVersionDir.resolve("osm_names.tsv"));
+
+                rocksDbService.hotSwapDatabase(targetVersionDir);
+                saveLocalManifest(remoteManifest);
+                rocksDbService.deleteOldVersions();
+
+                Files.deleteIfExists(tempZipPath);
+                log.info("Database successfully updated to version: {}", remoteVersion);
+            }
+
+            this.jobSchedulingService.enqueueTask(h3RecalculationJob,
+                                                   new H3RecalculationJob.TaskData(),
+                                                    JobSchedulingService.Metadata.builder()
+                                                          .friendlyName("Recalculating H3 location cells")
+                                                          .jobType(JobType.H3_RECALCULATION)
+                                                          .build());
+
+        } catch (Exception e) {
+            log.error("Critical failure during H3 database upgrade lifecycle: {}", e.getMessage(), e);
+        }
+    }
+
+    private void saveLocalManifest(H3Manifest manifest) throws IOException {
+        objectMapper.writeValue(localManifestPath.toFile(), manifest);
+    }
+
+    private void loadOsmNames(Path tsvFilePath) {
+        String createTableSql = """
+                DROP TABLE IF EXISTS osm_names;
+                CREATE TABLE osm_names (
+                    osm_id bigint,
+                    osm_type character(1),
+                    all_names jsonb,
+                    PRIMARY KEY (osm_id, osm_type)
+                );
+                """;
+
+        String createBtreeIndexSql = """
+                CREATE INDEX IF NOT EXISTS idx_osm_names_id_type
+                ON osm_names (osm_id, osm_type);
+                """;
+
+        String createGinIndexSql = """
+                CREATE INDEX IF NOT EXISTS idx_osm_names_all_names_gin
+                ON osm_names USING gin (all_names);
+                """;
+
+        String copySql = "COPY osm_names (osm_id, osm_type, all_names) FROM STDIN WITH (FORMAT text, DELIMITER '\t', NULL '')";
+
+        log.info("Ensuring target table exists...");
+        jdbcTemplate.execute(createTableSql);
+
+        log.info("Streaming bulk data via native PostgreSQL COPY protocol...");
+        jdbcTemplate.execute((java.sql.Connection con) -> {
+            BaseConnection pgTargetConnection = con.unwrap(BaseConnection.class);
+            CopyManager copyManager = new CopyManager(pgTargetConnection);
+            try (BufferedReader reader = Files.newBufferedReader(tsvFilePath)) {
+                copyManager.copyIn(copySql, reader);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        });
+
+        // Build indexes AFTER copy finishes
+        log.info("Building B-Tree lookup index...");
+        jdbcTemplate.execute(createBtreeIndexSql);
+
+        log.info("Building GIN index on jsonb names (this may take a moment)...");
+        jdbcTemplate.execute(createGinIndexSql);
+
+        log.info("Bulk data ingestion and indexing completed successfully.");
+
+    }
+}
