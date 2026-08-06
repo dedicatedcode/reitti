@@ -67,6 +67,11 @@ public class ApiTokenSettingsController {
         return "settings/api-tokens :: api-token-usages";
     }
 
+    @GetMapping("/create-form")
+    public String createForm() {
+        return "settings/fragments/api-tokens :: create-form";
+    }
+
     @PostMapping
     public String createToken(@AuthenticationPrincipal User user,
                               @RequestParam String name,
@@ -153,6 +158,39 @@ public class ApiTokenSettingsController {
             model.addAttribute("token", toDto(timezone, tokenById.get()));
             return "settings/fragments/api-tokens :: link-form";
         }
+    }
+
+    @GetMapping("/{tokenId}/edit")
+    public String editForm(@AuthenticationPrincipal User user,
+                           @PathVariable Long tokenId,
+                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                           Model model) {
+        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, tokenId);
+        if (tokenById.isEmpty()) {
+            throw new IllegalArgumentException("Token not found");
+        }
+        model.addAttribute("token", toDto(timezone, tokenById.get()));
+        return "settings/fragments/api-tokens :: edit-form";
+    }
+
+    @PostMapping("/{tokenId}/rename")
+    public String renameToken(@PathVariable Long tokenId,
+                              @RequestParam String name,
+                              @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                              @AuthenticationPrincipal User user,
+                              Model model) {
+        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, tokenId);
+        if (tokenById.isEmpty()) {
+            throw new IllegalArgumentException("Token not found");
+        }
+        try {
+            apiTokenJdbcService.save(tokenById.get().withName(name));
+            model.addAttribute("successMessage", getMessage("message.success.token.renamed"));
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
+        }
+        addCommonAttributes(timezone, user, model);
+        return "settings/api-tokens :: api-tokens-content";
     }
 
     @GetMapping("/tokens")
