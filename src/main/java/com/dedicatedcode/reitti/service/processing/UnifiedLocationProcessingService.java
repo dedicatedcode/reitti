@@ -775,7 +775,8 @@ public class UnifiedLocationProcessingService {
         }
 
         if (tripPoints.size() < 2) {
-            throw new IllegalStateException("A trip without 2 points should not exist.");
+            logger.warn("Unable to create Trip with less than 2 points");
+            return null;
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);

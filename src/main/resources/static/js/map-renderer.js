@@ -270,9 +270,71 @@ class MapRenderer {
         this._cachedVisitPlaces = new Map();  // managerId -> places array (stable ref)
         this._cachedFilteredPolygons = new Map(); // managerId -> filtered places (stable ref)
         this._cachedLayerData = new Map();    // cacheKey -> layerData (per-build cache)
+        this._h3AggregationCache = new Map(); // managerId -> Map(targetRes -> aggregatedData)
         this._currentZoom = 0;
         this._zoomDebounceId = null;
         this._setup();
+    }
+
+    _getTargetH3Resolution(zoom) {
+         console.log("zoom", zoom);
+        if (zoom < 5) return 2;
+        if (zoom < 7) return 3;
+        if (zoom < 8) return 4;
+        if (zoom < 9) return 5;
+        if (zoom < 10) return 6;
+        if (zoom < 11) return 8;
+        if (zoom < 13) return 9;
+        if (zoom < 14) return 10;
+        if (zoom < 15) return 11;
+        return 12;
+    }
+
+    _getAggregatedH3Cells(manager) {
+        const targetRes = this._getTargetH3Resolution(this._currentZoom);
+
+        if (!this._h3AggregationCache.has(manager.id)) {
+            this._h3AggregationCache.set(manager.id, new Map());
+        }
+        const managerCache = this._h3AggregationCache.get(manager.id);
+
+        // Return cached data if we already aggregated for this resolution
+        if (managerCache.has(targetRes)) {
+            return managerCache.get(targetRes);
+        }
+
+        // Clear old resolutions for this manager to save memory
+        managerCache.clear();
+
+        const aggregated = new Map();
+        manager.h3Cells.forEach((buckets, hexStr) => {
+            const bigIntVal = BigInt('0x' + hexStr);
+            const lower = Number(bigIntVal & 0xFFFFFFFFn);
+            const upper = Number((bigIntVal >> 32n) & 0xFFFFFFFFn);
+            const h3Index = h3.splitLongToH3Index(lower, upper);
+
+            const parentIndex = h3.cellToParent(h3Index, targetRes);
+
+            if (!aggregated.has(parentIndex)) {
+                aggregated.set(parentIndex, new Map()); // Map of time -> count
+            }
+            const timeMap = aggregated.get(parentIndex);
+
+            buckets.forEach(b => {
+                timeMap.set(b.time, (timeMap.get(b.time) || 0) + b.count);
+            });
+        });
+
+        const finalAggregated = new Map();
+        aggregated.forEach((timeMap, parentIndex) => {
+            const sortedBuckets = Array.from(timeMap.entries())
+                .map((k) => ({time: k[0], count: k[1]}))
+                .sort((a, b) => new Date(a.time) - new Date(b.time));
+            finalAggregated.set(parentIndex, sortedBuckets);
+        });
+
+        managerCache.set(targetRes, finalAggregated);
+        return finalAggregated;
     }
 
     /**
@@ -391,6 +453,55 @@ class MapRenderer {
 
         if (!keyChanged && this._layerInstances.length > 0) {
             this._updateAnimatedLayers();
+            return;
+        }
+
+        if (this.viewState.viewMode === 'H3') {
+            const allLayers = [];
+            this.gpsDataManagers.forEach(manager => {
+                if (manager.h3Cells && manager.h3Cells.size > 0) {
+                    const aggregatedCells = this._getAggregatedH3Cells(manager);
+                    const hexagons = Array.from(aggregatedCells.keys());
+                    allLayers.push(new deck.H3HexagonLayer({
+                        id: `h3-hexagon-${manager.id}`,
+                        data: hexagons,
+                        getHexagon: hex => hex,
+                        extruded: false,
+                        getFillColor: hex => {
+                            const buckets = aggregatedCells.get(hex);
+                            let cumulative = 0;
+
+                            if (!this.viewState.animating) {
+                                cumulative = buckets.reduce((sum, b) => sum + b.count, 0);
+                            } else {
+                                for (const bucket of buckets) {
+                                    const bucketTime = new Date(bucket.time).getTime() / 1000;
+                                    if (bucketTime <= this.viewState.currentTime) {
+                                        cumulative += bucket.count;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            const alpha = Math.min(255, cumulative * 2.5);
+                            return [...manager.color, alpha];
+                        },
+                        stroked: true,
+                        getLineColor: [...manager.color, 255],
+                        getLineWidth: 1.5,
+                        lineWidthMinPixels: 0.5,
+                        pickable: true,
+                        coverage: 0.90,
+                        opacity: 0.9,
+                        updateTriggers: {
+                            getFillColor: [this.viewState.animating, this.viewState.currentTime, manager.cursor]
+                        }
+                    }));
+                }
+            });
+            this._layerInstances = allLayers;
+            this.deckOverlay.setProps({ layers: allLayers });
             return;
         }
 
@@ -1533,6 +1644,8 @@ class MapRenderer {
     _setup = () => {
         this._currentZoom = this.map.getZoom();
         this._zoomDebounceId = null;
+        let lastH3Res = this._getTargetH3Resolution(this._currentZoom);
+
 
         // -------------------------------------------------------------
         // ZOOM HANDLING
@@ -1541,6 +1654,15 @@ class MapRenderer {
         // -------------------------------------------------------------
         this.map.on('zoom', () => {
             this._currentZoom = this.map.getZoom();
+
+            const currentH3Res = this._getTargetH3Resolution(this._currentZoom);
+            if (currentH3Res !== lastH3Res) {
+                lastH3Res = currentH3Res;
+                if (this.viewState.viewMode === 'H3') {
+                    this._layerContextKey = null; // Force rebuild
+                    this._buildLayers();
+                }
+            }
 
             if (this._zoomDebounceId !== null) {
                 clearTimeout(this._zoomDebounceId);

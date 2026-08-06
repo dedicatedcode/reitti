@@ -32,7 +32,6 @@ public class OwnTracksProcessor implements MqttPayloadProcessor {
     public void process(User user, Device device, byte[] payload) {
         String json = new String(payload, StandardCharsets.UTF_8);
         logger.info("Processing OwnTracks data for user {}: {}", user, json);
-
         try {
             OwntracksLocationRequest request = this.objectMapper.readValue(json, OwntracksLocationRequest.class);
             if (!request.isLocationUpdate()) {

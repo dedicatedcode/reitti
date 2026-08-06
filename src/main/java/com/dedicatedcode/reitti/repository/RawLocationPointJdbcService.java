@@ -1,9 +1,11 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.controller.api.v2.CoverageController;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -27,10 +29,14 @@ import java.util.stream.Collectors;
 public class RawLocationPointJdbcService {
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
+    private final SpatialCoverageService spatialCoverageService;
     private final PointReaderWriter pointReaderWriter;
     private final GeometryFactory geometryFactory;
 
-    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter, GeometryFactory geometryFactory) {
+    public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate,
+                                       PointReaderWriter pointReaderWriter,
+                                       SpatialCoverageService spatialCoverageService,
+                                       GeometryFactory geometryFactory) {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
@@ -45,6 +51,7 @@ public class RawLocationPointJdbcService {
         );
 
         this.pointReaderWriter = pointReaderWriter;
+        this.spatialCoverageService = spatialCoverageService;
         this.geometryFactory = geometryFactory;
     }
 
@@ -161,6 +168,15 @@ public class RawLocationPointJdbcService {
                 "FROM raw_location_points rlp " +
                 "WHERE rlp.user_id = ? " +
                 "ORDER BY rlp.timestamp DESC LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    public Optional<RawLocationPoint> findEarliest(User user) {
+        String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? " +
+                "ORDER BY rlp.timestamp ASC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
@@ -301,8 +317,8 @@ public class RawLocationPointJdbcService {
             synthetic,
             version
             FROM relevant_points
-            ORDER BY 
-                date_trunc('hour', timestamp) + 
+            ORDER BY
+                date_trunc('hour', timestamp) +
                 (EXTRACT(minute FROM timestamp)::int / %d) * interval '%d minutes',
                 timestamp
         )
@@ -450,9 +466,8 @@ public class RawLocationPointJdbcService {
         if (syntheticPoints.isEmpty()) {
             return 0;
         }
-        
-        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic) " +
-                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true) ON CONFLICT DO NOTHING;";
+        String sql = "INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic, h3_cell) " +
+                "VALUES (?, ?, ?, ?, CAST(? AS geometry), false, true, ?) ON CONFLICT DO NOTHING;";
 
         List<Object[]> batchArgs = new ArrayList<>();
         for (LocationPoint point : syntheticPoints) {
@@ -461,7 +476,8 @@ public class RawLocationPointJdbcService {
                     Timestamp.from(point.getTimestamp()),
                     point.getAccuracyMeters(),
                     point.getElevationMeters(),
-                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString()
+                    geometryFactory.createPoint(new Coordinate(point.getLongitude(), point.getLatitude())).toString(),
+                    spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12)
             });
         }
         int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
@@ -537,12 +553,22 @@ public class RawLocationPointJdbcService {
     public int updateFromDevices(User user, TimeRange timeRange) {
        return this.jdbcTemplate.update("""
                 INSERT INTO raw_location_points
-                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status)
+                (accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, processed, synthetic, status, h3_cell)
                 SELECT DISTINCT
-                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status
+                  accuracy_meters, timestamp, user_id, geom, elevation_meters, source_point_id, FALSE, FALSE, status, h3_cell
                 FROM v_source_stream
                 WHERE user_id = ? AND timestamp  >= ? AND timestamp < ?
                 """
                ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
+    }
+
+    public List<CoverageController.H3CellCount> findVisitedH3CellsCounts(Long userId, Instant startOfRange, Instant endOfRange) {
+        return this.jdbcTemplate.query("""
+                                           SELECT h3_cell, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
+                                           FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_cell IS NOT NULL GROUP BY h3_cell, time_bucket;
+                                           """, (rs, _) -> new CoverageController.H3CellCount(rs.getString("h3_cell"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
+                                userId,
+                                Timestamp.from(startOfRange),
+                                Timestamp.from(endOfRange));
     }
 }

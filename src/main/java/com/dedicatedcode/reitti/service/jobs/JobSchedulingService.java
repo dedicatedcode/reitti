@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Date;
@@ -35,14 +37,26 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobToBeExecuted(JobExecutionContext context) {
-        UUID jobId = UUID.fromString(context.getTrigger().getKey().getName());
-        this.jobMetadataRepository.updateState(jobId, JobState.RUNNING, Instant.now());
-        log.trace("Job with ID {} is now in the state of {}", jobId, JobState.RUNNING);
+        Optional<UUID> jobId = parseJobId(context);
+        jobId.ifPresent(id -> {
+            this.jobMetadataRepository.updateState(id, JobState.RUNNING, Instant.now());
+            log.trace("Job with ID {} is now in the state of {}", id, JobState.RUNNING);
 
-        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
-        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
-            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), JobState.RUNNING);
+            Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(id);
+            if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+                jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), JobState.RUNNING);
+            }
+        });
+    }
+
+    private Optional<UUID> parseJobId(JobExecutionContext context) {
+        UUID jobId = null;
+        try {
+            jobId = UUID.fromString(context.getTrigger().getKey().getName());
+        } catch (Exception e) {
+            log.trace("Failed to parse job ID from trigger key: {}", context.getTrigger().getKey().getName());
         }
+        return Optional.ofNullable(jobId);
     }
 
     @Override
@@ -50,34 +64,39 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-        UUID jobId = UUID.fromString(context.getTrigger().getKey().getName());
-        JobState state = (jobException == null) ? JobState.COMPLETED : JobState.FAILED;
-        this.jobMetadataRepository.updateState(jobId, state, Instant.now());
+        Optional<UUID> jobId = parseJobId(context);
+        jobId.ifPresent(id -> {
+            JobState state = (jobException == null) ? JobState.COMPLETED : JobState.FAILED;
+            this.jobMetadataRepository.updateState(id, state, Instant.now());
 
-        if (state == JobState.FAILED) {
-            log.error("Job with ID {} failed", jobId, jobException);
-        } else {
-            log.trace("Job with ID {} is now in the state of {}", jobId, state);
-        }
+            if (state == JobState.FAILED) {
+                log.error("Job with ID {} failed", id, jobException);
+            } else {
+                log.trace("Job with ID {} is now in the state of {}", id, state);
+            }
 
-        Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(jobId);
-        if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
-            jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
-        }
+            Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(id);
+            if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
+                jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
+            }
+        });
     }
 
-    // --- Scheduling Methods ---
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void scheduleTask(JobDetail jobDetail, T data, Instant scheduledAt, Metadata meta) {
         UUID jobId = UUID.randomUUID();
         Instant now = Instant.now();
 
         JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
-        jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        if (meta.user() == null) {
+            jobMetadataRepository.insert(jobId, jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        } else {
+            jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+        }
 
         JobDataMap jobDataMap = new JobDataMap();
         jobDataMap.put("jobId", jobId.toString());
-        jobDataMap.put("data", data);
+        jobDataMap.put("data", data.withJobId(jobId));
 
         // Use jobId as the trigger name so we can easily retrieve it in the listener
         Trigger trigger = TriggerBuilder.newTrigger()
@@ -90,13 +109,23 @@ public class JobSchedulingService implements JobListener {
         try {
             scheduler.scheduleJob(trigger);
         } catch (SchedulerException e) {
-            log.error("Failed to schedule job", e);
-            throw new RuntimeException("Failed to schedule job", e);
+            throw new RuntimeException(e);
         }
     }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T extends JobContext<T>> void enqueueTask(JobDetail jobDetail, T data, Metadata meta) {
         scheduleTask(jobDetail, data, Instant.now(), meta);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public <T extends JobContext<T>> void enqueueTaskAfterCommit(JobDetail jobDetail, T data, Metadata meta) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                enqueueTask(jobDetail, data, meta);
+            }
+        });
     }
 
     public void cancel(UUID jobId) {
@@ -136,6 +165,7 @@ public class JobSchedulingService implements JobListener {
             private User user;
             private JobType jobType;
             private String friendlyName;
+
             public Builder user(User user) {
                 this.user = user;
                 return this;
@@ -154,6 +184,7 @@ public class JobSchedulingService implements JobListener {
             public Metadata build() {
                 return new Metadata(user, jobType, friendlyName);
             }
+
         }
 
         public static Builder builder() {

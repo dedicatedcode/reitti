@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,11 +25,14 @@ public class LocationPointStagingService {
     private final Set<String> initializedPartitions = ConcurrentHashMap.newKeySet();
 
     private final JdbcTemplate jdbcTemplate;
+    private final SpatialCoverageService spatialCoverageService;
     private final int batchSize;
 
     public LocationPointStagingService(JdbcTemplate jdbcTemplate,
+                                       SpatialCoverageService spatialCoverageService,
                                        @Value("${reitti.import.batch-size:1000}") int batchSize) {
         this.jdbcTemplate = jdbcTemplate;
+        this.spatialCoverageService = spatialCoverageService;
         this.batchSize = batchSize;
     }
 
@@ -74,8 +78,9 @@ public class LocationPointStagingService {
                 device_id,
                 geom,
                 elevation_meters,
-                accuracy_meters
-            ) VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?)
+                accuracy_meters,
+                h3_cell
+            ) VALUES (?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
         """;
 
         List<LocationPoint> filtered = batch.stream().filter(LocationPoint::isValid).toList();
@@ -98,6 +103,7 @@ public class LocationPointStagingService {
                     ps.setNull(7, Types.DOUBLE);
                 }
                 ps.setDouble(8, point.getAccuracyMeters());
+                ps.setObject(9, spatialCoverageService.getLevelCellForPoint(point.getLatitude(), point.getLongitude(), 12));
             }
 
             @Override
@@ -112,18 +118,21 @@ public class LocationPointStagingService {
         String sql = """
             INSERT INTO raw_source_points (
                 user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, invalid, status
+                geom, invalid, status, h3_cell
             )
             SELECT
                 user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, false, 0
+                geom, false, 0, h3_cell
             FROM staging_location_points
                     WHERE partition_key = ? AND promoted = FALSE
-            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING;
+            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING
+            RETURNING id;
         """;
-        int update = jdbcTemplate.update(sql, partitionKey);
+
+        List<Long> insertedIds = jdbcTemplate.queryForList(sql, Long.class, partitionKey);
+        spatialCoverageService.postPromotion(insertedIds);
         this.jdbcTemplate.update("UPDATE staging_location_points SET promoted = TRUE WHERE partition_key = ? AND promoted = FALSE", partitionKey);
-        return update;
+        return insertedIds.size();
     }
 
     public TimeRange getTimeRange(String partitionKey) {

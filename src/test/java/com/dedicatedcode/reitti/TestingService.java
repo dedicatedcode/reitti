@@ -144,7 +144,7 @@ public class TestingService {
         // Check if any triggers are pending, excluding the SSE emitter job
         for (TriggerKey triggerKey : scheduler.getTriggerKeys(GroupMatcher.anyTriggerGroup())) {
             Trigger trigger = scheduler.getTrigger(triggerKey);
-            if (trigger != null && !trigger.getJobKey().getName().equals("sse-emitter-job")) {
+            if (trigger != null && !trigger.getJobKey().getName().equals("sse-emitter-job") && !trigger.getJobKey().getGroup().equals("h3-indexing")) {
                 Trigger.TriggerState state = scheduler.getTriggerState(triggerKey);
                 // NORMAL means waiting to fire, BLOCKED means currently running
                 if (state == Trigger.TriggerState.NORMAL || state == Trigger.TriggerState.BLOCKED) {
