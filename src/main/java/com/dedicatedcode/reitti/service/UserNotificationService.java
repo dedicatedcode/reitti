@@ -13,13 +13,9 @@ import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
-import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
-import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -31,27 +27,22 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.dedicatedcode.reitti.service.jobs.JobSchedulingService.Metadata;
-
 @Service
 public class UserNotificationService {
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
     private final ReittiSubscriptionService reittiSubscriptionService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
-    private final JobSchedulingService jobScheduler;
-    private final JobDetail userSSEEmitterTask;
+    private final UserSseEmitterService userSseEmitterService;
 
-    public UserNotificationService(JobSchedulingService jobScheduler,
-                                   ReittiSubscriptionService reittiSubscriptionService,
+    public UserNotificationService(ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
                                    UserSharingJdbcService userSharingJdbcService,
-                                   @Qualifier("userSSEEmitterJob") JobDetail userSSEEmitterTask) {
-        this.jobScheduler = jobScheduler;
+                                   UserSseEmitterService userSseEmitterService) {
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
-        this.userSSEEmitterTask = userSSEEmitterTask;
+        this.userSseEmitterService = userSseEmitterService;
     }
 
     public void placeUpdate(User user, SignificantPlace place, String previewId) {
@@ -103,20 +94,17 @@ public class UserNotificationService {
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId)),
-                                      Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
+            this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId)));
         }
     }
     public void sendToQueue(User user, User changedUser, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId)),
-                                      Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
+            this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId)));
         }
     }
 
     private void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.jobScheduler.enqueueTask(this.userSSEEmitterTask, new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId)),
-                                  Metadata.builder().user(user).jobType(JobType.SSE_EVENT).friendlyName("Send updates to clients").build());
+        this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId)));
     }
 
     private void notifyOtherUsers(User user, SSEType eventType, Set<LocalDate> dates) {

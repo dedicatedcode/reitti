@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.service.DataCleanupService;
-import com.dedicatedcode.reitti.service.UserSseEmitterService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
@@ -22,14 +21,6 @@ public class TaskConfig {
     public JobDetail patchDeviceOntoTimelineJobDetail() {
         return JobBuilder.newJob(PatchDeviceOntoTimelineTask.class)
                 .withIdentity("patch-device-onto-timeline-job")
-                .storeDurably()
-                .build();
-    }
-
-    @Bean("userSSEEmitterJob")
-    public JobDetail sseEmitterJobDetail() {
-        return JobBuilder.newJob(UserSseEmitterService.class)
-                .withIdentity("sse-emitter-job")
                 .storeDurably()
                 .build();
     }
