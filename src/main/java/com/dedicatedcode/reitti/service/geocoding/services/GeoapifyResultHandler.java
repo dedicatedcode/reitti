@@ -30,16 +30,22 @@ public class GeoapifyResultHandler implements ResultHandler{
 
         return nodes.stream()
                 .map(best -> best.path("properties"))
-                .map(props -> createGeoCodeResult(
-                        props.path("formatted").asText(),
-                        props.path("street").asText(""),
-                        props.path("housenumber").asText(""),
-                        props.path("postcode").asText(""),
-                        props.path("city").asText(),
-                        props.path("district").asText(),
-                        props.path("country_code").asText(),
-                        props.path("category").asText(), null
-                ))
+                .map(props -> {
+                    String name = props.path("name").asText("");
+                    String addressLine1 = props.path("address_line1").asText("");
+                    String formatted = props.path("formatted").asText("");
+                    String label = !name.isEmpty() ? name : (!addressLine1.isEmpty() ? addressLine1 : formatted);
+                    return createGeoCodeResult(
+                            label,
+                            props.path("street").asText(""),
+                            props.path("housenumber").asText(""),
+                            props.path("postcode").asText(""),
+                            props.path("city").asText(),
+                            props.path("district").asText(),
+                            props.path("country_code").asText(),
+                            props.path("category").asText(), null
+                    );
+                })
                 .filter(Objects::nonNull)
                 .toList();
 
