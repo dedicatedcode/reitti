@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.timeline.DeviceTimelineData;
 import com.dedicatedcode.reitti.dto.timeline.TimelineData;
 import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
@@ -47,6 +48,10 @@ public class CoveragePageController {
         User user = userJdbcService.findByUsername(authentication.getName()).orElse(null);
         if (user == null) {
             return "coverage";
+        }
+
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            return "redirect:/";
         }
 
         model.addAttribute("currentUserId", user.getId());

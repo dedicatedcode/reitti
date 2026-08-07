@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.ConfigurationForm;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.processing.RecalculationState;
 import com.dedicatedcode.reitti.model.security.User;
@@ -63,6 +64,12 @@ public class SettingsVisitSensitivityController {
     
     @GetMapping
     public String visitSensitivitySettings(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "visit-sensitivity");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         List<DetectionParameter> detectionParameters = configurationService.findAllConfigurationsForUser(user);
         
         model.addAttribute("isAdmin", user.getRole() ==  Role.ADMIN);

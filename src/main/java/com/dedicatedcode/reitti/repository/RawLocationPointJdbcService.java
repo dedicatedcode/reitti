@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.controller.api.v2.CoverageController;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
@@ -438,6 +439,20 @@ public class RawLocationPointJdbcService {
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
+    }
+
+    public void replaceLatestForUser(User user, LocationPoint locationPoint) {
+        RawLocationPoint point = new RawLocationPoint(
+                null, null, locationPoint.getTimestamp(),
+                new GeoPoint(locationPoint.getLatitude(), locationPoint.getLongitude()),
+                locationPoint.getAccuracyMeters(), locationPoint.getElevationMeters(),
+                false, false, 1L
+        );
+        create(user, point);
+        this.jdbcTemplate.update(
+                "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp < ?",
+                user.getId(), Timestamp.from(locationPoint.getTimestamp())
+        );
     }
 
     public Optional<RawLocationPoint> findProximatePoint(User user, Instant when, int maxOffsetInSeconds) {

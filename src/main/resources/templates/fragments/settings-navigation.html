@@ -9,12 +9,14 @@
            th:text="#{settings.job.status}">Job Status</a>
         
         <a th:href="@{/settings/import}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'file-upload'} ? 'active' : ''"
            th:title="#{settings.import.data.description}"
            th:text="#{settings.import.data}">Import Data</a>
 
         <a th:href="@{/settings/export-data}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'export-data'} ? 'active' : ''"
            th:title="#{export.title.description}"
@@ -39,17 +41,20 @@
            th:text="#{settings.user.management}">User Management</a>
         
         <a th:href="@{/settings/places}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'places'} ? 'active' : ''"
            th:title="#{settings.places.description}"
            th:text="#{settings.places}">Places</a>
-        
+
         <a th:href="@{/settings/visit-sensitivity}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'visit-sensitivity'} ? 'active' : ''"
            th:title="#{visit.sensitivity.title.description}"
            th:text="#{visit.sensitivity.title}">Visit Sensitivity</a>
         <a th:href="@{/settings/transportation-modes}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'transportation-modes'} ? 'active' : ''"
            th:title="#{settings.transportation-modes.description}"
@@ -62,13 +67,15 @@
            th:text="#{settings.map.styles}">Map Styles</a>
 
         <a th:href="@{/settings/geocode-services}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
            th:title="#{settings.geocoding.description}"
            th:text="#{settings.geocoding}">Geocoding</a>
-        
+
         <a th:href="@{/settings/manage-data}"
            th:if="${dataManagementEnabled}"
+           th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
            th:title="#{settings.manage.data.description}"

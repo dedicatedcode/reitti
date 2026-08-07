@@ -282,8 +282,10 @@ public class UserSettingsController {
                              @RequestParam(required = false)  String username,
                              @RequestParam(required = false)  String displayName,
                              @RequestParam(required = false) String password,
-                             @RequestParam(defaultValue = "USER") Role role,
-                             @RequestParam Language preferred_language,
+                              @RequestParam(defaultValue = "USER") Role role,
+                              @RequestParam(defaultValue = "NORMAL") UserType userType,
+                              @RequestParam(required = false) String _confirmLiveDataOnly,
+                              @RequestParam Language preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
@@ -315,6 +317,22 @@ public class UserSettingsController {
 
         try {
             User existingUser = userJdbcService.findById(userId).orElseThrow();
+
+            boolean confirmedSwitchToLiveDataOnly = StringUtils.hasText(_confirmLiveDataOnly) && userType == UserType.LIVE_DATA_ONLY;
+            boolean switchingToNormal = existingUser.getUserType() == UserType.LIVE_DATA_ONLY && userType == UserType.NORMAL;
+            UserType effectiveUserType;
+
+            if (confirmedSwitchToLiveDataOnly) {
+                if (!_confirmLiveDataOnly.trim().equals(existingUser.getUsername())) {
+                    model.addAttribute("errorMessage", i18nService.translate("users.live-data-only.confirm.error"));
+                    return getUserContent(model, authenticatedUser);
+                }
+                effectiveUserType = UserType.LIVE_DATA_ONLY;
+            } else if (existingUser.getUserType() == UserType.NORMAL && userType == UserType.LIVE_DATA_ONLY) {
+                effectiveUserType = existingUser.getUserType();
+            } else {
+                effectiveUserType = userType;
+            }
             
             String encodedPassword = existingUser.getPassword();
             // Only update password if provided
@@ -329,7 +347,7 @@ public class UserSettingsController {
                 displayName = existingUser.getDisplayName();
             }
 
-            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), role, existingUser.getVersion());
+            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), role, effectiveUserType, existingUser.getVersion());
             userJdbcService.updateUser(updatedUser);
             
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
@@ -374,7 +392,15 @@ public class UserSettingsController {
             if (isCurrentUser) {
                 localeResolver.setLocale(request, response, preferred_language.getLocale());
             }
-            
+
+            if (confirmedSwitchToLiveDataOnly) {
+                userService.switchToLiveDataOnly(existingUser);
+            }
+
+            if (switchingToNormal) {
+                userService.switchToNormal(userToUpdate);
+            }
+
             model.addAttribute("successMessage", i18nService.translate("message.success.user.updated"));
 
             // If the current user was updated, update the authentication
@@ -429,6 +455,7 @@ public class UserSettingsController {
             model.addAttribute("username", username);
             model.addAttribute("displayName", displayName);
             model.addAttribute("selectedRole", role);
+            model.addAttribute("selectedUserType", user != null ? user.getUserType() : UserType.NORMAL);
             model.addAttribute("externallyManaged", user != null && user.getExternalId() != null && oidcEnabled);
             model.addAttribute("externalProfile", user != null ? user.getProfileUrl() : null);
             model.addAttribute("localLoginDisabled", localLoginDisabled);
@@ -446,6 +473,7 @@ public class UserSettingsController {
             model.addAttribute("selectedLanguage", Language.EN);
             model.addAttribute("selectedUnitSystem", "METRIC");
             model.addAttribute("selectedRole", "USER");
+            model.addAttribute("selectedUserType", UserType.NORMAL);
             model.addAttribute("homeLatitude", null);
             model.addAttribute("homeLongitude", null);
             model.addAttribute("externallyManaged", false);

@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -47,12 +48,13 @@ public class UserJdbcService {
 
     @CacheEvict(value = "users", allEntries = true)
     public User createUser(User user) {
-        String sql = "INSERT INTO users (username, password, display_name, role, profile_url, external_id, version) VALUES (?, ?, ?, ?, ?, ?, 1) RETURNING id";
+        String sql = "INSERT INTO users (username, password, display_name, role, user_type, profile_url, external_id, version) VALUES (?, ?, ?, ?, ?, ?, ?, 1) RETURNING id";
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getUsername(),
                 user.getPassword(),
                 user.getDisplayName(),
                 user.getRole().name(),
+                user.getUserType().name(),
                 user.getProfileUrl(),
                 user.getExternalId());
         return this.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
@@ -60,7 +62,7 @@ public class UserJdbcService {
 
     @CacheEvict(value = "users", allEntries = true)
     public User updateUser(User userToUpdate) {
-        String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, role = ?, profile_url = ?, external_id = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
+        String sql = "UPDATE users SET username = ?, password = ?, display_name = ?, role = ?, user_type = ?, profile_url = ?, external_id = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version";
 
         try {
             Long newVersion = jdbcTemplate.queryForObject(sql, Long.class,
@@ -68,6 +70,7 @@ public class UserJdbcService {
                 userToUpdate.getPassword(), 
                 userToUpdate.getDisplayName(), 
                 userToUpdate.getRole().name(),
+                userToUpdate.getUserType().name(),
                 userToUpdate.getProfileUrl(),
                 userToUpdate.getExternalId(),
                 userToUpdate.getId(),
@@ -83,7 +86,7 @@ public class UserJdbcService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "users")
     public Optional<User> findById(Long id) {
-        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE id = ?";
+        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, user_type, version FROM users WHERE id = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, this::mapRowToUser, id);
             return Optional.ofNullable(user);
@@ -95,7 +98,7 @@ public class UserJdbcService {
     @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByUsername(String username) {
-        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, user_type, version FROM users WHERE username = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, this::mapRowToUser, username);
             return Optional.ofNullable(user);
@@ -106,7 +109,7 @@ public class UserJdbcService {
     @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByExternalId(String externalId) {
-        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users WHERE external_id = ?";
+        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, user_type, version FROM users WHERE external_id = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, this::mapRowToUser, externalId);
             return Optional.ofNullable(user);
@@ -117,7 +120,7 @@ public class UserJdbcService {
     
     @Transactional(readOnly = true)
     public List<User> findAll() {
-        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, version FROM users ORDER BY username";
+        String sql = "SELECT id, username, password, display_name, role, profile_url, external_id, user_type, version FROM users ORDER BY username";
         return jdbcTemplate.query(sql, this::mapRowToUser);
     }
 
@@ -128,6 +131,7 @@ public class UserJdbcService {
             rs.getString("password"),
             rs.getString("display_name"), rs.getString("profile_url"), rs.getString("external_id"),
             Role.valueOf(rs.getString("role")),
+            UserType.valueOf(rs.getString("user_type")),
             rs.getLong("version")
         );
     }

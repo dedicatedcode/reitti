@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{feature.unavailable.live-data-only.title}">Feature Unavailable - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div class="settings-card">
+            <h2 th:text="#{feature.unavailable.live-data-only.title}">Feature Unavailable</h2>
+            <p th:text="#{feature.unavailable.live-data-only.description}">This feature is not available for Live Data Only accounts.</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

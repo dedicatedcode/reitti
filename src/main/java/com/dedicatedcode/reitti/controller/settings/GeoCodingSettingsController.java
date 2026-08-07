@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.security.User;
@@ -73,6 +74,12 @@ public class GeoCodingSettingsController {
 
     @GetMapping
     public String getPage(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "geocode-services");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         model.addAttribute("activeSection", "geocode-services");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);

@@ -96,6 +96,10 @@ public class MemoryJdbcService {
         );
     }
 
+    public void deleteAllForUser(User user) {
+        jdbcTemplate.update("DELETE FROM memory WHERE user_id = ?", user.getId());
+    }
+
     public Optional<Memory> findById(User user, Long id) {
         List<Memory> results = jdbcTemplate.query(
                 "SELECT * FROM memory WHERE id = ? AND user_id = ?",

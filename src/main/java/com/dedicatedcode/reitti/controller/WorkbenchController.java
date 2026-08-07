@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
@@ -28,6 +29,9 @@ public class WorkbenchController {
 
     @GetMapping
     public String workbench(@AuthenticationPrincipal User user, Model model, @RequestParam(required = false) LocalDate date) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            return "redirect:/";
+        }
         model.addAttribute("devices", this.deviceJdbcService.getAll(user).stream().filter(Device::enabled).toList());
         model.addAttribute("date", date != null ? date.format(DateTimeFormatter.ISO_LOCAL_DATE) : null);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
