@@ -2,15 +2,20 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.UserType;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
+import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.LocationBatchingService;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +45,10 @@ public class ProcessingPipelineTest {
     private RawLocationPointJdbcService rawLocationPointJdbcService;
     @Autowired
     private UserJdbcService userJdbcService;
+    @Autowired
+    private LocationBatchingService locationBatchingService;
+    @Autowired
+    private SourceLocationPointJdbcService sourceLocationPointJdbcService;
 
     private User user;
 
@@ -215,6 +224,53 @@ public class ProcessingPipelineTest {
         assertTrue(latest.isPresent());
         assertTrue(latest.get().getTimestamp().isAfter(Instant.parse("2025-06-18T00:00:00Z")),
                 "latest should remain on June 18 after re-importing older data, got " + latest.get().getTimestamp());
+    }
+
+    @Test
+    void shouldKeepOnlyLatestDataForLiveDataOnlyUserViaOwntracksFlow() {
+        User user = testingService.randomUser();
+        User liveDataOnlyUser = user.withUserType(UserType.LIVE_DATA_ONLY);
+        userJdbcService.updateUser(liveDataOnlyUser);
+        Device device = testingService.findDefaultDevice(liveDataOnlyUser);
+
+        assertTrue(rawLocationPointJdbcService.findLatest(liveDataOnlyUser).isEmpty());
+
+        LocationPoint point1 = new LocationPoint();
+        point1.setLatitude(60.1699);
+        point1.setLongitude(24.9384);
+        point1.setTimestamp(Instant.parse("2025-06-17T10:00:00Z"));
+        point1.setAccuracyMeters(5.0);
+        locationBatchingService.addLocationPoint(liveDataOnlyUser, device, point1);
+
+        LocationPoint point2 = new LocationPoint();
+        point2.setLatitude(60.1705);
+        point2.setLongitude(24.9410);
+        point2.setTimestamp(Instant.parse("2025-06-18T11:00:00Z"));
+        point2.setAccuracyMeters(3.0);
+        locationBatchingService.addLocationPoint(liveDataOnlyUser, device, point2);
+
+        LocationPoint point3 = new LocationPoint();
+        point3.setLatitude(60.1600);
+        point3.setLongitude(24.9300);
+        point3.setTimestamp(Instant.parse("2025-06-17T12:00:00Z"));
+        point3.setAccuracyMeters(4.0);
+        locationBatchingService.addLocationPoint(liveDataOnlyUser, device, point3);
+
+        Awaitility.await("waiting for batch to flush and pipeline to process")
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> rawLocationPointJdbcService.findLatest(liveDataOnlyUser).isPresent());
+
+        Optional<RawLocationPoint> latest = rawLocationPointJdbcService.findLatest(liveDataOnlyUser);
+        assertTrue(latest.isPresent());
+        assertEquals(60.1705, latest.get().getLatitude(), 0.0001,
+                "latest should be point2 (June 18), got lat " + latest.get().getLatitude());
+        assertTrue(latest.get().getTimestamp().isAfter(Instant.parse("2025-06-18T00:00:00Z")),
+                "latest timestamp should be from June 18, got " + latest.get().getTimestamp());
+
+        Optional<SourceLocationPoint> latestSource = sourceLocationPointJdbcService.findLatest(liveDataOnlyUser, device);
+        assertTrue(latestSource.isPresent());
+        assertTrue(latestSource.get().getTimestamp().isAfter(Instant.parse("2025-06-18T00:00:00Z")),
+                "source points should keep only the chronologically latest, got " + latestSource.get().getTimestamp());
     }
 
     private List<ProcessedVisit> currentVisits() {
