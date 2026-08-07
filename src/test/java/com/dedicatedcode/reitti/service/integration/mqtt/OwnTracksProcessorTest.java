@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration.mqtt;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.OwntracksLocationRequest;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.LocationBatchingService;
@@ -41,7 +42,7 @@ class OwnTracksProcessorTest {
 
     @BeforeEach
     void setUp() {
-        testUser = new User(1L, "testuser", "password", "Test User", null, null, null, 1L);
+        testUser = new User(1L, "testuser", "password", "Test User", null, null, null, UserType.NORMAL, 1L);
         device = mock(Device.class);
     }
 

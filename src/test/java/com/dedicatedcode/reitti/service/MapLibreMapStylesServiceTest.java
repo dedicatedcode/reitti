@@ -1,12 +1,11 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.MapLibreStyleDefinition;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MapLibreMapStylesServiceTest {
@@ -106,6 +106,6 @@ class MapLibreMapStylesServiceTest {
     }
 
     private User createUser() {
-        return new User(1L, "testuser", null, "Test", null, null, null, null);
+        return new User(1L, "testuser", null, "Test", null, null, null, UserType.NORMAL, null);
     }
 }

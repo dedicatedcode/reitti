@@ -2,12 +2,18 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
+import com.dedicatedcode.reitti.model.memory.HeaderType;
+import com.dedicatedcode.reitti.model.memory.Memory;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -55,6 +61,27 @@ class UserServiceTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private MemoryJdbcService memoryJdbcService;
+
+    @Autowired
+    private SourceLocationPointJdbcService sourceLocationPointJdbcService;
+
+    @Autowired
+    private RawLocationPointJdbcService rawLocationPointJdbcService;
+
+    @Autowired
+    private SignificantPlaceJdbcService significantPlaceJdbcService;
+
+    @Autowired
+    private ProcessedVisitJdbcService processedVisitJdbcService;
+
+    @Autowired
+    private TripJdbcService tripJdbcService;
+
+    @Autowired
+    private GeocodingResponseJdbcService geocodingResponseJdbcService;
 
     @Autowired
     private TestingService testingService;
@@ -239,5 +266,84 @@ class UserServiceTest {
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_map_style_settings WHERE user_id = ?", Integer.class, user.getId()));
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM mqtt_integrations WHERE user_id = ?", Integer.class, user.getId()));
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM owntracks_recorder_integration WHERE user_id = ?", Integer.class, user.getId()));
+    }
+
+    @Test
+    void shouldSwitchToLiveDataOnlyAndDeleteAllData() {
+        User user = userService.createNewUser(
+                "livedatauser",
+                "Live Data User",
+                "external789",
+                null
+        );
+
+        SignificantPlace place = testingService.newSignificantPlace(user);
+        SignificantPlace place2 = testingService.newSignificantPlace(user, "Home");
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
+
+        ProcessedVisit startVisit = testingService.createVisit(user, place, Instant.now().minus(10, ChronoUnit.HOURS), Instant.now().minus(9, ChronoUnit.HOURS));
+        ProcessedVisit endVisit = testingService.createVisit(user, place2, Instant.now().minus(2, ChronoUnit.HOURS), Instant.now().minus(1, ChronoUnit.HOURS));
+        testingService.createTrip(user, startVisit, endVisit);
+
+        RawLocationPoint point = new RawLocationPoint(null, null, Instant.now(),
+                new GeoPoint(52.52, 13.40), 5.0, 10.0, false, false, 1L);
+        rawLocationPointJdbcService.create(user, point);
+
+        Device device = testingService.findDefaultDevice(user);
+        LocationPoint locationPoint = new LocationPoint();
+        locationPoint.setLatitude(52.52);
+        locationPoint.setLongitude(13.40);
+        locationPoint.setTimestamp(Instant.now());
+        locationPoint.setAccuracyMeters(5.0);
+        sourceLocationPointJdbcService.bulkInsert(user, device, java.util.List.of(locationPoint));
+
+        memoryJdbcService.create(user, new Memory(null, "Test Memory", "desc",
+                Instant.now().minus(2, ChronoUnit.DAYS), Instant.now(),
+                HeaderType.IMAGE, null,
+                Instant.now(), Instant.now(), 1L));
+
+        memoryJdbcService.create(user, new Memory(null, "Another Memory", "desc2",
+                Instant.now().minus(5, ChronoUnit.DAYS), Instant.now().minus(3, ChronoUnit.DAYS),
+                HeaderType.MAP, null,
+                Instant.now(), Instant.now(), 1L));
+
+        jdbcTemplate.update("INSERT INTO h3_cells_stats (user_id, device_id, h3_index, last_visited_at, first_visited_at, point_count) VALUES (?, ?, ?, NOW(), NOW(), 1)", user.getId(), device.id(), 123456L);
+        jdbcTemplate.update("INSERT INTO h3_area_coverage_stats (user_id, device_id, osm_id, h3_resolution, visited_cell_count, total_cell_count) VALUES (?, ?, ?, ?, 5, 10)", user.getId(), device.id(), 1L, 9);
+
+        userService.switchToLiveDataOnly(user);
+
+        assertEquals(0, visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).size());
+        assertEquals(0, transportModeJdbcService.getTransportModeConfigs(user).size());
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM processed_visits WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM trips WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM raw_location_points WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM raw_source_points WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM significant_places WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM memory WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM h3_cells_stats WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, (int) jdbcTemplate.queryForObject("SELECT count(*) FROM h3_area_coverage_stats WHERE user_id = ?", Integer.class, user.getId()));
+    }
+
+    @Test
+    void shouldSwitchToNormalAndRecreateDefaults() {
+        User user = userService.createNewUser(
+                "switchbackuser",
+                "Switch Back User",
+                "external999",
+                null
+        );
+
+        userService.switchToLiveDataOnly(user);
+
+        assertEquals(0, visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).size());
+        assertEquals(0, transportModeJdbcService.getTransportModeConfigs(user).size());
+
+        userService.switchToNormal(user);
+
+        List<DetectionParameter> detectionParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
+        assertThat(detectionParams).hasSize(1);
+
+        List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
+        assertThat(transportConfigs).hasSize(4);
     }
 }

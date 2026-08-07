@@ -126,34 +126,6 @@
         .drawer-content {
             padding: 24px;
         }
-        
-        .btn-loading {
-            position: relative;
-            pointer-events: none;
-        }
-        
-        .btn-loading .btn-text {
-            opacity: 0;
-        }
-        
-        .btn-loading::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 16px;
-            height: 16px;
-            margin: -8px 0 0 -8px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
     <script th:src="@{/js/vendor/leaflet.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
@@ -435,31 +407,32 @@
                 body: formData
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.canProceed && data.warnings.length === 0) {
-                    // Keep loading state and proceed with save
+.then(data => {
+                if (data.canProceed) {
                     polygonEditor.savePolygon();
                 } else {
-                    // Hide loading state to show confirmation dialog
                     hideSaveLoading();
-                    showConfirmationDialog(data.warnings);
+                    showBlockingWarnings(data.warnings);
                 }
             })
             .catch(error => {
                 console.error('Error checking update:', error);
-                // Keep loading state and proceed with save anyway
                 polygonEditor.savePolygon();
             });
         }
 
-        function showConfirmationDialog(warnings) {
+        function showConfirmationDialog(warnings, allowProceed = true) {
             const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
-            const confirmMessage = t('places.update.confirmation.message');
-            const message = confirmMessage.replace('{0}', warningsList);
-            if (confirm(message)) {
+            const message = t('places.update.confirmation.message', [warningsList]);
+            if (confirm(message) && allowProceed) {
                 showSaveLoading();
                 polygonEditor.savePolygon();
             }
+        }
+
+        function showBlockingWarnings(warnings) {
+            const warningsHtml = warnings.map(w => `<p>• ${w}</p>`).join('');
+            showWarningsModal(warningsHtml);
         }
 
         document.getElementById('remove-polygon-btn').addEventListener('click', function() {
@@ -549,5 +522,50 @@
             }
         });
     </script>
+
+<div id="warningsModal" class="reitti-dialog" role="dialog" aria-hidden="true">
+    <div class="reitti-dialog-backdrop"></div>
+    <div class="reitti-dialog-card">
+        <div class="reitti-dialog-head">
+            <h3 th:text="#{places.update.warnings.title}">Update Warnings</h3>
+            <button class="reitti-dialog-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="reitti-dialog-body">
+            <div id="warningsContent"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+                <button type="button" class="btn" id="warningsCancelBtn" th:text="#{form.cancel}">Cancel</button>
+                <button type="button" class="btn btn-danger" id="warningsSaveBtn" th:text="#{form.save}">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var modal = document.getElementById('warningsModal');
+    function closeWarnings() {
+        modal.classList.remove('open');
+    }
+    function proceedAndSave() {
+        modal.classList.remove('open');
+        showSaveLoading();
+        polygonEditor.savePolygon();
+    }
+    document.getElementById('warningsCancelBtn').addEventListener('click', closeWarnings);
+    document.getElementById('warningsSaveBtn').addEventListener('click', proceedAndSave);
+    modal.querySelector('.reitti-dialog-close').addEventListener('click', closeWarnings);
+    modal.querySelector('.reitti-dialog-backdrop').addEventListener('click', function(e) {
+        if (e.target === this) closeWarnings();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) closeWarnings();
+    });
+
+    window.showWarningsModal = function(warnings) {
+        document.getElementById('warningsContent').innerHTML = warnings;
+        modal.classList.add('open');
+    };
+})();
+</script>
 </body>
 </html>

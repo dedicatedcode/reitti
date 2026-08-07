@@ -1,0 +1,79 @@
+.reitti-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+.reitti-dialog.open { display: flex; }
+
+.reitti-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 19, 32, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.reitti-dialog-card {
+    position: relative;
+    width: min(500px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    background: var(--color-background-dark, #1a1f2e);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    color: #ece6d6;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.reitti-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reitti-dialog-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+
+.reitti-dialog-close {
+    background: transparent;
+    border: none;
+    color: rgba(236, 230, 214, 0.6);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 6px;
+    border-radius: 4px;
+}
+
+.reitti-dialog-close:hover { color: #ece6d6; background: rgba(255, 255, 255, 0.08); }
+
+.reitti-dialog-body { padding: 18px; overflow-y: auto; }
+
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-loading .btn-text { opacity: 0; }
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 16px; height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: reitti-spin 1s linear infinite;
+}
+
+@keyframes reitti-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

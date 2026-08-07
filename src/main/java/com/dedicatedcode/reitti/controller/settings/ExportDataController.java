@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -54,7 +55,13 @@ public class ExportDataController {
 
 
     @GetMapping
-    public void getExportDataContent(@AuthenticationPrincipal User user, Model model) {
+    public String getExportDataPage(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "export-data");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         // Set default date range to today
         java.time.LocalDate today = java.time.LocalDate.now();
         model.addAttribute("startDate", today);
@@ -66,6 +73,7 @@ public class ExportDataController {
         model.addAttribute("activeSection", "export-data");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+        return "settings/export-data";
     }
 
     @GetMapping("/data-content")

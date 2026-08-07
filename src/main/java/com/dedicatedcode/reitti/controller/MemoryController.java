@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.*;
@@ -59,7 +60,10 @@ public class MemoryController {
     }
 
     @GetMapping
-    public String get() {
+    public String get(@AuthenticationPrincipal User user) {
+        if (user != null && user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            return "redirect:/";
+        }
         return "memories/list";
     }
 

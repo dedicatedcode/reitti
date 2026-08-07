@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
@@ -63,6 +64,12 @@ public class FileImportController {
 
     @GetMapping
     public String getFileUploadPage(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "file-upload");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         model.addAttribute("activeSection", "file-upload");
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);

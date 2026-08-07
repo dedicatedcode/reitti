@@ -245,4 +245,11 @@ public class SourceLocationPointJdbcService {
     public void deleteAllForUser(User user) {
         this.jdbcTemplate.update("DELETE FROM raw_source_points WHERE user_id = ?", user.getId());
     }
+
+    public void deleteAllExceptLatestForUserAndDevice(User user, Device device) {
+        this.jdbcTemplate.update(
+                "DELETE FROM raw_source_points WHERE user_id = ? AND device_id = ? AND timestamp < (SELECT MAX(timestamp) FROM raw_source_points WHERE user_id = ? AND device_id = ?)",
+                user.getId(), device.id(), user.getId(), device.id()
+        );
+    }
 }

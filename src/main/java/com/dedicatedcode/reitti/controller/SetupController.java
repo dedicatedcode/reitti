@@ -54,6 +54,7 @@ public class SetupController {
                     adminUser.get().getProfileUrl(),
                     adminUser.get().getExternalId(),
                     Role.ADMIN,
+                    adminUser.get().getUserType(),
                     adminUser.get().getVersion()
             );
 

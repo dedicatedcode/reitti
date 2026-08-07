@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.controller.api.v2.CoverageController;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.MapMetadata;
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
@@ -438,6 +439,28 @@ public class RawLocationPointJdbcService {
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());
+    }
+
+    public void replaceLatestForUser(User user, LocationPoint locationPoint) {
+        this.jdbcTemplate.update(
+                """
+                INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic)
+                VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326'), false, false)
+                ON CONFLICT (user_id, timestamp) DO UPDATE SET
+                    accuracy_meters = EXCLUDED.accuracy_meters,
+                    elevation_meters = EXCLUDED.elevation_meters,
+                    geom = EXCLUDED.geom
+                """,
+                user.getId(),
+                Timestamp.from(locationPoint.getTimestamp()),
+                locationPoint.getAccuracyMeters(),
+                locationPoint.getElevationMeters(),
+                pointReaderWriter.write(new GeoPoint(locationPoint.getLatitude(), locationPoint.getLongitude()))
+        );
+        this.jdbcTemplate.update(
+                "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp < ?",
+                user.getId(), Timestamp.from(locationPoint.getTimestamp())
+        );
     }
 
     public Optional<RawLocationPoint> findProximatePoint(User user, Instant when, int maxOffsetInSeconds) {
