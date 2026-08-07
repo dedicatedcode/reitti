@@ -9,8 +9,6 @@ import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -23,7 +21,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
-@AutoConfigureMockMvc
 class DeviceSettingsControllerTest {
 
     @Autowired
@@ -43,7 +40,6 @@ class DeviceSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
     void getPage_ShouldDisplayDeviceList() throws Exception {
         mockMvc.perform(get("/settings/devices").with(user(admin)))
                 .andExpect(status().isOk())
@@ -52,7 +48,6 @@ class DeviceSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
     void createDevice_ShouldPersistAndReturnFragment() throws Exception {
         // Given
         String deviceName = "TestDevice_" + System.currentTimeMillis();
@@ -81,7 +76,6 @@ class DeviceSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
     void updateDevice_ShouldModifyExistingDevice() throws Exception {
         // Given
         Device device = createDevice("UpdateTest", "#ff6b6b");
@@ -110,7 +104,6 @@ class DeviceSettingsControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
     void toggleDevice_ShouldFlipEnabledFlag() throws Exception {
         // Given
         Device device = createDevice("ToggleTest", "#96ceb4");

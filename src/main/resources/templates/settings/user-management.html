@@ -28,6 +28,136 @@
     </div>
 </div>
 
+<div id="liveDataOnlyConfirmModal" class="reitti-dialog" role="dialog" aria-hidden="true">
+    <div class="reitti-dialog-backdrop"></div>
+    <div class="reitti-dialog-card">
+        <div class="reitti-dialog-head">
+            <h3 th:text="#{users.live-data-only.confirm.title}">Confirm Live Data Only Switch</h3>
+            <button class="reitti-dialog-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="reitti-dialog-body">
+            <div id="liveDataOnlyError" class="alert alert-danger" style="display: none;"></div>
+            <div class="alert alert-danger" style="display: block;">
+                <span th:text="#{users.live-data-only.warning}">This will permanently delete all your location history, visits, trips, places, and memories. This action cannot be undone.</span>
+            </div>
+            <div class="form-group">
+                <label id="liveDataOnlyConfirmLabel">To confirm, please type the username:</label>
+                <input type="text" id="liveDataOnlyConfirmUsername" autocomplete="off" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn" id="liveDataOnlyCancelBtn" th:text="#{form.cancel}">Cancel</button>
+                <button type="button" class="btn btn-danger" id="liveDataOnlySubmitBtn">
+                    <span class="btn-text" th:text="#{users.live-data-only.confirm.submit}">Delete All Data &amp; Switch</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    var liveDataModal = document.getElementById('liveDataOnlyConfirmModal');
+    var liveDataConfirmLabel = document.getElementById('liveDataOnlyConfirmLabel');
+    var liveDataConfirmInput = document.getElementById('liveDataOnlyConfirmUsername');
+    var liveDataErrorDiv = document.getElementById('liveDataOnlyError');
+    var liveDataSubmitBtn = document.getElementById('liveDataOnlySubmitBtn');
+    var liveDataCancelBtn = document.getElementById('liveDataOnlyCancelBtn');
+    var pendingForm = null;
+
+    function closeLiveDataModal() {
+        if (!liveDataModal) return;
+        liveDataModal.classList.remove('open');
+        liveDataConfirmInput.value = '';
+        liveDataErrorDiv.style.display = 'none';
+        liveDataSubmitBtn.classList.remove('btn-loading');
+        liveDataSubmitBtn.disabled = false;
+        pendingForm = null;
+    }
+
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        var form = evt.target;
+        if (!form.classList || !form.classList.contains('user-form')) return;
+        var userType = document.getElementById('userType');
+        if (!userType || userType.value !== 'LIVE_DATA_ONLY') return;
+
+        var userIdInput = form.querySelector('input[name="userId"]');
+        if (!userIdInput || !userIdInput.value) return;
+
+        var originalType = userType.getAttribute('data-original');
+        if (originalType === 'LIVE_DATA_ONLY') return;
+
+        if (form.querySelector('input[name="_confirmLiveDataOnly"]')) return;
+
+        evt.preventDefault();
+        pendingForm = form;
+        var usernameInput = form.querySelector('input[name="username"]');
+        var username = usernameInput ? usernameInput.value : '';
+        liveDataConfirmLabel.textContent = t('users.live-data-only.confirm.description') + ' ' + username;
+        liveDataConfirmInput.placeholder = username;
+        liveDataErrorDiv.style.display = 'none';
+        liveDataModal.classList.add('open');
+        liveDataConfirmInput.focus();
+    });
+
+    liveDataCancelBtn.addEventListener('click', closeLiveDataModal);
+    liveDataModal.querySelector('.reitti-dialog-backdrop').addEventListener('click', function(e) {
+        if (e.target === this) closeLiveDataModal();
+    });
+    liveDataModal.querySelector('.reitti-dialog-close').addEventListener('click', closeLiveDataModal);
+
+    liveDataSubmitBtn.addEventListener('click', function() {
+        if (!pendingForm) return;
+        var typed = liveDataConfirmInput.value.trim();
+        if (!typed) {
+            liveDataErrorDiv.textContent = t('users.live-data-only.confirm.error');
+            liveDataErrorDiv.style.display = 'block';
+            return;
+        }
+
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = '_confirmLiveDataOnly';
+        hidden.value = typed;
+        pendingForm.appendChild(hidden);
+
+        liveDataModal.classList.remove('open');
+        liveDataSubmitBtn.classList.add('btn-loading');
+        liveDataSubmitBtn.disabled = true;
+        pendingForm.querySelector('button[type="submit"]').click();
+    });
+
+    function cleanupConfirmField() {
+        var fields = document.querySelectorAll('input[name="_confirmLiveDataOnly"]');
+        fields.forEach(function(f) { f.remove(); });
+        liveDataSubmitBtn.classList.remove('btn-loading');
+        liveDataSubmitBtn.disabled = false;
+    }
+
+    document.addEventListener('htmx:afterRequest', function() {
+        cleanupConfirmField();
+    });
+
+    document.addEventListener('htmx:sendError', function() {
+        cleanupConfirmField();
+        if (liveDataModal.classList.contains('open')) {
+            closeLiveDataModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && liveDataModal && liveDataModal.classList.contains('open')) {
+            closeLiveDataModal();
+        }
+    });
+
+    liveDataConfirmInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && liveDataModal && liveDataModal.classList.contains('open')) {
+            liveDataSubmitBtn.click();
+        }
+    });
+});
+</script>
+
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
 

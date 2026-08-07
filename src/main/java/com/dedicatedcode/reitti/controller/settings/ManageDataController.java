@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.I18nService;
@@ -55,6 +56,12 @@ public class ManageDataController {
 
     @GetMapping("/settings/manage-data")
     public String getPage(@AuthenticationPrincipal User user, Model model, HttpServletRequest request) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "manage-data");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         if (!dataManagementEnabled) {
             throw new RuntimeException("Data management is not enabled");
         }

@@ -40,6 +40,9 @@ public class UserService {
     private final DeviceJdbcService deviceJdbcService;
     private final ApiTokenService apiTokenService;
     private final JdbcTemplate jdbcTemplate;
+    private final MemoryJdbcService memoryJdbcService;
+    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
+    private final TripJdbcService tripJdbcService;
 
     public UserService(UserJdbcService userJdbcService,
                        UserSettingsJdbcService userSettingsJdbcService,
@@ -51,6 +54,9 @@ public class UserService {
                        GeocodingResponseJdbcService geocodingResponseJdbcService,
                        ApiTokenJdbcService apiTokenJdbcService,
                        MqttIntegrationJdbcService mqttIntegrationJdbcService,
+                       MemoryJdbcService memoryJdbcService,
+                       SourceLocationPointJdbcService sourceLocationPointJdbcService,
+                       TripJdbcService tripJdbcService,
                        PasswordEncoder passwordEncoder, UserMapStyleJdbcService userMapStyleJdbcService, DeviceJdbcService deviceJdbcService, ApiTokenService apiTokenService,
                        JdbcTemplate jdbcTemplate) {
         this.userJdbcService = userJdbcService;
@@ -64,6 +70,9 @@ public class UserService {
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.apiTokenJdbcService = apiTokenJdbcService;
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
+        this.memoryJdbcService = memoryJdbcService;
+        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
+        this.tripJdbcService = tripJdbcService;
         this.passwordEncoder = passwordEncoder;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.deviceJdbcService = deviceJdbcService;
@@ -192,6 +201,29 @@ public class UserService {
         this.jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ?", user.getId());
         this.deviceJdbcService.deleteForUser(user);
         this.userJdbcService.deleteUser(user.getId());
+    }
+
+    @Transactional
+    public void switchToLiveDataOnly(User user) {
+        this.jdbcTemplate.update("DELETE FROM visit_detection_parameters WHERE user_id = ?", user.getId());
+        this.transportModeJdbcService.deleteAllForUser(user);
+        this.tripJdbcService.deleteAllForUser(user);
+        this.processedVisitJdbcService.deleteAllForUser(user);
+        this.rawLocationPointJdbcService.deleteAllForUser(user);
+        this.sourceLocationPointJdbcService.deleteAllForUser(user);
+        this.significantPlaceJdbcService.deleteForUser(user);
+        this.significantPlaceOverrideJdbcService.deleteForUser(user);
+        this.geocodingResponseJdbcService.deleteAllForUser(user);
+        this.memoryJdbcService.deleteAllForUser(user);
+        this.jdbcTemplate.update("DELETE FROM h3_cells_stats WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM h3_area_coverage_stats WHERE user_id = ?", user.getId());
+        this.userSettingsJdbcService.deleteNewestData(user);
+    }
+
+    @Transactional
+    public void switchToNormal(User user) {
+        saveDefaultVisitDetectionParameters(user);
+        saveDefaultTransportationModeDetectionParameters(user);
     }
 
 }

@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
 import com.dedicatedcode.reitti.model.security.User;
@@ -52,6 +53,12 @@ public class TransportationModesController {
 
     @GetMapping
     public String transportationModes(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "transportation-modes");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
         UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
         List<TransportMode> availableModes = getAvailableModesToAdd(configs);

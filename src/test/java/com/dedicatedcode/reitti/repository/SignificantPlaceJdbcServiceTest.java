@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Page;
 import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
@@ -542,11 +543,11 @@ class SignificantPlaceJdbcServiceTest {
 
     private User createTestUser(String username, String displayName) {
         Long userId = jdbcTemplate.queryForObject(
-                "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?) RETURNING id",
+                "INSERT INTO users (username, password, display_name, role, user_type) VALUES (?, ?, ?, ?, 'NORMAL') RETURNING id",
                 Long.class,
                 username, "password", displayName, "USER"
         );
-        return new User(userId, username, "password", displayName, null, null, Role.USER, 0L);
+        return new User(userId, username, "password", displayName, null, null, Role.USER, UserType.NORMAL, 0L);
     }
 
     private SignificantPlace createTestPlace(String name, double latitude, double longitude) {

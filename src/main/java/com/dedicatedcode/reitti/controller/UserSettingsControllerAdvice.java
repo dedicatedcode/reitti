@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.Language;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.TimeMode;
 import com.dedicatedcode.reitti.model.UnitSystem;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -79,6 +80,9 @@ public class UserSettingsControllerAdvice {
         UserSettingsDTO.PhotoMode photoMode = mapUserToPhotoMode(authentication);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
+            if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+                uiMode = UserSettingsDTO.UIMode.LIVE_DATA_ONLY;
+            }
             UserSettings dbSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
             Instant latestData = dbSettings.getLatestData();
             if (latestData == null) {
@@ -150,6 +154,17 @@ public class UserSettingsControllerAdvice {
         } else {
             return UserSettingsDTO.PhotoMode.DISABLED;
         }
+    }
+
+    @ModelAttribute("isLiveDataOnly")
+    public boolean isLiveDataOnly() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return false;
+        }
+        return userJdbcService.findByUsername(authentication.getName())
+                .map(u -> u.getUserType() == UserType.LIVE_DATA_ONLY)
+                .orElse(false);
     }
 
 }

@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.StatisticsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,7 +30,10 @@ public class StatisticsController {
     }
 
     @GetMapping
-    public String statistics(Model model) {
+    public String statistics(@AuthenticationPrincipal User user) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            return "redirect:/";
+        }
         return "statistics";
     }
 

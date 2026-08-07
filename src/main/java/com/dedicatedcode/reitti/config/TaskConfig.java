@@ -5,10 +5,7 @@ import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
-import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
-import com.dedicatedcode.reitti.service.processing.PatchDeviceOntoTimelineTask;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
-import com.dedicatedcode.reitti.service.processing.UpdateCuratedTimelineTask;
+import com.dedicatedcode.reitti.service.processing.*;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +50,14 @@ public class TaskConfig {
     public JobDetail locationDataCleanupJobDetail() {
         return JobBuilder.newJob(LocationDataCleanupTask.class)
                 .withIdentity("location-data-cleanup-job")
+                .storeDurably()
+                .build();
+    }
+
+    @Bean("liveModeUserUpdateJob")
+    public JobDetail liveModeUserUpdateJobDetail() {
+        return JobBuilder.newJob(LiveModeOnlyUpdateTask.class)
+                .withIdentity("live-mode-user-update-job")
                 .storeDurably()
                 .build();
     }

@@ -31,7 +31,8 @@ public record UserSettingsDTO(
         FULL,
         SHARED_FULL,
         VIEW_MEMORIES,
-        SHARED_LIVE_MODE_ONLY
+        SHARED_LIVE_MODE_ONLY,
+        LIVE_DATA_ONLY
     }
     public enum PhotoMode {
         ENABLED,

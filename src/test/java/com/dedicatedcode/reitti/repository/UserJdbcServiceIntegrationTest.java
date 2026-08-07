@@ -2,11 +2,11 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +53,7 @@ class UserJdbcServiceIntegrationTest {
     void testUpdateUser() {
         String username = "updateuser_" + UUID.randomUUID();
         User user = userJdbcService.createUser(new User(username, "Update User").withPassword("password"));
-        User userToUpdate = new User(user.getId(), username, "new password", "Updated User", null, "oidc:1344", Role.ADMIN, user.getVersion());
+        User userToUpdate = new User(user.getId(), username, "new password", "Updated User", null, "oidc:1344", Role.ADMIN, UserType.NORMAL, user.getVersion());
         User updated = userJdbcService.updateUser(userToUpdate);
 
         assertEquals(user.getId(), updated.getId());
@@ -102,7 +102,7 @@ class UserJdbcServiceIntegrationTest {
         // update user
         String newUsername = "newcacheuser";
         String newEncodedPassword = "newpassword";
-        User userToUpdate = new User(userId, newUsername, newEncodedPassword, "New Cache User", null, null, Role.USER, user.getVersion());
+        User userToUpdate = new User(userId, newUsername, newEncodedPassword, "New Cache User", null, null, Role.USER, UserType.NORMAL, user.getVersion());
         userJdbcService.updateUser(userToUpdate);
 
         // check cache is evicted

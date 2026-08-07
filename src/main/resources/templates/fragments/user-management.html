@@ -103,6 +103,15 @@
                 </select>
             </div>
         </div>
+        <div th:if="${isAdmin}" class="form-group">
+            <label for="userType" th:text="#{users.type.label}">User Type</label>
+            <div class="select">
+                <select id="userType" name="userType" th:attr="data-original=${selectedUserType.name()}">
+                    <option value="NORMAL" th:selected="${selectedUserType.name() == 'NORMAL'}" th:text="#{users.type.normal}">Normal</option>
+                    <option value="LIVE_DATA_ONLY" th:selected="${selectedUserType.name() == 'LIVE_DATA_ONLY'}" th:text="#{users.type.live_data_only}">Live Data Only</option>
+                </select>
+            </div>
+        </div>
         <input th:unless="${isAdmin}" type="hidden" name="role" th:value="${selectedRole ?: 'USER'}">
         <div class="separator"></div>
         <div class="form-group">
@@ -458,6 +467,8 @@
         })();
     </script>
 </div>
+
+<div th:fragment="live-data-only-confirm" style="display:none"></div>
 
 </body>
 </html>

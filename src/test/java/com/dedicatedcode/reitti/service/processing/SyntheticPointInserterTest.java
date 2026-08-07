@@ -137,10 +137,10 @@ class SyntheticPointInserterTest {
     }
 
     // --------- helpers ----------
-    private RawLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
+    private void createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
         RawLocationPoint point = new RawLocationPoint(
                 null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, false, false, 1L
         );
-        return rawLocationPointService.create(testUser, point);
+        rawLocationPointService.create(testUser, point);
     }
 }
