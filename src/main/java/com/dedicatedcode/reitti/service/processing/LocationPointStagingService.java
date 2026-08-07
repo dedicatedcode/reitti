@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
@@ -114,7 +115,7 @@ public class LocationPointStagingService {
     }
 
     @Transactional
-    public int promote(String partitionKey) {
+    public int promote(User user, String partitionKey) {
         String sql = """
             INSERT INTO raw_source_points (
                 user_id, device_id, timestamp, accuracy_meters, elevation_meters,
@@ -130,7 +131,9 @@ public class LocationPointStagingService {
         """;
 
         List<Long> insertedIds = jdbcTemplate.queryForList(sql, Long.class, partitionKey);
-        spatialCoverageService.postPromotion(insertedIds);
+        if (user.getUserType() == UserType.NORMAL) {
+            spatialCoverageService.postPromotion(insertedIds);
+        }
         this.jdbcTemplate.update("UPDATE staging_location_points SET promoted = TRUE WHERE partition_key = ? AND promoted = FALSE", partitionKey);
         return insertedIds.size();
     }

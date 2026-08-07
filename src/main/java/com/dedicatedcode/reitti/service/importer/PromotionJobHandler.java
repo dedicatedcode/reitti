@@ -54,7 +54,7 @@ public class PromotionJobHandler implements Job {
         String partitionKey = data.getPartitionKey();
         TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
         metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
-        int promote = this.stagingService.promote(partitionKey);
+        int promote = this.stagingService.promote(user, partitionKey);
         metadataRepository.updateProgress(jobId, 1, 3, "Dropping partition");
 
         log.debug("Promoted [{}] points into live table", promote);

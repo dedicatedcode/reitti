@@ -34,21 +34,21 @@
     <div class="form-group" th:if="${type.name() == 'GEO_APIFY'}">
         <label for="apiKey" th:text="#{geocoding.service.api_key}">API Key</label>
         <input type="text" id="apiKey" name="apiKey" required
-               th:value="${service != null ? service.additionalParameters['apiKey'] : ''}"
+               th:value="${service != null && service.additionalParameters != null ? service.additionalParameters['apiKey'] : ''}"
                placeholder="Enter your Geoapify API Key">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA' || type.name() == 'GEO_APIFY' || type.name() == 'NOMINATIM'}">
         <label for="lang" th:text="#{geocoding.service.language}">Language (Optional)</label>
         <input type="text" id="lang" name="lang"
-               th:value="${service != null ? service.additionalParameters['language'] : ''}"
+               th:value="${service != null && service.additionalParameters != null ? service.additionalParameters['language'] : ''}"
                placeholder="e.g. en, de, fi">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA'  || type.name() == 'PHOTON'}">
         <label for="limit" th:text="#{geocoding.service.limit}">Limit (Optional)</label>
         <input type="number" id="limit" name="limit"
-               th:value="${service != null ? service.additionalParameters['limit'] : ''}"
+               th:value="${service != null && service.additionalParameters != null ? service.additionalParameters['limit'] : ''}"
                placeholder="10">
     </div>
 
@@ -70,7 +70,7 @@
             <div class="form-group" th:if="${type.name() == 'PHOTON'}">
                 <label for="additionalParameters" th:text="#{geocoding.service.additional_parameters.search_distance}">Search Distance</label>
                 <input type="text" id="additionalParameters" name="radius"
-                          th:value="${service != null ? service.additionalParameters['radius'] : ''}"
+                          th:value="${service != null && service.additionalParameters != null ? service.additionalParameters['radius'] : ''}"
                           placeholder="0.03">
             </div>
         </details>
