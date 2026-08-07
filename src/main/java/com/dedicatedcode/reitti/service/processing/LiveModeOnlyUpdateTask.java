@@ -80,7 +80,6 @@ public class LiveModeOnlyUpdateTask implements Job {
         this.metadataRepository.updateProgress(jobId, 3, 4, "Finished");
     }
 
-
     public static final class TaskData extends JobContext<TaskData> {
         private final User user;
         private final Device device;
