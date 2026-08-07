@@ -185,7 +185,6 @@ public class ProcessingPipelineTest {
             assertEquals(processedVisitInOrder.getEndTime(), processedVisit.getEndTime());
             assertEquals(processedVisitInOrder.getPlace(), processedVisit.getPlace());
         }
-
     }
 
     @Test
