@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +28,19 @@ public class LiveModeOnlyUpdateTask implements Job {
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final JobMetadataRepository metadataRepository;
+    private final UserNotificationService userNotificationService;
 
     public LiveModeOnlyUpdateTask(
-            UserJdbcService userJdbcService, SourceLocationPointJdbcService sourceLocationPointJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService,
-            JobMetadataRepository metadataRepository) {
+            UserJdbcService userJdbcService,
+            SourceLocationPointJdbcService sourceLocationPointJdbcService,
+            RawLocationPointJdbcService rawLocationPointJdbcService,
+            JobMetadataRepository metadataRepository,
+            UserNotificationService userNotificationService) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.metadataRepository = metadataRepository;
+        this.userNotificationService = userNotificationService;
     }
 
     @Override
@@ -70,6 +76,7 @@ public class LiveModeOnlyUpdateTask implements Job {
 
         this.metadataRepository.updateProgress(jobId, 2, 4, "Updating last modification timestamp ...");
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());
+        this.userNotificationService.newLocationData(user, data.device, TimeRange.of(start, end));
         this.metadataRepository.updateProgress(jobId, 3, 4, "Finished");
     }
 
