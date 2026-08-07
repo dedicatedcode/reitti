@@ -157,11 +157,14 @@ public class IntegrationsSettingsController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v1/ingest/gpslogger";
-        String properties = "log_customurl_url=" + url + "\n" +
-                "log_customurl_method=POST\n" +
-                "log_customurl_body={\"_type\" : \"location\",\"t\": \"u\",\"acc\": \"%ACC\",\"alt\": \"%ALT\",\"batt\": \"%BATT\",\"bs\": \"%ISCHARGING\",\"lat\": \"%LAT\",\"lon\": \"%LON\",\"tst\": \"%TIMESTAMP\",\"vel\": \"%SPD\"}\n" +
-                "log_customurl_headers=Content-Type: application/json\\nX-API-TOKEN: " + token + "\n" +
+        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v2/gpslogger/file";
+        String properties = "httpfileupload_url=" + url + "\n" +
+                "httpfileupload_method=POST\n" +
+                "autohttpfileupload_enabled=true\n" +
+                "httpfileupload_basicauth_password=\n" +
+                "httpfileupload_body_type=form-data=\n" +
+                "httpfileupload_basicauth_username=\n" +
+                "httpfileupload_headers=Authorization: " + token + "\n" +
                 "autosend_frequency_minutes=60\n" +
                 "accuracy_before_logging=25\n" +
                 "time_before_logging=15\n" +
