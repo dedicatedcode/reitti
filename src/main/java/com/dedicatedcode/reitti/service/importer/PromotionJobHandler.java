@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
@@ -7,6 +8,7 @@ import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.processing.LiveModeOnlyUpdateTask;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
@@ -27,26 +29,26 @@ public class PromotionJobHandler implements Job {
     private final JobMetadataRepository metadataRepository;
     private final UserNotificationService userNotificationService;
     private final JobDetail locationDataCleanupTask;
+    private final JobDetail liveModeOnlyUpdateTask;
 
     public PromotionJobHandler(LocationPointStagingService stagingService,
                                JobSchedulingService jobSchedulingService,
                                JobMetadataRepository metadataRepository,
                                UserNotificationService userNotificationService,
-                               @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask) {
+                               @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask,
+                               @Qualifier("liveModeUserUpdateJob") JobDetail liveModeOnlyUpdateTask) {
         this.stagingService = stagingService;
         this.jobSchedulingService = jobSchedulingService;
         this.metadataRepository = metadataRepository;
         this.userNotificationService = userNotificationService;
         this.locationDataCleanupTask = locationDataCleanupTask;
+        this.liveModeOnlyUpdateTask = liveModeOnlyUpdateTask;
     }
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         JobDataMap dataMap = context.getMergedJobDataMap();
         TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
-    }
-
-    public void execute(TaskData data) {
         UUID jobId = data.getJobId();
         User user = data.getUser();
         String partitionKey = data.getPartitionKey();
@@ -59,22 +61,33 @@ public class PromotionJobHandler implements Job {
         if (data.isManual()) {
             this.stagingService.dropPartition(partitionKey);
         }
-        metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
 
-        if (promote > 0) {
-            this.userNotificationService.newLocationData(user, data.device, timeRange);
-            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
-                    .user(user)
-                    .jobType(JobType.LOCATION_DATA_CLEANUP)
-                    .friendlyName("Location Data Cleanup")
-                    .build();
-            this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
-                                                  metadata);
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            metadataRepository.updateProgress(jobId, 2, 3, "Live data only, skipping cleanup");
+            this.jobSchedulingService.enqueueTask(liveModeOnlyUpdateTask,
+                                                  new LiveModeOnlyUpdateTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(user)
+                                                          .jobType(JobType.LOCATION_PROCESSING)
+                                                          .friendlyName("Location Data Cleanup")
+                                                          .build());
         } else {
-            log.debug("No points to promote, timerange was [{}]", timeRange);
+            metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
+
+            if (promote > 0) {
+                this.userNotificationService.newLocationData(user, data.device, timeRange);
+                this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
+                                                      new LocationDataCleanupTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
+                                                      JobSchedulingService.Metadata.builder()
+                                                              .user(user)
+                                                              .jobType(JobType.LOCATION_DATA_CLEANUP)
+                                                              .friendlyName("Location Data Cleanup")
+                                                              .build());
+            } else {
+                log.debug("No points to promote, timerange was [{}]", timeRange);
+            }
+            metadataRepository.updateProgress(jobId, 3, 3, "Done");
         }
-        metadataRepository.updateProgress(jobId, 3, 3, "Done");
     }
 
     public static final class TaskData extends JobContext<TaskData> {

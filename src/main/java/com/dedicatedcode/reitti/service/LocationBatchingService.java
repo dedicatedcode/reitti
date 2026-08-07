@@ -1,11 +1,8 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.LocationPoint;
-import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
@@ -34,8 +31,6 @@ public class LocationBatchingService {
     
     private final Map<String, UserBatch> userBatches = new ConcurrentHashMap<>();
     private final LocationPointStagingService locationPointStagingService;
-    private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobScheduler;
 
@@ -44,15 +39,11 @@ public class LocationBatchingService {
     
     @Autowired
     public LocationBatchingService(LocationPointStagingService locationPointStagingService,
-                                   SourceLocationPointJdbcService sourceLocationPointJdbcService,
-                                   RawLocationPointJdbcService rawLocationPointJdbcService,
                                    @Qualifier("promotionJob") JobDetail promotionTask,
                                    JobSchedulingService jobScheduler,
                                    @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
                                    @Value("${reitti.batching.max-wait-time:5}") long maxWaitTime) {
         this.locationPointStagingService = locationPointStagingService;
-        this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.promotionTask = promotionTask;
         this.jobScheduler = jobScheduler;
         this.maxBatchSize = maxBatchSize;
@@ -60,10 +51,6 @@ public class LocationBatchingService {
     }
 
     public void addLocationPoint(User user, Device device, LocationPoint locationPoint) {
-        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
-            handleLiveDataOnly(user, device, locationPoint);
-            return;
-        }
         String sessionKey = getSessionKey(user, device);
 
         userBatches.compute(sessionKey, (key, existingBatch) -> {
@@ -87,15 +74,6 @@ public class LocationBatchingService {
                              device.id(),
                              LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
                 .toLowerCase();
-    }
-
-    private void handleLiveDataOnly(User user, Device device, LocationPoint locationPoint) {
-        if (!locationPoint.isValid()) {
-            return;
-        }
-        sourceLocationPointJdbcService.bulkInsert(user, device, List.of(locationPoint));
-        sourceLocationPointJdbcService.deleteAllExceptLatestForUserAndDevice(user, device);
-        rawLocationPointJdbcService.replaceLatestForUser(user, locationPoint);
     }
 
     private void executeFlush(UserBatch batch) {

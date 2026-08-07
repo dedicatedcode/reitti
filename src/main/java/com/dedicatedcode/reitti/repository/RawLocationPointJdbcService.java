@@ -442,13 +442,21 @@ public class RawLocationPointJdbcService {
     }
 
     public void replaceLatestForUser(User user, LocationPoint locationPoint) {
-        RawLocationPoint point = new RawLocationPoint(
-                null, null, locationPoint.getTimestamp(),
-                new GeoPoint(locationPoint.getLatitude(), locationPoint.getLongitude()),
-                locationPoint.getAccuracyMeters(), locationPoint.getElevationMeters(),
-                false, false, 1L
+        this.jdbcTemplate.update(
+                """
+                INSERT INTO raw_location_points (user_id, timestamp, accuracy_meters, elevation_meters, geom, processed, synthetic)
+                VALUES (?, ?, ?, ?, ST_GeomFromText(?, '4326'), false, false)
+                ON CONFLICT (user_id, timestamp) DO UPDATE SET
+                    accuracy_meters = EXCLUDED.accuracy_meters,
+                    elevation_meters = EXCLUDED.elevation_meters,
+                    geom = EXCLUDED.geom
+                """,
+                user.getId(),
+                Timestamp.from(locationPoint.getTimestamp()),
+                locationPoint.getAccuracyMeters(),
+                locationPoint.getElevationMeters(),
+                pointReaderWriter.write(new GeoPoint(locationPoint.getLatitude(), locationPoint.getLongitude()))
         );
-        create(user, point);
         this.jdbcTemplate.update(
                 "DELETE FROM raw_location_points WHERE user_id = ? AND timestamp < ?",
                 user.getId(), Timestamp.from(locationPoint.getTimestamp())
