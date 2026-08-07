@@ -1,19 +1,24 @@
 package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.IntegrationTest;
-import com.dedicatedcode.reitti.TestUtils;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static com.dedicatedcode.reitti.TestConstants.Points.*;
@@ -31,6 +36,10 @@ public class ProcessingPipelineTest {
     private ProcessedVisitJdbcService processedVisitJdbcService;
     @Autowired
     private TripJdbcService tripJdbcService;
+    @Autowired
+    private RawLocationPointJdbcService rawLocationPointJdbcService;
+    @Autowired
+    private UserJdbcService userJdbcService;
 
     private User user;
 
@@ -177,6 +186,36 @@ public class ProcessingPipelineTest {
             assertEquals(processedVisitInOrder.getPlace(), processedVisit.getPlace());
         }
 
+    }
+
+    @Test
+    void shouldUpdateLatestLocationForLiveDataOnlyUserThroughFullPipeline() {
+        User user = testingService.randomUser();
+        User liveDataOnlyUser = user.withUserType(UserType.LIVE_DATA_ONLY);
+        userJdbcService.updateUser(liveDataOnlyUser);
+
+        assertTrue(rawLocationPointJdbcService.findLatest(liveDataOnlyUser).isEmpty());
+
+        testingService.importAndProcess(liveDataOnlyUser, "/data/gpx/20250617.gpx");
+
+        Optional<RawLocationPoint> latest = rawLocationPointJdbcService.findLatest(liveDataOnlyUser);
+        assertTrue(latest.isPresent());
+        assertTrue(latest.get().getTimestamp().isBefore(Instant.parse("2025-06-18T00:00:00Z")),
+                "latest should be from June 17 data, got " + latest.get().getTimestamp());
+
+        testingService.importAndProcess(liveDataOnlyUser, "/data/gpx/20250618.gpx");
+
+        latest = rawLocationPointJdbcService.findLatest(liveDataOnlyUser);
+        assertTrue(latest.isPresent());
+        assertTrue(latest.get().getTimestamp().isAfter(Instant.parse("2025-06-18T00:00:00Z")),
+                "latest should have advanced to June 18 data, got " + latest.get().getTimestamp());
+
+        testingService.importAndProcess(liveDataOnlyUser, "/data/gpx/20250617.gpx");
+
+        latest = rawLocationPointJdbcService.findLatest(liveDataOnlyUser);
+        assertTrue(latest.isPresent());
+        assertTrue(latest.get().getTimestamp().isAfter(Instant.parse("2025-06-18T00:00:00Z")),
+                "latest should remain on June 18 after re-importing older data, got " + latest.get().getTimestamp());
     }
 
     private List<ProcessedVisit> currentVisits() {
