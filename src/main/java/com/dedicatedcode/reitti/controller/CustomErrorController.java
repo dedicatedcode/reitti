@@ -45,7 +45,7 @@ public class CustomErrorController implements ErrorController {
     }
 
     private ResponseEntity<Map<String, Object>> handleApiError(Object status, Object errorMessage, Object exception, String requestUri) {
-        Integer statusCode = status != null ? Integer.valueOf(status.toString()) : 500;
+        Integer statusCode = status != null ? Integer.parseInt(status.toString()) : 500;
         String message = errorMessage != null ? errorMessage.toString() : "An error occurred";
 
         // Log the error
@@ -147,8 +147,7 @@ public class CustomErrorController implements ErrorController {
     }
 
     @ExceptionHandler(PageNotFoundException.class)
-    public String handlePageNotFound(HttpServletRequest request, Model model) {
-        String requestUri = (String) request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
+    public String handlePageNotFound(Model model) {
         model.addAttribute("status", 404);
         model.addAttribute("error", "Not Found");
         model.addAttribute("message", "The page you are looking for could not be found.");

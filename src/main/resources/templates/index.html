@@ -1114,6 +1114,7 @@
             singleDateMode: true, // Enable single date mode with locking
             dateFormat: 'YYYY-MM-DD',
             locale: navigator.language,
+            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true',
             strings: {
                 clickToUnlockDate: t('datepicker.click-to-unlock-date'),
                 clickToLockDate: t('datepicker.click-to-lock-date'),
@@ -1184,6 +1185,15 @@
         activeId = startingId;
         console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]} and active id ${startingId}`);
         window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
+
+        let lastKnownDate = getCurrentLocalDate();
+        setInterval(() => {
+            const today = getCurrentLocalDate();
+            if (today !== lastKnownDate) {
+                lastKnownDate = today;
+                window.horizontalDatePicker.setMaxDate(new Date());
+            }
+        }, 60000);
 
 
         document.getElementById('speed-selector').onchange = function(e) {
@@ -1272,6 +1282,9 @@
                     break;
                 case 'followTrail':
                     isFollowing = value;
+                    break;
+                case 'allowFutureDates':
+                    window.horizontalDatePicker.setAllowFutureDates(value);
                     break;
             }
         });
