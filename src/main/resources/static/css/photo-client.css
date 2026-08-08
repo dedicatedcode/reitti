@@ -253,6 +253,126 @@
     cursor: help;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
+
+.write-location-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 21;
+    padding: 0;
+    line-height: 1;
+}
+
+.write-location-btn.writing {
+    cursor: wait;
+}
+
+.write-location-btn.success {
+    cursor: default;
+}
+
+.write-location-btn.error {
+    cursor: default;
+}
+
+.write-location-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(44, 62, 80, 0.9);
+    padding: 8px 12px;
+    border-radius: 0 0 8px 8px;
+    margin-top: -8px;
+    margin-bottom: 8px;
+}
+
+.write-location-toolbar-label {
+    color: #ecf0f1;
+    font-size: 13px;
+}
+
+.write-all-btn.success {
+    background: rgba(39, 174, 96, 0.9) !important;
+    border-color: rgba(39, 174, 96, 1) !important;
+    color: var(--color-text-white);
+    cursor: default;
+}
+
+.write-all-btn.partial {
+    background: rgba(230, 126, 34, 0.9) !important;
+    border-color: rgba(230, 126, 34, 1) !important;
+}
+
+.photo-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(44, 62, 80, 0.95);
+    color: #ecf0f1;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 10005;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.photo-toast.error {
+    border-color: rgba(231, 76, 60, 0.4);
+    background: rgba(192, 57, 43, 0.95);
+}
+
+.photo-time-match-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(44, 62, 80, 0.9);
+    padding: 8px 14px;
+    border-radius: 8px 8px 0 0;
+}
+
+.photo-time-match-indicator {
+    background: rgba(255, 193, 7, 0.9);
+    color: #333;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+    border: 2px solid #fff;
+    flex-shrink: 0;
+}
+
+.photo-time-match-label {
+    color: #ecf0f1;
+    font-size: 13px;
+    flex: 1;
+}
+
+.photo-modal-write-btn {
+    white-space: nowrap;
+}
+
+.photo-modal-write-btn.success {
+    background: rgba(39, 174, 96, 0.9) !important;
+    border-color: rgba(39, 174, 96, 1) !important;
+    color: var(--color-text-white);
+    cursor: default;
+}
+
+.photo-modal-write-btn.error {
+    background: rgba(231, 76, 60, 0.9) !important;
+    border-color: rgba(231, 76, 60, 1) !important;
+}
 /* Photo cluster marker styles */
 .photo-cluster-marker .photo-marker-icon {
     position: relative;

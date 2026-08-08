@@ -265,6 +265,43 @@ public class ImmichIntegrationService {
         throw new IllegalStateException("Unable to download image from Immich");
     }
 
+    public boolean updateAssetLocation(User user, String assetId, double latitude, double longitude) {
+        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            return false;
+        }
+
+        ImmichIntegration integration = integrationOpt.get();
+
+        try {
+            String baseUrl = integration.getServerUrl().endsWith("/") ?
+                integration.getServerUrl() : integration.getServerUrl() + "/";
+            String updateUrl = baseUrl + "api/assets";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", integration.getApiToken());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+            var body = new com.dedicatedcode.reitti.dto.ImmichAssetUpdateRequest(java.util.List.of(assetId), latitude, longitude);
+
+            HttpEntity<com.dedicatedcode.reitti.dto.ImmichAssetUpdateRequest> entity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Void> response = restTemplate.exchange(
+                updateUrl,
+                HttpMethod.PUT,
+                entity,
+                Void.class
+            );
+
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Unable to update asset location in Immich for asset [{}]", assetId, e);
+            return false;
+        }
+    }
+
 
     private String getExtensionFromContentType(String contentType) {
         return switch (contentType) {
