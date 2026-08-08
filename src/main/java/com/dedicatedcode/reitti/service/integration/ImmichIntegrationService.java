@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
-import com.dedicatedcode.reitti.dto.ImmichAsset;
-import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
-import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
-import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
@@ -263,6 +260,43 @@ public class ImmichIntegrationService {
             }
         }
         throw new IllegalStateException("Unable to download image from Immich");
+    }
+
+    public boolean updateAssetLocation(User user, String assetId, double latitude, double longitude) {
+        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+
+        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+            return false;
+        }
+
+        ImmichIntegration integration = integrationOpt.get();
+
+        try {
+            String baseUrl = integration.getServerUrl().endsWith("/") ?
+                integration.getServerUrl() : integration.getServerUrl() + "/";
+            String updateUrl = baseUrl + "api/assets";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", integration.getApiToken());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+            ImmichAssetUpdateRequest body = new ImmichAssetUpdateRequest(java.util.List.of(assetId), latitude, longitude);
+
+            HttpEntity<ImmichAssetUpdateRequest> entity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Void> response = restTemplate.exchange(
+                updateUrl,
+                HttpMethod.PUT,
+                entity,
+                Void.class
+            );
+
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Unable to update asset location in Immich for asset [{}]", assetId, e);
+            return false;
+        }
     }
 
 
