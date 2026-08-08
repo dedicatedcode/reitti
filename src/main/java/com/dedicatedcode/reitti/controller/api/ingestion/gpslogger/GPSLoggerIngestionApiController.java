@@ -49,6 +49,11 @@ public class GPSLoggerIngestionApiController {
                 return ResponseEntity.ok().build();
             }
 
+            if (locationPoint.getAccuracyMeters() == null) {
+                logger.warn("Ignoring location point [{}] because accuracy is null", locationPoint);
+                return ResponseEntity.ok().build();
+            }
+
             this.locationBatchingService.addLocationPoint(user, user.getDevice().get(), locationPoint);
             logger.debug("Successfully received and queued GpsLogger location point for user {}",
                          user.getUsername());

@@ -64,16 +64,18 @@ public class OwntracksIngestionApiController {
         try {
             if (!request.isLocationUpdate()) {
                 logger.debug("Ignoring non-location Owntracks message of type: {}", request.getType());
-                // Return empty array for non-location messages
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
-            // Convert an Owntracks format to our LocationPoint format
             LocationPoint locationPoint = request.toLocationPoint();
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
-                // Return empty array when timestamp is null
+                return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
+            }
+
+            if (locationPoint.getAccuracyMeters() == null) {
+                logger.warn("Ignoring location point [{}] because accuracy is null", locationPoint);
                 return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
             }
 
@@ -81,7 +83,6 @@ public class OwntracksIngestionApiController {
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                          user.getUsername());
 
-            // Return friends data
             List<OwntracksFriendResponse> friendsData = buildFriendsData(user);
             return ResponseEntity.ok(friendsData);
 
