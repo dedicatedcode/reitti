@@ -57,7 +57,7 @@
                         <li th:utext="#{integrations.gpslogger.step1}">Download GPSLogger from FDroid or directly from GitHub</li>
                         <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger, open the sidebar and click on <strong>HTTP-File-Upload</strong></li>
                         <li th:utext="#{integrations.gpslogger.step3}">Enable "Allow Auto Sending"</li>
-                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">Set the URL to: <code>https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v2/gpslogger/file'})}">Set the URL to: <code>https://your-domain.com//api/v2/gpslogger/file</code></li>
                         <li><span th:utext="#{integrations.gpslogger.step5}">Set HTTP Header to:</span>
 <pre>
 X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
