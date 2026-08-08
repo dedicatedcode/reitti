@@ -1,9 +1,6 @@
 package com.dedicatedcode.reitti.service.integration;
 
-import com.dedicatedcode.reitti.dto.ImmichAsset;
-import com.dedicatedcode.reitti.dto.ImmichSearchRequest;
-import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
-import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
@@ -284,9 +281,9 @@ public class ImmichIntegrationService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-            var body = new com.dedicatedcode.reitti.dto.ImmichAssetUpdateRequest(java.util.List.of(assetId), latitude, longitude);
+            ImmichAssetUpdateRequest body = new ImmichAssetUpdateRequest(java.util.List.of(assetId), latitude, longitude);
 
-            HttpEntity<com.dedicatedcode.reitti.dto.ImmichAssetUpdateRequest> entity = new HttpEntity<>(body, headers);
+            HttpEntity<ImmichAssetUpdateRequest> entity = new HttpEntity<>(body, headers);
 
             ResponseEntity<Void> response = restTemplate.exchange(
                 updateUrl,
