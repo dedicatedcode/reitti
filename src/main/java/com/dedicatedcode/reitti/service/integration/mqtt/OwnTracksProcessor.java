@@ -46,6 +46,11 @@ public class OwnTracksProcessor implements MqttPayloadProcessor {
                 return;
             }
 
+            if (locationPoint.getAccuracyMeters() == null) {
+                logger.warn("Ignoring location point [{}] because accuracy is null", locationPoint);
+                return;
+            }
+
             this.locationBatchingService.addLocationPoint(user, device, locationPoint);
             logger.debug("Successfully received and queued Owntracks location point for user {}",
                          user.getUsername());

@@ -38,7 +38,7 @@ public class GPSLoggerIngestionApiController {
             if (!request.isLocationUpdate()) {
                 logger.debug("Ignoring non-location GpsLogger message of type: {}", request.getType());
                 // Return empty array for non-location messages
-                return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
+                return ResponseEntity.ok().build();
             }
 
             // Convert an Owntracks format to our LocationPoint format
@@ -46,15 +46,19 @@ public class GPSLoggerIngestionApiController {
 
             if (locationPoint.getTimestamp() == null) {
                 logger.warn("Ignoring location point [{}] because timestamp is null", locationPoint);
-                // Return empty array when timestamp is null
-                return ResponseEntity.ok(new ArrayList<OwntracksFriendResponse>());
+                return ResponseEntity.ok().build();
+            }
+
+            if (locationPoint.getAccuracyMeters() == null) {
+                logger.warn("Ignoring location point [{}] because accuracy is null", locationPoint);
+                return ResponseEntity.ok().build();
             }
 
             this.locationBatchingService.addLocationPoint(user, user.getDevice().get(), locationPoint);
             logger.debug("Successfully received and queued GpsLogger location point for user {}",
                          user.getUsername());
 
-            return ResponseEntity.ok(Collections.emptyList());
+            return ResponseEntity.ok().build();
 
         } catch (Exception e) {
             logger.error("Error processing GPSLogger data", e);
