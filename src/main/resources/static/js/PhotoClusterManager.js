@@ -7,14 +7,15 @@ class PhotoClusterManager {
             iconSize: options.iconSize || 56,
             borderWidth: options.borderWidth || 3,
             badgeFontSize: options.badgeFontSize || 11,
-            showPhotoGridModal: options.showPhotoGridModal || this.showPhotoGridModal,
-            showPhotoModal: options.showPhotoModal || this.showPhotoModal,
+            showPhotoGridModal: options.showPhotoGridModal || this.showPhotoGridModal.bind(this),
+            showPhotoModal: options.showPhotoModal || this.showPhotoModal.bind(this),
         };
 
         this.index = null;
         this.photos = [];
         this.markers = new Map();
         this._imageCache = new Map();
+        this._writtenAssetIds = new Set();
 
         const self = this;
         this._moveHandler = function () {
@@ -280,6 +281,10 @@ class PhotoClusterManager {
         closeButton.innerHTML = '<i class="lni lni-xmark"></i>';
         closeButton.className = 'photo-grid-close-button';
 
+        // Count time-matched photos (excluding already-written ones)
+        const timeMatchedPhotos = photos.filter(function (p) { return p.timeMatched === true && !self._writtenAssetIds.has(p.id); });
+        const hasTimeMatched = timeMatchedPhotos.length > 0;
+
         // Create photo grid
         const photoGrid = document.createElement('div');
         photoGrid.className = 'photo-grid';
@@ -287,6 +292,8 @@ class PhotoClusterManager {
         const thumbnailSize = getComputedStyle(document.documentElement)
             .getPropertyValue('--photo-grid-thumbnail-size').trim();
         photoGrid.style.gridTemplateColumns = `repeat(${columns}, ${thumbnailSize})`;
+
+        var self = this;
 
         photos.forEach((photo, index) => {
             const photoElement = document.createElement('div');
@@ -320,22 +327,58 @@ class PhotoClusterManager {
                 photoElement.style.color = '#ccc';
             });
 
-            // Add time-matched indicator if photo was aligned by time
-            if (photo.timeMatched === true) {
+            // Add time-matched indicator if photo was aligned by time and not yet written
+            if (photo.timeMatched === true && !self._writtenAssetIds.has(photo.id)) {
                 const timeMatchedIndicator = document.createElement('div');
                 timeMatchedIndicator.className = 'time-matched-indicator';
                 timeMatchedIndicator.innerHTML = '!';
-                timeMatchedIndicator.title = 'This photo had no GPS coordinates and was aligned by time to your path';
+                timeMatchedIndicator.title = t('photo.time-matched.tooltip');
                 photoElement.appendChild(timeMatchedIndicator);
             }
 
             photoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.showPhotoModal(photo, () => {
+                self.showPhotoModal(photo, () => {
                     // Return to grid when closing full image
-                    this.showPhotoGridModal(photos);
+                    self.showPhotoGridModal(photos);
                 }, photos, index);
             });
+
+// Add write-back button for time-matched photos not yet written
+            if (photo.timeMatched === true && !self._writtenAssetIds.has(photo.id)) {
+                const writeBtn = document.createElement('button');
+                writeBtn.className = 'btn write-location-btn';
+                writeBtn.setAttribute('data-asset-id', photo.id);
+                writeBtn.innerHTML = '<i class="lni lni-map-marker"></i>';
+                writeBtn.title = t('photo.write-location.title');
+                writeBtn.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    writeBtn.disabled = true;
+                    writeBtn.classList.add('writing');
+                    fetch(window.contextPath + '/api/v1/photos/immich/' + encodeURIComponent(photo.id) + '/location?latitude=' + photo.latitude + '&longitude=' + photo.longitude, {
+                        method: 'PUT'
+                    })
+                    .then(function (resp) {
+                        if (resp.ok) {
+                            self._writtenAssetIds.add(photo.id);
+                            writeBtn.classList.remove('writing');
+                            writeBtn.classList.add('success');
+                            writeBtn.innerHTML = '<i class="lni lni-checkmark"></i>';
+                            showToast(t('photo.write-location.success'));
+                        } else {
+                            throw new Error('HTTP ' + resp.status);
+                        }
+                    })
+                    .catch(function () {
+                        writeBtn.classList.remove('writing');
+                        writeBtn.classList.add('error');
+                        writeBtn.disabled = false;
+                        writeBtn.innerHTML = '<i class="lni lni-close"></i>';
+                        showToast(t('photo.write-location.error'), true);
+                    });
+                });
+                photoElement.appendChild(writeBtn);
+            }
 
             photoElement.appendChild(img);
             photoGrid.appendChild(photoElement);
@@ -370,6 +413,75 @@ class PhotoClusterManager {
 
         // Assemble modal
         gridContainer.appendChild(closeButton);
+        if (hasTimeMatched) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'write-location-toolbar';
+
+            const countLabel = document.createElement('span');
+            countLabel.className = 'write-location-toolbar-label';
+            countLabel.textContent = t('photo.time-matched.count', [timeMatchedPhotos.length]);
+            toolbar.appendChild(countLabel);
+
+            if (timeMatchedPhotos.length > 1) {
+                const writeAllBtn = document.createElement('button');
+                writeAllBtn.className = 'btn write-all-btn';
+                writeAllBtn.textContent = t('photo.write-all.label', [timeMatchedPhotos.length]);
+                writeAllBtn.addEventListener('click', function () {
+                    writeAllBtn.disabled = true;
+                    var total = timeMatchedPhotos.length;
+                    var done = 0;
+                    var failures = 0;
+                    function updateLabel() {
+                        writeAllBtn.textContent = t('photo.write-all.progress', [done, total]);
+                    }
+                    updateLabel();
+                    timeMatchedPhotos.forEach(function (p) {
+                        fetch(window.contextPath + '/api/v1/photos/immich/' + encodeURIComponent(p.id) + '/location?latitude=' + p.latitude + '&longitude=' + p.longitude, {
+                            method: 'PUT'
+                        })
+                        .then(function (resp) {
+                            return resp.ok ? Promise.resolve() : Promise.reject();
+                        })
+                        .then(function () {
+                            done++;
+                            self._writtenAssetIds.add(p.id);
+                            var writeBtn = document.querySelector('.write-location-btn[data-asset-id="' + p.id + '"]');
+                            if (writeBtn) {
+                                writeBtn.classList.add('success');
+                                writeBtn.innerHTML = '<i class="lni lni-checkmark"></i>';
+                                writeBtn.disabled = true;
+                            }
+                        })
+                        .catch(function () {
+                            done++;
+                            failures++;
+                            var writeBtn = document.querySelector('.write-location-btn[data-asset-id="' + p.id + '"]');
+                            if (writeBtn) {
+                                writeBtn.classList.add('error');
+                                writeBtn.innerHTML = '<i class="lni lni-close"></i>';
+                            }
+                        })
+                        .finally(function () {
+                            updateLabel();
+                            if (done === total) {
+                                if (failures === 0) {
+                                    writeAllBtn.textContent = t('photo.write-all.done');
+                                    writeAllBtn.classList.add('success');
+                                    showToast(t('photo.write-all.success'));
+                                } else {
+                                    writeAllBtn.textContent = t('photo.write-all.done-failures', [failures]);
+                                    writeAllBtn.classList.add('partial');
+                                    showToast(t('photo.write-all.partial', [failures, total]), true);
+                                }
+                            }
+                        });
+                    });
+                });
+                toolbar.appendChild(writeAllBtn);
+            }
+
+            gridContainer.appendChild(toolbar);
+        }
         gridContainer.appendChild(photoGrid);
         modal.appendChild(gridContainer);
         document.body.appendChild(modal);
@@ -426,6 +538,59 @@ class PhotoClusterManager {
             errorMsg.style.fontSize = '18px';
             imageContainer.appendChild(errorMsg);
         });
+
+        // Time-matched info bar (only if not yet written)
+        if (photo.timeMatched === true && !this._writtenAssetIds.has(photo.id)) {
+            const timeMatchBar = document.createElement('div');
+            timeMatchBar.className = 'photo-time-match-bar';
+
+            const indicator = document.createElement('span');
+            indicator.className = 'photo-time-match-indicator';
+            indicator.textContent = '!';
+            timeMatchBar.appendChild(indicator);
+
+            const label = document.createElement('span');
+            label.className = 'photo-time-match-label';
+            label.textContent = t('photo.time-matched.bar-label');
+            timeMatchBar.appendChild(label);
+
+            var self = this;
+            const writeBtn = document.createElement('button');
+            writeBtn.className = 'btn photo-modal-write-btn';
+            writeBtn.innerHTML = '<i class="lni lni-map-marker"></i> ' + t('photo.write-location.button');
+            writeBtn.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                writeBtn.disabled = true;
+                writeBtn.textContent = t('photo.write-location.writing');
+                fetch(window.contextPath + '/api/v1/photos/immich/' + encodeURIComponent(photo.id) + '/location?latitude=' + photo.latitude + '&longitude=' + photo.longitude, {
+                    method: 'PUT'
+                })
+                .then(function (resp) {
+                    if (resp.ok) {
+                        self._writtenAssetIds.add(photo.id);
+                        writeBtn.innerHTML = '<i class="lni lni-checkmark"></i> ' + t('photo.write-location.written');
+                        writeBtn.classList.add('success');
+                        showToast(t('photo.write-location.success'));
+                        setTimeout(function () {
+                            if (timeMatchBar.parentNode) {
+                                timeMatchBar.parentNode.removeChild(timeMatchBar);
+                            }
+                        }, 1500);
+                    } else {
+                        throw new Error('HTTP ' + resp.status);
+                    }
+                })
+                .catch(function () {
+                    writeBtn.disabled = false;
+                    writeBtn.innerHTML = '<i class="lni lni-close"></i> ' + t('photo.write-location.failed');
+                    writeBtn.classList.add('error');
+                    showToast(t('photo.write-location.error'), true);
+                });
+            });
+            timeMatchBar.appendChild(writeBtn);
+
+            imageContainer.appendChild(timeMatchBar);
+        }
 
         // Create close button
         const closeButton = document.createElement('button');
@@ -535,4 +700,21 @@ class PhotoClusterManager {
         modal.appendChild(imageContainer);
         document.body.appendChild(modal);
     }
+}
+
+function showToast(msg, isError) {
+    var el = document.createElement('div');
+    el.className = 'photo-toast';
+    if (isError) {
+        el.classList.add('error');
+    }
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () {
+        el.style.transition = 'opacity .35s';
+        el.style.opacity = '0';
+    }, 2400);
+    setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+    }, 2800);
 }

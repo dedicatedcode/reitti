@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/photos/immich")
@@ -40,12 +41,27 @@ public class ImmichPhotoApiController {
         return immichIntegrationService.proxyImageRequest(user, assetId, "thumbnail");
     }
     
-    @GetMapping("/proxy/{assetId}/original")
+@GetMapping("/proxy/{assetId}/original")
     public ResponseEntity<byte[]> getPhotoOriginal(
             @PathVariable String assetId,
             @AuthenticationPrincipal User user) {
-        
+
         return immichIntegrationService.proxyImageRequest(user, assetId, "fullsize");
+    }
+
+    @PutMapping("/{assetId}/location")
+    public ResponseEntity<Map<String, Object>> updateAssetLocation(
+            @PathVariable String assetId,
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @AuthenticationPrincipal User user) {
+
+        boolean success = immichIntegrationService.updateAssetLocation(user, assetId, latitude, longitude);
+        if (success) {
+            return ResponseEntity.ok(Map.of("status", "ok"));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("status", "error", "message", "Failed to update asset location in Immich"));
+        }
     }
 
 }
