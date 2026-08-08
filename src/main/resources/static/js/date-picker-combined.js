@@ -212,6 +212,7 @@ class TimebandUtils {
         const cfg = timebandConfigs[timeband];
         if (!cfg?.getItemData) return [];
 
+        const maxDate = datePicker.options?.allowFutureDates ? undefined : new Date();
         const items = [];
         const startOffset = isLeft ? -count : 1;
         const endOffset = isLeft ? 0 : count + 1;
@@ -219,7 +220,9 @@ class TimebandUtils {
         for (let i = startOffset; i < endOffset; i++) {
             if (i === 0) continue;
             const date = addToTimeband(referenceDate, timeband, i);
-            if (date) items.push(cfg.getItemData(date));
+            if (!date) continue;
+            if (!isLeft && maxDate && date > maxDate) break;
+            items.push(cfg.getItemData(date));
         }
 
         return items;
@@ -702,6 +705,7 @@ class DatePicker {
             dragCursor: 'grab',
             draggingCursor: 'grabbing',
             momentumScrolling: true,
+            allowFutureDates: false,
             strings: { ...defaultStrings, ...options.strings },
             onHoverRange: null,
             ...options
@@ -802,36 +806,68 @@ class DatePicker {
     #generateDays() {
         const center = this.#options.startDate || new Date();
         const total = this.#calculateInitialItemCount(TIMEBANDS.DAY);
-        const start = new Date(center);
-        start.setDate(center.getDate() - Math.floor(total / 2));
 
-        this.#items = Array.from({ length: total }, (_, i) => {
+        let start;
+        if (this.#options.allowFutureDates) {
+            start = new Date(center);
+            start.setDate(center.getDate() - Math.floor(total / 2));
+        } else {
+            const rightEdge = new Date();
+            start = new Date(rightEdge);
+            start.setDate(rightEdge.getDate() - total + 1);
+        }
+
+        const maxDate = this.#options.allowFutureDates ? undefined : new Date();
+        this.#items = [];
+        for (let i = 0; i < total; i++) {
             const d = new Date(start);
             d.setDate(start.getDate() + i);
-            return this.#createDayData(d);
-        });
+            if (maxDate && d > maxDate) break;
+            this.#items.push(this.#createDayData(d));
+        }
     }
 
     #generateMonths() {
         const center = this.#options.startDate || new Date();
         const total = this.#calculateInitialItemCount(TIMEBANDS.MONTH);
-        const start = new Date(center.getFullYear(), center.getMonth() - Math.floor(total / 2), 1);
 
-        this.#items = Array.from({ length: total }, (_, i) => {
+        let start;
+        if (this.#options.allowFutureDates) {
+            start = new Date(center.getFullYear(), center.getMonth() - Math.floor(total / 2), 1);
+        } else {
+            const now = new Date();
+            const rightEdge = new Date(now.getFullYear(), now.getMonth(), 1);
+            start = new Date(rightEdge.getFullYear(), rightEdge.getMonth() - total + 1, 1);
+        }
+
+        const maxDate = this.#options.allowFutureDates ? undefined : new Date();
+        this.#items = [];
+        for (let i = 0; i < total; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-            return this.#createMonthData(d);
-        });
+            if (maxDate && d > maxDate) break;
+            this.#items.push(this.#createMonthData(d));
+        }
     }
 
     #generateYears() {
         const center = this.#options.startDate || new Date();
         const total = this.#calculateInitialItemCount(TIMEBANDS.YEAR);
-        const startYear = center.getFullYear() - Math.floor(total / 2);
 
-        this.#items = Array.from({ length: total }, (_, i) => {
+        let startYear;
+        if (this.#options.allowFutureDates) {
+            startYear = center.getFullYear() - Math.floor(total / 2);
+        } else {
+            const now = new Date();
+            startYear = now.getFullYear() - total + 1;
+        }
+
+        const maxDate = this.#options.allowFutureDates ? undefined : new Date();
+        this.#items = [];
+        for (let i = 0; i < total; i++) {
             const d = new Date(startYear + i, 0, 1);
-            return this.#createYearData(d);
-        });
+            if (maxDate && d > maxDate) break;
+            this.#items.push(this.#createYearData(d));
+        }
     }
 
     #createDayData(date) {
@@ -1564,9 +1600,16 @@ class DatePicker {
         const itemWidth = (cfg.itemWidth || 0) + 1;
         const containerWidth = this.#scrollContainer.clientWidth;
 
-        const target = index >= 0
-            ? (index * itemWidth) - (containerWidth / 2) + (itemWidth / 2)
-            : (this.#scrollContainer.scrollWidth - containerWidth) / 2;
+        let target;
+        if (this.#options.allowFutureDates) {
+            target = index >= 0
+                ? (index * itemWidth) - (containerWidth / 2) + (itemWidth / 2)
+                : (this.#scrollContainer.scrollWidth - containerWidth) / 2;
+        } else {
+            target = index >= 0
+                ? (index * itemWidth) - containerWidth + itemWidth
+                : this.#scrollContainer.scrollWidth - containerWidth;
+        }
 
         this.#setScrollLeft(Math.max(0, target), instant);
     }
@@ -1935,6 +1978,24 @@ class DatePicker {
     isSameDay = areSameDay;
     isSameMonth = areSameMonth;
     isSameYear = areSameYear;
+
+    setAllowFutureDates(allow) {
+        if (allow === this.#options.allowFutureDates) return;
+        this.#options.allowFutureDates = allow;
+        this.#generateInitialItems();
+        this.render();
+        this.#requestSelectionUpdate();
+    }
+
+    setMaxDate(date) {
+        if (this.#options.allowFutureDates) return;
+        const clamped = clampToStartOfDay(normalizeDate(date));
+        if (clamped) {
+            this.#generateInitialItems();
+            this.render();
+            this.#requestSelectionUpdate();
+        }
+    }
 
     destroy() {
         this.#stopMomentum();

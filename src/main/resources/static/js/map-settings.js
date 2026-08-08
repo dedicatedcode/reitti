@@ -55,6 +55,14 @@ class SettingsMenu {
                             </label>
                         </div>
                         <div class="form-group slide-reveal-container">
+                            <input type="checkbox" id="allow-future-dates-checkbox">
+                            <label for="allow-future-dates-checkbox" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text">${t('map.settings.interface.allow-future-dates')}</span>
+                            </label>
+                            <span class="form-description font-small">${t('map.settings.interface.allow-future-dates.description')}</span>
+                        </div>
+                        <div class="form-group slide-reveal-container">
                             <input type="checkbox" id="show-avatars-checkbox">
                             <label for="show-avatars-checkbox" class="slide-reveal">
                                 <span class="slide-box"></span>
@@ -121,13 +129,18 @@ class SettingsMenu {
 
         const followTrailCheckbox = this.menu.querySelector('#follow-trail-checkbox');
         if (followTrailCheckbox) {
-            followTrailCheckbox.checked = localStorage.getItem('followTrail') !== 'false'; // default true
+            followTrailCheckbox.checked = localStorage.getItem('followTrail') !== 'false';
+        }
+
+        const allowFutureDatesCheckbox = this.menu.querySelector('#allow-future-dates-checkbox');
+        if (allowFutureDatesCheckbox) {
+            allowFutureDatesCheckbox.checked = localStorage.getItem('allowFutureDates') === 'true';
         }
 
         // Load and apply saved settings
         this.loadSettings();
     }
-    
+
     setupCheckboxListeners() {
         // Timeline visibility
         const timelineCheckbox = this.menu.querySelector('#timeline-visible-checkbox');
@@ -172,6 +185,15 @@ class SettingsMenu {
         if (followTrailCheckbox) {
             followTrailCheckbox.addEventListener('change', (e) => {
                 this.updateFollowTrail(e.target.checked);
+            });
+        }
+
+        const allowFutureDatesCheckbox = this.menu.querySelector('#allow-future-dates-checkbox');
+        if (allowFutureDatesCheckbox) {
+            allowFutureDatesCheckbox.addEventListener('change', (e) => {
+                const value = e.target.checked;
+                localStorage.setItem('allowFutureDates', value);
+                this.dispatchSettingsChange('allowFutureDates', value);
             });
         }
     }
@@ -303,7 +325,8 @@ class SettingsMenu {
             datepickerHidden: localStorage.getItem('datepickerHidden') === 'true',
             timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true',
             showAvatars: localStorage.getItem('showAvatars') !== 'false',
-            followTrail: localStorage.getItem('followTrail') !== 'false'
+            followTrail: localStorage.getItem('followTrail') !== 'false',
+            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true'
         };
 
         if (!window.userSettings.h3Enabled && settings.viewMode === 'H3') {
