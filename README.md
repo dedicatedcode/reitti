@@ -224,10 +224,6 @@ We use [Weblate](https://hosted.weblate.org/engage/reitti/) for translations. He
 
 ---
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=dedicatedcode/reitti&type=Date)](https://www.star-history.com/#dedicatedcode/reitti&Date)
-
 ## License
 
 This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). See the [LICENSE](LICENSE)
