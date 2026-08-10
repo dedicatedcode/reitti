@@ -172,8 +172,10 @@ public class H3CellUpdateJob implements Job {
 
     private List<PointData> loadPointData(List<Long> batchIds) {
         String placeholders = String.join(",", Collections.nCopies(batchIds.size(), "?"));
-        String sql = "SELECT user_id, device_id, id, ST_AsText(geom) as geom_wkt, h3_cell, status, timestamp " +
-                "FROM raw_source_points WHERE id IN (" + placeholders + ")";
+        String sql = "SELECT rsp.user_id, rsp.device_id, rsp.id, ST_AsText(rsp.geom) as geom_wkt, rsp.h3_cell, rsp.status, rsp.timestamp " +
+                "FROM raw_source_points rsp " +
+                "JOIN users u ON rsp.user_id = u.id " +
+                "WHERE u.user_type != 'LIVE_DATA_ONLY' AND rsp.id IN (" + placeholders + ")";
 
         return jdbcTemplate.query(sql,
                                   (rs, _) -> {
@@ -195,8 +197,10 @@ public class H3CellUpdateJob implements Job {
     private List<PointData> loadPointDataForMoved(List<MovedPoint> movedPoints, boolean useOldCoords) {
         List<Long> ids = movedPoints.stream().map(MovedPoint::id).toList();
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-        String sql = "SELECT user_id, device_id, id, status, timestamp " +
-                "FROM raw_source_points WHERE id IN (" + placeholders + ")";
+        String sql = "SELECT rsp.user_id, rsp.device_id, rsp.id, rsp.status, rsp.timestamp " +
+                "FROM raw_source_points rsp " +
+                "JOIN users u ON rsp.user_id = u.id " +
+                "WHERE u.user_type != 'LIVE_DATA_ONLY' AND rsp.id IN (" + placeholders + ")";
 
         Map<Long, MovedPoint> movedMap = movedPoints.stream().collect(Collectors.toMap(MovedPoint::id, mp -> mp));
 
