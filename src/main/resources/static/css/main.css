@@ -275,22 +275,6 @@ header {
     text-shadow: 0 0 2px var(--color-highlight);
 }
 
-#tooltip::-webkit-scrollbar {
-    width: 4px;
-}
-#tooltip::-webkit-scrollbar-thumb {
-    background: #666;
-    border-radius: 2px;
-}
-#tooltip {
-    /* Ensure the tooltip doesn't stay open if the mouse moves too fast */
-    pointer-events: auto; /* Changed to auto so user can scroll the list */
-    transition: opacity 0.1s ease-out;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    user-select: none;
-    -webkit-user-select: none;
-}
-
 .font-small {
     font-size: 0.8rem;
 }

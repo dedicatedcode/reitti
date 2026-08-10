@@ -277,7 +277,6 @@ class MapRenderer {
     }
 
     _getTargetH3Resolution(zoom) {
-         console.log("zoom", zoom);
         if (zoom < 5) return 2;
         if (zoom < 7) return 3;
         if (zoom < 8) return 4;
@@ -1755,18 +1754,45 @@ class MapRenderer {
     _updateTooltip({x, y, object}) {
         const tooltip = document.getElementById('tooltip');
         if (object) {
-            const visitListHtml = object.originalVisits.map(v => `
-            <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
-                <b>${t('map.popup.labels.from')}</b> ${formatDateTime(v.startTime)}<br>
-                <b>${t('map.popup.labels.to')}</b> ${formatDateTime(v.endTime)}
-            </div>
-        `).join('');
+            const timeMode = window.userSettings?.timeMode || 'TWENTY_FOUR_HOUR';
+            const locale = window.userSettings?.selectedLocale;
+
+            const fmtTime = (ts) => {
+                const opts = timeMode === 'TWENTY_FOUR_HOUR'
+                    ? { hour: '2-digit', minute: '2-digit', hour12: false }
+                    : { hour: '2-digit', minute: '2-digit' };
+                return new Date(ts).toLocaleTimeString(locale, opts);
+            };
+
+            const grouped = new Map();
+            object.originalVisits.forEach(v => {
+                const day = new Date(v.startTime).toLocaleDateString(locale);
+                if (!grouped.has(day)) grouped.set(day, []);
+                grouped.get(day).push(v);
+            });
+
+            const visitGroupsHtml = [...grouped.entries()].map(([day, visits]) => {
+                const fmtDay = new Date(visits[0].startTime).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+                return visits.map((v, i) => `
+                <div class="sel-info-row${i > 0 ? ' sel-info-subrow' : ' sel-info-day-lead'}">
+                    <span class="k">${i === 0 ? fmtDay : ''}</span>
+                    <span class="v mono">${fmtTime(v.startTime)} – ${fmtTime(v.endTime)}</span>
+                </div>
+                `).join('');
+            }).join('');
 
             tooltip.innerHTML = `
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${object.name == null ? t('place.unknown.label') : object.name}</div>
-            <div><b>${t('map.popup.labels.total_duration')}</b> ${humanizeDuration(object.totalDurationSec * 1000)}</div>
-            <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
-                ${visitListHtml}
+            <div class="map-popup">
+                <div class="sel-info-head">
+                    <div class="sel-info-title">${object.name == null ? t('place.unknown.label') : object.name}</div>
+                </div>
+                <div class="sel-info-row">
+                    <span class="k">${t('map.popup.labels.total_duration')}</span>
+                    <span class="v mono">${humanizeDuration(object.totalDurationSec * 1000)}</span>
+                </div>
+                <div class="sel-info-visits">
+                    ${visitGroupsHtml}
+                </div>
             </div>
         `;
             tooltip.style.display = 'block';
@@ -2230,7 +2256,7 @@ class MapRenderer {
         };
 
         const popupContent = `
-        <div class="floating map-popup">
+        <div class="map-popup">
             <div class="sel-info-head">
                 <div class="sel-info-title">
                     ${t('map.auto-update.latest-location')}
