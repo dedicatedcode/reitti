@@ -151,6 +151,7 @@ public class MemoryController {
         model.addAttribute("endDate", endDate);
         model.addAttribute("endTime", endTime);
         model.addAttribute("year", year);
+        model.addAttribute("openEnded", false);
         return "memories/new :: memory-form";
     }
 
@@ -340,7 +341,7 @@ public class MemoryController {
         }
         memoryService.deleteMemory(user, id);
         response.setHeader("HX-Redirect", contextPathHolder.getContextPath() + "/memories");
-        return "";
+        return null; //return null to signal that we do not want to render a view
     }
 
     @GetMapping("/{id}/blocks/select-type")
