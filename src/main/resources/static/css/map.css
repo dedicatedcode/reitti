@@ -174,10 +174,12 @@ details.maplibregl-ctrl-attrib[open] {
     padding: 0;
     font-size: 0.8rem;
     backdrop-filter: blur(14px);
-    border: 1px solid var(--panel-line);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.6);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.85);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.9);
+    font-family: var(--sans-font);
 }
 
 .map-popup {
@@ -191,7 +193,7 @@ details.maplibregl-ctrl-attrib[open] {
     gap: 8px;
     margin-bottom: 6px;
     padding-bottom: 6px;
-    border-bottom: 1px solid rgba(68, 68, 68, 0.43);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .sel-info-title {
@@ -199,12 +201,13 @@ details.maplibregl-ctrl-attrib[open] {
     font-size: 11.5px;
     letter-spacing: 0.3px;
     text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .sel-info-close {
     background: transparent;
     border: none;
-    color: var(--color-background-dark);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -213,7 +216,7 @@ details.maplibregl-ctrl-attrib[open] {
 }
 
 .sel-info-close:hover {
-    color: #ece6d6;
+    color: white;
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -226,12 +229,13 @@ details.maplibregl-ctrl-attrib[open] {
 }
 
 .sel-info-row .k {
-    color: var(--color-background-dark-light);
+    color: rgba(255, 255, 255, 0.6);
     flex-shrink: 0;
+    min-width: 4em;
 }
 
 .sel-info-row .v {
-    color: var(--color-background-dark);
+    color: rgba(255, 255, 255, 0.9);
     text-align: right;
     font-variant-numeric: tabular-nums;
     word-break: break-all;
@@ -254,5 +258,47 @@ details.maplibregl-ctrl-attrib[open] {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.sel-info-subrow {
+    padding-left: 12px;
+    opacity: 0.85;
+}
+
+.sel-info-row.sel-info-day-lead {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.map-tooltip {
+    position: absolute;
+    z-index: 10;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.85);
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    display: none;
+    font-family: var(--sans-font);
+    font-size: 11px;
+    max-width: 300px;
+    min-width: 220px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.map-tooltip::-webkit-scrollbar {
+    width: 4px;
+}
+
+.map-tooltip::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 2px;
+}
+
+.map-tooltip .sel-info-visits {
+    max-height: 150px;
+    overflow-y: auto;
 }

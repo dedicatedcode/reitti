@@ -8,8 +8,10 @@ import com.dedicatedcode.reitti.dto.workbench.EditStoreDto;
 import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.dto.workbench.WorkbenchCommitRequest;
 import com.dedicatedcode.reitti.model.CoverageInformation;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.workbench.WorkbenchService;
 import org.awaitility.Awaitility;
@@ -39,6 +41,9 @@ class H3CellUpdateJobTest {
 
     @Autowired
     private TestJdbcService testJdbcService;
+
+    @Autowired
+    private UserJdbcService userJdbcService;
 
     @Test
     void shouldHandlePromotionOfPoints() {
@@ -147,5 +152,19 @@ class H3CellUpdateJobTest {
         Optional<CoverageInformation> badOldesloe = spatialCoverageService.getCoverageInformation(user, device, 532325, Locale.GERMAN);
         assertTrue(badOldesloe.isPresent());
         assertEquals(1, badOldesloe.get().visitedCells());
+    }
+
+    @Test
+    void shouldNotAddCellStatsForLiveDataOnlyUser() {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> rocksDBH3Service.isAvailable());
+
+        User user = this.testingService.randomUser();
+        user = this.userJdbcService.updateUser(user.withUserType(UserType.LIVE_DATA_ONLY));
+        Device device = this.testingService.findDefaultDevice(user);
+        this.testingService.importAndProcess(user, "/data/gpx/20250617.gpx");
+
+        Optional<CoverageInformation> luebeck = spatialCoverageService.getCoverageInformation(user, device, 27027, Locale.GERMAN);
+        assertFalse(luebeck.isPresent());
     }
 }
