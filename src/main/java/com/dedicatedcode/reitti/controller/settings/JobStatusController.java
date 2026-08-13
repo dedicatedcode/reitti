@@ -93,6 +93,7 @@ public class JobStatusController {
                 .map(parent -> buildPendingJobInfo(timezone, parent, childrenByParent, averageRuntimes))
                 .collect(Collectors.toList());
 
+        pendingJobs = pendingJobs.stream().filter(j -> !j.children().isEmpty() || jobMetadataRepository.verifyAgainstQuartz(j.id())).toList();
         // Build past job info (with duration)
         List<JobInfo> pastJobs = pastParents.stream()
                 .map(j -> mapToJobInfo(timezone, j))

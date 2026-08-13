@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -106,6 +107,12 @@ public class JobMetadataRepository {
     }
 
     @Transactional(isolation = Isolation.READ_UNCOMMITTED)
+    public boolean verifyAgainstQuartz(UUID jobId) {
+        String sql = "SELECT job_name FROM qrtz_triggers WHERE job_name = ?";
+        return !jdbcTemplate.queryForList(sql, jobId.toString()).isEmpty();
+    }
+
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByStates(List<JobState> states) {
         if (states.isEmpty()) {
             return List.of();
@@ -129,6 +136,7 @@ public class JobMetadataRepository {
         return query.stream().findFirst();
     }
 
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public void updateParentJobState(UUID parentJobId, JobState newState) {
         Optional<JobMetadata> parent = findById(parentJobId);
         if (parent.isEmpty()) return;

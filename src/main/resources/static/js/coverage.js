@@ -628,7 +628,7 @@
     function attachTreeEvents(container) {
         container.querySelectorAll('.tree-section-header').forEach(header => {
             header.addEventListener('click', () => {
-                const level = parseInt(header.dataset.level);
+                const level = header.dataset.level;
                 state.treeSections[level] = !(state.treeSections[level] !== false);
                 header.classList.toggle('open');
                 const items = container.querySelector('.tree-section-items[data-level="' + level + '"]');
