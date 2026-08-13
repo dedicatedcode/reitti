@@ -8,6 +8,8 @@ LABEL org.opencontainers.image.licenses="MIT"
 # Create a non-root user and group
 RUN addgroup -S reitti -g 1000 && adduser -S reitti -u 1000 -G reitti
 
+RUN apk add --no-cache libstdc++ gcompat
+
 # Set environment variables
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV APP_HOME=/app
