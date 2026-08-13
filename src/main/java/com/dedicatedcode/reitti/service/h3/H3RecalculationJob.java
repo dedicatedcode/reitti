@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class H3RecalculationJob implements Job {
     private static final Logger log = LoggerFactory.getLogger(H3RecalculationJob.class);
 
-    private static final int BATCH_SIZE = 50_000;
+    private static final int BATCH_SIZE = 5_000;
     private static final int H3_RESOLUTION = 12;
 
     private final H3SpatialCoverageService spatialCoverageService;
@@ -80,7 +80,7 @@ public class H3RecalculationJob implements Job {
             if (!batchBuffer.isEmpty()) {
                 writeBatchToSourceTable(current, firstBatchMs, updateSourcePointSql, batchBuffer, processedPoints, data, missingSourcePoints);
             }
-            log.info("raw_source_points H3 recalculation done in {}ms", System.currentTimeMillis() - sourceStart);
+            log.info("raw_source_points H3 recalraw_source_points H3 recalculation done inculation done in {}ms", System.currentTimeMillis() - sourceStart);
 
             String selectMissedSourcePointSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_location_points WHERE h3_cell IS NULL AND source_point_id IS NULL";
             AtomicLong deviceCurrent = new AtomicLong();
