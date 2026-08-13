@@ -217,7 +217,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 .replace("{lat}", String.valueOf(latitude))
                 .replace("{lng}", String.valueOf(longitude));
 
-        logger.info("Geocoding with service [{}] using URL: [{}]", service.getName(), url);
+        logger.info("Geocoding with service [{} ({})] using URL: [{}]", service.getName(), service.getType(), url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.USER_AGENT, "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
