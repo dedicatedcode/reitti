@@ -269,6 +269,44 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldCreateLiveDataOnlyUserWithoutProcessingDefaults() {
+        // When
+        User user = userService.createNewUser(
+                "livedataonlycreate",
+                "Live Data Only Create",
+                "password123",
+                Role.USER,
+                UnitSystem.METRIC,
+                Language.EN,
+                null,
+                null,
+                null,
+                TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
+                "#f1ba63",
+                UserType.LIVE_DATA_ONLY
+        );
+
+        // Then
+        assertThat(user).isNotNull();
+        assertThat(user.getUserType()).isEqualTo(UserType.LIVE_DATA_ONLY);
+
+        // No processing defaults should be created for live-data-only users
+        List<DetectionParameter> detectionParams = visitDetectionParametersJdbcService.findAllConfigurationsForUser(user);
+        assertThat(detectionParams).isEmpty();
+        List<TransportModeConfig> transportConfigs = transportModeJdbcService.getTransportModeConfigs(user);
+        assertThat(transportConfigs).isEmpty();
+
+        // Device and map style are still created
+        assertEquals(1, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM devices WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals("Reitti",
+                     this.jdbcTemplate.queryForObject("""
+                                                              SELECT name FROM user_map_styles
+                                                                          WHERE id = (SELECT active_style_id FROM user_map_style_settings WHERE user_id = ?)
+                                                              """, String.class, user.getId()));
+    }
+
+    @Test
     void shouldSwitchToLiveDataOnlyAndDeleteAllData() {
         User user = userService.createNewUser(
                 "livedatauser",
