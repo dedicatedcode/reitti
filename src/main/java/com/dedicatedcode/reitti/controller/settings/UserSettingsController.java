@@ -201,6 +201,7 @@ public class UserSettingsController {
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
                              @RequestParam String color,
+                             @RequestParam(defaultValue = "NORMAL") UserType userType,
                              Authentication authentication,
                              Model model) {
         
@@ -226,7 +227,8 @@ public class UserSettingsController {
                         timezoneOverride,
                         timeDisplayMode,
                         timeMode,
-                        color);
+                        color,
+                        userType);
                 // Handle avatar - prioritize custom upload over default
                 if (avatar != null && !avatar.isEmpty()) {
                     handleAvatarUpload(avatar, createdUser.getId(), model);
@@ -318,11 +320,14 @@ public class UserSettingsController {
         try {
             User existingUser = userJdbcService.findById(userId).orElseThrow();
 
-            boolean confirmedSwitchToLiveDataOnly = StringUtils.hasText(_confirmLiveDataOnly) && userType == UserType.LIVE_DATA_ONLY;
-            boolean switchingToNormal = existingUser.getUserType() == UserType.LIVE_DATA_ONLY && userType == UserType.NORMAL;
+            boolean isAdminEdit = ADMIN == authenticatedUser.getRole();
+            boolean confirmedSwitchToLiveDataOnly = isAdminEdit && StringUtils.hasText(_confirmLiveDataOnly) && userType == UserType.LIVE_DATA_ONLY;
+            boolean switchingToNormal = isAdminEdit && existingUser.getUserType() == UserType.LIVE_DATA_ONLY && userType == UserType.NORMAL;
             UserType effectiveUserType;
 
-            if (confirmedSwitchToLiveDataOnly) {
+            if (!isAdminEdit) {
+                effectiveUserType = existingUser.getUserType();
+            } else if (confirmedSwitchToLiveDataOnly) {
                 if (!_confirmLiveDataOnly.trim().equals(existingUser.getUsername())) {
                     model.addAttribute("errorMessage", i18nService.translate("users.live-data-only.confirm.error"));
                     return getUserContent(model, authenticatedUser);

@@ -128,9 +128,27 @@ public class UserService {
                               TimeDisplayMode timeDisplayMode,
                               TimeMode timeMode,
                               String color) {
+        return createNewUser(username, displayName, password, role, unitSystem, preferredLanguage,
+                homeLatitude, homeLongitude, timezoneOverride, timeDisplayMode, timeMode, color, UserType.NORMAL);
+    }
+
+    public User createNewUser(String username,
+                              String displayName,
+                              String password,
+                              Role role,
+                              UnitSystem unitSystem,
+                              Language preferredLanguage,
+                              Double homeLatitude,
+                              Double homeLongitude,
+                              String timezoneOverride,
+                              TimeDisplayMode timeDisplayMode,
+                              TimeMode timeMode,
+                              String color,
+                              UserType userType) {
         User createdUser = userJdbcService.createUser(new User(username, displayName)
                 .withPassword(passwordEncoder.encode(password))
-                .withRole(role));
+                .withRole(role)
+                .withUserType(userType));
 
         UserSettings userSettings = new UserSettings(createdUser.getId(),
                                                      preferredLanguage,
@@ -149,8 +167,10 @@ public class UserService {
             userSettings = addRandomHomeLocation(userSettings);
         }
         setDefaultMapStyle(createdUser);
-        saveDefaultVisitDetectionParameters(createdUser);
-        saveDefaultTransportationModeDetectionParameters(createdUser);
+        if (userType != UserType.LIVE_DATA_ONLY) {
+            saveDefaultVisitDetectionParameters(createdUser);
+            saveDefaultTransportationModeDetectionParameters(createdUser);
+        }
         createDefaultDeviceForUser(createdUser);
         userSettingsJdbcService.save(userSettings);
         return createdUser;

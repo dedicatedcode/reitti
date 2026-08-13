@@ -7,6 +7,7 @@
     <link rel="icon" th:href="@{/img/logo.svg}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/leaflet.css}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/leaflet.js}"></script>
@@ -160,9 +161,12 @@
                 <input type="password" id="password" name="password" required>
             </div>
             
-            <div class="remember-me">
+            <div class="form-group slide-reveal-container">
                 <input type="checkbox" id="remember-me" name="remember-me">
-                <label for="remember-me" th:text="#{login.remember.me}">Remember me</label>
+                <label for="remember-me" class="slide-reveal">
+                    <span class="slide-box"></span>
+                    <span class="label-text" th:text="#{login.remember.me}">Remember me</span>
+                </label>
             </div>
             
             <button type="submit" th:text="#{login.button}">Login</button>

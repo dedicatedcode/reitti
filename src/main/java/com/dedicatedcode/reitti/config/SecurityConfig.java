@@ -62,7 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/memories").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                         .requestMatchers("/api/v2/locations/stream/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS")
                         .requestMatchers("/api/v1/visits/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS")
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
                         .anyRequest().authenticated()

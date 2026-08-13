@@ -685,7 +685,31 @@
         }
     }
 
+    function clearSelection() {
+        document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.device-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        // document.querySelectorAll('.user-timeline-section').forEach(section => {
+        //     section.classList.remove('active');
+        // });
+        mapRenderer.setSelectedManager(null);
+        activeId = null;
+        updateUrlWithDate(currentDateRange);
+    }
+
     function selectDevice(userHeader) {
+        const userId = userHeader.getAttribute('data-user-id');
+        const deviceId = userHeader.getAttribute('data-device-id');
+        const id = `${userId}_${deviceId}`;
+
+        if (activeId === id) {
+            clearSelection();
+            return;
+        }
+
         document.querySelectorAll('.user-header').forEach(header => {
             header.classList.remove('active');
         });
@@ -698,14 +722,19 @@
             section.classList.remove('active');
         });
 
-        const userId = userHeader.getAttribute('data-user-id');
-        const deviceId = userHeader.getAttribute('data-device-id');
-        mapRenderer.setSelectedManager(`${userId}_${deviceId}`);
-        activeId = `${userId}_${deviceId}`;
+        mapRenderer.setSelectedManager(id);
+        activeId = id;
         updateUrlWithDate(currentDateRange);
     }
 
     function selectUser(userHeader) {
+        const userId = userHeader.getAttribute('data-user-id');
+
+        if (activeId === userId) {
+            clearSelection();
+            return;
+        }
+
         document.querySelectorAll('.user-header').forEach(header => {
             header.classList.remove('active');
         });
@@ -714,8 +743,6 @@
         });
 
         userHeader.classList.add('active');
-
-        const userId = userHeader.getAttribute('data-user-id');
 
         document.querySelectorAll('.user-timeline-section').forEach(section => {
             section.classList.remove('active');
@@ -725,7 +752,7 @@
         if (targetSection) {
             targetSection.classList.add('active');
         }
-        mapRenderer.setSelectedManager(userHeader.getAttribute('data-user-id'));
+        mapRenderer.setSelectedManager(userId);
         activeId = userId;
         updateUrlWithDate(currentDateRange);
     }
@@ -737,6 +764,8 @@
         url.searchParams.delete('date');
         if (activeId) {
             url.searchParams.set('active', activeId);
+        } else {
+            url.searchParams.delete('active');
         }
         const workbenchLink = document.getElementById('nav-workbench');
         if (workbenchLink) {

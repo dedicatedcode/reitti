@@ -84,7 +84,7 @@
         <div class="form-group">
             <label for="type" th:text="#{geocoding.service.type}">Type</label>
             <select id="type" name="type" required
-                    th:hx-get="@{/settings/geocode-services/type-fields}"
+                    th:hx-get="@{/settings/geocode-services/type-fields(id=${service.id})}"
                     hx-target="#geocoding-type-specific-fields">
                 <option th:each="t : ${geocodeServiceTypes}"
                         th:value="${t}"

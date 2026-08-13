@@ -102,8 +102,13 @@ public class GeoCodingSettingsController {
     }
 
     @GetMapping("/type-fields")
-    public String getTypeFields(@RequestParam GeocoderType type, Model model) {
+    public String getTypeFields(@RequestParam GeocoderType type,
+                                @RequestParam(required = false) Long id,
+                                Model model) {
         model.addAttribute("type", type);
+        if (id != null) {
+            geocodeServiceJdbcService.findById(id).ifPresent(service -> model.addAttribute("service", service));
+        }
         return "settings/fragments/geocoding :: type-fields";
     }
 
