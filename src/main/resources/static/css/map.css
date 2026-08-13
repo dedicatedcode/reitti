@@ -21,17 +21,11 @@
     position: absolute;
     top: 50%;
     left: 50%;
-
     width: 200px;
     height: 200px;
-
-    transform: translate(-50%, -50%);
-
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-
     transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
-
     z-index: 2;
     pointer-events: none;
     transition: opacity 0.5s ease;
@@ -179,7 +173,7 @@ details.maplibregl-ctrl-attrib[open] {
     background: rgba(0, 0, 0, 0.85);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     color: rgba(255, 255, 255, 0.9);
-    font-family: var(--sans-font);
+    font-family: var(--sans-serif-font);
 }
 
 .map-popup {
