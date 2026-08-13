@@ -8,7 +8,6 @@
         <th:block th:each="userData, iterStat : ${timelineData.users}">
             <div th:title="${userData.displayName}" th:if="${userData}"
                  class="user-header"
-                 th:classappend="${iterStat.first} ? 'active' : ''"
                  th:data-user-id="${userData.userId}"
                  onclick="selectUser(this)">
                 <img th:src="@{${userData.userAvatarUrl}}"

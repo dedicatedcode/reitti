@@ -129,6 +129,38 @@ public class UserSettingsControllerTest {
     }
 
     @Test
+    void createUser_AsAdmin_WithLiveDataOnly_ShouldCreateLiveDataOnlyUser() throws Exception {
+        // Create the admin user
+        String adminUsername = randomUsername();
+        User adminUser = createTestUser(adminUsername, "Admin User", "password");
+        adminUser = adminUser.withRole(Role.ADMIN);
+        userJdbcService.updateUser(adminUser);
+
+        String newUsername = randomUsername();
+        String newDisplayName = "Live Data User";
+        String newPassword = "password123";
+
+        mockMvc.perform(post("/settings/users")
+                        .param("username", newUsername)
+                        .param("displayName", newDisplayName)
+                        .param("password", newPassword)
+                        .param("role", "USER")
+                        .param("userType", "LIVE_DATA_ONLY")
+                        .param("preferred_language", "EN")
+                        .param("unit_system", "METRIC")
+                        .param("color", "#dcae4a")
+                        .with(csrf())
+                        .with(user(adminUser)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: users-list"))
+                .andExpect(model().attributeExists("successMessage"));
+
+        Optional<User> userAfter = userJdbcService.findByUsername(newUsername);
+        assertThat(userAfter).isPresent();
+        assertThat(userAfter.get().getUserType()).isEqualTo(UserType.LIVE_DATA_ONLY);
+    }
+
+    @Test
     void createUser_AsRegularUser_ShouldShowAccessDenied() throws Exception {
         // Create the test user as a regular user
         String testUsername = randomUsername();
@@ -403,6 +435,31 @@ public class UserSettingsControllerTest {
         // Verify user was updated in database
         User updatedUser = userJdbcService.findById(userId).orElseThrow();
         assertThat(updatedUser.getUsername()).isEqualTo(newUsername);
+    }
+
+    @Test
+    void updateUser_LiveDataOnlyUser_ShouldRemainLiveDataOnly() throws Exception {
+        String currentUsername = randomUsername();
+        User currentUser = createTestUser(currentUsername, "Test User", "password");
+        currentUser = userJdbcService.updateUser(currentUser.withUserType(UserType.LIVE_DATA_ONLY));
+        Long userId = currentUser.getId();
+
+        mockMvc.perform(post("/settings/users/update")
+                                .param("userId", userId.toString())
+                                .param("username", currentUsername)
+                                .param("displayName", "Updated Display Name")
+                                .param("password", "password")
+                                .param("role", "USER")
+                                .param("preferred_language", "EN")
+                                .param("unit_system", "METRIC")
+                                .param("color", "#dcae4a")
+                                .with(csrf())
+                                .with(user(currentUser)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: user-form-page"));
+
+        User updatedUser = userJdbcService.findById(userId).orElseThrow();
+        assertThat(updatedUser.getUserType()).isEqualTo(UserType.LIVE_DATA_ONLY);
     }
 
     @Test
