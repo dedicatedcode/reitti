@@ -1760,7 +1760,7 @@ class MapRenderer {
             const fmtTime = (ts) => {
                 const opts = timeMode === 'TWENTY_FOUR_HOUR'
                     ? { hour: '2-digit', minute: '2-digit', hour12: false }
-                    : { hour: '2-digit', minute: '2-digit' };
+                    : { hour: '2-digit', minute: '2-digit'};
                 return new Date(ts).toLocaleTimeString(locale, opts);
             };
 
@@ -1788,7 +1788,7 @@ class MapRenderer {
                 </div>
                 <div class="sel-info-row">
                     <span class="k">${t('map.popup.labels.total_duration')}</span>
-                    <span class="v mono">${humanizeDuration(object.totalDurationSec * 1000)}</span>
+                    <span class="v mono">${humanizeDuration(object.totalDurationSec * 1000, { units: ["d", "h", "m"] , round: true })}</span>
                 </div>
                 <div class="sel-info-visits">
                     ${visitGroupsHtml}

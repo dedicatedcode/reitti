@@ -188,6 +188,7 @@ body {
     padding: 5px 10px;
     border-radius: 4px;
     transition: background-color 0.2s;
+    text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
 }
 
 .navbar .nav-link.active {
@@ -1520,8 +1521,7 @@ body.auto-update-mode .today-fab {
     height: 28px;
     padding: 6px 8px 3px;
     vertical-align: bottom;
-    opacity: 0.8;
-    transition: opacity 0.2s ease-in-out;
+    filter: drop-shadow(2px 2px 2px rgba(0, 0, 0))
 }
 
 .logo:hover {
