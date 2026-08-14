@@ -140,7 +140,7 @@ public class H3TaskConfig {
                     }
 
                     log.info("Rebuilding H3 partial indexes concurrently...");
-                    jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_time ON raw_location_points (h3_cell) WHERE h3_cell IS NOT NULL");
+                    jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_time ON raw_location_points (h3_cell, timestamp) WHERE h3_cell IS NOT NULL");
                     jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_source_points_h3_cell ON raw_source_points (h3_cell) WHERE h3_cell IS NOT NULL");
                     log.info("H3 cleanup completed successfully.");
                 } catch (Exception e) {
