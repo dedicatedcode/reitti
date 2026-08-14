@@ -214,11 +214,14 @@ public class UserService {
         this.significantPlaceJdbcService.deleteForUser(user);
         this.significantPlaceOverrideJdbcService.deleteForUser(user);
         this.rawLocationPointJdbcService.deleteAllForUser(user);
+        this.sourceLocationPointJdbcService.deleteAllForUser(user);
         this.apiTokenJdbcService.deleteForUser(user);
         this.mqttIntegrationJdbcService.deleteForUser(user);
         // Delete the row in the map style settings table
         this.jdbcTemplate.update("DELETE FROM user_map_style_settings WHERE user_id = ?", user.getId());
         this.jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM h3_cells_stats WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM h3_area_coverage_stats WHERE user_id = ?", user.getId());
         this.deviceJdbcService.deleteForUser(user);
         this.userJdbcService.deleteUser(user.getId());
     }
