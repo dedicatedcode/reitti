@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class H3RecalculationJob implements Job {
     private static final Logger log = LoggerFactory.getLogger(H3RecalculationJob.class);
 
-    private static final int BATCH_SIZE = 50_000;
+    private static final int BATCH_SIZE = 10_000;
     private static final int H3_RESOLUTION = 12;
 
     private static final String DROP_POINTS_H3_INDEX = "DROP INDEX CONCURRENTLY IF EXISTS idx_points_h3_time";
@@ -44,6 +44,7 @@ public class H3RecalculationJob implements Job {
         this.jobMetadataRepository = jobMetadataRepository;
     }
 
+    @SuppressWarnings("DataFlowIssue")
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.debug("Executing H3RecalculationJob");
@@ -63,52 +64,12 @@ public class H3RecalculationJob implements Job {
             jdbcTemplate.execute(DROP_SOURCE_H3_INDEX);
 
             try {
-                String selectSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_source_points WHERE h3_cell IS NULL";
-
-                String updateLocationPointSql = "UPDATE raw_location_points SET h3_cell = ? WHERE id = ?";
-                String updateSourcePointSql = "UPDATE raw_source_points SET h3_cell = ? WHERE id = ?";
-
-                List<Object[]> batchBuffer = new ArrayList<>(BATCH_SIZE);
-                List<Long> processedPoints = new ArrayList<>(BATCH_SIZE);
-
                 long sourceStart = System.currentTimeMillis();
-                AtomicLong current = new AtomicLong();
-                AtomicLong firstBatchMs = new AtomicLong();
-                jdbcTemplate.query(selectSql, rs -> {
-                    long id = rs.getLong("id");
-                    GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
-
-                    Long h3Cell = spatialCoverageService.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
-                    processedPoints.add(id);
-                    batchBuffer.add(new Object[]{h3Cell, id});
-
-                    if (batchBuffer.size() >= BATCH_SIZE) {
-                        writeBatchToSourceTable(current, firstBatchMs, updateSourcePointSql, batchBuffer, processedPoints, data, missingSourcePoints);
-                    }
-                });
-
-                if (!batchBuffer.isEmpty()) {
-                    writeBatchToSourceTable(current, firstBatchMs, updateSourcePointSql, batchBuffer, processedPoints, data, missingSourcePoints);
-                }
+                recalculateSourcePoints(data, missingSourcePoints);
                 log.info("raw_source_points H3 recalculation done in {}ms", System.currentTimeMillis() - sourceStart);
 
-                String selectMissedSourcePointSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_location_points WHERE h3_cell IS NULL AND source_point_id IS NULL";
-                AtomicLong deviceCurrent = new AtomicLong();
-                AtomicLong deviceFirstBatchMs = new AtomicLong();
                 long deviceStart = System.currentTimeMillis();
-                jdbcTemplate.query(selectMissedSourcePointSql, rs -> {
-                    long id = rs.getLong("id");
-                    GeoPoint geom = pointReaderWriter.read(rs.getString("geom"));
-
-                    Long h3Cell = spatialCoverageService.getLevelCellForPoint(geom.latitude(), geom.longitude(), H3_RESOLUTION);
-                    batchBuffer.add(new Object[]{h3Cell, id});
-                    if (batchBuffer.size() >= BATCH_SIZE) {
-                        writeBatchToLocationPoints(deviceCurrent, deviceFirstBatchMs, updateLocationPointSql, batchBuffer, data, missingRawLocationPoints);
-                    }
-                });
-                if (!batchBuffer.isEmpty()) {
-                    writeBatchToLocationPoints(deviceCurrent, deviceFirstBatchMs, updateLocationPointSql, batchBuffer, data, missingRawLocationPoints);
-                }
+                recalculateLocationPoints(data, missingRawLocationPoints);
                 log.info("raw_location_points H3 recalculation done in {}ms", System.currentTimeMillis() - deviceStart);
                 log.info("Recalculation of {} H3 cells finished in {}ms, scheduling area stats updates now", missingPointCount, System.currentTimeMillis() - start);
             } finally {
@@ -127,6 +88,53 @@ public class H3RecalculationJob implements Job {
         if (seconds < 60) return seconds + "s";
         return (seconds / 60) + "m " + (seconds % 60) + "s";
     }
+
+    private void recalculateSourcePoints(TaskData data, long total) {
+        String selectSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_source_points WHERE h3_cell IS NULL AND id > ? ORDER BY id LIMIT ?";
+        String updateSql = "UPDATE raw_source_points SET h3_cell = ? WHERE id = ?";
+        AtomicLong current = new AtomicLong();
+        AtomicLong firstBatchMs = new AtomicLong();
+        long lastId = 0L;
+        while (true) {
+            List<PointRow> page = jdbcTemplate.query(selectSql, (rs, i) ->
+                    new PointRow(rs.getLong("id"), pointReaderWriter.read(rs.getString("geom"))), lastId, BATCH_SIZE);
+            if (page.isEmpty()) {
+                break;
+            }
+            List<Object[]> batchBuffer = new ArrayList<>(page.size());
+            List<Long> processedPoints = new ArrayList<>(page.size());
+            for (PointRow row : page) {
+                Long h3Cell = spatialCoverageService.getLevelCellForPoint(row.geom().latitude(), row.geom().longitude(), H3_RESOLUTION);
+                processedPoints.add(row.id());
+                batchBuffer.add(new Object[]{h3Cell, row.id()});
+            }
+            lastId = page.getLast().id();
+            writeBatchToSourceTable(current, firstBatchMs, updateSql, batchBuffer, processedPoints, data, total);
+        }
+    }
+
+    private void recalculateLocationPoints(TaskData data, long total) {
+        String selectSql = "SELECT id, ST_AsText(geom) AS geom FROM raw_location_points WHERE h3_cell IS NULL AND source_point_id IS NULL AND id > ? ORDER BY id LIMIT ?";
+        String updateSql = "UPDATE raw_location_points SET h3_cell = ? WHERE id = ?";
+        AtomicLong current = new AtomicLong();
+        AtomicLong firstBatchMs = new AtomicLong();
+        long lastId = 0L;
+        while (true) {
+            List<PointRow> page = jdbcTemplate.query(selectSql, (rs, i) -> new PointRow(rs.getLong("id"), pointReaderWriter.read(rs.getString("geom"))), lastId, BATCH_SIZE);
+            if (page.isEmpty()) {
+                break;
+            }
+            List<Object[]> batchBuffer = new ArrayList<>(page.size());
+            for (PointRow row : page) {
+                Long h3Cell = spatialCoverageService.getLevelCellForPoint(row.geom().latitude(), row.geom().longitude(), H3_RESOLUTION);
+                batchBuffer.add(new Object[]{h3Cell, row.id()});
+            }
+            lastId = page.getLast().id();
+            writeBatchToLocationPoints(current, firstBatchMs, updateSql, batchBuffer, data, total);
+        }
+    }
+
+    private record PointRow(long id, GeoPoint geom) {}
 
     private void writeBatchToLocationPoints(AtomicLong current, AtomicLong firstBatchMs, String updateLocationPointSql, List<Object[]> batchBuffer, TaskData data, long total) {
         int batchSize = batchBuffer.size();
