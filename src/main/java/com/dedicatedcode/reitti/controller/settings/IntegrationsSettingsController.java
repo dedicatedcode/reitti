@@ -162,7 +162,7 @@ public class IntegrationsSettingsController {
                 "httpfileupload_method=POST\n" +
                 "autohttpfileupload_enabled=true\n" +
                 "httpfileupload_basicauth_password=\n" +
-                "httpfileupload_body_type=form-data=\n" +
+                "httpfileupload_body_type=form-data\n" +
                 "httpfileupload_basicauth_username=\n" +
                 "httpfileupload_headers=Authorization: " + token + "\n" +
                 "autosend_frequency_minutes=60\n" +
