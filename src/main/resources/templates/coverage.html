@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="#{page.title}">Reitti - Coverage</title>
+
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
+    <link rel="icon" th:href="@{/img/logo.svg}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo.svg}">
     <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="/css/leaflet.css">
     <link rel="stylesheet" th:href="@{/css/date-picker.css}" href="/css/date-picker.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
@@ -15,7 +21,7 @@
     <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
     <link rel="stylesheet" th:href="@{/css/coverage.css}" href="/css/coverage.css">
 
-    <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
+    <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="@{${userSettings.customCssUrl}}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
@@ -107,8 +113,11 @@
     window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
     window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
     window.currentUserId = /*[[${currentUserId}]]*/ null;
+
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
 </script>
-<script src="/js/coverage.js"></script>
+<script th:src="@{/js/coverage.js}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (window.initCoverage) window.initCoverage();
