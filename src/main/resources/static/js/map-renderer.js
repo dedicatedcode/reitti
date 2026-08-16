@@ -1,7 +1,7 @@
 class MapRenderer {
      static getCustomMapStyles() {
         return Array.isArray(window.reittiCustomMapStyles)
-            ? window.reittiCustomMapStyles
+                ? window.reittiCustomMapStyles
             : [];
     }
 
