@@ -306,7 +306,7 @@
             const userId = getSelectedUserId();
             const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
-            const url = '/api/v2/coverage/cells/' + userId +
+            const url = window.contextPath +  '/api/v2/coverage/cells/' + userId +
                 '?start=' + range.start +
                 '&end=' + range.end +
                 '&timezone=' + encodeURIComponent(tz);
@@ -513,7 +513,7 @@
                 url = '/api/v2/coverage';
             }
 
-            const resp = await fetch(url);
+            const resp = await fetch(window.contextPath + url);
             if (resp.ok) {
                 state.coverageAreas = await resp.json();
                 renderTree();
@@ -666,7 +666,7 @@
         }
 
         try {
-            const resp = await fetch('/api/v2/coverage/boundary/' + osmId);
+            const resp = await fetch(window.contextPath + '/api/v2/coverage/boundary/' + osmId);
             if (!resp.ok || state.hoveredOsmId !== osmId) return;
 
             const data = await resp.json();
@@ -730,7 +730,7 @@
                 feature = cached.feature;
                 bbox = cached.bbox;
             } else {
-                const resp = await fetch('/api/v2/coverage/boundary/' + osmId);
+                const resp = await fetch(window.contextPath + '/api/v2/coverage/boundary/' + osmId);
                 if (!resp.ok) {
                     console.warn('No boundary for OSM ID ' + osmId);
                     return;

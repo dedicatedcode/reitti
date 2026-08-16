@@ -368,7 +368,7 @@ public class TileProxyController {
 
     private String styleSourceTileUrl(Long styleId, String sourceId, String tileUrl, HttpServletRequest request) {
         String normalizedTileUrl = normalizeTileTemplateForProxy(tileUrl);
-        return RequestHelper.getBaseUrl(request) + contextPathHolder.getContextPath() + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
+        return RequestHelper.getBaseUrl(request) + "/api/v1/tiles/styles/" + styleId + "/" + sourceId
                 + "/{z}/{x}/{y}." + TileUrlUtils.extractTileExtension(normalizedTileUrl);
     }
 
