@@ -16,7 +16,6 @@ permissions:
   contents: write
   packages: write
   issues: write
-  discussions: write
 
 jobs:
   prepare:
@@ -187,31 +186,6 @@ jobs:
           files: |
             docker-compose.yml
             *.jar
-
-      - name: Create release discussion
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.event.repository.name }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-        run: |
-          CATS=$(gh api graphql -f query='query($owner:String!, $repo:String!) { repository(owner: $owner, name: $repo) { id discussionCategories(first: 50) { nodes { id name } } } }' -f owner="$OWNER" -f repo="$REPO_NAME")
-
-          REPO_ID=$(echo "$CATS" | jq -r '.data.repository.id')
-          CATEGORY_ID=$(echo "$CATS" | jq -r '.data.repository.discussionCategories.nodes[] | select(.name == "Announcements") | .id')
-
-          if [ -z "$CATEGORY_ID" ] || [ "$CATEGORY_ID" = "null" ]; then
-            echo "::warning::No 'Announcements' discussion category found. Skipping discussion creation."
-            exit 0
-          fi
-
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG"
-
-          gh api graphql -f query='mutation($repoId:ID!, $categoryId:ID!, $title:String!, $body:String!) { createDiscussion(input: { repositoryId: $repoId, categoryId: $categoryId, title: $title, body: $body }) { discussion { url } } }' -f repoId="$REPO_ID" -f categoryId="$CATEGORY_ID" -f title="Release $TAG" -f body="Release $TAG has been drafted.
-
-          $RELEASE_URL
-
-          Please review and provide feedback before publishing."
 
       - name: Close verification issue
         run: |
