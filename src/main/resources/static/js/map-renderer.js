@@ -203,6 +203,8 @@ class MapRenderer {
         }
         this.avatarMarkers = new Map();
         this.showAvatars = false;
+        this.showTransportModes = true;
+        this.transitionMarkers = [];
 
         this.terrainLayer = null;
         this.deckOverlay = new deck.MapboxOverlay({
@@ -388,7 +390,7 @@ class MapRenderer {
     _getLayerContextKey() {
         const managers = this.gpsDataManagers
             .filter(m => this.selectedManager == null || m.id === this.selectedManager)
-            .map(m => `${m.id}:${m.cursor}:${m.cleanedCursor}:${m.snappedVersion}:${m.loadingState}:${m.visits?.length || 0}`)
+            .map(m => `${m.id}:${m.cursor}:${m.cleanedCursor}:${m.snappedVersion}:${m.loadingState}:${m.visits?.length || 0}:${m.modeSegments?.length || 0}`)
             .join('|');
 
         return JSON.stringify({
@@ -398,6 +400,7 @@ class MapRenderer {
             renderTerrain: this.viewState.renderTerrain,
             animating: this.viewState.animating,
             selectedManager: this.selectedManager,
+            showTransportModes: this.showTransportModes,
             highlight: this.highlightLayer ? '1' : '0',
         });
     }
@@ -501,6 +504,7 @@ class MapRenderer {
             });
             this._layerInstances = allLayers;
             this.deckOverlay.setProps({ layers: allLayers });
+            this._clearTransitionMarkers();
             return;
         }
 
@@ -533,35 +537,66 @@ class MapRenderer {
 
                     const strippedData = this._stripForPathLayer(layerData);
 
-                    try {
-                        allLayers.push(new deck.PathLayer({
-                            id: `paths-static-fixed-${layerKey}`,
-                            data: strippedData,
-                            positionFormat: 'XYZ',
-                            getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
-                            getWidth: this.deckParams.trips.staticPathWidth,
-                            widthMinPixels: this.deckParams.trips.staticPathWidth,
-                            visible: true,
-                            capRounded: true,
-                            jointRounded: true,
-                            extensions: extensions,
-                            ...(terrainDrawMode && { terrainDrawMode }),
-                            parameters: {
-                                depthTest: true,
-                                polygonOffsetFill: true
-                            },
-                            updateTriggers: {
-                                data: [manager.buffer?.length, buffer],
-                                getPath: [cursor, buffer, this.viewState.renderTerrain],
-                                getColor: [manager.color],
-                            }
-                        }));
-                    } catch (e) {
-                        console.error('%c[_buildLayers] PathLayer creation FAILED', 'color: #ff0000; font-weight: bold');
-                        console.error('  layerKey:', layerKey);
-                        console.error('  error:', e);
-                        console.error('  strippedData:', strippedData);
-                        throw e;
+                    const segmentPaths = this.showTransportModes ? manager.getSegmentPaths() : null;
+                    if (segmentPaths && segmentPaths.length > 0) {
+                        try {
+                            allLayers.push(new deck.PathLayer({
+                                id: `paths-static-colored-${layerKey}`,
+                                data: segmentPaths,
+                                getPath: d => d.path,
+                                getColor: d => {
+                                    const c = this._hexToRgbArray(d.color) || manager.color;
+                                    return [...c, this.deckParams.trips.staticPathOpacity];
+                                },
+                                getWidth: this.deckParams.trips.staticPathWidth,
+                                widthMinPixels: this.deckParams.trips.staticPathWidth,
+                                visible: true,
+                                capRounded: true,
+                                jointRounded: true,
+                                extensions: extensions,
+                                ...(terrainDrawMode && { terrainDrawMode }),
+                                parameters: {
+                                    depthTest: true,
+                                    polygonOffsetFill: true
+                                },
+                                updateTriggers: {
+                                    getColor: [manager.color, this.showTransportModes],
+                                }
+                            }));
+                        } catch (e) {
+                            console.error('%c[_buildLayers] colored PathLayer creation FAILED', 'color: #ff0000; font-weight: bold', e);
+                        }
+                    } else {
+                        try {
+                            allLayers.push(new deck.PathLayer({
+                                id: `paths-static-fixed-${layerKey}`,
+                                data: strippedData,
+                                positionFormat: 'XYZ',
+                                getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
+                                getWidth: this.deckParams.trips.staticPathWidth,
+                                widthMinPixels: this.deckParams.trips.staticPathWidth,
+                                visible: true,
+                                capRounded: true,
+                                jointRounded: true,
+                                extensions: extensions,
+                                ...(terrainDrawMode && { terrainDrawMode }),
+                                parameters: {
+                                    depthTest: true,
+                                    polygonOffsetFill: true
+                                },
+                                updateTriggers: {
+                                    data: [manager.buffer?.length, buffer],
+                                    getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                    getColor: [manager.color],
+                                }
+                            }));
+                        } catch (e) {
+                            console.error('%c[_buildLayers] PathLayer creation FAILED', 'color: #ff0000; font-weight: bold');
+                            console.error('  layerKey:', layerKey);
+                            console.error('  error:', e);
+                            console.error('  strippedData:', strippedData);
+                            throw e;
+                        }
                     }
 
                     if (this.viewState.animating) {
@@ -628,6 +663,8 @@ class MapRenderer {
         if (this.map && typeof this.map.triggerRepaint === 'function') {
             this.map.resize();
         }
+
+        this._syncTransitionMarkers();
     }
 
     _updateAnimatedLayers() {
@@ -645,6 +682,7 @@ class MapRenderer {
             const id = layer.props.id;
 
             if (id.includes('paths-static-fixed') ||
+                id.includes('paths-static-colored') ||
                 id.includes('bundled-paths-static') ||
                 id === 'highlight-segment' ||
                 id === 'terrain-loader') {
@@ -1168,6 +1206,7 @@ class MapRenderer {
         this._layerInstances = [];
         this._layerContextKey = null;
         this.deckOverlay.setProps({layers: []});
+        this._clearTransitionMarkers();
     }
     setBearing(number) {
         this.map.easeTo({
@@ -1179,6 +1218,85 @@ class MapRenderer {
 
     setPhotos(photos) {
         this.photosManager.setPhotos(photos);
+    }
+
+    setShowTransportModes(value) {
+        this.showTransportModes = !!value;
+        this._layerContextKey = null;
+        this._buildLayers();
+    }
+
+    _hexToRgbArray(hex) {
+        if (!hex || typeof hex !== 'string') return null;
+        const clean = hex.replace('#', '');
+        if (clean.length !== 6) return null;
+        const r = parseInt(clean.slice(0, 2), 16);
+        const g = parseInt(clean.slice(2, 4), 16);
+        const b = parseInt(clean.slice(4, 6), 16);
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+        return [r, g, b];
+    }
+
+    _clearTransitionMarkers() {
+        this.transitionMarkers.forEach(m => m.remove());
+        this.transitionMarkers = [];
+    }
+
+    _syncTransitionMarkers() {
+        this._clearTransitionMarkers();
+        if (!this.showTransportModes || this.viewState.aggregated) return;
+
+        this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
+            .forEach(manager => {
+                const totalSpan = (manager.maxTimestamp && manager.minTimestamp) ? (manager.maxTimestamp - manager.minTimestamp) : 0;
+                if (totalSpan > 7 * 86400) return;
+
+                const transitions = manager.getTransitions ? manager.getTransitions() : [];
+                transitions.forEach(t => {
+                    this.transitionMarkers.push(this._createTransitionMarker(t));
+                });
+            });
+    }
+
+    _createTransitionMarker(transition) {
+        const el = document.createElement('div');
+        el.className = 'mode-transition-pill';
+
+        el.innerHTML = `
+            <span class="mode-icon">${this._iconHtml(transition.from)}</span>
+            <span class="transition-arrow">›</span>
+            <span class="mode-icon">${this._iconHtml(transition.to)}</span>
+        `;
+
+        const marker = new maplibregl.Marker({element: el, anchor: 'center'})
+            .setLngLat([transition.lng, transition.lat])
+            .addTo(this.map);
+
+        const popup = new maplibregl.Popup({offset: 12, closeButton: false, closeOnClick: true});
+        el.addEventListener('pointerenter', () => {
+            popup.setLngLat([transition.lng, transition.lat])
+                .setHTML(this._transitionPopupHtml(transition))
+                .addTo(this.map);
+        });
+        el.addEventListener('pointerleave', () => popup.remove());
+
+        return marker;
+    }
+
+    _iconHtml(mode) {
+        const icon = mode && mode.icon ? mode.icon : 'lni-car-2';
+        const color = mode && mode.color ? mode.color : '#f1ba63';
+        return `<i class="lni ${icon}" style="color:${color}"></i>`;
+    }
+
+    _transitionPopupHtml(transition) {
+        const from = transition.from;
+        const to = transition.to;
+        return `<div class="mode-transition-popup">
+            <div><i class="lni ${from.icon || 'lni-car-2'}" style="color:${from.color || '#f1ba63'}"></i> ${t('map.transition.from')} ${from.mode}</div>
+            <div><i class="lni ${to.icon || 'lni-car-2'}" style="color:${to.color || '#f1ba63'}"></i> ${t('map.transition.to')} ${to.mode}</div>
+        </div>`;
     }
 
     enableAvatars(todayStart = null, todayEnd = null) {

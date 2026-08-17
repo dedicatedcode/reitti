@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -61,6 +62,16 @@ public class PreviewProcessedVisitJdbcService {
                 "WHERE pv.id = ?";
         List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    public Map<Long, ProcessedVisit> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+        String sql = "SELECT pv.* FROM preview_processed_visits pv WHERE pv.id IN (" + placeholders + ")";
+        List<ProcessedVisit> list = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, ids.toArray());
+        return list.stream().collect(Collectors.toMap(ProcessedVisit::getId, v -> v));
     }
 
     public List<ProcessedVisit> findByUserAndTimeOverlap(User user, String previewId, Instant startTime, Instant endTime) {

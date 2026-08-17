@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.dto.timeline.*;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -134,6 +135,7 @@ public class TimelineController {
         String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId());
         String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        String mapTripsUrl = loadPaths ? String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
@@ -165,6 +167,7 @@ public class TimelineController {
                                     currentUserProcessedVisitsUrl,
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
+                                    mapTripsUrl,
                                     h3CellUrl,
                                     enabledDevices,
                                     userDeviceRequest == null || (Objects.equals(user.getId().toString(), userDeviceRequest.userId()) && userDeviceRequest.deviceId() == null));
@@ -199,6 +202,7 @@ public class TimelineController {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
         model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("transportModeSegments", trip.getSegments());
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
         return "fragments/trip-edit :: edit-form";
     }
@@ -206,6 +210,7 @@ public class TimelineController {
     @PutMapping("/trips/{id}/transport-mode")
     public String updateTripTransportMode(@PathVariable Long id,
                                           @RequestParam String transportMode,
+                                          @RequestParam(required = false) Long offsetSeconds,
                                           Authentication principal,
                                           Model model) {
         // Find the user by username
@@ -216,11 +221,25 @@ public class TimelineController {
 
         try {
             TransportMode mode = TransportMode.valueOf(transportMode);
-            tripJdbcService.update(trip.withTransportMode(mode));
-            transportModeService.overrideTransportMode(user, mode, trip);
-            
+            if (offsetSeconds != null) {
+                TransportModeSegment segment = trip.getSegments().stream()
+                        .filter(s -> s.offsetSeconds() == offsetSeconds)
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Segment not found"));
+                transportModeService.overrideTransportModeSegment(user, mode, trip, segment.offsetSeconds(), segment.durationSeconds());
+                List<TransportModeSegment> updated = trip.getSegments().stream()
+                        .map(s -> s.offsetSeconds() == offsetSeconds ? new TransportModeSegment(mode, s.offsetSeconds(), s.durationSeconds(), s.distanceMeters()) : s)
+                        .toList();
+                trip = tripJdbcService.update(trip.withSegments(updated));
+            } else {
+                trip = tripJdbcService.update(trip.withTransportMode(mode));
+                transportModeService.overrideTransportMode(user, mode, trip);
+            }
+
             model.addAttribute("tripId", id);
-            model.addAttribute("transportMode", mode);
+            model.addAttribute("transportMode", trip.getTransportModeInferred());
+            model.addAttribute("transportModeSegments", trip.getSegments());
+            model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
             return "fragments/trip-edit :: view-mode";
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transport mode");
@@ -232,6 +251,7 @@ public class TimelineController {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
         model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("transportModeSegments", trip.getSegments());
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
         return "fragments/trip-edit :: view-mode";
     }
@@ -260,6 +280,7 @@ public class TimelineController {
                         String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        String mapTripsUrl = String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
@@ -274,6 +295,7 @@ public class TimelineController {
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
                                                     mapStreamDataUrl,
+                                                    mapTripsUrl,
                                                     h3CellUrl,
                                                     Collections.emptyList(),
                                                     userDeviceRequest != null && sharedWithUser.getId().toString().equals(userDeviceRequest.userId()));

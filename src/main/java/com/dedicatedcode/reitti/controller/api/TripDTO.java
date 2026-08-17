@@ -9,6 +9,7 @@ public record TripDTO(
         long id,
         List<double[]> path,
         List<Long> timestamps,
-        TransportMode mode
+        TransportMode mode,
+        List<TripSegmentDTO> segments
 ) {
 }

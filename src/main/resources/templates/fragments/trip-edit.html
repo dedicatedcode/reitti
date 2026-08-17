@@ -6,7 +6,31 @@
 <body>
 
 <div th:fragment="edit-form" class="inline-edit-form editing trip-transport-mode-container">
-    <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
+    <th:block th:if="${transportModeSegments != null and transportModeSegments.size() > 1}">
+        <div class="trip-segment-edit" th:each="segment : ${transportModeSegments}">
+            <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
+                  hx-target="closest .trip-transport-mode-container"
+                  hx-swap="outerHTML"
+                  hx-trigger="change">
+                <input type="hidden" name="offsetSeconds" th:value="${segment.offsetSeconds()}">
+                <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
+                    <option th:each="mode : ${availableTransportModes}"
+                            th:value="${mode}"
+                            th:text="#{${'transportation.mode.' + mode + '.name'}}"
+                            th:selected="${mode == segment.mode()}"></option>
+                </select>
+            </form>
+        </div>
+        <button type="button"
+                class="btn btn-small btn-secondary"
+                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId})}"
+                hx-target="closest .trip-transport-mode-container"
+                hx-swap="outerHTML"
+                th:text="#{form.cancel}">Cancel</button>
+    </th:block>
+
+    <form th:unless="${transportModeSegments != null and transportModeSegments.size() > 1}"
+          th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
           hx-target="closest .trip-transport-mode-container"
           hx-swap="outerHTML">
         <input type="hidden" name="timezone" th:value="${timezone}">
@@ -31,7 +55,13 @@
 </div>
 
 <div th:fragment="view-mode" class="trip-transport-mode-container" th:id="${'trip-transport-mode-container_' + tripId}">
-    <span th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
+    <th:block th:if="${transportModeSegments != null and transportModeSegments.size() > 1}">
+        <span class="transport-mode-segment" th:each="segment : ${transportModeSegments}">
+            <span th:text="#{'timeline.transport.' + ${segment.mode()} + '.label'}">by foot</span>
+        </span>
+    </th:block>
+    <span th:unless="${transportModeSegments != null and transportModeSegments.size() > 1}"
+          th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
 </div>
 
 </body>

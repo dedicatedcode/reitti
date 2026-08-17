@@ -86,31 +86,32 @@ public class TimelineOverviewStatisticsService {
                                                                                    """, params);
 
         List<Map<String, Object>> tripMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
-                                                                                         SELECT
-                                                                                             DATE_TRUNC(:granularity, t.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
-                                                                                             t.transport_mode_inferred AS name,
-                                                                                             lm.metadata->>'mood' AS mood,
-                                                                                             SUM(t.duration_seconds)::BIGINT AS duration_seconds,
-                                                                                             SUM(t.travelled_distance_meters)::BIGINT AS distance_meters,
-                                                                                             COUNT(*) AS mood_count
-                                                                                         FROM trips t
-                                                                                         LEFT JOIN LATERAL (
-                                                                                             SELECT metadata
-                                                                                             FROM location_metadata lm
-                                                                                             WHERE lm.user_id = :userId
-                                                                                               AND lm.time_range && TSTZRANGE(t.start_time, t.end_time)
-                                                                                               AND lm.context_type = 'TRIP'
-                                                                                               AND lm.metadata->>'mood' IS NOT NULL
-                                                                                             ORDER BY UPPER(lm.time_range * TSTZRANGE(t.start_time, t.end_time))
-                                                                                                    - LOWER(lm.time_range * TSTZRANGE(t.start_time, t.end_time)) DESC
-                                                                                             LIMIT 1
-                                                                                         ) lm ON TRUE
-                                                                                         WHERE t.user_id = :userId
-                                                                                           AND t.start_time >= :start AND t.start_time <= :end
-                                                                                           AND t.start_time < t.end_time
-                                                                                         GROUP BY 1, 2, 3
-                                                                                         ORDER BY time_bucket;
-                                                                                         """, params);
+                                                                                          SELECT
+                                                                                              DATE_TRUNC(:granularity, t.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
+                                                                                              tm.transportation_mode AS name,
+                                                                                              lm.metadata->>'mood' AS mood,
+                                                                                              SUM(tm.duration_in_seconds)::BIGINT AS duration_seconds,
+                                                                                              SUM(tm.distance_meters)::BIGINT AS distance_meters,
+                                                                                              COUNT(*) AS mood_count
+                                                                                          FROM trips t
+                                                                                          INNER JOIN trip_transport_modes tm ON tm.trip_id = t.id
+                                                                                          LEFT JOIN LATERAL (
+                                                                                              SELECT metadata
+                                                                                              FROM location_metadata lm
+                                                                                              WHERE lm.user_id = :userId
+                                                                                                AND lm.time_range && TSTZRANGE(t.start_time, t.end_time)
+                                                                                                AND lm.context_type = 'TRIP'
+                                                                                                AND lm.metadata->>'mood' IS NOT NULL
+                                                                                              ORDER BY UPPER(lm.time_range * TSTZRANGE(t.start_time, t.end_time))
+                                                                                                     - LOWER(lm.time_range * TSTZRANGE(t.start_time, t.end_time)) DESC
+                                                                                              LIMIT 1
+                                                                                          ) lm ON TRUE
+                                                                                          WHERE t.user_id = :userId
+                                                                                            AND t.start_time >= :start AND t.start_time <= :end
+                                                                                            AND t.start_time < t.end_time
+                                                                                          GROUP BY 1, 2, 3
+                                                                                          ORDER BY time_bucket;
+                                                                                          """, params);
 
         List<Map<String, Object>> visitMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
                                                                                           SELECT

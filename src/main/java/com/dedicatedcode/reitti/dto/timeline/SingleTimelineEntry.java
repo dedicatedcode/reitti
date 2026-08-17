@@ -2,10 +2,12 @@ package com.dedicatedcode.reitti.dto.timeline;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 
 import java.sql.Time;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 
 public class SingleTimelineEntry implements TimelineEntry {
 
@@ -26,6 +28,7 @@ public class SingleTimelineEntry implements TimelineEntry {
     private Double distanceMeters;
     private String formattedDistance;
     private TransportMode transportMode;
+    private List<TransportModeSegment> transportModeSegments;
     private boolean editable;
 
     public String getId() {
@@ -138,6 +141,14 @@ public class SingleTimelineEntry implements TimelineEntry {
 
     public void setTransportMode(TransportMode transportMode) {
         this.transportMode = transportMode;
+    }
+
+    public List<TransportModeSegment> getTransportModeSegments() {
+        return transportModeSegments;
+    }
+
+    public void setTransportModeSegments(List<TransportModeSegment> transportModeSegments) {
+        this.transportModeSegments = transportModeSegments;
     }
 
     public String getPath() {

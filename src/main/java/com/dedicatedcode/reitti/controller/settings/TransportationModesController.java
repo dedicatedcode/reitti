@@ -79,6 +79,8 @@ public class TransportationModesController {
                                    @RequestParam TransportMode mode,
                                    @RequestParam(required = false) Double maxSpeed,
                                    @RequestParam(required = false) UnitSystem unitSystem,
+                                   @RequestParam(required = false) String color,
+                                   @RequestParam(required = false) String icon,
                                    RedirectAttributes redirectAttributes) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
@@ -106,7 +108,7 @@ public class TransportationModesController {
                 return "redirect:/settings/transportation-modes";
             }
 
-            configs.add(new TransportModeConfig(mode, maxKmh));
+            configs.add(new TransportModeConfig(mode, maxKmh, color, icon));
             transportModeJdbcService.setTransportModeConfigs(user, configs);
             
             redirectAttributes.addFlashAttribute("successMessage", "transportation.modes.success.added");
@@ -122,30 +124,36 @@ public class TransportationModesController {
                                       @PathVariable TransportMode mode,
                                       @RequestParam(required = false) Double maxSpeed,
                                       @RequestParam(required = false) UnitSystem unitSystem,
+                                      @RequestParam(required = false) String color,
+                                      @RequestParam(required = false) String icon,
                                       RedirectAttributes redirectAttributes) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-            
-            // Convert to km/h if input was in mph
-            Double maxKmh;
-            if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
-                maxKmh = mphToKmh(maxSpeed);
-            } else {
-                maxKmh = maxSpeed;
-            }
-            
+
             List<TransportModeConfig> updatedConfigs = configs.stream()
-                    .map(config -> config.mode() == mode ? new TransportModeConfig(mode, maxKmh) : config)
+                    .map(config -> config.mode() == mode ? updateConfig(config, maxSpeed, unitSystem, color, icon) : config)
                     .collect(Collectors.toList());
-            
+
             transportModeJdbcService.setTransportModeConfigs(user, updatedConfigs);
-            
+
             redirectAttributes.addFlashAttribute("successMessage", "transportation.modes.success.updated");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.update");
         }
-        
+
         return "redirect:/settings/transportation-modes";
+    }
+
+    private TransportModeConfig updateConfig(TransportModeConfig config, Double maxSpeed, UnitSystem unitSystem, String color, String icon) {
+        Double maxKmh;
+        if (maxSpeed == null) {
+            maxKmh = config.maxKmh();
+        } else {
+            maxKmh = unitSystem == UnitSystem.IMPERIAL ? mphToKmh(maxSpeed) : maxSpeed;
+        }
+        String newColor = color == null ? config.color() : (color.isEmpty() ? null : color);
+        String newIcon = icon == null ? config.icon() : (icon.isEmpty() ? null : icon);
+        return new TransportModeConfig(config.mode(), maxKmh, newColor, newIcon);
     }
 
     @PostMapping("/{mode}/delete")

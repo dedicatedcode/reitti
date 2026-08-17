@@ -940,6 +940,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         if (window.userSettings.uiMode !== 'SHARED_LIVE_MODE_ONLY') {
             settingsMenu.restoreState();
+            mapRenderer.setShowTransportModes(localStorage.getItem('showTransportModes') !== 'false');
         } else {
             document.body.classList.add('datepicker-hidden')
             timelineControl.hide();
@@ -962,6 +963,7 @@
                         metaDataUrl: container.dataset.locationMetadataUrl,
                         streamUrl: container.dataset.locationStreamUrl,
                         visitsUrl: container.dataset.processedVisitsUrl,
+                        tripsUrl: container.dataset.tripsUrl,
                         h3CellUrl: container.dataset.h3CellUrl
                     },
                     continuous: true
@@ -1067,7 +1069,7 @@
                 const startTimeMs = Date.parse(trip.startTime);
                 const endTimeMs = Date.parse(trip.endTime);
 
-                const offest = 5 * 60;
+                const offest = 2 * 60;
                 const startTimeSeconds = (startTimeMs / 1000) - offest;
                 const endTimeSeconds = (endTimeMs / 1000) + offest;
 
@@ -1311,6 +1313,11 @@
                     break;
                 case 'followTrail':
                     isFollowing = value;
+                    break;
+                case 'showTransportModes':
+                    if (mapRenderer && typeof mapRenderer.setShowTransportModes === 'function') {
+                        mapRenderer.setShowTransportModes(value);
+                    }
                     break;
                 case 'allowFutureDates':
                     window.horizontalDatePicker.setAllowFutureDates(value);

@@ -36,6 +36,8 @@
                         <tr>
                             <th th:text="#{transportation.modes.table.mode}">Mode</th>
                             <th th:text="#{${isImperial ? 'transportation.modes.table.max.mph' : 'transportation.modes.table.max.kmh'}}">Max Speed</th>
+                            <th th:text="#{transportation.modes.table.color}">Color</th>
+                            <th th:text="#{transportation.modes.table.icon}">Icon</th>
                             <th th:text="#{transportation.modes.table.actions}">Actions</th>
                         </tr>
                         </thead>
@@ -55,6 +57,33 @@
                                            step="0.1"
                                            min="0"
                                            th:placeholder="#{transportation.modes.max.placeholder}">
+                                </form>
+                            </td>
+                            <td>
+                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
+                                      hx-target="body"
+                                      hx-swap="outerHTML"
+                                      hx-trigger="change delay:300ms"
+                                      style="display: inline;">
+                                    <input type="color"
+                                           name="color"
+                                           th:value="${config.color() != null ? config.color() : '#f1ba63'}">
+                                </form>
+                            </td>
+                            <td>
+                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
+                                      hx-target="body"
+                                      hx-swap="outerHTML"
+                                      hx-trigger="change"
+                                      style="display: inline;">
+                                    <select name="icon" class="transport-mode-icon-select">
+                                        <option value="" th:text="#{transportation.modes.icon.none}">None</option>
+                                        <option value="lni-bike" th:selected="${config.icon() == 'lni-bike'}" th:text="#{transportation.modes.icon.bike}">Bike</option>
+                                        <option value="lni-bus-1" th:selected="${config.icon() == 'lni-bus-1'}" th:text="#{transportation.modes.icon.bus}">Bus</option>
+                                        <option value="lni-car-2" th:selected="${config.icon() == 'lni-car-2'}" th:text="#{transportation.modes.icon.car}">Car</option>
+                                        <option value="lni-train-1" th:selected="${config.icon() == 'lni-train-1'}" th:text="#{transportation.modes.icon.train}">Train</option>
+                                        <option value="lni-ship-1" th:selected="${config.icon() == 'lni-ship-1'}" th:text="#{transportation.modes.icon.ship}">Ship</option>
+                                    </select>
                                 </form>
                             </td>
                             <td>
@@ -96,6 +125,21 @@
                                    min="0"
                                    th:placeholder="#{${isImperial ? 'transportation.modes.max.mph.placeholder' : 'transportation.modes.max.kmh.placeholder'}}">
                             <small th:text="#{${isImperial ? 'transportation.modes.max.mph.help' : 'transportation.modes.max.kmh.help'}}">Leave empty for no speed limit</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="color" th:text="#{transportation.modes.color.label}">Color</label>
+                            <input type="color" id="color" name="color" value="#f1ba63">
+                        </div>
+                        <div class="form-group">
+                            <label for="icon" th:text="#{transportation.modes.icon.label}">Icon</label>
+                            <select id="icon" name="icon">
+                                <option value="" th:text="#{transportation.modes.icon.none}">None</option>
+                                <option value="lni-bike" th:text="#{transportation.modes.icon.bike}">Bike</option>
+                                <option value="lni-bus-1" th:text="#{transportation.modes.icon.bus}">Bus</option>
+                                <option value="lni-car-2" th:text="#{transportation.modes.icon.car}">Car</option>
+                                <option value="lni-train-1" th:text="#{transportation.modes.icon.train}">Train</option>
+                                <option value="lni-ship-1" th:text="#{transportation.modes.icon.ship}">Ship</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn" th:text="#{transportation.modes.add.button}">Add Mode</button>
                     </form>

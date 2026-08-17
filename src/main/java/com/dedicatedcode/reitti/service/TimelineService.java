@@ -126,6 +126,7 @@ public class TimelineService {
             if (trip.getTransportModeInferred() != null) {
                 entry.setTransportMode(trip.getTransportModeInferred());
             }
+            entry.setTransportModeSegments(trip.getSegments());
 
             entries.add(entry);
         }

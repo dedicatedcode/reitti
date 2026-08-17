@@ -25,6 +25,10 @@ class GpsDataManager {
         this.lastLocation = null;
         this.activityWeights = [0];
         this.totalActivity = 0;
+        this.trips = [];
+        this.tripsMinTimestamp = null;
+        this.transitions = [];
+        this.modeSegments = [];
     }
 
     async loadFixed(onProgress) {
@@ -72,6 +76,8 @@ class GpsDataManager {
 
         try {
             this._dataCache = {};
+            this._cachedSegmentPaths = null;
+            this._cachedSegmentPathsCursor = 0;
             this.cursor = 0;
             this.cleanedCursor = 0;
             this.buffer = new Float32Array(16000 * 6);
@@ -89,6 +95,10 @@ class GpsDataManager {
             }
             const h3Promise = this.config.map.h3CellUrl
                 ? fetch(window.contextPath + this.config.map.h3CellUrl, {signal}).then(r => r.json())
+                : Promise.resolve(null);
+
+            const tripsPromise = this.config.map.tripsUrl
+                ? fetch(window.contextPath + this.config.map.tripsUrl, {signal}).then(r => r.json()).catch(() => null)
                 : Promise.resolve(null);
 
             if (this.config.mapDataProviders) {
@@ -142,6 +152,15 @@ class GpsDataManager {
                 }));
             }
 
+            const tripsData = await tripsPromise;
+            if (tripsData && Array.isArray(tripsData.trips)) {
+                this.trips = tripsData.trips;
+                this.tripsMinTimestamp = tripsData.minTimestamp;
+            } else {
+                this.trips = [];
+                this.tripsMinTimestamp = null;
+            }
+
             // Update internal range trackers
             this.minTimestamp = startUTC;
             this.maxTimestamp = endUTC;
@@ -165,6 +184,7 @@ class GpsDataManager {
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
             this._computeActivityWeights();
+            this._computeTransitions();
             this.loadingState = 'complete';
             if (onProgress) onProgress(this.totalExpected, this.totalExpected, 'complete');
             if (this.config.map.visitsUrl) {
@@ -719,5 +739,139 @@ class GpsDataManager {
                 lat: buffer[bestIdx * stride + 1]
             };
         }
+    }
+
+    /**
+     * Builds transport-mode segments and cut markers from the trip data.
+     * Segments are stored with absolute unix timestamps so the renderer can
+     * color the path by mode. Cut markers carry the exact [lng, lat] where the
+     * mode changes and the two adjacent modes for the pill visualization.
+     */
+    _computeTransitions() {
+        const transitions = [];
+        const modeSegments = [];
+        const trips = this.trips || [];
+        const minTs = this.tripsMinTimestamp;
+
+        for (const trip of trips) {
+            const segments = Array.isArray(trip.segments) ? trip.segments : [];
+            if (segments.length === 0) continue;
+
+            // Trip start in absolute unix seconds (first tracked point ≈ trip start)
+            let tripStartAbs = null;
+            if (minTs != null && Array.isArray(trip.timestamps) && trip.timestamps.length > 0) {
+                tripStartAbs = minTs + trip.timestamps[0];
+            } else if (trip.startTime) {
+                tripStartAbs = Math.floor(new Date(trip.startTime).getTime() / 1000);
+            }
+
+            if (tripStartAbs != null) {
+                for (let i = 0; i < segments.length; i++) {
+                    const seg = segments[i];
+                    const start = tripStartAbs + seg.offsetSeconds;
+                    const end = start + seg.durationSeconds;
+                    modeSegments.push({
+                        start,
+                        end,
+                        mode: seg.mode,
+                        color: seg.color,
+                        icon: seg.icon
+                    });
+
+                    if (i > 0) {
+                        const from = segments[i - 1];
+                        const pos = this.getCurrentPosition(start, false);
+                        if (pos) {
+                            transitions.push({
+                                lng: pos.lng,
+                                lat: pos.lat,
+                                time: start,
+                                from: { mode: from.mode, color: from.color, icon: from.icon },
+                                to: { mode: seg.mode, color: seg.color, icon: seg.icon }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        this.modeSegments = modeSegments.sort((a, b) => a.start - b.start);
+        this.transitions = transitions.sort((a, b) => a.time - b.time);
+    }
+
+    getModeSegments() {
+        return this.modeSegments || [];
+    }
+
+    getTransitions() {
+        return this.transitions || [];
+    }
+
+    /**
+     * Builds per-mode path arrays from the cleaned buffer, colored by the
+     * transport mode of each segment. Every point is rendered: unsegmented
+     * or visit points receive default manager color, and adjacent segments
+     * share boundary vertices for a seamless, zero-gap line.
+     */
+    getSegmentPaths() {
+        const segments = this.modeSegments;
+        if (!segments || segments.length === 0 || this.cleanedCursor === 0) {
+            return null;
+        }
+
+        // For large date ranges (> 7 days), use ultra-fast native binary path on GPU
+        const totalSpan = (this.maxTimestamp && this.minTimestamp) ? (this.maxTimestamp - this.minTimestamp) : 0;
+        if (totalSpan > 7 * 86400) {
+            return null;
+        }
+
+        if (this._cachedSegmentPaths && this._cachedSegmentPathsCursor === this.cleanedCursor) {
+            return this._cachedSegmentPaths;
+        }
+
+        const buffer = this.cleanedBuffer;
+        const stride = 6;
+        const paths = [];
+        let segIdx = 0;
+        let current = null;
+
+        for (let i = 0; i < this.cleanedCursor; i++) {
+            const lng = buffer[i * stride];
+            const lat = buffer[i * stride + 1];
+            const ts = buffer[i * stride + 3];
+            const point = [lng, lat];
+
+            // Advance segment pointer if past current segment
+            while (segIdx < segments.length && ts > segments[segIdx].end) {
+                segIdx++;
+            }
+
+            let activeColor = null;
+            let activeKey = -1;
+
+            if (segIdx < segments.length) {
+                const seg = segments[segIdx];
+                if (ts >= seg.start && ts <= seg.end) {
+                    activeColor = seg.color || null;
+                    activeKey = segIdx;
+                }
+            }
+
+            if (!current || current._key !== activeKey) {
+                if (current) {
+                    // Connect seamlessly: share the boundary point with the previous path
+                    current.path.push(point);
+                }
+                current = { path: [point], color: activeColor, _key: activeKey };
+                paths.push(current);
+            } else {
+                current.path.push(point);
+            }
+        }
+
+        const result = paths.filter(p => p.path.length >= 2).map(p => ({ path: p.path, color: p.color }));
+        this._cachedSegmentPaths = result;
+        this._cachedSegmentPathsCursor = this.cleanedCursor;
+        return result;
     }
 }

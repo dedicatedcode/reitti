@@ -781,7 +781,7 @@ public class UnifiedLocationProcessingService {
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
         double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
         // Create a new trip
-        TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, tripStartTime, tripEndTime);
+        List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, tripStartTime, tripEndTime);
         Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);
 
         Trip trip = new Trip(
@@ -790,11 +790,12 @@ public class UnifiedLocationProcessingService {
                 tripEndTime.getEpochSecond() - tripStartTime.getEpochSecond(),
                 estimatedDistanceInMeters,
                 travelledDistanceMeters,
-                transportMode,
+                segments,
                 startVisit,
                 endVisit,
                 metadata
         );
+        TransportMode transportMode = trip.getTransportModeInferred();
         logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
                 Optional.ofNullable(startVisit.getPlace().getName()).orElse("Unknown Name"),
                 Optional.ofNullable(endVisit.getPlace().getName()).orElse("Unknown Name"),

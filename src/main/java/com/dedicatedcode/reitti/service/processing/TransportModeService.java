@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TransportModeService {
@@ -19,26 +20,85 @@ public class TransportModeService {
     private final TransportModeOverrideJdbcService transportModeOverrideJdbcService;
 
     public TransportModeService(TransportModeJdbcService transportModeJdbcService,
-                               TransportModeOverrideJdbcService transportModeOverrideJdbcService) {
+                                TransportModeOverrideJdbcService transportModeOverrideJdbcService) {
         this.transportModeJdbcService = transportModeJdbcService;
         this.transportModeOverrideJdbcService = transportModeOverrideJdbcService;
     }
 
     public TransportMode inferTransportMode(User user, List<RawLocationPoint> tripPoints, Instant startTime, Instant endTime) {
-        Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, startTime, endTime);
-        if (override.isPresent()) {
-            log.trace("Found transport mode override for user [{}] and time range [{} - {}]", user.getUsername(), startTime, endTime);
-            return override.get();
-        }
-        List<TransportModeConfig> config = transportModeJdbcService.getTransportModeConfigs(user);
-        return segmentAndClassifyTrip(tripPoints, config);
+        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
+        List<TransportModeSegment> segments = segmentTrip(user, tripPoints, startTime, endTime, configs);
+        return segments.stream()
+                .collect(Collectors.groupingBy(TransportModeSegment::mode, Collectors.summingLong(TransportModeSegment::durationSeconds)))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(TransportMode.UNKNOWN);
     }
 
     public void overrideTransportMode(User user, TransportMode transportMode, Trip trip) {
         transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, trip.getStartTime(), trip.getEndTime());
     }
 
-    public TransportMode segmentAndClassifyTrip(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
+    public void overrideTransportModeSegment(User user, TransportMode transportMode, Trip trip, long offsetSeconds, long durationSeconds) {
+        Instant segmentStart = trip.getStartTime().plusSeconds(offsetSeconds);
+        Instant segmentEnd = segmentStart.plusSeconds(durationSeconds);
+        transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, segmentStart, segmentEnd);
+    }
+
+    public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd) {
+        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
+        return segmentTrip(user, points, tripStart, tripEnd, configs);
+    }
+
+    /**
+     * Splits a trip into per-mode segments, applying any user overrides for each
+     * segment's time range. Returns segments with offset/duration/distance relative
+     * to the trip start.
+     */
+    public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs) {
+        if (points.size() < 2) {
+            return List.of();
+        }
+
+        List<TripSegment> rawSegments = segmentAndClassifyTrip(points, configs);
+        List<TransportModeSegment> result = new ArrayList<>();
+
+        for (TripSegment segment : rawSegments) {
+            if (segment.points().size() < 2) {
+                continue;
+            }
+            Instant segmentStart = segment.points().getFirst().getTimestamp();
+            Instant segmentEnd = segment.points().getLast().getTimestamp();
+            if (segmentEnd.isBefore(segmentStart) || segmentEnd.equals(segmentStart)) {
+                continue;
+            }
+
+            TransportMode mode = segment.dominantMode();
+            Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, segmentStart, segmentEnd);
+            if (override.isPresent()) {
+                mode = override.get();
+            }
+
+            long offsetSeconds = Duration.between(tripStart, segmentStart).getSeconds();
+            long durationSeconds = Duration.between(segmentStart, segmentEnd).getSeconds();
+            double distanceMeters = GeoUtils.calculateTripDistance(segment.points());
+
+            result.add(new TransportModeSegment(mode, Math.max(0, offsetSeconds), durationSeconds, distanceMeters));
+        }
+
+        return result;
+    }
+
+    /**
+     * Segments points into homogeneous transport-mode segments using speed-based
+     * heuristics. Each returned segment carries its points and dominant mode.
+     */
+    public List<TripSegment> segmentAndClassifyTrip(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
+        if (points.isEmpty()) {
+            return List.of();
+        }
+
         List<TripSegment> segments = new ArrayList<>();
         List<Double> speeds = calculateSpeeds(points);
 
@@ -61,23 +121,7 @@ public class TransportModeService {
         TransportMode mode = classifySegment(currentSegmentPoints, configs);
         segments.add(new TripSegment(currentSegmentPoints, mode));
 
-        // Calculate duration in minutes for each transport mode and return the one with the most minutes
-        Map<TransportMode, Double> modeDurationMinutes = new HashMap<>();
-        
-        for (TripSegment segment : segments) {
-            if (segment.points().size() < 2) continue;
-            
-            Instant startTime = segment.points().getFirst().getTimestamp();
-            Instant endTime = segment.points().getLast().getTimestamp();
-            double durationMinutes = Duration.between(startTime, endTime).toMillis() / (1000.0 * 60.0);
-            
-            modeDurationMinutes.merge(segment.dominantMode(), durationMinutes, Double::sum);
-        }
-        
-        return modeDurationMinutes.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(TransportMode.UNKNOWN);
+        return segments;
     }
 
     private List<Double> calculateSpeeds(List<RawLocationPoint> points) {

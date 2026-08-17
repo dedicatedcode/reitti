@@ -32,86 +32,68 @@ public class APIQueryService {
     }
 
     public TripResponseV2 getTrips(User user, Instant start, Instant end, double zoom) {
-        // Calculate tolerance in degrees (4326)
-        // Zoom 18 (Street) -> ~0.00001 (1m)
-        // Zoom 2 (World) -> ~0.5 (50km)
-        double tolerance = Math.pow(2, 12 - zoom) * 0.000001;
-
-        // Ensure tolerance doesn't go too low (keep it simple) or too high
-        tolerance = Math.max(0, Math.min(tolerance, 0.5));
-
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("userId", user.getId())
                 .addValue("start", Timestamp.from(start))
-                .addValue("end", Timestamp.from(end))
-                .addValue("tolerance", tolerance);
+                .addValue("end", Timestamp.from(end));
 
         String sql = """
-                
                 WITH trip_bounds AS (
-                                                        SELECT
-                                                            MIN(EXTRACT(EPOCH FROM start_time)) as min_t,
-                                                            MAX(EXTRACT(EPOCH FROM end_time)) as max_t
-                                                        FROM trips
-                                                        WHERE user_id = :userId
-                                                          AND start_time >= :start
-                                                          AND end_time <= :end
-                                                    ),
-                                                    points_in_trips AS (
-                                                        -- Direct join using the geom column
-                                                        SELECT
-                                                            t.id as trip_id,
-                                                            t.transport_mode_inferred,
-                                                            p.geom,
-                                                            p.timestamp
-                                                        FROM trips t
-                                                        INNER JOIN raw_location_points p ON
-                                                            p.timestamp BETWEEN t.start_time AND t.end_time
-                                                        WHERE t.user_id = :userId
-                                                          AND t.start_time >= :start
-                                                          AND t.end_time <= :end
-                                                    ),
-                                                    simplified_paths AS (
-                                                        SELECT
-                                                            trip_id,
-                                                            transport_mode_inferred,
-                                                            ST_SimplifyPreserveTopology(
-                                                                ST_MakeLine(geom ORDER BY timestamp),
-                                                                :tolerance
-                                                            ) as line_geom
-                                                        FROM points_in_trips
-                                                        GROUP BY trip_id, transport_mode_inferred
-                                                    ),
-                                                    final_agg AS (
-                                                        SELECT
-                                                            sp.trip_id,
-                                                            sp.transport_mode_inferred,
-                                                            -- ST_X and ST_Y extract lng/lat from the simplified point
-                                                            array_agg(ARRAY[ST_X(pts.geom), ST_Y(pts.geom)]) as coords,
-                                                            array_agg(EXTRACT(EPOCH FROM p.timestamp) - b.min_t ORDER BY p.timestamp) as offsets
-                                                        FROM simplified_paths sp
-                                                        CROSS JOIN ST_DumpPoints(sp.line_geom) as pts
-                                                        JOIN raw_location_points p ON
-                                                            p.timestamp BETWEEN :start AND :end
-                                                            AND ST_DWithin(p.geom, pts.geom, 0.00001)
-                                                        CROSS JOIN trip_bounds b
-                                                        GROUP BY sp.trip_id, sp.transport_mode_inferred, b.min_t
-                                                    )
-                                                    SELECT
-                                                        (SELECT min_t FROM trip_bounds) as min_timestamp,
-                                                        (SELECT max_t FROM trip_bounds) as max_timestamp,
-                                                        json_agg(json_build_object(
-                                                            'id', trip_id,
-                                                            'mode', transport_mode_inferred,
-                                                            'path', coords,
-                                                            'timestamps', offsets
-                                                        )) as trips
-                                                    FROM final_agg;
+                    SELECT
+                        COALESCE(MIN(EXTRACT(EPOCH FROM start_time)), 0)::bigint as min_t,
+                        COALESCE(MAX(EXTRACT(EPOCH FROM end_time)), 0)::bigint as max_t
+                    FROM trips
+                    WHERE user_id = :userId
+                      AND ((start_time <= :end AND end_time >= :start) OR
+                           (start_time >= :start AND start_time <= :end) OR
+                           (end_time >= :start AND end_time <= :end))
+                ),
+                dominant_modes AS (
+                    SELECT trip_id, transportation_mode
+                    FROM (
+                        SELECT trip_id, transportation_mode,
+                               ROW_NUMBER() OVER (PARTITION BY trip_id ORDER BY duration_in_seconds DESC) as rn
+                        FROM trip_transport_modes
+                    ) x
+                    WHERE rn = 1
+                ),
+                trip_segments AS (
+                    SELECT
+                        tm.trip_id,
+                        json_agg(json_build_object(
+                            'offsetSeconds', tm.offset_seconds,
+                            'durationSeconds', tm.duration_in_seconds,
+                            'mode', tm.transportation_mode,
+                            'color', c.color,
+                            'icon', c.icon
+                        ) ORDER BY tm.offset_seconds) as segments
+                    FROM trip_transport_modes tm
+                    LEFT JOIN transport_mode_detection_configs c ON
+                        c.user_id = :userId AND c.transport_mode = tm.transportation_mode
+                    GROUP BY tm.trip_id
+                )
+                SELECT
+                    (SELECT min_t FROM trip_bounds) as min_timestamp,
+                    (SELECT max_t FROM trip_bounds) as max_timestamp,
+                    COALESCE(
+                        json_agg(json_build_object(
+                            'id', t.id,
+                            'mode', dm.transportation_mode,
+                            'segments', COALESCE(ts.segments, '[]'::json)
+                        ) ORDER BY t.start_time),
+                        '[]'::json
+                    ) as trips
+                FROM trips t
+                LEFT JOIN dominant_modes dm ON dm.trip_id = t.id
+                LEFT JOIN trip_segments ts ON ts.trip_id = t.id
+                WHERE t.user_id = :userId
+                  AND ((t.start_time <= :end AND t.end_time >= :start) OR
+                       (t.start_time >= :start AND t.start_time <= :end) OR
+                       (t.end_time >= :start AND t.end_time <= :end));
                 """;
 
         UserSettings userSettings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         return jdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> {
-            // Mapping to your TripResponseV2 DTO
             return new TripResponseV2(
                     rs.getLong("min_timestamp"),
                     rs.getLong("max_timestamp"),

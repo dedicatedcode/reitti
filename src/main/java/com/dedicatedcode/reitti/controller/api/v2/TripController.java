@@ -29,7 +29,7 @@ public class TripController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "UTC") String timezone,
-            @RequestParam(required = false) Integer zoom) {
+            @RequestParam(required = false, defaultValue = "12") Integer zoom) {
         ZoneId userTimezone = ZoneId.of(timezone);
         Instant startOfRange = null;
         Instant endOfRange = null;

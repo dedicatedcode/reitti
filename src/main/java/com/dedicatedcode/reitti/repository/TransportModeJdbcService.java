@@ -25,7 +25,7 @@ public class TransportModeJdbcService {
     @Cacheable(value = "transport-mode-configs", key = "#user.id")
     public List<TransportModeConfig> getTransportModeConfigs(User user) {
         String sql = """
-            SELECT transport_mode, max_kmh
+            SELECT transport_mode, max_kmh, color, icon
             FROM transport_mode_detection_configs
             WHERE user_id = ? 
             ORDER BY max_kmh NULLS LAST
@@ -34,7 +34,9 @@ public class TransportModeJdbcService {
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             TransportMode mode = TransportMode.valueOf(rs.getString("transport_mode"));
             Double maxKmh = Optional.ofNullable(rs.getObject("max_kmh")).map(BigDecimal.class::cast).map(BigDecimal::doubleValue).orElse(null);
-            return new TransportModeConfig(mode, maxKmh);
+            String color = rs.getString("color");
+            String icon = rs.getString("icon");
+            return new TransportModeConfig(mode, maxKmh, color, icon);
         }, user.getId());
     }
 
@@ -45,13 +47,13 @@ public class TransportModeJdbcService {
         jdbcTemplate.update(deleteSql, user.getId());
 
         String insertSql = """
-            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, max_kmh)
-            VALUES (?, ?, ?)
+            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, max_kmh, color, icon)
+            VALUES (?, ?, ?, ?, ?)
             """;
         
         for (TransportModeConfig config : configs) {
             Double maxKmh = config.maxKmh();
-            jdbcTemplate.update(insertSql, user.getId(), config.mode().name(), maxKmh);
+            jdbcTemplate.update(insertSql, user.getId(), config.mode().name(), maxKmh, config.color(), config.icon());
         }
     }
 

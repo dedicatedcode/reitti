@@ -71,9 +71,10 @@
          th:data-base-color="${userData?.baseColor}"
          th:data-raw-location-points-url="${userData?.rawLocationPointsUrl}"
          th:data-processed-visits-url="${userData?.processedVisitsUrl}"
-         th:data-location-metadata-url="${userData?.mapMetaDataUrl}"
-         th:data-location-stream-url="${userData?.mapStreamDataUrl}"
-         th:data-h3-cell-url="${userData?.h3CellUrl}"
+          th:data-location-metadata-url="${userData?.mapMetaDataUrl}"
+          th:data-location-stream-url="${userData?.mapStreamDataUrl}"
+          th:data-trips-url="${userData?.mapTripsUrl}"
+          th:data-h3-cell-url="${userData?.h3CellUrl}"
          th:data-user-avatar-url="${userData?.userAvatarUrl}"
          th:data-avatar-fallback="${userData?.avatarFallback}"
          th:data-display-name="${userData?.displayName}">
@@ -406,7 +407,13 @@
                             <span th:text="${entry.formattedDistance}">5.2 km</span>
                         </span>
                         <div th:id="${'trip-transport-mode-container_' + entry.resourceId}" th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
-                            <span th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
+                            <th:block th:if="${entry.transportModeSegments != null and entry.transportModeSegments.size() > 1}">
+                                <span class="transport-mode-segment" th:each="segment : ${entry.transportModeSegments}">
+                                    <span th:text="#{'timeline.transport.' + ${segment.mode()} + '.label'}">by foot</span>
+                                </span>
+                            </th:block>
+                            <span th:unless="${entry.transportModeSegments != null and entry.transportModeSegments.size() > 1}"
+                                  th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
                         </div>
                     </span>
                 </span>
