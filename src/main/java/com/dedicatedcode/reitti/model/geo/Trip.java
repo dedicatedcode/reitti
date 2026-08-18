@@ -77,21 +77,8 @@ public class Trip {
         return travelledDistanceMeters;
     }
 
-    public TransportMode getTransportModeInferred() {
-        return getDominantMode();
-    }
-
     public List<TransportModeSegment> getSegments() {
         return segments;
-    }
-
-    public TransportMode getDominantMode() {
-        return segments.stream()
-                .collect(java.util.stream.Collectors.groupingBy(TransportModeSegment::mode, java.util.stream.Collectors.summingLong(TransportModeSegment::durationSeconds)))
-                .entrySet().stream()
-                .max(Comparator.comparingLong(e -> e.getValue()))
-                .map(Map.Entry::getKey)
-                .orElse(null);
     }
 
     public ProcessedVisit getStartVisit() {

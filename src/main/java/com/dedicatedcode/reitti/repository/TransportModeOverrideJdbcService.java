@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -64,6 +65,29 @@ public class TransportModeOverrideJdbcService {
     public void deleteAllTransportModeOverrides(User user) {
         String deleteSql = "DELETE FROM transport_mode_overrides WHERE user_id = ?";
         jdbcTemplate.update(deleteSql, user.getId());
+    }
+
+    /**
+     * Returns all transport mode overrides in the given time range for the user.
+     * Used during trip segmentation to apply per-segment overrides.
+     */
+    public List<TransportModeOverride> getTransportModeOverrides(User user, Instant start, Instant end) {
+        String sql = """
+            SELECT transport_mode, time
+            FROM transport_mode_overrides
+            WHERE user_id = ?
+            AND time BETWEEN ? AND ?
+            ORDER BY time ASC
+            """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            TransportMode mode = TransportMode.valueOf(rs.getString("transport_mode"));
+            Instant storedTime = rs.getTimestamp("time").toInstant();
+            return new TransportModeOverride(mode, storedTime);
+        }, user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public record TransportModeOverride(TransportMode mode, Instant time) {
     }
 
 }

@@ -78,6 +78,7 @@
                                       style="display: inline;">
                                     <select name="icon" class="transport-mode-icon-select">
                                         <option value="" th:text="#{transportation.modes.icon.none}">None</option>
+                                        <option value="lni-user-4" th:selected="${config.icon() == 'lni-user-4'}" th:text="#{transportation.modes.icon.walking}">Walk</option>
                                         <option value="lni-bike" th:selected="${config.icon() == 'lni-bike'}" th:text="#{transportation.modes.icon.bike}">Bike</option>
                                         <option value="lni-bus-1" th:selected="${config.icon() == 'lni-bus-1'}" th:text="#{transportation.modes.icon.bus}">Bus</option>
                                         <option value="lni-car-2" th:selected="${config.icon() == 'lni-car-2'}" th:text="#{transportation.modes.icon.car}">Car</option>

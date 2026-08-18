@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService.TransportModeOverride;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -18,6 +19,9 @@ public class TransportModeService {
     private static final Logger log = LoggerFactory.getLogger(TransportModeService.class);
     private final TransportModeJdbcService transportModeJdbcService;
     private final TransportModeOverrideJdbcService transportModeOverrideJdbcService;
+
+    private static final long CHUNK_DURATION_SECONDS = 60;
+    private static final long MIN_SEGMENT_DURATION_SECONDS = 60;
 
     public TransportModeService(TransportModeJdbcService transportModeJdbcService,
                                 TransportModeOverrideJdbcService transportModeOverrideJdbcService) {
@@ -48,80 +52,104 @@ public class TransportModeService {
 
     public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd) {
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-        return segmentTrip(user, points, tripStart, tripEnd, configs);
+        double totalDistanceMeters = GeoUtils.calculateTripDistance(points);
+        return segmentTrip(user, points, tripStart, tripEnd, configs, totalDistanceMeters);
     }
 
     /**
-     * Splits a trip into per-mode segments, applying any user overrides for each
-     * segment's time range. Returns segments with offset/duration/distance relative
-     * to the trip start.
+     * Splits a trip into per-mode segments using fixed-time-window chunking.
+     * Points are divided into CHUNK_DURATION_SECONDS windows, each chunk is
+     * classified by its average speed, then short fluke segments are collapsed
+     * and adjacent same-mode segments are merged. Always returns at least one
+     * segment (UNKNOWN fallback if no chunks could be classified).
      */
     public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs) {
+        double totalDistanceMeters = points.size() >= 2 ? GeoUtils.calculateTripDistance(points) : 0.0;
+        return segmentTrip(user, points, tripStart, tripEnd, configs, totalDistanceMeters);
+    }
+
+    private List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs, double totalDistanceMeters) {
         if (points.size() < 2) {
-            return List.of();
+            long duration = Duration.between(tripStart, tripEnd).getSeconds();
+            return List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
-        List<TripSegment> rawSegments = segmentAndClassifyTrip(points, configs);
+        // Load all overrides for the trip's time range upfront
+        List<TransportModeOverride> overrides = this.transportModeOverrideJdbcService.getTransportModeOverrides(user, tripStart, tripEnd);
+
+        List<ChunkClass> chunks = chunkAndClassify(points, configs);
+
         List<TransportModeSegment> result = new ArrayList<>();
+        long chunkStartOffset = 0;
 
-        for (TripSegment segment : rawSegments) {
-            if (segment.points().size() < 2) {
-                continue;
+        for (ChunkClass chunk : chunks) {
+            long chunkDuration = Math.max(1, chunk.durationSeconds());
+            TransportMode mode = chunk.mode();
+
+            // Check if any override midpoint falls within this chunk
+            Instant chunkStart = tripStart.plusSeconds(chunkStartOffset);
+            Instant chunkEnd = tripStart.plusSeconds(chunkStartOffset + chunkDuration);
+            for (TransportModeOverride override : overrides) {
+                if (!override.time().isBefore(chunkStart) && override.time().isBefore(chunkEnd)) {
+                    mode = override.mode();
+                    break;
+                }
             }
-            Instant segmentStart = segment.points().getFirst().getTimestamp();
-            Instant segmentEnd = segment.points().getLast().getTimestamp();
-            if (segmentEnd.isBefore(segmentStart) || segmentEnd.equals(segmentStart)) {
-                continue;
-            }
 
-            TransportMode mode = segment.dominantMode();
-            Optional<TransportMode> override = this.transportModeOverrideJdbcService.getTransportModeOverride(user, segmentStart, segmentEnd);
-            if (override.isPresent()) {
-                mode = override.get();
-            }
+            result.add(new TransportModeSegment(mode, chunkStartOffset, chunkDuration, chunk.distanceMeters()));
+            chunkStartOffset += chunkDuration;
+        }
 
-            long offsetSeconds = Duration.between(tripStart, segmentStart).getSeconds();
-            long durationSeconds = Duration.between(segmentStart, segmentEnd).getSeconds();
-            double distanceMeters = GeoUtils.calculateTripDistance(segment.points());
+        result = collapseShortSegments(result);
+        result = mergeSameModeSegments(result);
 
-            result.add(new TransportModeSegment(mode, Math.max(0, offsetSeconds), durationSeconds, distanceMeters));
+        if (result.isEmpty()) {
+            long duration = Duration.between(tripStart, tripEnd).getSeconds();
+            result = List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
         return result;
     }
 
-    /**
-     * Segments points into homogeneous transport-mode segments using speed-based
-     * heuristics. Each returned segment carries its points and dominant mode.
-     */
-    public List<TripSegment> segmentAndClassifyTrip(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
-        if (points.isEmpty()) {
-            return List.of();
-        }
+    private List<ChunkClass> chunkAndClassify(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
+        List<ChunkClass> chunks = new ArrayList<>();
+        Instant tripStart = points.getFirst().getTimestamp();
+        Instant tripEnd = points.getLast().getTimestamp();
+        long totalDuration = Duration.between(tripStart, tripEnd).getSeconds();
 
-        List<TripSegment> segments = new ArrayList<>();
-        List<Double> speeds = calculateSpeeds(points);
+        int pointIndex = 0;
+        for (long offset = 0; offset < totalDuration; offset += CHUNK_DURATION_SECONDS) {
+            long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
+            Instant chunkStartTime = tripStart.plusSeconds(offset);
+            Instant chunkEndTime = tripStart.plusSeconds(chunkEnd);
 
-        List<RawLocationPoint> currentSegmentPoints = new ArrayList<>();
-        currentSegmentPoints.add(points.getFirst());
-
-        for (int i = 1; i < points.size(); i++) {
-            double prevSpeed = (i > 1) ? speeds.get(i - 2) : 0;
-            double currSpeed = speeds.get(i - 1);
-
-            if (prevSpeed > 0 && Math.abs(currSpeed - prevSpeed) / prevSpeed > 0.5) {
-                TransportMode mode = classifySegment(currentSegmentPoints, configs);
-                segments.add(new TripSegment(new ArrayList<>(currentSegmentPoints), mode));
-                currentSegmentPoints.clear();
+            List<RawLocationPoint> chunkPoints = new ArrayList<>();
+            while (pointIndex < points.size() && !points.get(pointIndex).getTimestamp().isAfter(chunkEndTime)) {
+                chunkPoints.add(points.get(pointIndex));
+                pointIndex++;
             }
-            currentSegmentPoints.add(points.get(i));
+
+            if (chunkPoints.size() < 2) {
+                continue;
+            }
+
+            TransportMode mode = classifySegment(chunkPoints, configs);
+            double distanceMeters = GeoUtils.calculateTripDistance(chunkPoints);
+            chunks.add(new ChunkClass(mode, chunkEnd - offset, distanceMeters));
         }
 
-        // Add the last segment
-        TransportMode mode = classifySegment(currentSegmentPoints, configs);
-        segments.add(new TripSegment(currentSegmentPoints, mode));
+        return chunks;
+    }
 
-        return segments;
+    private TransportMode classifySegment(List<RawLocationPoint> segmentPoints, List<TransportModeConfig> configs) {
+        List<Double> speeds = calculateSpeeds(segmentPoints);
+        double avgSpeed = speeds.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        for (TransportModeConfig transportModeConfig : configs) {
+            if (transportModeConfig.maxKmh() == null || transportModeConfig.maxKmh() > avgSpeed) {
+                return transportModeConfig.mode();
+            }
+        }
+        return TransportMode.UNKNOWN;
     }
 
     private List<Double> calculateSpeeds(List<RawLocationPoint> points) {
@@ -136,21 +164,64 @@ public class TransportModeService {
         return speeds;
     }
 
-    /**
-     * Classifies a segment based on average speed (simple thresholds).
-     * Customize thresholds or add more modes/logic as needed.
-     */
-    private TransportMode classifySegment(List<RawLocationPoint> segmentPoints, List<TransportModeConfig> configs) {
-        List<Double> speeds = calculateSpeeds(segmentPoints);
-        double avgSpeed = speeds.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-        for (TransportModeConfig transportModeConfig : configs) {
-            if (transportModeConfig.maxKmh() == null || transportModeConfig.maxKmh() > avgSpeed) {
-                return transportModeConfig.mode();
+    public List<TransportModeSegment> mergeSameModeSegments(List<TransportModeSegment> segments) {
+        if (segments.size() < 2) {
+            return segments;
+        }
+        List<TransportModeSegment> result = new ArrayList<>();
+        TransportModeSegment current = segments.getFirst();
+        for (int i = 1; i < segments.size(); i++) {
+            TransportModeSegment next = segments.get(i);
+            if (current.mode() == next.mode()) {
+                current = new TransportModeSegment(
+                        current.mode(),
+                        current.offsetSeconds(),
+                        current.durationSeconds() + next.durationSeconds(),
+                        current.distanceMeters() + next.distanceMeters()
+                );
+            } else {
+                result.add(current);
+                current = next;
             }
         }
-        return TransportMode.UNKNOWN;
+        result.add(current);
+        return result;
     }
 
-    public record TripSegment(List<RawLocationPoint> points, TransportMode dominantMode) {
+    private List<TransportModeSegment> collapseShortSegments(List<TransportModeSegment> segments) {
+        if (segments.size() < 3) {
+            return segments;
+        }
+
+        List<TransportModeSegment> result = new ArrayList<>(segments);
+        boolean changed;
+        do {
+            changed = false;
+            List<TransportModeSegment> next = new ArrayList<>();
+            for (int i = 0; i < result.size(); i++) {
+                TransportModeSegment current = result.get(i);
+                if (i == 0 || i == result.size() - 1) {
+                    next.add(current);
+                    continue;
+                }
+                TransportModeSegment prev = result.get(i - 1);
+                TransportModeSegment nextSeg = result.get(i + 1);
+                if (prev.mode() == nextSeg.mode() && current.mode() != prev.mode()
+                        && current.durationSeconds() < MIN_SEGMENT_DURATION_SECONDS) {
+                    changed = true;
+                } else {
+                    next.add(current);
+                }
+            }
+            result = next;
+        } while (changed);
+
+        return result;
+    }
+
+    /**
+     * Temporary holder for a chunk's classification result.
+     */
+    private record ChunkClass(TransportMode mode, long durationSeconds, double distanceMeters) {
     }
 }

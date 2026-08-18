@@ -1069,9 +1069,9 @@
                 const startTimeMs = Date.parse(trip.startTime);
                 const endTimeMs = Date.parse(trip.endTime);
 
-                const offest = 2 * 60;
-                const startTimeSeconds = (startTimeMs / 1000) - offest;
-                const endTimeSeconds = (endTimeMs / 1000) + offest;
+                const offest_seconds = 60;
+                const startTimeSeconds = (startTimeMs / 1000) - offest_seconds;
+                const endTimeSeconds = (endTimeMs / 1000) + offest_seconds;
 
                 if (isNaN(startTimeSeconds) || isNaN(endTimeSeconds)) {
                     console.error("Could not parse trip timestamps:", trip.startTime, trip.endTime);

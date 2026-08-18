@@ -8,6 +8,8 @@ import java.sql.Time;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SingleTimelineEntry implements TimelineEntry {
 
@@ -29,6 +31,7 @@ public class SingleTimelineEntry implements TimelineEntry {
     private String formattedDistance;
     private TransportMode transportMode;
     private List<TransportModeSegment> transportModeSegments;
+    private Set<TransportMode> transportModesSet;
     private boolean editable;
 
     public String getId() {
@@ -149,6 +152,17 @@ public class SingleTimelineEntry implements TimelineEntry {
 
     public void setTransportModeSegments(List<TransportModeSegment> transportModeSegments) {
         this.transportModeSegments = transportModeSegments;
+        if (transportModeSegments != null) {
+            this.transportModesSet = transportModeSegments.stream()
+                    .map(TransportModeSegment::mode)
+                    .collect(Collectors.toSet());
+        } else {
+            this.transportModesSet = Set.of();
+        }
+    }
+
+    public Set<TransportMode> getTransportModesSet() {
+        return transportModesSet;
     }
 
     public String getPath() {

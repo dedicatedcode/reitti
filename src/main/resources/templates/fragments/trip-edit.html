@@ -13,6 +13,10 @@
                   hx-swap="outerHTML"
                   hx-trigger="change">
                 <input type="hidden" name="offsetSeconds" th:value="${segment.offsetSeconds()}">
+                <span class="segment-context">
+                    <span th:text="${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds()), 'HH:mm')}">14:00</span>
+                    <span th:text="'- ' + ${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds() + segment.durationSeconds()), 'HH:mm')}">14:05</span>
+                </span>
                 <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
                     <option th:each="mode : ${availableTransportModes}"
                             th:value="${mode}"
@@ -39,7 +43,7 @@
                 <option th:each="mode : ${availableTransportModes}"
                         th:value="${mode}"
                         th:text="#{${'transportation.mode.' + mode + '.name'}}"
-                        th:selected="${mode == transportMode}"></option>
+                        th:selected="${mode != null and mode == transportModeSegments[0].mode()}"></option>
             </select>
         </div>
         <div class="form-buttons">
@@ -55,13 +59,11 @@
 </div>
 
 <div th:fragment="view-mode" class="trip-transport-mode-container" th:id="${'trip-transport-mode-container_' + tripId}">
-    <th:block th:if="${transportModeSegments != null and transportModeSegments.size() > 1}">
-        <span class="transport-mode-segment" th:each="segment : ${transportModeSegments}">
-            <span th:text="#{'timeline.transport.' + ${segment.mode()} + '.label'}">by foot</span>
+    <span class="segment-list">
+        <span class="segment-chip" th:each="mode : ${transportModesSet}">
+            <span th:text="#{'timeline.transport.' + ${mode} + '.label'}">by foot</span>
         </span>
-    </th:block>
-    <span th:unless="${transportModeSegments != null and transportModeSegments.size() > 1}"
-          th:text="#{'timeline.transport.' + ${transportMode} + '.label'}">by foot</span>
+    </span>
 </div>
 
 </body>

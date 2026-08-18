@@ -7,9 +7,10 @@ import java.util.List;
 // Individual Trip Object
 public record TripDTO(
         long id,
+        Long startTime,
+        Long endTime,
         List<double[]> path,
         List<Long> timestamps,
         TransportMode mode,
         List<TripSegmentDTO> segments
-) {
-}
+) { }

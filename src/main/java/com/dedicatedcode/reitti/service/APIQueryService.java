@@ -78,6 +78,8 @@ public class APIQueryService {
                     COALESCE(
                         json_agg(json_build_object(
                             'id', t.id,
+                            'startTime', EXTRACT(EPOCH FROM t.start_time)::bigint,
+                            'endTime', EXTRACT(EPOCH FROM t.end_time)::bigint,
                             'mode', dm.transportation_mode,
                             'segments', COALESCE(ts.segments, '[]'::json)
                         ) ORDER BY t.start_time),

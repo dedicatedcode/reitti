@@ -742,6 +742,33 @@ class GpsDataManager {
     }
 
     /**
+     * Binary search for the first cleaned point with timestamp >= targetTs.
+     * Unlike getCurrentPosition(), this never picks an earlier point, ensuring
+     * transition pills are placed at or after the segment boundary.
+     */
+    _firstPositionAtOrAfter(targetTs) {
+        if (this.cleanedCursor === 0) return null;
+        const buffer = this.cleanedBuffer;
+        const stride = 6;
+
+        let lo = 0, hi = this.cleanedCursor - 1;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (buffer[mid * stride + 3] < targetTs) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+
+        if (lo >= this.cleanedCursor) return null;
+        return {
+            lng: buffer[lo * stride],
+            lat: buffer[lo * stride + 1]
+        };
+    }
+
+    /**
      * Builds transport-mode segments and cut markers from the trip data.
      * Segments are stored with absolute unix timestamps so the renderer can
      * color the path by mode. Cut markers carry the exact [lng, lat] where the
@@ -757,19 +784,19 @@ class GpsDataManager {
             const segments = Array.isArray(trip.segments) ? trip.segments : [];
             if (segments.length === 0) continue;
 
-            // Trip start in absolute unix seconds (first tracked point ≈ trip start)
+            // Trip start in absolute unix seconds
             let tripStartAbs = null;
-            if (minTs != null && Array.isArray(trip.timestamps) && trip.timestamps.length > 0) {
+            if (trip.startTime != null) {
+                tripStartAbs = typeof trip.startTime === 'number' ? trip.startTime : Math.floor(new Date(trip.startTime).getTime() / 1000);
+            } else if (minTs != null && Array.isArray(trip.timestamps) && trip.timestamps.length > 0) {
                 tripStartAbs = minTs + trip.timestamps[0];
-            } else if (trip.startTime) {
-                tripStartAbs = Math.floor(new Date(trip.startTime).getTime() / 1000);
             }
 
             if (tripStartAbs != null) {
                 for (let i = 0; i < segments.length; i++) {
                     const seg = segments[i];
-                    const start = tripStartAbs + seg.offsetSeconds;
-                    const end = start + seg.durationSeconds;
+                    const start = tripStartAbs + Number(seg.offsetSeconds || 0);
+                    const end = start + Number(seg.durationSeconds || 0);
                     modeSegments.push({
                         start,
                         end,
@@ -780,12 +807,14 @@ class GpsDataManager {
 
                     if (i > 0) {
                         const from = segments[i - 1];
-                        const pos = this.getCurrentPosition(start, false);
+                        if (from.mode === seg.mode) continue;
+                        const boundary = start;
+                        const pos = this._firstPositionAtOrAfter(boundary);
                         if (pos) {
                             transitions.push({
                                 lng: pos.lng,
                                 lat: pos.lat,
-                                time: start,
+                                time: boundary,
                                 from: { mode: from.mode, color: from.color, icon: from.icon },
                                 to: { mode: seg.mode, color: seg.color, icon: seg.icon }
                             });
@@ -805,6 +834,16 @@ class GpsDataManager {
 
     getTransitions() {
         return this.transitions || [];
+    }
+
+    getActiveSegment(currentTime, isAggregate) {
+        if (isAggregate || !this.modeSegments || this.modeSegments.length === 0) return null;
+        for (const seg of this.modeSegments) {
+            if (currentTime >= seg.start && currentTime <= seg.end) {
+                return seg;
+            }
+        }
+        return null;
     }
 
     /**

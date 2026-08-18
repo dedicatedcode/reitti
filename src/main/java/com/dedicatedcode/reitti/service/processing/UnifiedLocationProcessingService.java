@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.dedicatedcode.reitti.service.jobs.JobType.REVERSE_GEOCODE;
 
@@ -200,16 +201,16 @@ public class UnifiedLocationProcessingService {
             // Trips Table
             traceOutput.append("TRIPS (").append(tripResult.trips.size()).append(") - took [").append(tripResult.durationInMillis).append("]ms:\n");
             traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
-            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Mode  │\n");
+            traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Modes  │\n");
             traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
             for (Trip trip : tripResult.trips) {
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %8.0fm │ %8.0fm │ %-15s │\n",
-                    trip.getStartTime().toString().substring(0, 19),
-                    trip.getEndTime().toString().substring(0, 19),
-                    trip.getDurationSeconds(),
-                    trip.getEstimatedDistanceMeters(),
-                    trip.getTravelledDistanceMeters(),
-                    trip.getTransportModeInferred().toString()));
+                                                 trip.getStartTime().toString().substring(0, 19),
+                                                 trip.getEndTime().toString().substring(0, 19),
+                                                 trip.getDurationSeconds(),
+                                                 trip.getEstimatedDistanceMeters(),
+                                                 trip.getTravelledDistanceMeters(),
+                                                 trip.getSegments().stream().map(TransportModeSegment::mode).map(Objects::toString).collect(Collectors.joining(","))));
             }
             traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
 
@@ -795,12 +796,10 @@ public class UnifiedLocationProcessingService {
                 endVisit,
                 metadata
         );
-        TransportMode transportMode = trip.getTransportModeInferred();
-        logger.debug("Created trip from {} to {}: travelled distance={}m, mode={}",
+        logger.debug("Created trip from {} to {}: travelled distance={}m",
                 Optional.ofNullable(startVisit.getPlace().getName()).orElse("Unknown Name"),
                 Optional.ofNullable(endVisit.getPlace().getName()).orElse("Unknown Name"),
-                Math.round(travelledDistanceMeters),
-                transportMode);
+                Math.round(travelledDistanceMeters));
 
         // Save and return the trip
         return trip;

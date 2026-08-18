@@ -4,6 +4,8 @@ import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -123,10 +125,12 @@ public class TimelineService {
                 entry.setFormattedDistance(formatDistance(trip.getEstimatedDistanceMeters(), userSettings.getUnitSystem()));
             }
 
-            if (trip.getTransportModeInferred() != null) {
-                entry.setTransportMode(trip.getTransportModeInferred());
-            }
             entry.setTransportModeSegments(trip.getSegments());
+            TransportMode dominant = trip.getSegments().stream()
+                    .max(Comparator.comparingLong(TransportModeSegment::durationSeconds))
+                    .map(TransportModeSegment::mode)
+                    .orElse(null);
+            entry.setTransportMode(dominant);
 
             entries.add(entry);
         }

@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/timeline")
@@ -201,8 +202,9 @@ public class TimelineController {
                                   Model model) {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
-        model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("tripStartTime", trip.getStartTime());
         model.addAttribute("transportModeSegments", trip.getSegments());
+        model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
         return "fragments/trip-edit :: edit-form";
     }
@@ -230,6 +232,7 @@ public class TimelineController {
                 List<TransportModeSegment> updated = trip.getSegments().stream()
                         .map(s -> s.offsetSeconds() == offsetSeconds ? new TransportModeSegment(mode, s.offsetSeconds(), s.durationSeconds(), s.distanceMeters()) : s)
                         .toList();
+                updated = transportModeService.mergeSameModeSegments(updated);
                 trip = tripJdbcService.update(trip.withSegments(updated));
             } else {
                 trip = tripJdbcService.update(trip.withTransportMode(mode));
@@ -237,8 +240,9 @@ public class TimelineController {
             }
 
             model.addAttribute("tripId", id);
-            model.addAttribute("transportMode", trip.getTransportModeInferred());
+            model.addAttribute("tripStartTime", trip.getStartTime());
             model.addAttribute("transportModeSegments", trip.getSegments());
+            model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
             model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
             return "fragments/trip-edit :: view-mode";
         } catch (IllegalArgumentException e) {
@@ -250,10 +254,18 @@ public class TimelineController {
     public String getTripView(@PathVariable Long id, Model model) {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
-        model.addAttribute("transportMode", trip.getTransportModeInferred());
+        model.addAttribute("tripStartTime", trip.getStartTime());
         model.addAttribute("transportModeSegments", trip.getSegments());
+        model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
         return "fragments/trip-edit :: view-mode";
+    }
+
+    private List<TransportMode> distinctModes(List<TransportModeSegment> segments) {
+        return segments.stream()
+                .map(TransportModeSegment::mode)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
