@@ -300,8 +300,8 @@ details.maplibregl-ctrl-attrib[open] {
 .mode-transition-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    gap: 6px;
+    padding: 6px 14px;
     background: rgba(20, 20, 26, 0.88);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -323,7 +323,7 @@ details.maplibregl-ctrl-attrib[open] {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 18px;
     line-height: 1;
 }
 
@@ -346,7 +346,6 @@ details.maplibregl-ctrl-attrib[open] {
 }
 
 .mode-transition-popup .lni {
-    padding: 4px;
     display: inline-block;
     vertical-align: middle;
     font-size: 24px;
