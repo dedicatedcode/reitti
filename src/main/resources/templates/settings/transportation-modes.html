@@ -31,67 +31,37 @@
                 </div>
 
                 <div class="settings-card" th:if="${!configs.isEmpty()}">
-                    <table>
+                    <table class="transportation-modes-table">
                         <thead>
                         <tr>
                             <th th:text="#{transportation.modes.table.mode}">Mode</th>
-                            <th th:text="#{${isImperial ? 'transportation.modes.table.max.mph' : 'transportation.modes.table.max.kmh'}}">Max Speed</th>
-                            <th th:text="#{transportation.modes.table.color}">Color</th>
-                            <th th:text="#{transportation.modes.table.icon}">Icon</th>
                             <th th:text="#{transportation.modes.table.actions}">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="config : ${configs}">
-                            <td th:text="#{${'transportation.mode.' + config.mode() + '.name'}}"></td>
                             <td>
-                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
-                                      hx-target="body"
-                                      hx-swap="outerHTML"
-                                      hx-trigger="change delay:500ms"
-                                      style="display: inline;">
-                                    <input type="hidden" name="unitSystem" th:value="${unitSystem.name()}">
-                                    <input type="number" 
-                                           name="maxSpeed" 
-                                           th:value="${isImperial and config.maxKmh() != null ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : config.maxKmh()}"
-                                           step="0.1"
-                                           min="0"
-                                           th:placeholder="#{transportation.modes.max.placeholder}">
-                                </form>
+                                <span class="color-swatch" th:style="'margin-right: 8px; background-color: ' + ${config.color() != null ? config.color() : '#f1ba63'}"></span>
+                                <i th:if="${config.icon() != null && !config.icon().isEmpty()}" th:class="'lni ' + ${config.icon()}"></i>
+                                <span th:text="#{${'transportation.mode.' + config.mode() + '.name'}}"></span>
+                                <span th:if="${config.maxKmh() != null}">
+                                    <small>— <span th:text="${isImperial ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : #numbers.formatDecimal(config.maxKmh(), 1, 1)}"></span> <span th:text="#{${isImperial ? 'transportation.modes.max.mph.unit' : 'transportation.modes.table.max.kmh'}}"></span></small>
+                                </span>
+                                <span th:if="${config.maxKmh() == null}">
+                                    <small>— <span th:text="#{transportation.modes.max.placeholder}"></span></small>
+                                </span>
                             </td>
                             <td>
-                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
-                                      hx-target="body"
-                                      hx-swap="outerHTML"
-                                      hx-trigger="change delay:300ms"
-                                      style="display: inline;">
-                                    <input type="color"
-                                           name="color"
-                                           th:value="${config.color() != null ? config.color() : '#f1ba63'}">
-                                </form>
-                            </td>
-                            <td>
-                                <form th:attr="hx-post=@{/settings/transportation-modes/{mode}/update(mode=${config.mode()})}"
-                                      hx-target="body"
-                                      hx-swap="outerHTML"
-                                      hx-trigger="change"
-                                      style="display: inline;">
-                                    <select name="icon" class="transport-mode-icon-select">
-                                        <option value="" th:text="#{transportation.modes.icon.none}">None</option>
-                                        <option value="lni-user-4" th:selected="${config.icon() == 'lni-user-4'}" th:text="#{transportation.modes.icon.walking}">Walk</option>
-                                        <option value="lni-bike" th:selected="${config.icon() == 'lni-bike'}" th:text="#{transportation.modes.icon.bike}">Bike</option>
-                                        <option value="lni-bus-1" th:selected="${config.icon() == 'lni-bus-1'}" th:text="#{transportation.modes.icon.bus}">Bus</option>
-                                        <option value="lni-car-2" th:selected="${config.icon() == 'lni-car-2'}" th:text="#{transportation.modes.icon.car}">Car</option>
-                                        <option value="lni-train-1" th:selected="${config.icon() == 'lni-train-1'}" th:text="#{transportation.modes.icon.train}">Train</option>
-                                        <option value="lni-ship-1" th:selected="${config.icon() == 'lni-ship-1'}" th:text="#{transportation.modes.icon.ship}">Ship</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td>
+                                <button class="btn"
+                                        th:attr="hx-get=@{/settings/transportation-modes/{mode}/edit(mode=${config.mode()})}"
+                                        hx-target="#transportation-mode-form-container"
+                                        hx-swap="innerHTML"
+                                        th:text="#{form.edit}">Edit
+                                </button>
                                 <button class="btn btn-danger"
                                         th:attr="hx-post=@{/settings/transportation-modes/{mode}/delete(mode=${config.mode()})}, hx-confirm=#{transportation.modes.delete.confirm}"
-                                        hx-target="body"
-                                        hx-swap="outerHTML"
+                                        hx-target="#transportation-modes"
+                                        hx-swap="innerHTML"
                                         th:text="#{form.delete}">Delete
                                 </button>
                             </td>
@@ -100,50 +70,13 @@
                     </table>
                 </div>
 
-                <div class="settings-card" th:if="${!availableModes.isEmpty()}">
-                    <h3 th:text="#{transportation.modes.add.title}">Add Transportation Mode</h3>
-                    <form th:hx-post="@{/settings/transportation-modes/add}"
-                          hx-target="body"
-                          hx-swap="outerHTML"
-                          class="token-form"
-                          style="margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label for="mode" th:text="#{transportation.modes.mode.label}">Transportation Mode</label>
-                            <select id="mode" name="mode" required>
-                                <option value="" th:text="#{transportation.modes.mode.select}">Select a mode...</option>
-                                <option th:each="mode : ${availableModes}" 
-                                        th:value="${mode}" 
-                                        th:text="#{${'transportation.mode.' + mode + '.name'}}"></option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="maxSpeed" th:text="#{${isImperial ? 'transportation.modes.max.mph.label' : 'transportation.modes.max.kmh.label'}}">Max Speed</label>
-                            <input type="hidden" name="unitSystem" th:value="${unitSystem.name()}">
-                            <input type="number" 
-                                   id="maxSpeed" 
-                                   name="maxSpeed" 
-                                   step="0.1" 
-                                   min="0"
-                                   th:placeholder="#{${isImperial ? 'transportation.modes.max.mph.placeholder' : 'transportation.modes.max.kmh.placeholder'}}">
-                            <small th:text="#{${isImperial ? 'transportation.modes.max.mph.help' : 'transportation.modes.max.kmh.help'}}">Leave empty for no speed limit</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="color" th:text="#{transportation.modes.color.label}">Color</label>
-                            <input type="color" id="color" name="color" value="#f1ba63">
-                        </div>
-                        <div class="form-group">
-                            <label for="icon" th:text="#{transportation.modes.icon.label}">Icon</label>
-                            <select id="icon" name="icon">
-                                <option value="" th:text="#{transportation.modes.icon.none}">None</option>
-                                <option value="lni-bike" th:text="#{transportation.modes.icon.bike}">Bike</option>
-                                <option value="lni-bus-1" th:text="#{transportation.modes.icon.bus}">Bus</option>
-                                <option value="lni-car-2" th:text="#{transportation.modes.icon.car}">Car</option>
-                                <option value="lni-train-1" th:text="#{transportation.modes.icon.train}">Train</option>
-                                <option value="lni-ship-1" th:text="#{transportation.modes.icon.ship}">Ship</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn" th:text="#{transportation.modes.add.button}">Add Mode</button>
-                    </form>
+                <div class="settings-card" id="transportation-mode-form-container">
+                    <button class="btn"
+                            th:if="${!availableModes.isEmpty()}"
+                            th:hx-get="@{/settings/transportation-modes/create-form}"
+                            hx-target="this"
+                            hx-swap="outerHTML"
+                            th:text="#{transportation.modes.add.title}">Add Transportation Mode</button>
                 </div>
 
                 <div class="settings-card" th:if="${availableModes.isEmpty() && !configs.isEmpty()}">
@@ -153,7 +86,7 @@
                 <div class="settings-card" th:if="${!configs.isEmpty()}">
                     <h3 th:text="#{transportation.modes.reclassify.title}">Reclassify Trips</h3>
                     <p th:text="#{transportation.modes.reclassify.description}">After changing your transportation mode settings, you can reclassify all existing trips to apply the new configurations.</p>
-                    
+
                     <button id="reclassify-btn" 
                             class="btn btn-primary"
                             th:hx-post="@{/settings/transportation-modes/reclassify}"
@@ -161,12 +94,12 @@
                             hx-swap="innerHTML"
                             hx-indicator="#reclassify-spinner"
                             th:text="#{transportation.modes.reclassify.button}">Reclassify All Trips</button>
-                    
+
                     <div id="reclassify-spinner" class="htmx-indicator" style="margin-left: 10px;">
                         <i class="lni lni-spinner-arrow spinning"></i>
                         <span th:text="#{transportation.modes.reclassify.processing}">Processing...</span>
                     </div>
-                    
+
                     <div id="reclassify-status" style="margin-top: 10px;"></div>
                 </div>
 
@@ -188,5 +121,81 @@
 </body>
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
+
+    function updateCustomColor(color) {
+        const customColorRadio = document.getElementById('customColorRadio');
+        const customColorText = document.getElementById('customColorText');
+        const customColorSwatch = document.getElementById('customColorSwatch');
+
+        if (!customColorRadio) {
+            return;
+        }
+        customColorRadio.value = color;
+        customColorRadio.checked = true;
+        if (customColorText) {
+            customColorText.value = color;
+        }
+        if (customColorSwatch) {
+            customColorSwatch.style.backgroundColor = color;
+            customColorSwatch.innerHTML = '';
+        }
+    }
+
+    function updateCustomColorFromText(color) {
+        if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            const customColorInput = document.getElementById('customColorInput');
+            if (customColorInput) {
+                customColorInput.value = color;
+            }
+            updateCustomColor(color);
+        }
+    }
+
+    function showCustomColorInput() {
+        const el = document.getElementById('customColorInputSection');
+        if (el) {
+            el.style.display = 'block';
+        }
+    }
+
+    function hideCustomColorInput() {
+        const el = document.getElementById('customColorInputSection');
+        if (el) {
+            el.style.display = 'none';
+        }
+        const customColorSwatch = document.getElementById('customColorSwatch');
+        if (customColorSwatch) {
+            customColorSwatch.style.backgroundColor = '';
+            customColorSwatch.innerHTML = '<span class="custom-color-icon">+</span>';
+        }
+    }
+
+    function resetToDefaultColor() {
+        const defaultColorInput = document.querySelector('input[name="color"][value="#f1ba63"]');
+        if (defaultColorInput) {
+            defaultColorInput.checked = true;
+            hideCustomColorInput();
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('.custom-color-option')) {
+            const customColorRadio = document.getElementById('customColorRadio');
+            const customColorInput = document.getElementById('customColorInput');
+            if (customColorRadio) {
+                customColorRadio.checked = true;
+            }
+            showCustomColorInput();
+            if (customColorRadio && !customColorRadio.value && customColorInput) {
+                updateCustomColor(customColorInput.value);
+            }
+        }
+    });
+
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches && e.target.matches('input[name="color"]') && e.target.id !== 'customColorRadio' && e.target.checked) {
+            hideCustomColorInput();
+        }
+    });
 </script>
 </html>
