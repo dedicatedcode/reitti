@@ -274,6 +274,7 @@ class MapRenderer {
         this._cachedLayerData = new Map();    // cacheKey -> layerData (per-build cache)
         this._h3AggregationCache = new Map(); // managerId -> Map(targetRes -> aggregatedData)
         this._currentZoom = 0;
+        this._prevZoom = 0;
         this._zoomDebounceId = null;
         this._setup();
     }
@@ -1812,6 +1813,7 @@ class MapRenderer {
 
     _setup = () => {
         this._currentZoom = this.map.getZoom();
+        this._prevZoom = this._currentZoom;
         this._zoomDebounceId = null;
         let lastH3Res = this._getTargetH3Resolution(this._currentZoom);
 
@@ -1845,14 +1847,19 @@ class MapRenderer {
         // On zoomend: cancel any pending debounce, do a final update,
         // and sync pitch/bearing state.
         this.map.on('zoomend', () => {
-            this._currentZoom = this.map.getZoom();
             this._syncPitchBearingState();
 
-            if (this._zoomDebounceId !== null) {
-                clearTimeout(this._zoomDebounceId);
-                this._zoomDebounceId = null;
+            if ((this._prevZoom < 12 && this._currentZoom >= 12) || (this._prevZoom >= 12 && this._currentZoom < 12)) {
+                this._layerContextKey = null;
+                this._buildLayers();
+            } else {
+                if (this._zoomDebounceId !== null) {
+                    clearTimeout(this._zoomDebounceId);
+                    this._zoomDebounceId = null;
+                }
+                this._updateAnimatedLayers();
             }
-            this._updateAnimatedLayers();
+            this._prevZoom = this._currentZoom;
             this._syncTransitionMarkers();
         });
 

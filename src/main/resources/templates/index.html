@@ -50,7 +50,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1000;
+            z-index: 2000;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -107,6 +107,11 @@
     <div class="overlay-backdrop" onclick="closeMetadataOverlay()"></div>
     <div class="overlay-content" id="metadata-overlay-content">
         <!-- Content loaded via HTMX -->
+    </div>
+</div>
+<div id="transport-mode-overlay" class="overlay hidden">
+    <div class="overlay-backdrop" onclick="closeTransportModeOverlay()"></div>
+    <div class="overlay-content" id="transport-mode-overlay-content">
     </div>
 </div>
 <!-- Auto-update overlay -->
@@ -1387,9 +1392,23 @@
         document.getElementById('metadata-overlay').classList.add('hidden');
         document.getElementById('metadata-overlay-content').innerHTML = '';
     }
+
+    function openTransportModeOverlay() {
+        document.getElementById('transport-mode-overlay').classList.remove('hidden');
+    }
+    function closeTransportModeOverlay() {
+        document.getElementById('transport-mode-overlay').classList.add('hidden');
+        document.getElementById('transport-mode-overlay-content').innerHTML = '';
+    }
+
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !document.getElementById('metadata-overlay').classList.contains('hidden')) {
-            closeMetadataOverlay();
+        if (e.key === 'Escape') {
+            if (!document.getElementById('metadata-overlay').classList.contains('hidden')) {
+                closeMetadataOverlay();
+            }
+            if (!document.getElementById('transport-mode-overlay').classList.contains('hidden')) {
+                closeTransportModeOverlay();
+            }
         }
     });
 

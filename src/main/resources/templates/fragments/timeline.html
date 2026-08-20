@@ -378,10 +378,12 @@
                         <div th:if="${entry.type.name() == 'TRIP'}" class="place-name-container">
                             <span class="place-name" th:text="#{timeline.trip}">Trip</span>
                             <div th:if="${entry.editable}" class="place-actions">
-                                <i class="lni lni-pencil-1 edit-icon"
-                                   th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
-                                   th:hx-target="${'#trip-transport-mode-container_' + entry.resourceId}"
-                                   hx-swap="outerHTML"></i>
+                                <a class="lni lni-pencil-1 edit-icon"
+                                   th:hx-get="@{/timeline/trips/transport-mode-dialog/{id}(id=${entry.resourceId})}"
+                                   hx-vals='js:{"returnUrl": window.location.href}'
+                                   hx-target="#transport-mode-overlay-content"
+                                   hx-swap="innerHTML"
+                                   hx-on::after-request="if(event.detail.successful) openTransportModeOverlay()"></a>
                                 <a class="lni lni-file-multiple edit-icon"
                                    th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
                                    hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'

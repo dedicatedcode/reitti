@@ -197,68 +197,56 @@ public class TimelineController {
         return "fragments/user-selection :: user-selection";
     }
 
-    @GetMapping("/trips/edit-form/{id}")
-    public String getTripEditForm(@PathVariable Long id,
-                                  Model model) {
+    @GetMapping("/trips/transport-mode-dialog/{id}")
+    public String getTransportModeDialog(@PathVariable Long id,
+                                         @RequestParam(required = false) String returnUrl,
+                                         Model model) {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
         model.addAttribute("tripStartTime", trip.getStartTime());
         model.addAttribute("transportModeSegments", trip.getSegments());
         model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
-        return "fragments/trip-edit :: edit-form";
+        model.addAttribute("returnUrl", returnUrl);
+        return "fragments/trip-edit :: transport-mode-dialog";
     }
 
-    @PutMapping("/trips/{id}/transport-mode")
-    public String updateTripTransportMode(@PathVariable Long id,
-                                          @RequestParam String transportMode,
-                                          @RequestParam(required = false) Long offsetSeconds,
-                                          Authentication principal,
-                                          Model model) {
-        // Find the user by username
+    @PostMapping("/trips/{id}/transport-modes")
+    public String updateTripTransportModes(@PathVariable Long id,
+                                           @ModelAttribute TransportModeUpdateRequest request,
+                                           Authentication principal) {
         User user = userJdbcService.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        try {
-            TransportMode mode = TransportMode.valueOf(transportMode);
-            if (offsetSeconds != null) {
-                TransportModeSegment segment = trip.getSegments().stream()
-                        .filter(s -> s.offsetSeconds() == offsetSeconds)
-                        .findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Segment not found"));
-                transportModeService.overrideTransportModeSegment(user, mode, trip, segment.offsetSeconds(), segment.durationSeconds());
-                List<TransportModeSegment> updated = trip.getSegments().stream()
-                        .map(s -> s.offsetSeconds() == offsetSeconds ? new TransportModeSegment(mode, s.offsetSeconds(), s.durationSeconds(), s.distanceMeters()) : s)
-                        .toList();
-                updated = transportModeService.mergeSameModeSegments(updated);
-                trip = tripJdbcService.update(trip.withSegments(updated));
-            } else {
-                trip = tripJdbcService.update(trip.withTransportMode(mode));
-                transportModeService.overrideTransportMode(user, mode, trip);
-            }
-
-            model.addAttribute("tripId", id);
-            model.addAttribute("tripStartTime", trip.getStartTime());
-            model.addAttribute("transportModeSegments", trip.getSegments());
-            model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
-            model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
-            return "fragments/trip-edit :: view-mode";
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid transport mode");
+        Map<Long, TransportMode> segmentUpdates = new HashMap<>();
+        for (TransportModeSegmentUpdate update : request.getSegments()) {
+            segmentUpdates.put(update.getOffsetSeconds(), update.getTransportMode());
         }
-    }
 
-    @GetMapping("/trips/view/{id}")
-    public String getTripView(@PathVariable Long id, Model model) {
-        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        model.addAttribute("tripId", id);
-        model.addAttribute("tripStartTime", trip.getStartTime());
-        model.addAttribute("transportModeSegments", trip.getSegments());
-        model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
-        model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
-        return "fragments/trip-edit :: view-mode";
+        List<TransportModeSegment> updated = trip.getSegments().stream()
+                .map(s -> {
+                    TransportMode newMode = segmentUpdates.get(s.offsetSeconds());
+                    return newMode != null ? new TransportModeSegment(newMode, s.offsetSeconds(), s.durationSeconds(), s.distanceMeters()) : s;
+                })
+                .toList();
+
+        for (TransportModeSegment segment : trip.getSegments()) {
+            TransportMode newMode = segmentUpdates.get(segment.offsetSeconds());
+            if (newMode != null && newMode != segment.mode()) {
+                transportModeService.overrideTransportModeSegment(user, newMode, trip, segment.offsetSeconds(), segment.durationSeconds());
+            }
+        }
+
+        updated = transportModeService.mergeSameModeSegments(updated);
+        tripJdbcService.update(trip.withSegments(updated));
+
+        String returnUrl = request.getReturnUrl();
+        if (returnUrl != null && !returnUrl.isBlank()) {
+            return "redirect:" + returnUrl;
+        }
+        return "redirect:/";
     }
 
     private List<TransportMode> distinctModes(List<TransportModeSegment> segments) {

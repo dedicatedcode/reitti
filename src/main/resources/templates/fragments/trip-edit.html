@@ -5,55 +5,28 @@
 </head>
 <body>
 
-<div th:fragment="edit-form" class="inline-edit-form editing trip-transport-mode-container">
-    <th:block th:if="${transportModeSegments != null and transportModeSegments.size() > 1}">
-        <div class="trip-segment-edit" th:each="segment : ${transportModeSegments}">
-            <form th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
-                  hx-target="closest .trip-transport-mode-container"
-                  hx-swap="outerHTML"
-                  hx-trigger="change">
-                <input type="hidden" name="offsetSeconds" th:value="${segment.offsetSeconds()}">
-                <span class="segment-context">
+<div th:fragment="transport-mode-dialog" class="transport-mode-dialog">
+    <h2 th:text="#{timeline.trip.transport.edit.headline}">Edit Transport Modes</h2>
+    <form th:action="@{/timeline/trips/{id}/transport-modes(id=${tripId})}" method="POST">
+        <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+        <th:block th:each="segment, iterStat : ${transportModeSegments}">
+            <input type="hidden" th:name="${'segments[' + iterStat.index + '].offsetSeconds'}" th:value="${segment.offsetSeconds()}">
+            <div class="form-group">
+                <label>
                     <span th:text="${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds()), 'HH:mm')}">14:00</span>
                     <span th:text="'- ' + ${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds() + segment.durationSeconds()), 'HH:mm')}">14:05</span>
-                </span>
-                <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
+                </label>
+                <select th:name="${'segments[' + iterStat.index + '].transportMode'}" required>
                     <option th:each="mode : ${availableTransportModes}"
                             th:value="${mode}"
                             th:text="#{${'transportation.mode.' + mode + '.name'}}"
                             th:selected="${mode == segment.mode()}"></option>
                 </select>
-            </form>
-        </div>
-        <button type="button"
-                class="btn btn-small btn-secondary"
-                th:hx-get="@{/timeline/trips/view/{id}(id=${tripId})}"
-                hx-target="closest .trip-transport-mode-container"
-                hx-swap="outerHTML"
-                th:text="#{form.cancel}">Cancel</button>
-    </th:block>
-
-    <form th:unless="${transportModeSegments != null and transportModeSegments.size() > 1}"
-          th:hx-put="@{/timeline/trips/{id}/transport-mode(id=${tripId})}"
-          hx-target="closest .trip-transport-mode-container"
-          hx-swap="outerHTML">
-        <input type="hidden" name="timezone" th:value="${timezone}">
-        <div class="form-group">
-            <select name="transportMode" th:placeholder="#{timeline.trip.transport.select}" required>
-                <option th:each="mode : ${availableTransportModes}"
-                        th:value="${mode}"
-                        th:text="#{${'transportation.mode.' + mode + '.name'}}"
-                        th:selected="${mode != null and mode == transportModeSegments[0].mode()}"></option>
-            </select>
-        </div>
+            </div>
+        </th:block>
         <div class="form-buttons">
-            <button type="submit" class="btn btn-small" th:text="#{form.update}">Update</button>
-            <button type="button"
-                    class="btn btn-small btn-secondary"
-                    th:hx-get="@{/timeline/trips/view/{id}(id=${tripId}, transportMode=${param.currentTransportMode})}"
-                    hx-target="closest .trip-transport-mode-container"
-                    hx-swap="outerHTML"
-                    th:text="#{form.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary" th:text="#{form.save.changes}">Save Changes</button>
+            <button type="button" class="btn btn-secondary" onclick="closeTransportModeOverlay()" th:text="#{form.cancel}">Cancel</button>
         </div>
     </form>
 </div>

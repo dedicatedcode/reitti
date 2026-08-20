@@ -116,6 +116,32 @@ public class TransportModeService {
         result = mergeSameModeSegments(result);
         log.trace("segmentTrip: after merge: {} segments: {}", result.size(), segmentSummary(result));
 
+        // Ensure segments tile the trip time range contiguously
+        for (int i = 0; i < result.size() - 1; i++) {
+            TransportModeSegment cur = result.get(i);
+            TransportModeSegment next = result.get(i + 1);
+            long curEnd = cur.offsetSeconds() + cur.durationSeconds();
+            if (curEnd < next.offsetSeconds()) {
+                result.set(i, new TransportModeSegment(
+                        cur.mode(),
+                        cur.offsetSeconds(),
+                        next.offsetSeconds() - cur.offsetSeconds(),
+                        cur.distanceMeters()
+                ));
+                log.debug("segmentTrip: extended segment {} at +{}s to cover gap of {}s", i, cur.offsetSeconds(), next.offsetSeconds() - curEnd);
+            }
+        }
+
+        // Adjust segment offsets from first-point-relative to tripStart-relative
+        long firstPointOffset = Duration.between(tripStart, points.getFirst().getTimestamp()).getSeconds();
+        if (firstPointOffset > 0) {
+            result = result.stream()
+                    .map(s -> new TransportModeSegment(s.mode(), s.offsetSeconds() + firstPointOffset, s.durationSeconds(), s.distanceMeters()))
+                    .toList();
+            log.debug("segmentTrip: shifted {} segment(s) by +{}s (first point is {}s after tripStart)",
+                    result.size(), firstPointOffset, firstPointOffset);
+        }
+
         if (result.isEmpty()) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
             log.debug("segmentTrip: no segments after post-processing, returning single UNKNOWN");

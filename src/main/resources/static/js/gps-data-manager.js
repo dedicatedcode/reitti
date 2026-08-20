@@ -825,6 +825,16 @@ class GpsDataManager {
         }
 
         this.modeSegments = modeSegments.sort((a, b) => a.start - b.start);
+
+        // Ensure segments tile contiguously — fill any gaps
+        for (let i = 0; i < this.modeSegments.length - 1; i++) {
+            const cur = this.modeSegments[i];
+            const next = this.modeSegments[i + 1];
+            if (cur.end < next.start) {
+                cur.end = next.start;
+            }
+        }
+
         this.transitions = transitions.sort((a, b) => a.time - b.time);
     }
 
@@ -880,7 +890,6 @@ class GpsDataManager {
             const ts = buffer[i * stride + 3];
             const point = [lng, lat];
 
-            // Advance segment pointer if past current segment
             while (segIdx < segments.length && ts > segments[segIdx].end) {
                 segIdx++;
             }
@@ -898,7 +907,6 @@ class GpsDataManager {
 
             if (!current || current._key !== activeKey) {
                 if (current) {
-                    // Connect seamlessly: share the boundary point with the previous path
                     current.path.push(point);
                 }
                 current = { path: [point], color: activeColor, _key: activeKey };
