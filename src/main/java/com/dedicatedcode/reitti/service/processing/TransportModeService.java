@@ -31,23 +31,6 @@ public class TransportModeService {
         this.transportModeOverrideJdbcService = transportModeOverrideJdbcService;
     }
 
-    public TransportMode inferTransportMode(User user, List<RawLocationPoint> tripPoints, Instant startTime, Instant endTime) {
-        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-        List<TransportModeSegment> segments = segmentTrip(user, tripPoints, startTime, endTime, configs);
-        TransportMode dominant = segments.stream()
-                .collect(Collectors.groupingBy(TransportModeSegment::mode, Collectors.summingLong(TransportModeSegment::durationSeconds)))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(TransportMode.UNKNOWN);
-        log.debug("inferTransportMode for trip [{}..{}]: {} segments, dominant={}", startTime, endTime, segments.size(), dominant);
-        return dominant;
-    }
-
-    public void overrideTransportMode(User user, TransportMode transportMode, Trip trip) {
-        transportModeOverrideJdbcService.addTransportModeOverride(user, transportMode, trip.getStartTime(), trip.getEndTime());
-    }
-
     public void overrideTransportModeSegment(User user, TransportMode transportMode, Trip trip, long offsetSeconds, long durationSeconds) {
         Instant segmentStart = trip.getStartTime().plusSeconds(offsetSeconds);
         Instant segmentEnd = segmentStart.plusSeconds(durationSeconds);
@@ -57,18 +40,6 @@ public class TransportModeService {
     public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd) {
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
         double totalDistanceMeters = GeoUtils.calculateTripDistance(points);
-        return segmentTrip(user, points, tripStart, tripEnd, configs, totalDistanceMeters);
-    }
-
-    /**
-     * Splits a trip into per-mode segments using fixed-time-window chunking.
-     * Points are divided into CHUNK_DURATION_SECONDS windows, each chunk is
-     * classified by its average speed, then short fluke segments are collapsed
-     * and adjacent same-mode segments are merged. Always returns at least one
-     * segment (UNKNOWN fallback if no chunks could be classified).
-     */
-    public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs) {
-        double totalDistanceMeters = points.size() >= 2 ? GeoUtils.calculateTripDistance(points) : 0.0;
         return segmentTrip(user, points, tripStart, tripEnd, configs, totalDistanceMeters);
     }
 

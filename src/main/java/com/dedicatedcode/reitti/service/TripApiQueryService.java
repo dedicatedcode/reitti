@@ -20,18 +20,19 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
-public class APIQueryService {
-    private static final Logger logger = LoggerFactory.getLogger(APIQueryService.class);
+public class TripApiQueryService {
+    private static final Logger logger = LoggerFactory.getLogger(TripApiQueryService.class);
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final ObjectMapper objectMapper;
-    public APIQueryService(NamedParameterJdbcTemplate jdbcTemplate, UserSettingsJdbcService userSettingsJdbcService, ObjectMapper objectMapper) {
+
+    public TripApiQueryService(NamedParameterJdbcTemplate jdbcTemplate, UserSettingsJdbcService userSettingsJdbcService, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.objectMapper = objectMapper;
     }
 
-    public TripResponseV2 getTrips(User user, Instant start, Instant end, double zoom) {
+    public TripResponseV2 getTrips(User user, Instant start, Instant end) {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("userId", user.getId())
                 .addValue("start", Timestamp.from(start))
@@ -95,14 +96,12 @@ public class APIQueryService {
                 """;
 
         UserSettings userSettings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        return jdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> {
-            return new TripResponseV2(
-                    rs.getLong("min_timestamp"),
-                    rs.getLong("max_timestamp"),
-                    userSettings.getColor(),
-                    parseTrips(rs.getString("trips"))
-            );
-        });
+        return jdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> new TripResponseV2(
+                rs.getLong("min_timestamp"),
+                rs.getLong("max_timestamp"),
+                userSettings.getColor(),
+                parseTrips(rs.getString("trips"))
+        ));
     }
 
     private List<TripDTO> parseTrips(String json) {

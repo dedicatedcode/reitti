@@ -62,6 +62,7 @@ public class TransportModeRecalculationTask implements Job {
             }
         });
     }
+
     public static class TaskData extends JobContext<TaskData> {
 
         public final User user;
