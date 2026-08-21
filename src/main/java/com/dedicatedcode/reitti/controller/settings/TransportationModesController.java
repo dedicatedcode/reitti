@@ -21,10 +21,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -59,19 +60,40 @@ public class TransportationModesController {
             model.addAttribute("dataManagementEnabled", dataManagementEnabled);
             return "settings/unavailable";
         }
-        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-        List<TransportMode> availableModes = getAvailableModesToAdd(configs);
-        
-        model.addAttribute("configs", configs);
-        model.addAttribute("availableModes", availableModes);
+        addConfigsToModel(user, model);
         model.addAttribute("activeSection", "transportation-modes");
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
-        model.addAttribute("unitSystem", userSettings.getUnitSystem());
-        model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);
         
         return "settings/transportation-modes";
+    }
+
+    @GetMapping("/create-form")
+    public String createForm(@AuthenticationPrincipal User user, Model model) {
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
+        model.addAttribute("availableModes", getAvailableModesToAdd(configs));
+        model.addAttribute("unitSystem", userSettings.getUnitSystem());
+        model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);
+        model.addAttribute("defaultColors", getDefaultColors());
+        return "settings/fragments/transportation-modes :: transportation-mode-edit-form";
+    }
+
+    @GetMapping("/{mode}/edit")
+    public String editTransportMode(@AuthenticationPrincipal User user,
+                                    @PathVariable TransportMode mode,
+                                    Model model) {
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        TransportModeConfig config = transportModeJdbcService.getTransportModeConfigs(user).stream()
+                .filter(c -> c.mode() == mode)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Transport mode not found: " + mode));
+        model.addAttribute("config", config);
+        model.addAttribute("selectedColor", config.color());
+        model.addAttribute("unitSystem", userSettings.getUnitSystem());
+        model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);
+        model.addAttribute("defaultColors", getDefaultColors());
+        return "settings/fragments/transportation-modes :: transportation-mode-edit-form";
     }
 
     @PostMapping("/add")
@@ -79,42 +101,42 @@ public class TransportationModesController {
                                    @RequestParam TransportMode mode,
                                    @RequestParam(required = false) Double maxSpeed,
                                    @RequestParam(required = false) UnitSystem unitSystem,
-                                   RedirectAttributes redirectAttributes) {
+                                   @RequestParam(required = false) String color,
+                                   @RequestParam(required = false) String icon,
+                                   Model model) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
             
             // Check if mode already exists
             boolean exists = configs.stream().anyMatch(config -> config.mode() == mode);
             if (exists) {
-                redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.already.exists");
-                return "redirect:/settings/transportation-modes";
-            }
-            
-            // Convert to km/h if input was in mph
-            Double maxKmh;
-            if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
-                maxKmh = mphToKmh(maxSpeed);
+                model.addAttribute("errorMessage", "transportation.modes.error.already.exists");
             } else {
-                maxKmh = maxSpeed;
-            }
-            
-            // Check for duplicate maxKmh values (only if maxKmh is not null)
-            boolean duplicateMaxKmh = configs.stream()
-                .anyMatch(config -> Objects.equals(config.maxKmh(), maxKmh));
-            if (duplicateMaxKmh) {
-                redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.duplicate.max.kmh");
-                return "redirect:/settings/transportation-modes";
-            }
+                // Convert to km/h if input was in mph
+                Double maxKmh;
+                if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
+                    maxKmh = mphToKmh(maxSpeed);
+                } else {
+                    maxKmh = maxSpeed;
+                }
 
-            configs.add(new TransportModeConfig(mode, maxKmh));
-            transportModeJdbcService.setTransportModeConfigs(user, configs);
-            
-            redirectAttributes.addFlashAttribute("successMessage", "transportation.modes.success.added");
+                // Check for duplicate maxKmh values (only if maxKmh is not null)
+                boolean duplicateMaxKmh = configs.stream()
+                        .anyMatch(config -> Objects.equals(config.maxKmh(), maxKmh));
+                if (duplicateMaxKmh) {
+                    model.addAttribute("errorMessage", "transportation.modes.error.duplicate.max.kmh");
+                } else {
+                    configs.add(new TransportModeConfig(mode, maxKmh, color, icon));
+                    transportModeJdbcService.setTransportModeConfigs(user, configs);
+                    model.addAttribute("successMessage", "transportation.modes.success.added");
+                }
+            }
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.add");
+            model.addAttribute("errorMessage", "transportation.modes.error.add");
         }
-        
-        return "redirect:/settings/transportation-modes";
+
+        addConfigsToModel(user, model);
+        return "settings/transportation-modes :: transportation-modes-content";
     }
 
     @PostMapping("/{mode}/update")
@@ -122,36 +144,43 @@ public class TransportationModesController {
                                       @PathVariable TransportMode mode,
                                       @RequestParam(required = false) Double maxSpeed,
                                       @RequestParam(required = false) UnitSystem unitSystem,
-                                      RedirectAttributes redirectAttributes) {
+                                      @RequestParam(required = false) String color,
+                                      @RequestParam(required = false) String icon,
+                                      Model model) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-            
-            // Convert to km/h if input was in mph
-            Double maxKmh;
-            if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
-                maxKmh = mphToKmh(maxSpeed);
-            } else {
-                maxKmh = maxSpeed;
-            }
-            
+
             List<TransportModeConfig> updatedConfigs = configs.stream()
-                    .map(config -> config.mode() == mode ? new TransportModeConfig(mode, maxKmh) : config)
+                    .map(config -> config.mode() == mode ? updateConfig(config, maxSpeed, unitSystem, color, icon) : config)
                     .collect(Collectors.toList());
-            
+
             transportModeJdbcService.setTransportModeConfigs(user, updatedConfigs);
-            
-            redirectAttributes.addFlashAttribute("successMessage", "transportation.modes.success.updated");
+
+            model.addAttribute("successMessage", "transportation.modes.success.updated");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.update");
+            model.addAttribute("errorMessage", "transportation.modes.error.update");
         }
-        
-        return "redirect:/settings/transportation-modes";
+
+        addConfigsToModel(user, model);
+        return "settings/transportation-modes :: transportation-modes-content";
+    }
+
+    private TransportModeConfig updateConfig(TransportModeConfig config, Double maxSpeed, UnitSystem unitSystem, String color, String icon) {
+        Double maxKmh;
+        if (maxSpeed == null) {
+            maxKmh = config.maxKmh();
+        } else {
+            maxKmh = unitSystem == UnitSystem.IMPERIAL ? mphToKmh(maxSpeed) : maxSpeed;
+        }
+        String newColor = color == null ? config.color() : (color.isEmpty() ? null : color);
+        String newIcon = icon == null ? config.icon() : (icon.isEmpty() ? null : icon);
+        return new TransportModeConfig(config.mode(), maxKmh, newColor, newIcon);
     }
 
     @PostMapping("/{mode}/delete")
     public String deleteTransportMode(@AuthenticationPrincipal User user,
                                       @PathVariable TransportMode mode,
-                                      RedirectAttributes redirectAttributes) {
+                                      Model model) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
             
@@ -161,26 +190,28 @@ public class TransportationModesController {
             
             transportModeJdbcService.setTransportModeConfigs(user, filteredConfigs);
             
-            redirectAttributes.addFlashAttribute("successMessage", "transportation.modes.success.deleted");
+            model.addAttribute("successMessage", "transportation.modes.success.deleted");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "transportation.modes.error.delete");
+            model.addAttribute("errorMessage", "transportation.modes.error.delete");
         }
-        
-        return "redirect:/settings/transportation-modes";
+
+        addConfigsToModel(user, model);
+        return "settings/transportation-modes :: transportation-modes-content";
     }
 
     @PostMapping("/content")
     public String getTransportationModesContent(@AuthenticationPrincipal User user, Model model) {
+        addConfigsToModel(user, model);
+        return "settings/transportation-modes :: transportation-modes-content";
+    }
+
+    private void addConfigsToModel(User user, Model model) {
         UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-        List<TransportMode> availableModes = getAvailableModesToAdd(configs);
-        
         model.addAttribute("configs", configs);
-        model.addAttribute("availableModes", availableModes);
+        model.addAttribute("availableModes", getAvailableModesToAdd(configs));
         model.addAttribute("unitSystem", userSettings.getUnitSystem());
         model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);
-        
-        return "settings/transportation-modes :: transportation-modes-content";
     }
 
     private List<TransportMode> getAvailableModesToAdd(List<TransportModeConfig> configs) {
@@ -196,6 +227,17 @@ public class TransportationModesController {
     
     private Double mphToKmh(Double mph) {
         return mph * 1.60934;
+    }
+
+    private Map<String, String> getDefaultColors() {
+        Map<String, String> colors = new LinkedHashMap<>();
+        colors.put("#f1ba63", "Orange");
+        colors.put("#ff6b6b", "Red");
+        colors.put("#4ecdc4", "Teal");
+        colors.put("#45b7d1", "Blue");
+        colors.put("#96ceb4", "Green");
+        colors.put("#a29bfe", "Purple");
+        return colors;
     }
     
     @PostMapping("/reclassify")

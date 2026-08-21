@@ -71,9 +71,10 @@
          th:data-base-color="${userData?.baseColor}"
          th:data-raw-location-points-url="${userData?.rawLocationPointsUrl}"
          th:data-processed-visits-url="${userData?.processedVisitsUrl}"
-         th:data-location-metadata-url="${userData?.mapMetaDataUrl}"
-         th:data-location-stream-url="${userData?.mapStreamDataUrl}"
-         th:data-h3-cell-url="${userData?.h3CellUrl}"
+          th:data-location-metadata-url="${userData?.mapMetaDataUrl}"
+          th:data-location-stream-url="${userData?.mapStreamDataUrl}"
+          th:data-trips-url="${userData?.mapTripsUrl}"
+          th:data-h3-cell-url="${userData?.h3CellUrl}"
          th:data-user-avatar-url="${userData?.userAvatarUrl}"
          th:data-avatar-fallback="${userData?.avatarFallback}"
          th:data-display-name="${userData?.displayName}">
@@ -377,10 +378,12 @@
                         <div th:if="${entry.type.name() == 'TRIP'}" class="place-name-container">
                             <span class="place-name" th:text="#{timeline.trip}">Trip</span>
                             <div th:if="${entry.editable}" class="place-actions">
-                                <i class="lni lni-pencil-1 edit-icon"
-                                   th:hx-get="@{/timeline/trips/edit-form/{id}(id=${entry.resourceId})}"
-                                   th:hx-target="${'#trip-transport-mode-container_' + entry.resourceId}"
-                                   hx-swap="outerHTML"></i>
+                                <a class="lni lni-pencil-1 edit-icon"
+                                   th:hx-get="@{/timeline/trips/transport-mode-dialog/{id}(id=${entry.resourceId})}"
+                                   hx-vals='js:{"returnUrl": window.location.href}'
+                                   hx-target="#transport-mode-overlay-content"
+                                   hx-swap="innerHTML"
+                                   hx-on::after-request="if(event.detail.successful) openTransportModeOverlay()"></a>
                                 <a class="lni lni-file-multiple edit-icon"
                                    th:hx-get="@{/metadata/trip/{id}(id=${entry.resourceId})}"
                                    hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
@@ -405,8 +408,12 @@
                             <span th:text="#{timeline.distance}">Distance</span>:
                             <span th:text="${entry.formattedDistance}">5.2 km</span>
                         </span>
-                        <div th:id="${'trip-transport-mode-container_' + entry.resourceId}" th:if="${entry.transportMode != null}" class="trip-transport-mode-container">
-                            <span th:text="#{'timeline.transport.' + ${entry.transportMode} + '.label'}">by foot</span>
+                        <div th:id="${'trip-transport-mode-container_' + entry.resourceId}" th:if="${entry.transportModesSet != null and !entry.transportModesSet.isEmpty()}" class="trip-transport-mode-container">
+                            <span class="segment-list">
+                                <span class="segment-chip" th:each="mode : ${entry.transportModesSet}">
+                                    <span th:text="#{'timeline.transport.' + ${mode} + '.label'}">by foot</span>
+                                </span>
+                            </span>
                         </div>
                     </span>
                 </span>

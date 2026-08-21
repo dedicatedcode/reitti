@@ -6,15 +6,15 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 import java.util.Optional;
 
@@ -46,8 +46,7 @@ class TileProxyControllerTest {
                 null,
                 objectMapper,
                 userMapStyleJdbcService,
-                mapLibreMapStylesService,
-                contextPathHolder
+                mapLibreMapStylesService
         );
     }
 
@@ -85,7 +84,7 @@ class TileProxyControllerTest {
         ResponseEntity<JsonNode> response = controller.getStyleSourceTileJson(user, styleId, sourceId, request);
 
         // Assert
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         JsonNode body = response.getBody();
         assertNotNull(body);
 

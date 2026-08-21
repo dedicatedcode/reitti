@@ -1,7 +1,10 @@
 package com.dedicatedcode.reitti.controller.api.v2;
 
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.APIQueryService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.service.TripApiQueryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -12,14 +15,19 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v2/trips")
 public class TripController {
-    private final APIQueryService apiQueryService;
+    private final TripApiQueryService tripApiQueryService;
+    private final UserJdbcService userJdbcService;
+    private final UserSharingJdbcService userSharingJdbcService;
 
-    public TripController(APIQueryService apiQueryService) {
-        this.apiQueryService = apiQueryService;
+    public TripController(TripApiQueryService tripApiQueryService, UserJdbcService userJdbcService, UserSharingJdbcService userSharingJdbcService) {
+        this.tripApiQueryService = tripApiQueryService;
+        this.userJdbcService = userJdbcService;
+        this.userSharingJdbcService = userSharingJdbcService;
     }
 
     @GetMapping("/{userId}")
@@ -28,8 +36,8 @@ public class TripController {
             @PathVariable Long userId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false, defaultValue = "UTC") String timezone,
-            @RequestParam(required = false) Integer zoom) {
+            @RequestParam(required = false, defaultValue = "UTC") String timezone) throws IllegalAccessException {
+        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
         ZoneId userTimezone = ZoneId.of(timezone);
         Instant startOfRange = null;
         Instant endOfRange = null;
@@ -55,7 +63,24 @@ public class TripController {
                     "error", "Either 'date' or both 'startDate' and 'endDate' must be provided"
             ));
         }
-        return ResponseEntity.ok().body(apiQueryService.getTrips(user, startOfRange, endOfRange, zoom));
+        return ResponseEntity.ok().body(tripApiQueryService.getTrips(userToFetchDataFrom, startOfRange, endOfRange));
+    }
+
+    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
+        if (user.getId().equals(userId)) {
+            return user;
+        }
+        if (user instanceof TokenUser) {
+            if (!Objects.equals(user.getId(), userId)) {
+                throw new IllegalAccessException("User not allowed to fetch data for other users");
+            }
+        }
+        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
+            throw new IllegalAccessException("User not allowed to fetch data for other user with id " + userId);
+        }
+
+        return userJdbcService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
 }

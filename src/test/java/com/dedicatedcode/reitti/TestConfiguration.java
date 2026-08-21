@@ -9,9 +9,9 @@ import com.dedicatedcode.reitti.service.h3.FileVerificationService;
 import com.dedicatedcode.reitti.service.h3.H3IndexDownloadService;
 import com.dedicatedcode.reitti.service.h3.H3Manifest;
 import com.dedicatedcode.reitti.service.h3.H3ManifestDownloadService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;

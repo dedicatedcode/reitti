@@ -43,6 +43,22 @@
     font-family: inherit;
 }
 
+.trip-transport-mode-container .segment-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.trip-transport-mode-container .segment-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
 .trip-transport-mode-container.editing,
 .place-name-container.editing {
     border-radius: 3px;

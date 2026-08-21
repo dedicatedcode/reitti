@@ -203,6 +203,8 @@ class MapRenderer {
         }
         this.avatarMarkers = new Map();
         this.showAvatars = false;
+        this.showTransportModes = true;
+        this.transitionMarkers = [];
 
         this.terrainLayer = null;
         this.deckOverlay = new deck.MapboxOverlay({
@@ -272,6 +274,7 @@ class MapRenderer {
         this._cachedLayerData = new Map();    // cacheKey -> layerData (per-build cache)
         this._h3AggregationCache = new Map(); // managerId -> Map(targetRes -> aggregatedData)
         this._currentZoom = 0;
+        this._prevZoom = 0;
         this._zoomDebounceId = null;
         this._setup();
     }
@@ -388,7 +391,7 @@ class MapRenderer {
     _getLayerContextKey() {
         const managers = this.gpsDataManagers
             .filter(m => this.selectedManager == null || m.id === this.selectedManager)
-            .map(m => `${m.id}:${m.cursor}:${m.cleanedCursor}:${m.snappedVersion}:${m.loadingState}:${m.visits?.length || 0}`)
+            .map(m => `${m.id}:${m.cursor}:${m.cleanedCursor}:${m.snappedVersion}:${m.loadingState}:${m.visits?.length || 0}:${m.modeSegments?.length || 0}`)
             .join('|');
 
         return JSON.stringify({
@@ -398,6 +401,7 @@ class MapRenderer {
             renderTerrain: this.viewState.renderTerrain,
             animating: this.viewState.animating,
             selectedManager: this.selectedManager,
+            showTransportModes: this.showTransportModes,
             highlight: this.highlightLayer ? '1' : '0',
         });
     }
@@ -501,6 +505,7 @@ class MapRenderer {
             });
             this._layerInstances = allLayers;
             this.deckOverlay.setProps({ layers: allLayers });
+            this._clearTransitionMarkers();
             return;
         }
 
@@ -533,35 +538,66 @@ class MapRenderer {
 
                     const strippedData = this._stripForPathLayer(layerData);
 
-                    try {
-                        allLayers.push(new deck.PathLayer({
-                            id: `paths-static-fixed-${layerKey}`,
-                            data: strippedData,
-                            positionFormat: 'XYZ',
-                            getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
-                            getWidth: this.deckParams.trips.staticPathWidth,
-                            widthMinPixels: this.deckParams.trips.staticPathWidth,
-                            visible: true,
-                            capRounded: true,
-                            jointRounded: true,
-                            extensions: extensions,
-                            ...(terrainDrawMode && { terrainDrawMode }),
-                            parameters: {
-                                depthTest: true,
-                                polygonOffsetFill: true
-                            },
-                            updateTriggers: {
-                                data: [manager.buffer?.length, buffer],
-                                getPath: [cursor, buffer, this.viewState.renderTerrain],
-                                getColor: [manager.color],
-                            }
-                        }));
-                    } catch (e) {
-                        console.error('%c[_buildLayers] PathLayer creation FAILED', 'color: #ff0000; font-weight: bold');
-                        console.error('  layerKey:', layerKey);
-                        console.error('  error:', e);
-                        console.error('  strippedData:', strippedData);
-                        throw e;
+                    const segmentPaths = this.showTransportModes ? manager.getSegmentPaths() : null;
+                    if (segmentPaths && segmentPaths.length > 0) {
+                        try {
+                            allLayers.push(new deck.PathLayer({
+                                id: `paths-static-colored-${layerKey}`,
+                                data: segmentPaths,
+                                getPath: d => d.path,
+                                getColor: d => {
+                                    const c = this._hexToRgbArray(d.color) || manager.color;
+                                    return [...c, this.deckParams.trips.staticPathOpacity];
+                                },
+                                getWidth: this.deckParams.trips.staticPathWidth,
+                                widthMinPixels: this.deckParams.trips.staticPathWidth,
+                                visible: true,
+                                capRounded: true,
+                                jointRounded: true,
+                                extensions: extensions,
+                                ...(terrainDrawMode && { terrainDrawMode }),
+                                parameters: {
+                                    depthTest: true,
+                                    polygonOffsetFill: true
+                                },
+                                updateTriggers: {
+                                    getColor: [manager.color, this.showTransportModes],
+                                }
+                            }));
+                        } catch (e) {
+                            console.error('%c[_buildLayers] colored PathLayer creation FAILED', 'color: #ff0000; font-weight: bold', e);
+                        }
+                    } else {
+                        try {
+                            allLayers.push(new deck.PathLayer({
+                                id: `paths-static-fixed-${layerKey}`,
+                                data: strippedData,
+                                positionFormat: 'XYZ',
+                                getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
+                                getWidth: this.deckParams.trips.staticPathWidth,
+                                widthMinPixels: this.deckParams.trips.staticPathWidth,
+                                visible: true,
+                                capRounded: true,
+                                jointRounded: true,
+                                extensions: extensions,
+                                ...(terrainDrawMode && { terrainDrawMode }),
+                                parameters: {
+                                    depthTest: true,
+                                    polygonOffsetFill: true
+                                },
+                                updateTriggers: {
+                                    data: [manager.buffer?.length, buffer],
+                                    getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                    getColor: [manager.color],
+                                }
+                            }));
+                        } catch (e) {
+                            console.error('%c[_buildLayers] PathLayer creation FAILED', 'color: #ff0000; font-weight: bold');
+                            console.error('  layerKey:', layerKey);
+                            console.error('  error:', e);
+                            console.error('  strippedData:', strippedData);
+                            throw e;
+                        }
                     }
 
                     if (this.viewState.animating) {
@@ -628,6 +664,8 @@ class MapRenderer {
         if (this.map && typeof this.map.triggerRepaint === 'function') {
             this.map.resize();
         }
+
+        this._syncTransitionMarkers();
     }
 
     _updateAnimatedLayers() {
@@ -645,6 +683,7 @@ class MapRenderer {
             const id = layer.props.id;
 
             if (id.includes('paths-static-fixed') ||
+                id.includes('paths-static-colored') ||
                 id.includes('bundled-paths-static') ||
                 id === 'highlight-segment' ||
                 id === 'terrain-loader') {
@@ -1168,6 +1207,7 @@ class MapRenderer {
         this._layerInstances = [];
         this._layerContextKey = null;
         this.deckOverlay.setProps({layers: []});
+        this._clearTransitionMarkers();
     }
     setBearing(number) {
         this.map.easeTo({
@@ -1179,6 +1219,137 @@ class MapRenderer {
 
     setPhotos(photos) {
         this.photosManager.setPhotos(photos);
+    }
+
+    setShowTransportModes(value) {
+        this.showTransportModes = !!value;
+        this._layerContextKey = null;
+        this._buildLayers();
+    }
+
+    _hexToRgbArray(hex) {
+        if (!hex || typeof hex !== 'string') return null;
+        const clean = hex.replace('#', '');
+        if (clean.length !== 6) return null;
+        const r = parseInt(clean.slice(0, 2), 16);
+        const g = parseInt(clean.slice(2, 4), 16);
+        const b = parseInt(clean.slice(4, 6), 16);
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+        return [r, g, b];
+    }
+
+    _clearTransitionMarkers() {
+        this.transitionMarkers.forEach(m => m.remove());
+        this.transitionMarkers = [];
+    }
+
+    _syncTransitionMarkers() {
+        this._clearTransitionMarkers();
+        console.log('Syncing transition markers...');
+        if (!this.showTransportModes || this.viewState.aggregated || this._currentZoom < 12) return;
+
+        this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
+            .forEach(manager => {
+                const totalSpan = (manager.maxTimestamp && manager.minTimestamp) ? (manager.maxTimestamp - manager.minTimestamp) : 0;
+                if (totalSpan > 7 * 86400) return;
+
+                const transitions = manager.getTransitions ? manager.getTransitions() : [];
+                transitions.forEach(t => {
+                    this.transitionMarkers.push(this._createTransitionMarker(t));
+                });
+            });
+    }
+
+    _createTransitionMarker(transition) {
+        const el = document.createElement('div');
+        el.className = 'mode-transition-pill';
+
+        el.innerHTML = `
+            <span class="mode-icon">${this._iconHtml(transition.from)}</span>
+            <span class="transition-arrow">›</span>
+            <span class="mode-icon">${this._iconHtml(transition.to)}</span>
+        `;
+
+        const marker = new maplibregl.Marker({element: el, anchor: 'center'})
+            .setLngLat([transition.lng, transition.lat])
+            .addTo(this.map);
+
+        const popup = new maplibregl.Popup({offset: 12, closeButton: false, closeOnClick: false});
+        let popupOpen = false;
+        const closePopup = () => {
+            if (popupOpen) {
+                popup.remove();
+                popupOpen = false;
+            }
+        };
+        const openPopup = () => {
+            if (!popupOpen) {
+                popup.setLngLat([transition.lng, transition.lat])
+                    .setHTML(this._transitionPopupHtml(transition))
+                    .addTo(this.map);
+                popupOpen = true;
+            }
+        };
+
+        el.addEventListener('mouseenter', openPopup);
+        el.addEventListener('mouseleave', closePopup);
+        popup.on('close', () => { popupOpen = false; });
+
+        const removeOnInteraction = () => closePopup();
+        this.map.on('click', removeOnInteraction);
+        this.map.on('dragstart', removeOnInteraction);
+
+        // Cleanup when marker is removed
+        const origRemove = marker.remove.bind(marker);
+        marker.remove = () => {
+            closePopup();
+            this.map.off('click', removeOnInteraction);
+            this.map.off('dragstart', removeOnInteraction);
+            origRemove();
+        };
+
+        return marker;
+    }
+
+    _getDefaultIcon(modeName) {
+        switch (modeName) {
+            case 'WALKING':
+                return 'lni-user-4'
+            case 'CYCLING':
+            case 'SCOOTER':
+                return 'lni-bike';
+            case 'TRANSIT':
+            case 'BUS':
+                return 'lni-bus-1';
+            case 'TRAIN':
+                return 'lni-train-1';
+            case 'SHIP':
+                return 'lni-ship-1';
+            case 'DRIVING':
+                return 'lni-car-2';
+            case 'MOTORCYCLE':
+                return 'lni-scoter';
+            default:
+                return ''
+        }
+    }
+
+    _iconHtml(mode) {
+        const icon = mode && mode.icon ? mode.icon : this._getDefaultIcon(mode?.mode);
+        const color = mode && mode.color ? mode.color : '#f1ba63';
+        return `<i class="lni ${icon}" style="color:${color}"></i>`;
+    }
+
+    _transitionPopupHtml(transition) {
+        const from = transition.from;
+        const to = transition.to;
+        const time = transition.time ? new Date(transition.time * 1000).toLocaleString() : '';
+        return `<div class="mode-transition-popup">
+            <div class="transition-time">${time}</div>
+            <div><i class="lni ${from.icon}" style="color:${from.color || '#f1ba63'}"></i> ${t('map.transition.from')} ${t('transportation.mode.'+from.mode+'.name')}</div>
+            <div><i class="lni ${to.icon}" style="color:${to.color || '#f1ba63'}"></i> ${t('map.transition.to')} ${t('transportation.mode.'+to.mode+'.name')}</div>
+        </div>`;
     }
 
     enableAvatars(todayStart = null, todayEnd = null) {
@@ -1596,7 +1767,8 @@ class MapRenderer {
     }
 
     _buildCurrentPositionLayer(manager) {
-        const color = manager.color;
+        const activeSeg = this.showTransportModes && manager.getActiveSegment ? manager.getActiveSegment(this.viewState.currentTime, this.viewState.aggregated) : null;
+        const color = (activeSeg && activeSeg.color) ? (this._hexToRgbArray(activeSeg.color) || manager.color) : manager.color;
         const extensions = this._getTerrainExtensions();
         const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
 
@@ -1606,12 +1778,10 @@ class MapRenderer {
             data: [currentPosition],
             getPosition: d => {
                 const pos = d;
-                const newVar = pos ?  [pos.lng, pos.lat, 0]: null;
-                console.log("newVar", newVar);
-                return newVar;
+                return pos ? [pos.lng, pos.lat, 0] : null;
             },
-            getRadius: 2,
-            radiusMinPixels: 1,
+            getRadius: 3,
+            radiusMinPixels: 2,
             getColor: [color[0], color[1], color[2], 255],
             stroked: true,
             getLineColor: [255, 255, 255, 255],
@@ -1623,6 +1793,7 @@ class MapRenderer {
             terrainDrawMode: terrainDrawMode,
             updateTriggers: {
                 getPosition: [this.viewState.currentTime, this.viewState.aggregated],
+                getColor: [this.viewState.currentTime, manager.color, activeSeg?.color],
             }
         });
     }
@@ -1642,6 +1813,7 @@ class MapRenderer {
 
     _setup = () => {
         this._currentZoom = this.map.getZoom();
+        this._prevZoom = this._currentZoom;
         this._zoomDebounceId = null;
         let lastH3Res = this._getTargetH3Resolution(this._currentZoom);
 
@@ -1675,14 +1847,20 @@ class MapRenderer {
         // On zoomend: cancel any pending debounce, do a final update,
         // and sync pitch/bearing state.
         this.map.on('zoomend', () => {
-            this._currentZoom = this.map.getZoom();
             this._syncPitchBearingState();
 
-            if (this._zoomDebounceId !== null) {
-                clearTimeout(this._zoomDebounceId);
-                this._zoomDebounceId = null;
+            if ((this._prevZoom < 12 && this._currentZoom >= 12) || (this._prevZoom >= 12 && this._currentZoom < 12)) {
+                this._layerContextKey = null;
+                this._buildLayers();
+            } else {
+                if (this._zoomDebounceId !== null) {
+                    clearTimeout(this._zoomDebounceId);
+                    this._zoomDebounceId = null;
+                }
+                this._updateAnimatedLayers();
             }
-            this._updateAnimatedLayers();
+            this._prevZoom = this._currentZoom;
+            this._syncTransitionMarkers();
         });
 
         // -------------------------------------------------------------

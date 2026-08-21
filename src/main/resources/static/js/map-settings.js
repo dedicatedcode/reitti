@@ -37,6 +37,14 @@ class SettingsMenu {
                                 <span class="label-text">${t('map.settings.dialog.appearance.view-mode.24h_aggregate')}</span>
                             </label>
                         </div>
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" id="show-transport-modes-checkbox">
+                            <label for="show-transport-modes-checkbox" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text">${t('map.settings.dialog.appearance.show-transport-modes')}</span>
+                            </label>
+                            <span class="form-description font-small">${t('map.settings.dialog.appearance.show-transport-modes.description')}</span>
+                        </div>
                     </div>
                     <div class="divider left">${t('map.settings.dialog.interface.title')}</div>
                     <div class="settings-section">
@@ -137,6 +145,11 @@ class SettingsMenu {
             allowFutureDatesCheckbox.checked = localStorage.getItem('allowFutureDates') === 'true';
         }
 
+        const showTransportModesCheckbox = this.menu.querySelector('#show-transport-modes-checkbox');
+        if (showTransportModesCheckbox) {
+            showTransportModesCheckbox.checked = localStorage.getItem('showTransportModes') !== 'false'; // default true
+        }
+
         // Load and apply saved settings
         this.loadSettings();
     }
@@ -194,6 +207,13 @@ class SettingsMenu {
                 const value = e.target.checked;
                 localStorage.setItem('allowFutureDates', value);
                 this.dispatchSettingsChange('allowFutureDates', value);
+            });
+        }
+
+        const showTransportModesCheckbox = this.menu.querySelector('#show-transport-modes-checkbox');
+        if (showTransportModesCheckbox) {
+            showTransportModesCheckbox.addEventListener('change', (e) => {
+                this.updateShowTransportModes(e.target.checked);
             });
         }
     }
@@ -326,7 +346,8 @@ class SettingsMenu {
             timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true',
             showAvatars: localStorage.getItem('showAvatars') !== 'false',
             followTrail: localStorage.getItem('followTrail') !== 'false',
-            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true'
+            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true',
+            showTransportModes: localStorage.getItem('showTransportModes') !== 'false'
         };
 
         if (!window.userSettings.h3Enabled && settings.viewMode === 'H3') {
@@ -360,6 +381,11 @@ class SettingsMenu {
             followTrailCheckbox.checked = settings.followTrail;
         }
 
+        const showTransportModesCheckbox = this.menu.querySelector('#show-transport-modes-checkbox');
+        if (showTransportModesCheckbox) {
+            showTransportModesCheckbox.checked = settings.showTransportModes;
+        }
+
         // Apply timeline visibility
         if (settings.timelineHidden) {
             document.body.classList.add('timeline-hidden');
@@ -384,6 +410,11 @@ class SettingsMenu {
     updateAggregate(checked) {
         localStorage.setItem('aggregate', checked);
         this.dispatchSettingsChange('aggregate', checked);
+    }
+
+    updateShowTransportModes(checked) {
+        localStorage.setItem('showTransportModes', checked);
+        this.dispatchSettingsChange('showTransportModes', checked);
     }
     
     updateTimelineVisibility(visible) {

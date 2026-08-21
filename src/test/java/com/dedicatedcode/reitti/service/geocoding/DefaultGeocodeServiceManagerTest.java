@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.PaikkaResultHandler;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +18,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Collections;
 import java.util.List;

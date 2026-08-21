@@ -8,7 +8,6 @@ import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;

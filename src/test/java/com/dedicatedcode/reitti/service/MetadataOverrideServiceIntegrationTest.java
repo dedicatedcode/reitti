@@ -147,7 +147,7 @@ class MetadataOverrideServiceIntegrationTest {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, estimated_distance_meters, travelled_distance_meters, transport_mode_inferred, start_visit_id, end_visit_id, metadata) VALUES (?,?,?,?,?,?,?,?,?,?::jsonb) RETURNING id",
+                "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, estimated_distance_meters, travelled_distance_meters, start_visit_id, end_visit_id, metadata) VALUES (?,?,?,?,?,?,?,?,?::jsonb) RETURNING id",
                 Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, this.user.getId());
             ps.setTimestamp(2, Timestamp.from(start));
@@ -156,12 +156,15 @@ class MetadataOverrideServiceIntegrationTest {
             ps.setLong(4, duration);
             ps.setDouble(5, 0.0); // estimated distance
             ps.setDouble(6, 0.0); // travelled distance
-            ps.setString(7, TransportMode.UNKNOWN.name());
-            ps.setLong(8, startVisitId);
-            ps.setLong(9, endVisitId);
-            ps.setString(10, "{}");
+            ps.setLong(7, startVisitId);
+            ps.setLong(8, endVisitId);
+            ps.setString(9, "{}");
             return ps;
         }, keyHolder);
-        return keyHolder.getKey().longValue();
+        long tripId = keyHolder.getKey().longValue();
+        long duration = end.getEpochSecond() - start.getEpochSecond();
+        jdbcTemplate.update("INSERT INTO trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters) VALUES (?,?,?,?,?)",
+                tripId, 0L, duration, TransportMode.UNKNOWN.name(), 0.0);
+        return tripId;
     }
 }

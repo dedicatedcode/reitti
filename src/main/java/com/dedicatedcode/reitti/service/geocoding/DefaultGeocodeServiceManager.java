@@ -8,9 +8,6 @@ import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.ResultHandler;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +15,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.*;
@@ -231,7 +231,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         }
     }
 
-    private List<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JsonProcessingException {
+    private List<GeocodeResult> extractGeoCodeResult(GeocoderType type, String response) throws JacksonException {
         JsonNode root = objectMapper.readTree(response);
         List<GeocodeResult> results = new ArrayList<>();
         this.resultHandlers.stream().filter(rh -> rh.canHandle(type)).forEach(rh -> results.addAll(rh.handle(root)));

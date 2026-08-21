@@ -4,14 +4,9 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +21,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -56,7 +55,6 @@ public class TileProxyController {
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final MapLibreMapStylesService mapLibreMapStylesService;
-    private final ContextPathHolder contextPathHolder;
 
     private record TileSource(String tileJsonUrl, List<String> tileUrlTemplates, boolean proxyTiles) {}
 
@@ -66,8 +64,7 @@ public class TileProxyController {
             @Value("${reitti.ui.tiles.custom.service:}") String customTileService,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapLibreMapStylesService mapLibreMapStylesService,
-            ContextPathHolder contextPathHolder) {
+            MapLibreMapStylesService mapLibreMapStylesService) {
         this.tileCacheUrl = tileCacheUrl;
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
         this.defaultTileService = defaultTileService;
@@ -75,7 +72,6 @@ public class TileProxyController {
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
-        this.contextPathHolder = contextPathHolder;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -159,7 +155,7 @@ public class TileProxyController {
                 if (tileJson instanceof ObjectNode mutableTileJson && mutableTileJson.get("tiles") instanceof ArrayNode tiles && !tiles.isEmpty()) {
                     ArrayNode rewrittenTiles = objectMapper.createArrayNode();
                     for (JsonNode tileNode : tiles) {
-                        String tileUrl = tileNode.asText("");
+                        String tileUrl = tileNode.asString("");
                         if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
                             rewrittenTiles.add(styleSourceTileUrl(styleId, sourceId, tileUrl, request));
                         } else if (!tileUrl.isBlank()) {
@@ -356,7 +352,7 @@ public class TileProxyController {
             return null;
         }
 
-        String tileUrl = tileArray.get(0).asText("");
+        String tileUrl = tileArray.get(0).asString("");
         if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
             return normalizeTileTemplateForProxy(tileUrl);
         }

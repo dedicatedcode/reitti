@@ -1,7 +1,7 @@
 package com.dedicatedcode.reitti.service.jobs;
 
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
-import com.dedicatedcode.reitti.model.geo.TransportMode;
+import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
@@ -51,10 +51,10 @@ public class TransportModeRecalculationTask implements Job {
             Instant startTime = trip.getStartTime();
             Instant endTime = trip.getEndTime();
             List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
-            TransportMode transportMode = this.transportModeService.inferTransportMode(user, tripPoints, startTime, endTime);
-            if (transportMode != trip.getTransportModeInferred()) {
-                log.trace("Reclassified trip {} from {} to {} to mode {}", trip.getId(), startTime, endTime, transportMode);
-                trip = trip.withTransportMode(transportMode);
+            List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, startTime, endTime);
+            if (!segments.equals(trip.getSegments())) {
+                log.trace("Reclassified trip {} from {} to {} to segments {}", trip.getId(), trip.getSegments(), endTime, segments);
+                trip = trip.withSegments(segments);
                 this.tripJdbcService.update(trip);
             }
             if (currentTrip.getAndIncrement() % 100 == 0) {
@@ -62,6 +62,7 @@ public class TransportModeRecalculationTask implements Job {
             }
         });
     }
+
     public static class TaskData extends JobContext<TaskData> {
 
         public final User user;

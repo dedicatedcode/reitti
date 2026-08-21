@@ -296,3 +296,60 @@ details.maplibregl-ctrl-attrib[open] {
     max-height: 150px;
     overflow-y: auto;
 }
+
+.mode-transition-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(20, 20, 26, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 9999px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 200;
+}
+
+.mode-transition-pill:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.mode-transition-pill .mode-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.mode-transition-pill .transition-arrow {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 255);
+}
+
+.mode-transition-popup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    padding: 8px;
+    color: var(--color-text-white);
+}
+
+.mode-transition-popup .mode-icon {
+    margin-right: 4px;
+}
+
+.mode-transition-popup .lni {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 24px;
+}
+
+
+

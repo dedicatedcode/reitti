@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<body>
+<form th:fragment="transportation-mode-edit-form"
+      th:hx-post="@{${config != null ? '/settings/transportation-modes/' + config.mode() + '/update' : '/settings/transportation-modes/add'}}"
+      hx-target="#transportation-modes" hx-swap="innerHTML" method="post" class="token-form" style="margin-bottom: 20px;">
+    <h3 th:text="#{${config != null ? 'transportation.modes.edit.title' : 'transportation.modes.add.title'}}">Add Transportation Mode</h3>
+    <input type="hidden" name="unitSystem" th:value="${unitSystem.name()}">
+    <div class="form-group">
+        <label for="mode" th:text="#{transportation.modes.mode.label}">Transportation Mode</label>
+        <select th:if="${config == null}" id="mode" name="mode" required>
+            <option value="" th:text="#{transportation.modes.mode.select}">Select a mode...</option>
+            <option th:each="mode : ${availableModes}"
+                    th:value="${mode}"
+                    th:text="#{${'transportation.mode.' + mode + '.name'}}"></option>
+        </select>
+        <input th:if="${config != null}"
+               type="text"
+               th:value="#{${'transportation.mode.' + config.mode() + '.name'}}"
+               disabled>
+    </div>
+    <div class="form-group">
+        <label for="maxSpeed" th:text="#{${isImperial ? 'transportation.modes.max.mph.label' : 'transportation.modes.max.kmh.label'}}">Max Speed</label>
+        <input type="number"
+               id="maxSpeed"
+               name="maxSpeed"
+               step="0.1"
+               min="0"
+               th:value="${config != null ? (isImperial and config.maxKmh() != null ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : config.maxKmh()) : ''}"
+               th:placeholder="#{${isImperial ? 'transportation.modes.max.mph.placeholder' : 'transportation.modes.max.kmh.placeholder'}}">
+        <small th:text="#{${isImperial ? 'transportation.modes.max.mph.help' : 'transportation.modes.max.kmh.help'}}">Leave empty for no speed limit</small>
+    </div>
+    <div class="form-group">
+        <h3 th:text="#{transportation.modes.color.label}">Color</h3>
+        <p class="form-description" th:text="#{transportation.modes.color.description}">Choose the color used to display this transportation mode.</p>
+
+        <div class="color-picker-section">
+            <div class="color-options">
+                <label class="color-option" th:each="colorOption : ${defaultColors}">
+                    <input type="radio"
+                           name="color"
+                           th:value="${colorOption.key}"
+                           th:checked="${selectedColor == colorOption.key || (selectedColor == null && colorOption.key == '#f1ba63')}"
+                           style="display: none;">
+                    <div class="color-swatch"
+                         th:style="'background-color: ' + ${colorOption.key}"
+                         th:title="${colorOption.value}"></div>
+                </label>
+
+                <label class="color-option custom-color-option">
+                    <input type="radio"
+                           name="color"
+                           id="customColorRadio"
+                           value=""
+                           style="display: none;">
+                    <div class="color-swatch custom-color-swatch"
+                         id="customColorSwatch"
+                         th:title="#{devices.color.theme.custom}">
+                        <span class="custom-color-icon">+</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="custom-color-input-section" id="customColorInputSection" style="display: none;">
+                <label for="customColorInput" th:text="#{devices.color.theme.custom.input}">Custom Color:</label>
+                <div class="custom-color-input-wrapper">
+                    <input type="color"
+                           id="customColorInput"
+                           th:value="${config != null && config.color() != null && !#maps.containsKey(defaultColors, config.color()) ? config.color() : '#f1ba63'}"
+                           onchange="updateCustomColor(this.value)">
+                    <input type="text"
+                           id="customColorText"
+                           th:value="${config != null && config.color() != null && !#maps.containsKey(defaultColors, config.color()) ? config.color() : '#f1ba63'}"
+                           placeholder="#f1ba63"
+                           pattern="^#[0-9A-Fa-f]{6}$"
+                           onchange="updateCustomColorFromText(this.value)">
+                </div>
+            </div>
+
+            <div class="color-actions">
+                <button type="button"
+                        class="btn btn-secondary"
+                        onclick="resetToDefaultColor()"
+                        th:text="#{devices.color.theme.reset}">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="icon" th:text="#{transportation.modes.icon.label}">Icon</label>
+        <select id="icon" name="icon">
+            <option value="" th:text="#{transportation.modes.icon.none}">None</option>
+            <option value="lni-user-4" th:selected="${config != null && config.icon() == 'lni-user-4'}" th:text="#{transportation.modes.icon.walking}">Walk</option>
+            <option value="lni-bike" th:selected="${config != null && config.icon() == 'lni-bike'}" th:text="#{transportation.modes.icon.bike}">Bike</option>
+            <option value="lni-bus-1" th:selected="${config != null && config.icon() == 'lni-bus-1'}" th:text="#{transportation.modes.icon.bus}">Bus</option>
+            <option value="lni-car-2" th:selected="${config != null && config.icon() == 'lni-car-2'}" th:text="#{transportation.modes.icon.car}">Car</option>
+            <option value="lni-train-1" th:selected="${config != null && config.icon() == 'lni-train-1'}" th:text="#{transportation.modes.icon.train}">Train</option>
+            <option value="lni-ship-1" th:selected="${config != null && config.icon() == 'lni-ship-1'}" th:text="#{transportation.modes.icon.ship}">Ship</option>
+        </select>
+    </div>
+
+    <button th:if="${config == null}" type="submit" class="btn" th:text="#{form.create}">Create</button>
+    <button th:if="${config != null}" type="submit" class="btn" th:text="#{form.update}">Update</button>
+    <button type="button" class="btn btn-secondary"
+            th:hx-post="@{/settings/transportation-modes/content}"
+            hx-target="#transportation-modes"
+            hx-swap="innerHTML"
+            th:text="#{form.cancel}">Cancel</button>
+</form>
+</body>
+</html>

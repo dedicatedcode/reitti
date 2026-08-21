@@ -6,11 +6,11 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -159,21 +159,5 @@ public class PlaceChangeDetectionService {
         return placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, newPolygon);
     }
 
-    public static class PlaceChangeAnalysis {
-        private final boolean canProceed;
-        private final List<String> warnings;
-
-        public PlaceChangeAnalysis(boolean canProceed, List<String> warnings) {
-            this.canProceed = canProceed;
-            this.warnings = warnings;
-        }
-
-        public boolean isCanProceed() {
-            return canProceed;
-        }
-
-        public List<String> getWarnings() {
-            return warnings;
-        }
-    }
+    public record PlaceChangeAnalysis(boolean canProceed, List<String> warnings) {}
 }
