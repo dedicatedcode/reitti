@@ -1516,6 +1516,11 @@ body.auto-update-mode .today-fab {
     text-transform: capitalize;
 }
 
+.transportation-modes-table tr i {
+    vertical-align: middle;
+    font-size: 1.6rem;
+}
+
 .logo {
     width: auto;
     height: 28px;
@@ -1929,7 +1934,7 @@ body.datepicker-hidden .fab-container {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
-    
+
     .today-fab i {
         font-size: 0.9rem;
     }

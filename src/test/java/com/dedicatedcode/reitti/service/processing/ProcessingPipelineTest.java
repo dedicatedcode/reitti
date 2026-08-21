@@ -273,6 +273,15 @@ public class ProcessingPipelineTest {
                 "source points should keep only the chronologically latest, got " + latestSource.get().getTimestamp());
     }
 
+    @Test
+    void shouldSegmentTripsWithMultipleTransportationModes() {
+        this.testingService.importAndProcess(user, "/data/gpx/multiple-transport-modes/location_data_2026-07-26_to_2026-07-26.gpx");
+        List<Trip> trips = currenTrips();
+
+        System.out.println();
+
+    }
+
     private List<ProcessedVisit> currentVisits() {
         return this.processedVisitJdbcService.findByUser(this.user);
     }

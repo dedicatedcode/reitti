@@ -695,6 +695,7 @@ public class ReittiIntegrationService {
                                     String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
+                                    null,
                                     h3CellUrl,
                                     Collections.emptyList(),
                                     userDeviceRequest != null && Objects.equals(timelineId, userDeviceRequest.userId()));

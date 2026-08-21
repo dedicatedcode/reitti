@@ -114,7 +114,7 @@ public class CoveragePageController {
                 avatarUrl,
                 color,
                 Collections.emptyList(),
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 devices,
                 active);
     }
