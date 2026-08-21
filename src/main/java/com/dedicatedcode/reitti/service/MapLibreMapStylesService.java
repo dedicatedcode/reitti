@@ -5,17 +5,17 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -318,8 +318,8 @@ public class MapLibreMapStylesService {
     }
 
     private void rewriteResourceUrls(ObjectNode style) {
-        if (style.get("glyphs") instanceof TextNode glyphsText && glyphsText.asText().startsWith("/")) {
-            style.set("glyphs", new TextNode(contextPathHolder.getContextPath() + glyphsText.asText()));
+        if (style.get("glyphs") instanceof StringNode glyphsText && glyphsText.asText().startsWith("/")) {
+            style.set("glyphs", new StringNode(contextPathHolder.getContextPath() + glyphsText.asText()));
         }
     }
 

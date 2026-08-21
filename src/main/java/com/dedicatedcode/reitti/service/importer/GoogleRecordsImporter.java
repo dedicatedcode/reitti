@@ -7,17 +7,16 @@ import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,8 +62,7 @@ public class GoogleRecordsImporter {
             stateHolder.importStarted();
             logger.info("Importing Google Records file for user {}", user.getUsername());
 
-            JsonFactory factory = objectMapper.getFactory();
-            JsonParser parser = factory.createParser(inputStream);
+            JsonParser parser = objectMapper.createParser(inputStream);
             parentJobId = jobSchedulingService.createParentJob(
                     user,
                     JobType.GOOGLE_TIMELINE_IMPORT,
@@ -78,7 +76,7 @@ public class GoogleRecordsImporter {
             
             // Look for "locations" array (old Records.json format)
             while (parser.nextToken() != null) {
-                if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
+                if (parser.currentToken() == JsonToken.PROPERTY_NAME) {
                     String fieldName = parser.currentName();
                     
                     if ("locations".equals(fieldName)) {
@@ -137,15 +135,15 @@ public class GoogleRecordsImporter {
         // Move to the array
         parser.nextToken(); // Should be START_ARRAY
         
-        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+        if (parser.currentToken() != JsonToken.START_ARRAY) {
             throw new IOException("Invalid format: 'locations' is not an array");
         }
         
         // Process each location in the array
         while (parser.nextToken() != JsonToken.END_ARRAY) {
-            if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
+            if (parser.currentToken() == JsonToken.START_OBJECT) {
                 // Parse the location object
-                JsonNode locationNode = objectMapper.readTree(parser);
+                JsonNode locationNode = parser.readValueAsTree();
                 
                 try {
                     LocationPoint point = convertGoogleRecordsLocation(locationNode);

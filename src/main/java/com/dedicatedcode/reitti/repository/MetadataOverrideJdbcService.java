@@ -2,12 +2,13 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.metadata.MemoryMetadata;
 import com.dedicatedcode.reitti.model.security.User;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

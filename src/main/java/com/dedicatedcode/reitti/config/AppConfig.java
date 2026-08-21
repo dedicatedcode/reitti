@@ -2,7 +2,7 @@ package com.dedicatedcode.reitti.config;
 
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.springframework.boot.autoconfigure.cache.RedisCacheManagerBuilderCustomizer;
+import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,13 +27,9 @@ public class AppConfig {
 
     @Bean
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(RedisConnectionFactory connectionFactory) {
-        return (builder) -> {
-            builder.cacheWriter(
-                    RedisCacheWriter.nonLockingRedisCacheWriter(
-                            connectionFactory,
-                            BatchStrategies.scan(1000)
-                    )
-            );
-        };
+        return (builder) -> builder.cacheWriter(
+                RedisCacheWriter.create(connectionFactory,
+                        config -> config.batchStrategy(BatchStrategies.scan(1000))
+                                .immediateWrites(true)));
     }
 }

@@ -1,17 +1,17 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.UserType;
+import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.StatisticsService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -52,7 +52,7 @@ public class StatisticsController {
         try {
             String transportStatsJson = objectMapper.writeValueAsString(statisticsService.getOverallTransportStatistics(user));
             model.addAttribute("transportStats", transportStatsJson);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             model.addAttribute("transportStats", "[]");
         }
         
@@ -72,7 +72,7 @@ public class StatisticsController {
             
             String breakdownTransportJson = objectMapper.writeValueAsString(statisticsService.getMonthlyTransportBreakdown(user, year));
             model.addAttribute("breakdownTransportData", breakdownTransportJson);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             model.addAttribute("transportStats", "[]");
             model.addAttribute("breakdownTransportData", "[]");
         }
@@ -100,7 +100,7 @@ public class StatisticsController {
             model.addAttribute("dataAvailable", !monthTransportStatistics.isEmpty() || dailyTransportBreakdown.stream().noneMatch(dt -> dt.getTransportStats().isEmpty()));
             model.addAttribute("transportStats", objectMapper.writeValueAsString(monthTransportStatistics));
             model.addAttribute("breakdownTransportData", objectMapper.writeValueAsString(dailyTransportBreakdown));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             model.addAttribute("transportStats", "[]");
             model.addAttribute("breakdownTransportData", "[]");
         }

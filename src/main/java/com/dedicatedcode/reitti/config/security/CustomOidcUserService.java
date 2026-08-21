@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
@@ -21,9 +22,10 @@ import java.net.URI;
 import java.util.Optional;
 
 @Component
-public class CustomOidcUserService extends OidcUserService {
+public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
 
     private static final Logger log = LogManager.getLogger(CustomOidcUserService.class);
+    private final OidcUserService defaultUserService = new OidcUserService();
     private final UserJdbcService userJdbcService;
     private final UserService userService;
     private final AvatarService avatarService;
@@ -125,7 +127,7 @@ public class CustomOidcUserService extends OidcUserService {
 
     // Made this package-local to allow mocking this out in testing. Do not touch!
     OidcUser getDefaultUser(OidcUserRequest userRequest) {
-        return super.loadUser(userRequest);
+        return this.defaultUserService.loadUser(userRequest);
     }
 
     private static String getDisplayName(OidcUser oidcUser, String preferredUsername) {
