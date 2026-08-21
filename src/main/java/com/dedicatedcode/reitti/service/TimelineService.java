@@ -2,18 +2,14 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.UnitSystem;
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import com.dedicatedcode.reitti.model.geo.TransportMode;
-import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
-import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -55,7 +51,7 @@ public class TimelineService {
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
             return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings, ownData);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
         }
@@ -70,7 +66,7 @@ public class TimelineService {
                 .orElse(UserSettings.defaultSettings(user.getId()));
         try {
             return buildTimelineEntries(processedVisits, trips, userTimeZone, selectedDate, userSettings, ownData);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Unable to build timeline entries.", e);
             return Collections.emptyList();
         }
@@ -79,7 +75,7 @@ public class TimelineService {
     /**
      * Build timeline entries from processed visits and trips
      */
-    private List<SingleTimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings, boolean ownData) throws JsonProcessingException {
+    private List<SingleTimelineEntry> buildTimelineEntries(List<ProcessedVisit> processedVisits, List<Trip> trips, ZoneId timezone, LocalDate selectedDate, UserSettings userSettings, boolean ownData) throws JacksonException {
         List<SingleTimelineEntry> entries = new ArrayList<>();
 
         for (ProcessedVisit visit : processedVisits) {

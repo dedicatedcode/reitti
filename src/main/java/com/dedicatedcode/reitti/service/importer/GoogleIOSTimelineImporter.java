@@ -10,18 +10,17 @@ import com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -65,8 +64,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                     JobType.GOOGLE_TIMELINE_IMPORT,
                     "Google Timeline IOS Import - " + originalFilename
             );
-            JsonFactory factory = objectMapper.getFactory();
-            JsonParser parser = factory.createParser(inputStream);
+            JsonParser parser = objectMapper.createParser(inputStream);
 
             List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
 
@@ -117,7 +115,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                     "pointsReceived", processedCount.get()
             );
 
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             logger.error("Error processing Google Timeline file", e);
             if (parentJobId != null) {
                 this.jobSchedulingService.cancel(parentJobId);

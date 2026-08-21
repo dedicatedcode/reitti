@@ -3,11 +3,11 @@ package com.dedicatedcode.reitti.controller;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @ControllerAdvice
 public class MapStyleControllerAdvice {
@@ -25,7 +25,7 @@ public class MapStyleControllerAdvice {
     }
 
     @ModelAttribute("mapStylesJson")
-    public String getMapStylesConfiguration(@AuthenticationPrincipal User user) throws JsonProcessingException {
+    public String getMapStylesConfiguration(@AuthenticationPrincipal User user) throws JacksonException {
         if (user == null) { return null; }
         return this.objectMapper.writeValueAsString(this.mapLibreMapStylesService.getConfig(user));
     }

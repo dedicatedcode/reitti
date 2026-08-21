@@ -5,7 +5,7 @@ import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.servlet.error.ErrorController;
+import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -50,7 +50,7 @@ public class CustomErrorController implements ErrorController {
 
         // Log the error
         log.error("API Error {} occurred for request URI: {}, message: {}",
-                statusCode, requestUri, errorMessage, (Throwable) exception);
+                  statusCode, requestUri, errorMessage, exception);
 
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("success", false);
@@ -94,7 +94,7 @@ public class CustomErrorController implements ErrorController {
 
             if (!SILENT_CODES.contains(statusCode)) {
                 log.error("Error {} occurred for request URI: {}, message: {}",
-                        statusCode, requestUri, errorMessage, (Throwable) exception);
+                          statusCode, requestUri, errorMessage, exception);
             }
             // Add custom messages for common error codes
             switch (statusCode) {
@@ -116,7 +116,7 @@ public class CustomErrorController implements ErrorController {
             model.addAttribute("error", "Internal Server Error");
             model.addAttribute("message", "An unexpected error occurred. Please try again later.");
 
-            log.error("Unknown error occurred for request URI: {}", requestUri, (Throwable) exception);
+            log.error("Unknown error occurred for request URI: {}", requestUri, exception);
         }
 
         // Add stack trace for development environments (only if localhost)

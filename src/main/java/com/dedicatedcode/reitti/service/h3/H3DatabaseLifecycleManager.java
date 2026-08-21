@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 import org.quartz.*;
@@ -11,16 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.UUID;
 
 @DisallowConcurrentExecution
 public class H3DatabaseLifecycleManager implements Job {

@@ -1,11 +1,7 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.PlaceInfo;
-import com.dedicatedcode.reitti.model.AvailableCountry;
-import com.dedicatedcode.reitti.model.Page;
-import com.dedicatedcode.reitti.model.PageRequest;
-import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.UserType;
+import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
@@ -23,8 +19,6 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -41,6 +35,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -145,7 +141,7 @@ public class PlacesSettingsController {
         PlaceChangeDetectionService.PlaceChangeAnalysis analysis = 
             placeChangeDetectionService.analyzeChanges(user, placeId, polygonData);
         
-        return new CheckUpdateResponse(analysis.isCanProceed(), analysis.getWarnings());
+        return new CheckUpdateResponse(analysis.canProceed(), analysis.warnings());
     }
 
     @PostMapping("/{placeId}/update")
@@ -206,7 +202,7 @@ public class PlacesSettingsController {
                     updatedPlace = updatedPlace.withPolygon(null);
                 }
 
-                if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).isCanProceed()) {
+                if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).canProceed()) {
                     placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
                     this.jobSchedulingService.enqueueTask(locationDataCleanupTask, new DataCleanupService.TaskData(user, updatedPlace),
@@ -405,22 +401,7 @@ public class PlacesSettingsController {
         return geoPoints;
     }
 
-    public static class CheckUpdateResponse {
-        private final boolean canProceed;
-        private final List<String> warnings;
-
-        public CheckUpdateResponse(boolean canProceed, List<String> warnings) {
-            this.canProceed = canProceed;
-            this.warnings = warnings;
-        }
-
-        public boolean isCanProceed() {
-            return canProceed;
-        }
-
-        public List<String> getWarnings() {
-            return warnings;
-        }
+    public record CheckUpdateResponse(boolean canProceed, List<String> warnings) {
     }
 
 }

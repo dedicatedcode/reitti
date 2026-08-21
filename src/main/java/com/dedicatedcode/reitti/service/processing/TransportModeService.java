@@ -13,7 +13,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,11 +52,11 @@ public class TransportModeService {
         // Load all overrides for the trip's time range upfront
         List<TransportModeOverride> overrides = this.transportModeOverrideJdbcService.getTransportModeOverrides(user, tripStart, tripEnd);
         if (!overrides.isEmpty()) {
-            log.debug("segmentTrip: loaded {} override(s) for trip [{}..{}]", overrides.size(), tripStart, tripEnd);
+            log.trace("segmentTrip: loaded {} override(s) for trip [{}..{}]", overrides.size(), tripStart, tripEnd);
         }
 
         List<ChunkClass> chunks = chunkAndClassify(points, configs);
-        log.debug("segmentTrip: {} points, {} chunks, trip [{}-{}]", points.size(), chunks.size(), tripStart, tripEnd);
+        log.trace("segmentTrip: {} points, {} chunks, trip [{}-{}]", points.size(), chunks.size(), tripStart, tripEnd);
 
         List<TransportModeSegment> result = new ArrayList<>();
         long chunkStartOffset = 0;
@@ -99,7 +98,7 @@ public class TransportModeService {
                         next.offsetSeconds() - cur.offsetSeconds(),
                         cur.distanceMeters()
                 ));
-                log.debug("segmentTrip: extended segment {} at +{}s to cover gap of {}s", i, cur.offsetSeconds(), next.offsetSeconds() - curEnd);
+                log.trace("segmentTrip: extended segment {} at +{}s to cover gap of {}s", i, cur.offsetSeconds(), next.offsetSeconds() - curEnd);
             }
         }
 
@@ -109,13 +108,13 @@ public class TransportModeService {
             result = result.stream()
                     .map(s -> new TransportModeSegment(s.mode(), s.offsetSeconds() + firstPointOffset, s.durationSeconds(), s.distanceMeters()))
                     .toList();
-            log.debug("segmentTrip: shifted {} segment(s) by +{}s (first point is {}s after tripStart)",
+            log.trace("segmentTrip: shifted {} segment(s) by +{}s (first point is {}s after tripStart)",
                     result.size(), firstPointOffset, firstPointOffset);
         }
 
         if (result.isEmpty()) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
-            log.debug("segmentTrip: no segments after post-processing, returning single UNKNOWN");
+            log.trace("segmentTrip: no segments after post-processing, returning single UNKNOWN");
             result = List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
@@ -138,7 +137,6 @@ public class TransportModeService {
         int chunkCount = 0;
         for (long offset = 0; offset < totalDuration; offset += CHUNK_DURATION_SECONDS) {
             long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
-            Instant chunkStartTime = tripStart.plusSeconds(offset);
             Instant chunkEndTime = tripStart.plusSeconds(chunkEnd);
 
             List<RawLocationPoint> chunkPoints = new ArrayList<>();
@@ -161,7 +159,7 @@ public class TransportModeService {
             chunkCount++;
         }
 
-        log.debug("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), points.size(), totalDuration);
+        log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), points.size(), totalDuration);
         return chunks;
     }
 
@@ -221,7 +219,7 @@ public class TransportModeService {
         }
         result.add(current);
         if (mergeCount > 0) {
-            log.debug("mergeSameModeSegments: merged {} adjacent segment(s) down to {} segments", mergeCount, result.size());
+            log.trace("mergeSameModeSegments: merged {} adjacent segment(s) down to {} segments", mergeCount, result.size());
         }
         return result;
     }
@@ -260,7 +258,7 @@ public class TransportModeService {
         } while (changed);
 
         if (totalCollapsed > 0) {
-            log.debug("collapseShortSegments: collapsed {} short segment(s) (MIN_SEGMENT_DURATION_SECONDS={}s)", totalCollapsed, MIN_SEGMENT_DURATION_SECONDS);
+            log.trace("collapseShortSegments: collapsed {} short segment(s) (MIN_SEGMENT_DURATION_SECONDS={}s)", totalCollapsed, MIN_SEGMENT_DURATION_SECONDS);
         }
         return result;
     }
