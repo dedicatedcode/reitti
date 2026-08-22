@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
@@ -30,18 +29,15 @@ public class FitFileImporter {
 
     private static final Logger logger = LoggerFactory.getLogger(FitFileImporter.class);
 
-    private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
-    public FitFileImporter(ImportStateHolder stateHolder,
-                           LocationPointStagingService stagingService,
+    public FitFileImporter(LocationPointStagingService stagingService,
                            @Qualifier("promotionJob") JobDetail promotionTask,
                            JobSchedulingService jobSchedulingService,
                            @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
-        this.stateHolder = stateHolder;
         this.stagingService = stagingService;
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
@@ -51,7 +47,6 @@ public class FitFileImporter {
     public Map<String, Object> importFile(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
         try {
-            stateHolder.importStarted();
             logger.info("Importing Fit file for user {} with device {}", user.getUsername(), device.name());
             String partitionKey = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(partitionKey);
@@ -131,8 +126,6 @@ public class FitFileImporter {
         } catch (Exception e) {
             logger.error("Error processing Fit file", e);
             return Map.of("success", false, "error", "Error processing Fit file: " + e.getMessage());
-        } finally {
-            stateHolder.importFinished();
         }
     }
 }

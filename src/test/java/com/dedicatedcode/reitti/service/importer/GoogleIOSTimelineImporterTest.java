@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,7 @@ class GoogleIOSTimelineImporterTest {
     void shouldParseNewGoogleTakeOutFileFromIOS() {
         JobSchedulingService jobScheduler = mock(JobSchedulingService.class);
 
-        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(), new ImportStateHolder(),
+        GoogleIOSTimelineImporter importHandler = new GoogleIOSTimelineImporter(new ObjectMapper(),
                                                                                 mock(LocationPointStagingService.class),
                                                                                 mock(JobDetail.class),
                                                                                 jobScheduler,

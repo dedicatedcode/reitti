@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
+import com.dedicatedcode.reitti.service.processing.UserProcessingLock;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +28,14 @@ public class TransportModeRecalculationTask implements Job {
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final TransportModeService transportModeService;
     private final JobMetadataRepository metadataRepository;
+    private final UserProcessingLock userProcessingLock;
 
-    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository) {
+    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository, UserProcessingLock userProcessingLock) {
         this.tripJdbcService = tripJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.transportModeService = transportModeService;
         this.metadataRepository = metadataRepository;
+        this.userProcessingLock = userProcessingLock;
     }
 
     @Override
@@ -47,20 +50,21 @@ public class TransportModeRecalculationTask implements Job {
         long allTripsAmountForUser = this.tripJdbcService.count(taskData.user);
         metadataRepository.updateProgress(taskData.getJobId(), 0, allTripsAmountForUser, "Updating trips");
         AtomicLong currentTrip = new AtomicLong();
-        tripJdbcService.findByUser(user).forEach(trip -> {
-            Instant startTime = trip.getStartTime();
-            Instant endTime = trip.getEndTime();
-            List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
-            List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, startTime, endTime);
-            if (!segments.equals(trip.getSegments())) {
-                log.trace("Reclassified trip {} from {} to {} to segments {}", trip.getId(), trip.getSegments(), endTime, segments);
-                trip = trip.withSegments(segments);
-                this.tripJdbcService.update(trip);
-            }
-            if (currentTrip.getAndIncrement() % 100 == 0) {
-                metadataRepository.updateProgress(taskData.getJobId(), currentTrip.get(), allTripsAmountForUser, "Updating trips");
-            }
-        });
+        userProcessingLock.locked(user, () ->
+                tripJdbcService.findByUser(user).forEach(trip -> {
+                    Instant startTime = trip.getStartTime();
+                    Instant endTime = trip.getEndTime();
+                    List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
+                    List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, startTime, endTime);
+                    if (!segments.equals(trip.getSegments())) {
+                        log.trace("Reclassified trip {} from {} to {} to segments {}", trip.getId(), trip.getSegments(), endTime, segments);
+                        trip = trip.withSegments(segments);
+                        this.tripJdbcService.update(trip);
+                    }
+                    if (currentTrip.getAndIncrement() % 100 == 0) {
+                        metadataRepository.updateProgress(taskData.getJobId(), currentTrip.get(), allTripsAmountForUser, "Updating trips");
+                    }
+                }));
     }
 
     public static class TaskData extends JobContext<TaskData> {

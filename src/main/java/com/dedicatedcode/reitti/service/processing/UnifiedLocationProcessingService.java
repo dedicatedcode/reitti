@@ -378,13 +378,19 @@ public class UnifiedLocationProcessingService {
         if (previewId == null && !processedVisits.isEmpty()) {
             //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
             Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).toHours() <= 24) {
-                trips.add(createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst()));
+            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
+                Trip tripBefore = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst());
+                if (tripBefore != null) {
+                    trips.add(tripBefore);
+                }
             }
 
             Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).toHours() <= 24) {
-                trips.add(createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get()));
+            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
+                Trip tripAfter = createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get());
+                if (tripAfter != null) {
+                    trips.add(tripAfter);
+                }
             }
         }
         trips.sort(Comparator.comparing(Trip::getStartTime));
@@ -522,7 +528,7 @@ public class UnifiedLocationProcessingService {
             if (samePlace && !withinTimeThreshold) {
                 List<RawLocationPoint> pointsBetweenVisits;
                 if (previewId == null) {
-                    pointsBetweenVisits = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime());
+                    pointsBetweenVisits = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime(), true, false);
                 } else {
                     pointsBetweenVisits = this.previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, currentEndTime, nextVisit.getStartTime());
                 }
@@ -776,7 +782,8 @@ public class UnifiedLocationProcessingService {
         }
 
         if (tripPoints.size() < 2) {
-            logger.warn("Unable to create Trip with less than 2 points");
+            logger.warn("Unable to create Trip for user [{}] between [{}] and [{}]: only [{}] point(s) available",
+                    user.getUsername(), tripStartTime, tripEndTime, tripPoints.size());
             return null;
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
