@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
@@ -200,10 +201,11 @@ public class TimelineController {
     @GetMapping("/trips/transport-mode-dialog/{id}")
     public String getTransportModeDialog(@PathVariable Long id,
                                          @RequestParam(required = false) String returnUrl,
+                                         @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                          Model model) {
         Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
-        model.addAttribute("tripStartTime", trip.getStartTime());
+        model.addAttribute("tripStartTime", TimeUtil.adjustInstant(trip.getStartTime(), timezone));
         model.addAttribute("transportModeSegments", trip.getSegments());
         model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
