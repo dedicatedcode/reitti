@@ -46,10 +46,9 @@ public class JobStatusController {
 
     @GetMapping("/queue-stats-content")
     public String getQueueStatsContent(@RequestParam(defaultValue = "UTC") ZoneId timezone, Model model) {
-        // Fetch all non-SSE jobs in active states
         List<JobMetadataRepository.JobMetadata> activeJobs =
                 jobMetadataRepository.findByStates(
-                        List.of(JobState.PREPARING, JobState.AWAITING, JobState.RUNNING)
+                        List.of(JobState.PREPARING, JobState.CREATED, JobState.AWAITING, JobState.RUNNING)
                 );
 
         List<JobMetadataRepository.JobMetadata> terminalJobs =
@@ -93,7 +92,6 @@ public class JobStatusController {
                 .map(parent -> buildPendingJobInfo(timezone, parent, childrenByParent, averageRuntimes))
                 .collect(Collectors.toList());
 
-        pendingJobs = pendingJobs.stream().filter(j -> !j.children().isEmpty() || jobMetadataRepository.verifyAgainstQuartz(j.id())).toList();
         // Build past job info (with duration)
         List<JobInfo> pastJobs = pastParents.stream()
                 .map(j -> mapToJobInfo(timezone, j))
@@ -138,45 +136,25 @@ public class JobStatusController {
         AverageRuntime avgRuntime = averageRuntimes.get(parent.getJobType());
         Long estimatedDuration = avgRuntime != null ? avgRuntime.getEstimatedSeconds() : null;
 
-        if (totalChildren == 0) {
-
-            return new JobInfo(
-                    base.id(),
-                    base.name(),
-                    base.description(),
-                    base.state(),
-                    base.enqueuedAt(),
-                    base.scheduledAt(),
-                    base.processingAt(),
-                    base.finishedAt(),
-                    base.canCancel(),
-                    children,
-                    completedChildren,
-                    totalChildren,
-                    estimatedDuration,
-                    base.progressPercent(),  // no progress for parent grouping
-                    base.progressMessage()
-            );
-
-        } else {
-            return new JobInfo(
-                    base.id(),
-                    base.name(),
-                    base.description(),
-                    base.state(),
-                    base.enqueuedAt(),
-                    base.scheduledAt(),
-                    base.processingAt(),
-                    base.finishedAt(),
-                    base.canCancel(),
-                    children,
-                    completedChildren,
-                    totalChildren,
-                    estimatedDuration,
-                    0,  // no progress for parent grouping
-                    null
-            );
-        }
+        // JobInfo derives percent/text from the children counts when present,
+        // otherwise it falls back to the parent's own progress values.
+        return new JobInfo(
+                base.id(),
+                base.name(),
+                base.description(),
+                base.state(),
+                base.enqueuedAt(),
+                base.scheduledAt(),
+                base.processingAt(),
+                base.finishedAt(),
+                base.canCancel(),
+                children,
+                completedChildren,
+                totalChildren,
+                estimatedDuration,
+                base.progressPercentValue(),
+                base.progressMessage()
+        );
     }
 
     private Map<JobType, AverageRuntime> calculateAverageRuntimes(List<JobMetadataRepository.JobMetadata> fullyCompleteParents) {

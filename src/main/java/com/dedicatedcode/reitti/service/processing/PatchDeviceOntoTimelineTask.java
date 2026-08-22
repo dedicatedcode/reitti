@@ -48,7 +48,7 @@ public class PatchDeviceOntoTimelineTask implements Job {
         log.info("Updated timeline override for user [{}], device [{}] between [{}] and [{}]", taskData.user, taskData.device, taskData.start, taskData.end);
         this.jobSchedulingService.enqueueTask(updateCuratedTimelineTask,
                                               new UpdateCuratedTimelineTask.TaskData(taskData.user, taskData.device, TimeRange.of(taskData.start, taskData.end))
-                                                      .withParentJobId(taskData.getJobId()), JobSchedulingService.Metadata.builder()
+                                                      .withParentJobId(taskData.getParentJobId()), JobSchedulingService.Metadata.builder()
                                                       .user(taskData.user)
                                                       .friendlyName(i18n.translate("jobs.recalculate_timeline.stitching.friendly_name", taskData.start, taskData.end))
                                                       .jobType(JobType.TIMELINE_STITCHING).build());

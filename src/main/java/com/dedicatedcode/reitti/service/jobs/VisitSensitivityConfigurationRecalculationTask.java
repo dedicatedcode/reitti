@@ -73,7 +73,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
                 log.debug("Starting recalculation of all configurations");
                 this.jobMetadataRepository.updateProgress(taskData.getJobId(), 5, 5, "Starting recalculation ... ");
                 jobSchedulingService.enqueueTask(processingPipelineTask,
-                                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(taskData.getJobId()),
+                                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(taskData.getParentJobId()),
                                                  new JobSchedulingService.Metadata(user, JobType.LOCATION_PROCESSING, "Processing location data ..."));
             });
         } catch (Exception e) {

@@ -1,10 +1,10 @@
 package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,12 +25,18 @@ public class H3CellUpdateJob implements Job {
     private final RocksDBH3Service rocksDbService;
     private final PointReaderWriter pointReaderWriter;
     private final JobSchedulingService jobSchedulingService;
+    private final JobMetadataRepository jobMetadataRepository;
 
-    public H3CellUpdateJob(JdbcTemplate jdbcTemplate, RocksDBH3Service rocksDbService, PointReaderWriter pointReaderWriter, JobSchedulingService jobSchedulingService) {
+    public H3CellUpdateJob(JdbcTemplate jdbcTemplate,
+                           RocksDBH3Service rocksDbService,
+                           PointReaderWriter pointReaderWriter,
+                           JobSchedulingService jobSchedulingService,
+                           JobMetadataRepository jobMetadataRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.rocksDbService = rocksDbService;
         this.pointReaderWriter = pointReaderWriter;
         this.jobSchedulingService = jobSchedulingService;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
 
     @Override
@@ -37,16 +44,10 @@ public class H3CellUpdateJob implements Job {
         TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
 
         if (!rocksDbService.isAvailable()) {
-            log.debug("RocksDB is not available yet. Rescheduling job.");
-            jobSchedulingService.scheduleTask(
-                    context.getJobDetail(),
-                    data,
-                    Instant.now().plusSeconds(5),
-                    JobSchedulingService.Metadata.builder()
-                            .jobType(JobType.H3_CELL_UPDATE)
-                            .friendlyName("Updating H3 Spatial Statistics (retry)")
-                            .build()
-            );
+            log.debug("RocksDB is not available yet. Deferring job.");
+            if (!jobSchedulingService.defer(context, Duration.ofSeconds(5), "Waiting for RocksDB to become available")) {
+                log.warn("Cannot defer untracked H3 cell update, dropping execution");
+            }
             return;
         }
 
@@ -71,7 +72,9 @@ public class H3CellUpdateJob implements Job {
         // Process in batches to avoid memory issues and database timeouts
         final int batchSize = 1000;
         List<Long> ids = data.pointIds;
+        jobMetadataRepository.updateProgress(data.getJobId(), 0, ids.size(), "Updating H3 cells ...");
 
+        int processed = 0;
         for (int i = 0; i < ids.size(); i += batchSize) {
             int endIndex = Math.min(i + batchSize, ids.size());
             List<Long> batch = ids.subList(i, endIndex);
@@ -84,7 +87,10 @@ public class H3CellUpdateJob implements Job {
                 case DELETION -> processBatchForDeletion(batch);
                 case PROMOTION -> processBatchForPromotion(batch);
             }
+            processed += batch.size();
+            jobMetadataRepository.updateProgress(data.getJobId(), processed, ids.size(), "Updating H3 cells ...");
         }
+        jobMetadataRepository.updateProgress(data.getJobId(), processed, ids.size(), "Done");
     }
 
     private void processMovement(List<MovedPoint> movedPoints) {

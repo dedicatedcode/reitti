@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -25,17 +26,20 @@ public class UpdateCuratedTimelineTask implements Job {
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail processingPipelineTask;
     private final UserProcessingLock userProcessingLock;
+    private final JobMetadataRepository jobMetadataRepository;
 
     public UpdateCuratedTimelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
                                      SyntheticPointInserter syntheticPointInserter,
                                      JobSchedulingService jobSchedulingService,
                                      @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
-                                     UserProcessingLock userProcessingLock) {
+                                     UserProcessingLock userProcessingLock,
+                                     JobMetadataRepository jobMetadataRepository) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.syntheticPointInserter = syntheticPointInserter;
         this.jobSchedulingService = jobSchedulingService;
         this.processingPipelineTask = processingPipelineTask;
         this.userProcessingLock = userProcessingLock;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
 
     @Override
@@ -47,20 +51,26 @@ public class UpdateCuratedTimelineTask implements Job {
 
     public void execute(TaskData data) {
         log.debug("Starting updating main timeline for user [{}] and device[{}] in timeRange [{}]", data.user, data.device, data.timeRange);
+        UUID jobId = data.getJobId();
         userProcessingLock.locked(data.user, () -> {
             //1. clear main timeline
+            this.jobMetadataRepository.updateProgress(jobId, 0, 4, "Clearing main timeline ...");
             this.rawLocationPointJdbcService.dropForReSeeding(data.user, data.timeRange);
             //2. update main timeline from view
+            this.jobMetadataRepository.updateProgress(jobId, 1, 4, "Updating main timeline ...");
             int updatedCount = this.rawLocationPointJdbcService.updateFromDevices(data.user, data.timeRange);
             log.debug("Updated {} timeline points for user [{}] and device[{}] in timeRange [{}]", updatedCount, data.user, data.device, data.timeRange);
             //3. insert new possible synthetic points
+            this.jobMetadataRepository.updateProgress(jobId, 2, 4, "Inserting synthetic points ...");
             this.syntheticPointInserter.fillGaps(data.user, data.timeRange);
             //4. trigger new processing job
+            this.jobMetadataRepository.updateProgress(jobId, 3, 4, "Scheduling visit detection ...");
             this.jobSchedulingService.enqueueTask(processingPipelineTask,
-                                     new ProcessingPipelineTask.TaskData(data.user.getUsername(), null, null),
+                                     new ProcessingPipelineTask.TaskData(data.user.getUsername(), null, null).withParentJobId(data.getParentJobId()),
                                                   JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                                           .user(data.user)
                                                           .friendlyName("Detect Visits and Trips").build());
+            this.jobMetadataRepository.updateProgress(jobId, 4, 4, "Done");
         });
 
     }

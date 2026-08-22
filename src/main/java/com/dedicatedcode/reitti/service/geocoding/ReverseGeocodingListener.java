@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.geocoding;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PreviewSignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
@@ -32,18 +33,21 @@ public class ReverseGeocodingListener implements Job {
     private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
     private final UserNotificationService userNotificationService;
     private final UserJdbcService userJdbcService;
+    private final JobMetadataRepository jobMetadataRepository;
 
     @Autowired
     public ReverseGeocodingListener(SignificantPlaceJdbcService significantPlaceJdbcService,
                                     PreviewSignificantPlaceJdbcService previewSignificantPlaceJdbcService,
                                     GeocodeServiceManager geocodeServiceManager, SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
-                                    UserNotificationService userNotificationService, UserJdbcService userJdbcService) {
+                                    UserNotificationService userNotificationService, UserJdbcService userJdbcService,
+                                    JobMetadataRepository jobMetadataRepository) {
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.previewSignificantPlaceJdbcService = previewSignificantPlaceJdbcService;
         this.geocodeServiceManager = geocodeServiceManager;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
         this.userNotificationService = userNotificationService;
         this.userJdbcService = userJdbcService;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
 
     @Override
@@ -65,6 +69,7 @@ public class ReverseGeocodingListener implements Job {
 
         SignificantPlace place = placeOptional.get();
 
+        jobMetadataRepository.updateProgress(event.getJobId(), 0, 1, "Reverse geocoding place ...");
         try {
             Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place, event.previewId() == null);
 
@@ -108,6 +113,8 @@ public class ReverseGeocodingListener implements Job {
             }
         } catch (Exception e) {
             logger.error("Error during reverse geocoding for place ID: {}", place.getId(), e);
+        } finally {
+            jobMetadataRepository.updateProgress(event.getJobId(), 1, 1, "Done");
         }
     }
 
