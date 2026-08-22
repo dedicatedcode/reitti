@@ -193,7 +193,10 @@ Reitti publishes several Docker image tags to serve different needs:
 | `SPATIAL_COVERAGE`      | Enable the spatial coverage feature               | `false`    |
 
 > For the full list of environment variables, deployment options, and OIDC setup, see
-> the [Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/5.0/infrastructure/oidc/).
+> the [Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/latest/infrastructure/docker-config/).
+>
+> To connect to Redis via a Unix domain socket instead of TCP, set `REDIS_SOCKET` to the socket path — see
+> the [Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/latest/infrastructure/docker-config/#redis-cache) for details.
 
 ---
 
