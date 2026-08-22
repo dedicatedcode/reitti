@@ -135,6 +135,9 @@ public class TransportModeService {
 
         int pointIndex = 0;
         int chunkCount = 0;
+        Long pendingStartOffset = null;
+        long pendingEndOffset = 0;
+        List<RawLocationPoint> pendingPoints = new ArrayList<>();
         for (long offset = 0; offset < totalDuration; offset += CHUNK_DURATION_SECONDS) {
             long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
             Instant chunkEndTime = tripStart.plusSeconds(chunkEnd);
@@ -146,10 +149,19 @@ public class TransportModeService {
             }
 
             if (chunkPoints.size() < 2) {
-                log.trace("chunkAndClassify: chunk {} at +{}s skipped ({} point(s))", chunkCount, offset, chunkPoints.size());
+                log.trace("chunkAndClassify: chunk {} at +{}s sparse ({} point(s)), deferring classification", chunkCount, offset, chunkPoints.size());
+                if (pendingStartOffset == null) {
+                    pendingStartOffset = offset;
+                }
+                pendingEndOffset = chunkEnd;
+                pendingPoints.addAll(chunkPoints);
                 chunkCount++;
                 continue;
             }
+
+            flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+            pendingStartOffset = null;
+            pendingPoints.clear();
 
             TransportMode mode = classifySegment(chunkPoints, configs);
             double distanceMeters = GeoUtils.calculateTripDistance(chunkPoints);
@@ -159,8 +171,25 @@ public class TransportModeService {
             chunkCount++;
         }
 
+        flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+
         log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), points.size(), totalDuration);
         return chunks;
+    }
+
+    private void flushSparseSpan(Long startOffset, long endOffset, List<RawLocationPoint> spanPoints, List<TransportModeConfig> configs, List<ChunkClass> chunks) {
+        if (startOffset == null) {
+            return;
+        }
+        if (spanPoints.size() < 2) {
+            log.trace("flushSparseSpan: sparse span at +{}s..+{}s dropped ({} point(s)), covered by neighboring segments", startOffset, endOffset, spanPoints.size());
+            return;
+        }
+        TransportMode mode = classifySegment(spanPoints, configs);
+        double distanceMeters = GeoUtils.calculateTripDistance(spanPoints);
+        double avgSpeed = calculateAverageSpeedKmh(spanPoints);
+        log.trace("flushSparseSpan: sparse span at +{}s..+{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", startOffset, endOffset, spanPoints.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
+        chunks.add(new ChunkClass(mode, endOffset - startOffset, distanceMeters));
     }
 
     private double calculateAverageSpeedKmh(List<RawLocationPoint> points) {
