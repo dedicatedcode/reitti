@@ -128,7 +128,8 @@ public class UnifiedLocationProcessingService {
                 event.getTraceId(),
                 detectionResult.searchStart,
                 detectionResult.searchEnd,
-                detectionResult.visits);
+                detectionResult.visits,
+                event.getParentJobId());
         logger.debug("Merging: {} visits merged into {} processed visits",
                 mergingResult.inputVisits.size(),
                 mergingResult.processedVisits.size());
@@ -285,7 +286,7 @@ public class UnifiedLocationProcessingService {
      * STEP 2: Visit Merging
      * Merges nearby visits into ProcessedVisit entities with SignificantPlaces.
      */
-    private VisitMergingResult mergeVisits(User user, String previewId, String traceId, Instant initialStart, Instant initialEnd, List<Visit> allVisits) {
+    private VisitMergingResult mergeVisits(User user, String previewId, String traceId, Instant initialStart, Instant initialEnd, List<Visit> allVisits, UUID parentJobId) {
         long start = System.currentTimeMillis();
 
         // Get merging parameters
@@ -331,7 +332,7 @@ public class UnifiedLocationProcessingService {
         }
 
         // Merge visits chronologically
-        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, traceId, allVisits, mergeConfig);
+        List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, traceId, allVisits, mergeConfig, parentJobId);
 
         // Save processed visits
         if (previewId == null) {
@@ -492,7 +493,7 @@ public class UnifiedLocationProcessingService {
 
     private List<ProcessedVisit> mergeVisitsChronologically(
             User user, String previewId, String traceId, List<Visit> visits,
-            DetectionParameter.VisitMerging mergeConfiguration) {
+            DetectionParameter.VisitMerging mergeConfiguration, UUID parentJobId) {
         if (visits.isEmpty()) {
             return new ArrayList<>();
         }
@@ -505,7 +506,7 @@ public class UnifiedLocationProcessingService {
         Visit currentVisit = visits.getFirst();
         Instant currentStartTime = currentVisit.getStartTime();
         Instant currentEndTime = currentVisit.getEndTime();
-        SignificantPlace currentPlace = findOrCreateSignificantPlace(user, previewId, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration, traceId);
+        SignificantPlace currentPlace = findOrCreateSignificantPlace(user, previewId, currentVisit.getLatitude(), currentVisit.getLongitude(), mergeConfiguration, traceId, parentJobId);
 
         for (int i = 1; i < visits.size(); i++) {
             Visit nextVisit = visits.get(i);
@@ -518,7 +519,7 @@ public class UnifiedLocationProcessingService {
                 continue;
             }
 
-            SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId);
+            SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId, parentJobId);
 
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
@@ -826,13 +827,13 @@ public class UnifiedLocationProcessingService {
     private SignificantPlace findOrCreateSignificantPlace(User user, String previewId,
                                                           double latitude, double longitude,
                                                           DetectionParameter.VisitMerging mergeConfig,
-                                                          String traceId) {
+                                                          String traceId, UUID parentJobId) {
         List<SignificantPlace> nearbyPlaces = findNearbyPlaces(user, previewId, latitude, longitude, mergeConfig);
-        return nearbyPlaces.isEmpty() ? createSignificantPlace(user, latitude, longitude, previewId, traceId) : findClosestPlace(latitude, longitude, nearbyPlaces);
+        return nearbyPlaces.isEmpty() ? createSignificantPlace(user, latitude, longitude, previewId, traceId, parentJobId) : findClosestPlace(latitude, longitude, nearbyPlaces);
     }
 
 
-    private SignificantPlace createSignificantPlace(User user, double latitude, double longitude, String previewId, String traceId) {
+    private SignificantPlace createSignificantPlace(User user, double latitude, double longitude, String previewId, String traceId, UUID parentJobId) {
         SignificantPlace significantPlace = SignificantPlace.create(latitude, longitude);
         Optional<ZoneId> timezone = this.timezoneService.getTimezone(significantPlace);
         if (timezone.isPresent()) {
@@ -850,7 +851,7 @@ public class UnifiedLocationProcessingService {
                     .withPolygon(override.get().polygon());
         }
         significantPlace = previewId == null ? this.significantPlaceJdbcService.create(user, significantPlace) : this.previewSignificantPlaceJdbcService.create(user, previewId, significantPlace);
-        publishSignificantPlaceCreatedEvent(user, significantPlace, previewId, traceId);
+        publishSignificantPlaceCreatedEvent(user, significantPlace, previewId, traceId, parentJobId);
         return significantPlace;
     }
 
@@ -871,7 +872,7 @@ public class UnifiedLocationProcessingService {
                 place2.getLatitudeCentroid(), place2.getLongitudeCentroid());
     }
 
-    private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId, String traceId) {
+    private void publishSignificantPlaceCreatedEvent(User user, SignificantPlace place, String previewId, String traceId, UUID parentJobId) {
         ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
                 user.getUsername(),
                 previewId,
@@ -879,7 +880,7 @@ public class UnifiedLocationProcessingService {
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
                 traceId
-        );
+        ).withParentJobId(parentJobId);
         this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
                                       JobSchedulingService.Metadata.builder()
                                           .user(user)

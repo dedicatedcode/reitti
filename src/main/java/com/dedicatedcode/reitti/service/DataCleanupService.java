@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
@@ -32,6 +33,7 @@ public class DataCleanupService implements Job {
     private final JobSchedulingService jobScheduler;
     private final SignificantPlaceJdbcService placeJdbcService;
     private final JobDetail processingPipelineTask;
+    private final JobMetadataRepository jobMetadataRepository;
 
 
     public DataCleanupService(TripJdbcService tripJdbcService,
@@ -39,7 +41,8 @@ public class DataCleanupService implements Job {
                               SignificantPlaceJdbcService significantPlaceJdbcService,
                               RawLocationPointJdbcService rawLocationPointJdbcService,
                               JobSchedulingService jobScheduler, SignificantPlaceJdbcService placeJdbcService,
-                              @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
+                              @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
+                              JobMetadataRepository jobMetadataRepository) {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
@@ -47,6 +50,7 @@ public class DataCleanupService implements Job {
         this.jobScheduler = jobScheduler;
         this.placeJdbcService = placeJdbcService;
         this.processingPipelineTask = processingPipelineTask;
+        this.jobMetadataRepository = jobMetadataRepository;
     }
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -59,15 +63,21 @@ public class DataCleanupService implements Job {
         User user = taskData.user;
         SignificantPlace updatedPlace = taskData.place;
         Long placeId = updatedPlace.getId();
+        UUID jobId = taskData.getJobId();
 
+        this.jobMetadataRepository.updateProgress(jobId, 0, 2, "Analyzing affected places ...");
         List<SignificantPlace> placesToRemove = placeJdbcService.findPlacesOverlappingWithPolygon(user.getId(), placeId, updatedPlace.getPolygon());
         List<SignificantPlace> placesToCheck = new ArrayList<>(placesToRemove);
         placesToCheck.add(updatedPlace);
         List<LocalDate> affectedDays = this.processedVisitJdbcService.getAffectedDays(placesToCheck);
-        cleanupForGeometryChange(user, placesToRemove, affectedDays, taskData.jobId);
+
+        this.jobMetadataRepository.updateProgress(jobId, 1, 2, "Removing trips, visits, places and marking points unprocessed ...");
+        cleanupForGeometryChange(user, placesToRemove, affectedDays, taskData.getParentJobId());
+
+        this.jobMetadataRepository.updateProgress(jobId, 2, 2, "Done");
     }
 
-    void cleanupForGeometryChange(User user, List<SignificantPlace> placesToRemove, List<LocalDate> affectedDays, UUID jobId) {
+    void cleanupForGeometryChange(User user, List<SignificantPlace> placesToRemove, List<LocalDate> affectedDays, UUID parentJobId) {
         long start = System.nanoTime();
 
         log.info("Cleanup for geometry change. Removing [{}] places and starting recalculation for days [{}]", placesToRemove.size(), affectedDays);
@@ -85,7 +95,7 @@ public class DataCleanupService implements Job {
         log.info("clearing processed points for days [{}] completed in {}ms", affectedDays, (System.nanoTime() - start) / 1000000);
 
         jobScheduler.enqueueTask(processingPipelineTask,
-                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(jobId),
+                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(parentJobId),
                                   JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                           .user(user)
                                           .friendlyName("Detect Visits and Trips").build()

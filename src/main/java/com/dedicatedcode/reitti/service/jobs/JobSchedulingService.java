@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.JobContext;
 import org.quartz.*;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,15 +13,22 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class JobSchedulingService implements JobListener {
     private static final Logger log = LoggerFactory.getLogger(JobSchedulingService.class);
+    public static final String TASK_TRIGGER_GROUP = "reitti-tasks";
 
+    private final Set<UUID> deferredJobs = ConcurrentHashMap.newKeySet();
     private final Scheduler scheduler;
     private final JobMetadataRepository jobMetadataRepository;
 
@@ -37,7 +45,7 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobToBeExecuted(JobExecutionContext context) {
-        Optional<UUID> jobId = parseJobId(context);
+        Optional<UUID> jobId = resolveJobId(context);
         jobId.ifPresent(id -> {
             this.jobMetadataRepository.updateState(id, JobState.RUNNING, Instant.now());
             log.trace("Job with ID {} is now in the state of {}", id, JobState.RUNNING);
@@ -49,7 +57,20 @@ public class JobSchedulingService implements JobListener {
         });
     }
 
-    private Optional<UUID> parseJobId(JobExecutionContext context) {
+    private Optional<UUID> resolveJobId(JobExecutionContext context) {
+        Object fromDataMap = context.getMergedJobDataMap().get("jobId");
+        if (fromDataMap instanceof String s) {
+            try {
+                return Optional.of(UUID.fromString(s));
+            } catch (IllegalArgumentException e) {
+                log.warn("Found non-UUID jobId in JobDataMap: {}", s);
+                return Optional.empty();
+            }
+        }
+        return parseJobIdFromTriggerName(context);
+    }
+
+    private Optional<UUID> parseJobIdFromTriggerName(JobExecutionContext context) {
         UUID jobId = null;
         try {
             jobId = UUID.fromString(context.getTrigger().getKey().getName());
@@ -64,8 +85,12 @@ public class JobSchedulingService implements JobListener {
 
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-        Optional<UUID> jobId = parseJobId(context);
+        Optional<UUID> jobId = resolveJobId(context);
         jobId.ifPresent(id -> {
+            if (deferredJobs.remove(id)) {
+                log.trace("Job with ID {} was deferred, skipping terminal state update", id);
+                return;
+            }
             JobState state = (jobException == null) ? JobState.COMPLETED : JobState.FAILED;
             this.jobMetadataRepository.updateState(id, state, Instant.now());
 
@@ -87,11 +112,10 @@ public class JobSchedulingService implements JobListener {
         UUID jobId = UUID.randomUUID();
         Instant now = Instant.now();
 
-        JobState state = scheduledAt.isAfter(now) ? JobState.AWAITING : JobState.CREATED;
         if (meta.user() == null) {
-            jobMetadataRepository.insert(jobId, jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+            jobMetadataRepository.insert(jobId, jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), JobState.AWAITING, now, scheduledAt, data.getParentJobId());
         } else {
-            jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), state, now, scheduledAt, data.getParentJobId());
+            jobMetadataRepository.insert(jobId, meta.user(), jobDetail.getKey().getName(), meta.jobType(), meta.friendlyName(), JobState.AWAITING, now, scheduledAt, data.getParentJobId());
         }
 
         JobDataMap jobDataMap = new JobDataMap();
@@ -101,7 +125,7 @@ public class JobSchedulingService implements JobListener {
         // Use jobId as the trigger name so we can easily retrieve it in the listener
         Trigger trigger = TriggerBuilder.newTrigger()
                 .forJob(jobDetail)
-                .withIdentity(jobId.toString())
+                .withIdentity(jobId.toString(), TASK_TRIGGER_GROUP)
                 .usingJobData(jobDataMap)
                 .startAt(Date.from(scheduledAt))
                 .build();
@@ -128,17 +152,76 @@ public class JobSchedulingService implements JobListener {
         });
     }
 
+    public boolean defer(JobExecutionContext context, Duration delay, String reason) {
+        Optional<UUID> jobIdOpt = resolveJobId(context);
+        if (jobIdOpt.isEmpty()) {
+            log.warn("Cannot defer untracked job {}", context.getJobDetail().getKey());
+            return false;
+        }
+        UUID jobId = jobIdOpt.get();
+        Instant nextRun = Instant.now().plus(delay);
+
+        JobDataMap jobDataMap = new JobDataMap();
+        context.getMergedJobDataMap().forEach((key, value) -> {
+            if (!"jobId".equals(key)) {
+                jobDataMap.put(key, value);
+            }
+        });
+        jobDataMap.put("jobId", jobId.toString());
+
+        Trigger trigger = TriggerBuilder.newTrigger()
+                .forJob(context.getJobDetail())
+                // unique name: the trigger that is currently executing still occupies the plain
+                // jobId key and is only removed by quartz after the execution completes
+                .withIdentity(jobId + ":" + UUID.randomUUID(), TASK_TRIGGER_GROUP)
+                .usingJobData(jobDataMap)
+                .startAt(Date.from(nextRun))
+                .build();
+
+        try {
+            scheduler.scheduleJob(trigger);
+        } catch (SchedulerException e) {
+            throw new RuntimeException("Failed to reschedule deferred job " + jobId, e);
+        }
+
+        deferredJobs.add(jobId);
+        jobMetadataRepository.updateState(jobId, JobState.AWAITING, Instant.now());
+        jobMetadataRepository.updateProgress(jobId, 0, 0, reason);
+        log.info("Deferred job {} to {} ({})", jobId, nextRun, reason);
+        return true;
+    }
+
     public void cancel(UUID jobId) {
         log.info("Cancelling job {}", jobId);
-        Optional<JobMetadataRepository.JobMetadata> meta = jobMetadataRepository.findById(jobId);
-        if (meta.isPresent() && meta.get().getTaskId() != null) {
+        unscheduleTriggers(jobId);
+
+        List<UUID> childIds = jobMetadataRepository.findByParentJobId(jobId).stream()
+                .map(JobMetadataRepository.JobMetadata::getId)
+                .toList();
+        for (UUID childId : childIds) {
+            unscheduleTriggers(childId);
+        }
+        // deleting the parent cascades to child metadata rows
+        jobMetadataRepository.delete(jobId);
+    }
+
+    private void unscheduleTriggers(UUID jobId) {
+        Set<TriggerKey> keys = new HashSet<>();
+        keys.add(TriggerKey.triggerKey(jobId.toString()));
+        try {
+            scheduler.getTriggerKeys(GroupMatcher.triggerGroupEquals(TASK_TRIGGER_GROUP)).stream()
+                    .filter(key -> key.getName().equals(jobId.toString()) || key.getName().startsWith(jobId + ":"))
+                    .forEach(keys::add);
+        } catch (SchedulerException e) {
+            log.debug("Could not scan triggers for job {}", jobId, e);
+        }
+        for (TriggerKey key : keys) {
             try {
-                scheduler.unscheduleJob(TriggerKey.triggerKey(jobId.toString()));
+                scheduler.unscheduleJob(key);
             } catch (SchedulerException e) {
-                log.error("Failed to cancel job", e);
+                log.debug("No trigger to remove for job {} ({})", jobId, key);
             }
         }
-        jobMetadataRepository.delete(jobId);
     }
 
     public UUID createParentJob(User user, JobType jobType, String friendlyName) {

@@ -107,12 +107,6 @@ public class JobMetadataRepository {
     }
 
     @Transactional(isolation = Isolation.READ_UNCOMMITTED)
-    public boolean verifyAgainstQuartz(UUID jobId) {
-        String sql = "SELECT job_name FROM qrtz_triggers WHERE job_name = ?";
-        return !jdbcTemplate.queryForList(sql, jobId.toString()).isEmpty();
-    }
-
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByStates(List<JobState> states) {
         if (states.isEmpty()) {
             return List.of();

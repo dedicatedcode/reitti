@@ -70,7 +70,7 @@ public class LocationDataCleanupTask implements Job {
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
         if (device.defaultDevice()) {
             jobScheduler.enqueueTask(updateCuratedTimelineTask,
-                                      new UpdateCuratedTimelineTask.TaskData(user, device, processedTimeRange.extend(densityTimeRange)),
+                                      new UpdateCuratedTimelineTask.TaskData(user, device, processedTimeRange.extend(densityTimeRange)).withParentJobId(data.getParentJobId()),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
                                               .user(user)
                                               .friendlyName("Detect Visits and Trips").build()
