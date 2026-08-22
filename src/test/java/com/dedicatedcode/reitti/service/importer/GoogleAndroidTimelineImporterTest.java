@@ -2,7 +2,6 @@ package com.dedicatedcode.reitti.service.importer;
 
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,6 @@ class GoogleAndroidTimelineImporterTest {
         JobSchedulingService jobScheduler = mock(JobSchedulingService.class);
 
         GoogleAndroidTimelineImporter importHandler = new GoogleAndroidTimelineImporter(new ObjectMapper(),
-                                                                                        new ImportStateHolder(),
                                                                                         mock(LocationPointStagingService.class),
                                                                                         mock(JobDetail.class),
                                                                                         jobScheduler,

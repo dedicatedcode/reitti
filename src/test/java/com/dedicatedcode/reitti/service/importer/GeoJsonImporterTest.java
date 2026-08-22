@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,8 +30,6 @@ class GeoJsonImporterTest {
     @Mock
     private User user;
     @Mock
-    private ImportStateHolder stateHolder;
-    @Mock
     private LocationPointStagingService stagingService;
     @Mock
     private JobSchedulingService jobSchedulingService;
@@ -45,7 +42,6 @@ class GeoJsonImporterTest {
     void setUp() {
         this.geoJsonImporter = new GeoJsonImporter(
                 new ObjectMapper(),
-                stateHolder,
                 stagingService,
                 task,
                 jobSchedulingService,
@@ -110,9 +106,6 @@ class GeoJsonImporterTest {
         assertEquals(13.4060, point2.getLongitude());
         assertEquals(Instant.parse("2023-10-15T10:31:00Z"), point2.getTimestamp());
         assertEquals(15.0, point2.getAccuracyMeters());
-
-        verify(stateHolder).importStarted();
-        verify(stateHolder).importFinished();
     }
 
     @Test
@@ -239,8 +232,6 @@ class GeoJsonImporterTest {
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Invalid GeoJSON"));
         verify(stagingService, never()).insertBatch(any(), any(), any(), any());
-        verify(stateHolder).importStarted();
-        verify(stateHolder).importFinished();
     }
 
     @Test

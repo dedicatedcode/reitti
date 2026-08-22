@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,8 +46,9 @@ public class TransportModeService {
     private List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs, double totalDistanceMeters) {
         if (points.size() < 2) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
-            log.debug("segmentTrip: only {} point(s), returning single UNKNOWN segment, duration={}s", points.size(), duration);
-            return List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
+            TransportMode fallbackMode = slowestConfiguredMode(configs);
+            log.debug("segmentTrip: only {} point(s), returning single {} segment, duration={}s", points.size(), fallbackMode, duration);
+            return List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
         // Load all overrides for the trip's time range upfront
@@ -114,11 +116,20 @@ public class TransportModeService {
 
         if (result.isEmpty()) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
-            log.trace("segmentTrip: no segments after post-processing, returning single UNKNOWN");
-            result = List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
+            TransportMode fallbackMode = slowestConfiguredMode(configs);
+            log.trace("segmentTrip: no segments after post-processing, returning single {} segment", fallbackMode);
+            result = List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
         return result;
+    }
+
+    private TransportMode slowestConfiguredMode(List<TransportModeConfig> configs) {
+        return configs.stream()
+                .filter(config -> config.maxKmh() != null)
+                .min(Comparator.comparing(TransportModeConfig::maxKmh))
+                .map(TransportModeConfig::mode)
+                .orElse(TransportMode.WALKING);
     }
 
     private String segmentSummary(List<TransportModeSegment> segments) {

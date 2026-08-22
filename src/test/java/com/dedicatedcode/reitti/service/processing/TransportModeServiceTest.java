@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +43,7 @@ class TransportModeServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
+        lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
                 new TransportModeConfig(TransportMode.WALKING, 7.0),
                 new TransportModeConfig(TransportMode.CYCLING, 20.0),
                 new TransportModeConfig(TransportMode.DRIVING, 120.0),
@@ -109,20 +110,46 @@ class TransportModeServiceTest {
     }
 
     @Test
-    void returnsUnknownForSinglePoint() {
+    void usesSlowestConfiguredModeForSinglePoint() {
         List<TransportModeSegment> segments = service.segmentTrip(user, List.of(pt(0, 0)), T0, T0.plusSeconds(300));
 
         assertEquals(1, segments.size());
-        assertSegment(segments.getFirst(), TransportMode.UNKNOWN, 0, 300);
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 300);
     }
 
     @Test
-    void returnsUnknownForIdenticalTimestamps() {
+    void usesSlowestConfiguredModeForIdenticalTimestamps() {
         List<TransportModeSegment> segments = service.segmentTrip(user,
                 List.of(pt(0, 0), pt(0, 10)), T0, T0.plusSeconds(120));
 
         assertEquals(1, segments.size());
-        assertSegment(segments.getFirst(), TransportMode.UNKNOWN, 0, 120);
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 120);
+    }
+
+    @Test
+    void derivesSlowestModeFromUserConfiguration() {
+        lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
+                new TransportModeConfig(TransportMode.DRIVING, 120.0),
+                new TransportModeConfig(TransportMode.CYCLING, 20.0),
+                new TransportModeConfig(TransportMode.TRANSIT, null)
+        ));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, List.of(pt(0, 0)), T0, T0.plusSeconds(300));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.CYCLING, 0, 300);
+    }
+
+    @Test
+    void fallsBackToWalkingWhenNoConfigHasSpeedLimit() {
+        lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
+                new TransportModeConfig(TransportMode.TRANSIT, null)
+        ));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, List.of(pt(0, 0)), T0, T0.plusSeconds(300));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 300);
     }
 
     @Test
