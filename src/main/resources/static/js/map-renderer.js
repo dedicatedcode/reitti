@@ -1345,10 +1345,19 @@ class MapRenderer {
         const from = transition.from;
         const to = transition.to;
         const time = transition.time ? new Date(transition.time * 1000).toLocaleString() : '';
-        return `<div class="mode-transition-popup">
-            <div class="transition-time">${time}</div>
-            <div><i class="lni ${from.icon}" style="color:${from.color || '#f1ba63'}"></i> ${t('map.transition.from')} ${t('transportation.mode.'+from.mode+'.name')}</div>
-            <div><i class="lni ${to.icon}" style="color:${to.color || '#f1ba63'}"></i> ${t('map.transition.to')} ${t('transportation.mode.'+to.mode+'.name')}</div>
+        const head = time ? `<div class="sel-info-head">
+                <div class="sel-info-title">${time}</div>
+            </div>` : '';
+        return `<div class="map-popup">
+            ${head}
+            <div class="sel-info-row">
+                <span class="k">${t('map.transition.from')}:</span>
+                <span class="v">${this._iconHtml(from)} ${t('transportation.mode.'+from.mode+'.name')}</span>
+            </div>
+            <div class="sel-info-row">
+                <span class="k">${t('map.transition.to')}:</span>
+                <span class="v">${this._iconHtml(to)} ${t('transportation.mode.'+to.mode+'.name')}</span>
+            </div>
         </div>`;
     }
 
