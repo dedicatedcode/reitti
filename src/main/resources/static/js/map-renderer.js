@@ -1377,13 +1377,14 @@ class MapRenderer {
             if (latestLocation && userConfig?.showAvatar && this.avatarMarkers.get(manager.id) == null) {
                 this.addAvatarMarker(
                     manager.id, // Add user ID
-                    latestLocation.latitude, 
-                    latestLocation.longitude, 
+                    latestLocation.latitude,
+                    latestLocation.longitude,
                     {
                         avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
-                        timestamp: latestLocation.timestamp
+                        timestamp: latestLocation.timestamp,
+                        color: userConfig.color
                     }
                 );
             }
@@ -2339,14 +2340,12 @@ class MapRenderer {
             imgElement: img
         };
 
-        const popupContent = ``;
-
         // Add popup with detailed user info
         const popup = new maplibregl.Popup({
             offset: 25,
             maxWidth: '500px',
             closeButton: false
-        }).setHTML(popupContent);
+        });
 
         container.addEventListener('pointerenter', (e) => {
             e.stopPropagation();
@@ -2361,6 +2360,7 @@ class MapRenderer {
         }, { capture: true });
 
         marker.setPopup(popup);
+        this.updateMarkerPopup(marker, lat, lng, userData);
         this.avatarMarkers.set(userId, marker);
     }
 
@@ -2387,7 +2387,8 @@ class MapRenderer {
                         avatarUrl: window.contextPath + userConfig.avatarUrl,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
-                        timestamp: latestLocation.timestamp
+                        timestamp: latestLocation.timestamp,
+                        color: userConfig.color
                     };
 
                     // Update opacity based on new timestamp
@@ -2413,7 +2414,8 @@ class MapRenderer {
                             avatarUrl: window.contextPath + userConfig.avatarUrl,
                             avatarFallback: userConfig.avatarFallback,
                             displayName: userConfig.displayName,
-                            timestamp: latestLocation.timestamp
+                            timestamp: latestLocation.timestamp,
+                            color: userConfig.color
                         }
                     );
                 }
