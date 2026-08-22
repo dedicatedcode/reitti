@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSSemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.ios.IOSVisit;
 import com.dedicatedcode.reitti.service.importer.dto.ios.TimelinePathPoint;
@@ -31,19 +30,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleIOSTimelineImporter.class);
-    private final ImportStateHolder stateHolder;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleIOSTimelineImporter(ObjectMapper objectMapper,
-                                     ImportStateHolder stateHolder,
                                      LocationPointStagingService stagingService,
                                      @Qualifier("promotionJob") JobDetail promotionTask,
                                      JobSchedulingService jobSchedulingService,
                                      @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         super(objectMapper, stagingService);
-        this.stateHolder = stateHolder;
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
         this.graceTimeSeconds = graceTimeSeconds;
@@ -55,7 +51,6 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         String partitionKey = null;
         try {
             logger.info("Importing Google Timeline IOS file for user {}", user.getUsername());
-            stateHolder.importStarted();
             partitionKey = UUID.randomUUID().toString();
             String finalPartitionKey = partitionKey;
             this.stagingService.ensurePartitionExists(partitionKey);
@@ -122,8 +117,6 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
                 this.stagingService.dropPartition(partitionKey);
             }
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
-        } finally {
-            stateHolder.importFinished();
         }
     }
 }

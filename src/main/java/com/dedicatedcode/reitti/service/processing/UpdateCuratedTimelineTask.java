@@ -24,15 +24,18 @@ public class UpdateCuratedTimelineTask implements Job {
     private final SyntheticPointInserter syntheticPointInserter;
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail processingPipelineTask;
+    private final UserProcessingLock userProcessingLock;
 
     public UpdateCuratedTimelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
                                      SyntheticPointInserter syntheticPointInserter,
                                      JobSchedulingService jobSchedulingService,
-                                     @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
+                                     @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
+                                     UserProcessingLock userProcessingLock) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.syntheticPointInserter = syntheticPointInserter;
         this.jobSchedulingService = jobSchedulingService;
         this.processingPipelineTask = processingPipelineTask;
+        this.userProcessingLock = userProcessingLock;
     }
 
     @Override
@@ -44,19 +47,21 @@ public class UpdateCuratedTimelineTask implements Job {
 
     public void execute(TaskData data) {
         log.debug("Starting updating main timeline for user [{}] and device[{}] in timeRange [{}]", data.user, data.device, data.timeRange);
-        //1. clear main timeline
-        this.rawLocationPointJdbcService.dropForReSeeding(data.user, data.timeRange);
-        //2. update main timeline from view
-        int updatedCount = this.rawLocationPointJdbcService.updateFromDevices(data.user, data.timeRange);
-        log.debug("Updated {} timeline points for user [{}] and device[{}] in timeRange [{}]", updatedCount, data.user, data.device, data.timeRange);
-        //3. insert new possible synthetic points
-        this.syntheticPointInserter.fillGaps(data.user, data.timeRange);
-        //4. trigger new processing job
-        this.jobSchedulingService.enqueueTask(processingPipelineTask,
-                                 new ProcessingPipelineTask.TaskData(data.user.getUsername(), null, null),
-                                              JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
-                                                      .user(data.user)
-                                                      .friendlyName("Detect Visits and Trips").build());
+        userProcessingLock.locked(data.user, () -> {
+            //1. clear main timeline
+            this.rawLocationPointJdbcService.dropForReSeeding(data.user, data.timeRange);
+            //2. update main timeline from view
+            int updatedCount = this.rawLocationPointJdbcService.updateFromDevices(data.user, data.timeRange);
+            log.debug("Updated {} timeline points for user [{}] and device[{}] in timeRange [{}]", updatedCount, data.user, data.device, data.timeRange);
+            //3. insert new possible synthetic points
+            this.syntheticPointInserter.fillGaps(data.user, data.timeRange);
+            //4. trigger new processing job
+            this.jobSchedulingService.enqueueTask(processingPipelineTask,
+                                     new ProcessingPipelineTask.TaskData(data.user.getUsername(), null, null),
+                                                  JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
+                                                          .user(data.user)
+                                                          .friendlyName("Detect Visits and Trips").build());
+        });
 
     }
 

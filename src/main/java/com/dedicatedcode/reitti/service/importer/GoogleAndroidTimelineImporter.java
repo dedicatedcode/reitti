@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.importer.dto.GoogleTimelineData;
 import com.dedicatedcode.reitti.service.importer.dto.SemanticSegment;
 import com.dedicatedcode.reitti.service.importer.dto.TimelinePathPoint;
@@ -32,19 +31,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleAndroidTimelineImporter.class);
-    private final ImportStateHolder stateHolder;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleAndroidTimelineImporter(ObjectMapper objectMapper,
-                                         ImportStateHolder stateHolder,
                                          LocationPointStagingService stagingService,
                                          @Qualifier("promotionJob") JobDetail promotionTask,
                                          JobSchedulingService jobSchedulingService,
                                          @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         super(objectMapper, stagingService);
-        this.stateHolder = stateHolder;
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
         this.graceTimeSeconds = graceTimeSeconds;
@@ -64,7 +60,6 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     "Google Timeline Android Import - " + originalFilename
             );
             logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
-            this.stateHolder.importStarted();
             JsonParser parser = objectMapper.createParser(inputStream);
 
             List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());
@@ -126,8 +121,6 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                 this.stagingService.dropPartition(partitionKey);
             }
             return Map.of("success", false, "error", "Error processing Google Timeline file: " + e.getMessage());
-        } finally {
-            stateHolder.importFinished();
         }
     }
 }

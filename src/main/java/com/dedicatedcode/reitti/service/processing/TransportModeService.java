@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,8 +46,9 @@ public class TransportModeService {
     private List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs, double totalDistanceMeters) {
         if (points.size() < 2) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
-            log.debug("segmentTrip: only {} point(s), returning single UNKNOWN segment, duration={}s", points.size(), duration);
-            return List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
+            TransportMode fallbackMode = slowestConfiguredMode(configs);
+            log.debug("segmentTrip: only {} point(s), returning single {} segment, duration={}s", points.size(), fallbackMode, duration);
+            return List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
         // Load all overrides for the trip's time range upfront
@@ -114,11 +116,20 @@ public class TransportModeService {
 
         if (result.isEmpty()) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
-            log.trace("segmentTrip: no segments after post-processing, returning single UNKNOWN");
-            result = List.of(new TransportModeSegment(TransportMode.UNKNOWN, 0L, Math.max(1, duration), totalDistanceMeters));
+            TransportMode fallbackMode = slowestConfiguredMode(configs);
+            log.trace("segmentTrip: no segments after post-processing, returning single {} segment", fallbackMode);
+            result = List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
         return result;
+    }
+
+    private TransportMode slowestConfiguredMode(List<TransportModeConfig> configs) {
+        return configs.stream()
+                .filter(config -> config.maxKmh() != null)
+                .min(Comparator.comparing(TransportModeConfig::maxKmh))
+                .map(TransportModeConfig::mode)
+                .orElse(TransportMode.WALKING);
     }
 
     private String segmentSummary(List<TransportModeSegment> segments) {
@@ -135,6 +146,9 @@ public class TransportModeService {
 
         int pointIndex = 0;
         int chunkCount = 0;
+        Long pendingStartOffset = null;
+        long pendingEndOffset = 0;
+        List<RawLocationPoint> pendingPoints = new ArrayList<>();
         for (long offset = 0; offset < totalDuration; offset += CHUNK_DURATION_SECONDS) {
             long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
             Instant chunkEndTime = tripStart.plusSeconds(chunkEnd);
@@ -146,10 +160,19 @@ public class TransportModeService {
             }
 
             if (chunkPoints.size() < 2) {
-                log.trace("chunkAndClassify: chunk {} at +{}s skipped ({} point(s))", chunkCount, offset, chunkPoints.size());
+                log.trace("chunkAndClassify: chunk {} at +{}s sparse ({} point(s)), deferring classification", chunkCount, offset, chunkPoints.size());
+                if (pendingStartOffset == null) {
+                    pendingStartOffset = offset;
+                }
+                pendingEndOffset = chunkEnd;
+                pendingPoints.addAll(chunkPoints);
                 chunkCount++;
                 continue;
             }
+
+            flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+            pendingStartOffset = null;
+            pendingPoints.clear();
 
             TransportMode mode = classifySegment(chunkPoints, configs);
             double distanceMeters = GeoUtils.calculateTripDistance(chunkPoints);
@@ -159,8 +182,25 @@ public class TransportModeService {
             chunkCount++;
         }
 
+        flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+
         log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), points.size(), totalDuration);
         return chunks;
+    }
+
+    private void flushSparseSpan(Long startOffset, long endOffset, List<RawLocationPoint> spanPoints, List<TransportModeConfig> configs, List<ChunkClass> chunks) {
+        if (startOffset == null) {
+            return;
+        }
+        if (spanPoints.size() < 2) {
+            log.trace("flushSparseSpan: sparse span at +{}s..+{}s dropped ({} point(s)), covered by neighboring segments", startOffset, endOffset, spanPoints.size());
+            return;
+        }
+        TransportMode mode = classifySegment(spanPoints, configs);
+        double distanceMeters = GeoUtils.calculateTripDistance(spanPoints);
+        double avgSpeed = calculateAverageSpeedKmh(spanPoints);
+        log.trace("flushSparseSpan: sparse span at +{}s..+{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", startOffset, endOffset, spanPoints.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
+        chunks.add(new ChunkClass(mode, endOffset - startOffset, distanceMeters));
     }
 
     private double calculateAverageSpeedKmh(List<RawLocationPoint> points) {

@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.JobContext;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -20,34 +19,38 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @DisallowConcurrentExecution
 public class ProcessingPipelineTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(ProcessingPipelineTask.class);
 
-    private final ImportStateHolder stateHolder;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
     private final UserJdbcService userJdbcService;
     private final UnifiedLocationProcessingService locationProcessTask;
     private final JobMetadataRepository jobMetadataRepository;
+    private final UserProcessingLock userProcessingLock;
+    private final BatchFailureTracker batchFailureTracker;
     private final int batchSize;
 
-    public ProcessingPipelineTask(ImportStateHolder stateHolder,
-                                  RawLocationPointJdbcService rawLocationPointJdbcService,
+    public ProcessingPipelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
                                   PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
                                   UserJdbcService userJdbcService,
                                   JobMetadataRepository jobMetadataRepository,
                                   @Value("${reitti.import.batch-size:1000}") int batchSize,
-                                  UnifiedLocationProcessingService locationProcessTask) {
-        this.stateHolder = stateHolder;
+                                  UnifiedLocationProcessingService locationProcessTask,
+                                  UserProcessingLock userProcessingLock,
+                                  BatchFailureTracker batchFailureTracker) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
         this.jobMetadataRepository = jobMetadataRepository;
         this.batchSize = batchSize;
         this.locationProcessTask = locationProcessTask;
+        this.userProcessingLock = userProcessingLock;
+        this.batchFailureTracker = batchFailureTracker;
     }
 
     @Override
@@ -67,43 +70,65 @@ public class ProcessingPipelineTask implements Job {
     }
 
     private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId) {
-        int totalProcessed = 0;
+        AtomicInteger totalProcessed = new AtomicInteger();
 
         long maxPoints = this.rawLocationPointJdbcService.countUnprocessedByUser(user);
-        while (true) {
-            stateHolder.importStarted();
-            try {
-                List<RawLocationPoint> currentBatch;
-                if (previewId == null) {
-                    currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
-                } else {
-                    currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
-                }
+        userProcessingLock.locked(user, () -> {
+            while (true) {
+                List<RawLocationPoint> currentBatch = null;
+                Instant earliest = null;
+                Instant latest = null;
+                try {
+                    if (previewId == null) {
+                        currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
+                    } else {
+                        currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
+                    }
 
-                if (currentBatch.isEmpty()) {
-                    jobMetadataRepository.updateProgress(jobId, totalProcessed, maxPoints, "Done");
-                    break;
-                }
+                    if (currentBatch.isEmpty()) {
+                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Done");
+                        break;
+                    }
 
-                Instant earliest = currentBatch.getFirst().getTimestamp();
-                Instant latest = currentBatch.getLast().getTimestamp();
-                log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
-                if (previewId == null) {
-                    rawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
-                } else {
-                    previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(currentBatch);
-                }
+                    earliest = currentBatch.getFirst().getTimestamp();
+                    latest = currentBatch.getLast().getTimestamp();
+                    log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
-                LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
-                locationProcessTask.processLocationEvent(data);
-                totalProcessed += currentBatch.size();
-                jobMetadataRepository.updateProgress(jobId,totalProcessed, maxPoints, "Processing...");
-            } catch (Exception e) {
-                log.error("Error processing batch for user [{}]", user.getId(), e);
+                    LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
+                    locationProcessTask.processLocationEvent(data);
+                    markProcessed(currentBatch, previewId);
+                    batchFailureTracker.clear(user, earliest);
+                    totalProcessed.addAndGet(currentBatch.size());
+                    jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
+                } catch (Exception e) {
+                    if (earliest != null) {
+                        batchFailureTracker.recordFailure(user, earliest);
+                    }
+                    if (earliest != null && batchFailureTracker.exceedsLimit(user, earliest)) {
+                        log.error("Batch for user [{}] between [{}] and [{}] failed [{}] times in a row. Marking [{}] point(s) as processed anyway to keep the pipeline going. Data in this range may be incomplete.",
+                                user.getUsername(), earliest, latest, BatchFailureTracker.MAX_CONSECUTIVE_FAILURES, currentBatch.size(), e);
+                        markProcessed(currentBatch, previewId);
+                        batchFailureTracker.clear(user, earliest);
+                        totalProcessed.addAndGet(currentBatch.size());
+                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
+                    } else {
+                        log.error("Error processing batch for user [{}] between [{}] and [{}]. Leaving the batch unprocessed and stopping this run.",
+                                user.getUsername(), earliest, latest, e);
+                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Failed");
+                        break;
+                    }
+                }
             }
+        });
+        log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed.get(), user.getId());
+    }
+
+    private void markProcessed(List<RawLocationPoint> batch, String previewId) {
+        if (previewId == null) {
+            rawLocationPointJdbcService.bulkUpdateProcessedStatus(batch);
+        } else {
+            previewRawLocationPointJdbcService.bulkUpdateProcessedStatus(batch);
         }
-        stateHolder.importFinished();
-        log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed, user.getId());
     }
 
     public static class TaskData extends JobContext<TaskData> implements Serializable {
@@ -164,7 +189,7 @@ public class ProcessingPipelineTask implements Job {
                     "username='" + username + '\'' +
                     ", previewId='" + previewId + '\'' +
                     ", receivedAt=" + receivedAt +
-                    ", traceId='" + traceId + '\'' +
+                    ", traceId=" + traceId +
                     '}';
         }
     }

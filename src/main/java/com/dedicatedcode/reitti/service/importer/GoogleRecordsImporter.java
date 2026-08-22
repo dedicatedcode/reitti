@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
@@ -34,20 +33,17 @@ public class GoogleRecordsImporter {
     private static final Logger logger = LoggerFactory.getLogger(GoogleRecordsImporter.class);
     
     private final ObjectMapper objectMapper;
-    private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
     public GoogleRecordsImporter(ObjectMapper objectMapper,
-                                 ImportStateHolder stateHolder,
                                  LocationPointStagingService stagingService,
                                  @Qualifier("promotionJob") JobDetail promotionTask,
                                  JobSchedulingService jobSchedulingService,
                                  @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds) {
         this.objectMapper = objectMapper;
-        this.stateHolder = stateHolder;
         this.stagingService = stagingService;
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
@@ -59,7 +55,6 @@ public class GoogleRecordsImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            stateHolder.importStarted();
             logger.info("Importing Google Records file for user {}", user.getUsername());
 
             JsonParser parser = objectMapper.createParser(inputStream);
@@ -121,8 +116,6 @@ public class GoogleRecordsImporter {
                 this.stagingService.dropPartition(partitionKey);
             }
             return Map.of("success", false, "error", "Error processing Google Records file: " + e.getMessage());
-        } finally {
-            stateHolder.importFinished();
         }
     }
     

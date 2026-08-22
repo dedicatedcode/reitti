@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.service.ImportStateHolder;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
@@ -33,18 +32,15 @@ public class GpxImporter {
 
     private static final int BATCH_SIZE = 1000;
 
-    private final ImportStateHolder stateHolder;
     private final LocationPointStagingService stagingService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final int graceTimeSeconds;
 
-    public GpxImporter(ImportStateHolder stateHolder,
-                       LocationPointStagingService stagingService,
+    public GpxImporter(LocationPointStagingService stagingService,
                        @Qualifier("promotionJob") JobDetail promotionTask,
                        @Value("${reitti.import.grace-time-seconds:300}") int graceTimeSeconds,
                        JobSchedulingService jobSchedulingService) {
-        this.stateHolder = stateHolder;
         this.stagingService = stagingService;
         this.promotionTask = promotionTask;
         this.graceTimeSeconds = graceTimeSeconds;
@@ -57,7 +53,6 @@ public class GpxImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            stateHolder.importStarted();
             logger.info("Importing GPX file for user {}", user.getUsername());
             parentJobId = jobSchedulingService.createParentJob(
                     user,
@@ -215,8 +210,6 @@ public class GpxImporter {
             }
             logger.error("Error processing GPX file", e);
             return Map.of("success", false, "error", "Error processing GPX file: " + e.getMessage());
-        } finally {
-            stateHolder.importFinished();
         }
     }
 }
