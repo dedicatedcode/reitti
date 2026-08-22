@@ -1961,7 +1961,10 @@ document.getElementById('btnCommit').addEventListener('click', openCommit);
 document.getElementById('commitClose').addEventListener('click', closeCommit);
 document.getElementById('commitCancel').addEventListener('click', closeCommit);
 document.getElementById('commitConfirm').addEventListener('click', async () => {
-    if (!commitPayloadCache) return;
+    const commitBtn = document.getElementById('commitConfirm');
+    if (!commitPayloadCache || commitBtn.disabled) return;
+    commitBtn.disabled = true;
+    commitBtn.classList.add('btn-loading');
     try {
         const res = await fetch(window.contextPath + '/api/v2/workbench/commit', {
             method: 'POST',
@@ -1986,6 +1989,9 @@ document.getElementById('commitConfirm').addEventListener('click', async () => {
     } catch (err) {
         console.error(err);
         toast(t('workbench.commit.failure.network'), true);
+    } finally {
+        commitBtn.disabled = false;
+        commitBtn.classList.remove('btn-loading');
     }
 });
 
