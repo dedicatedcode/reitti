@@ -23,12 +23,7 @@ public record JobInfo(
         String progressMessage
 ) {
     public String progressText() {
-        if (progressMessage != null) {
-            return progressMessage;
-        } else if (totalChildren > 0) {
-            return completedChildren + " / " + totalChildren + " child jobs";
-        }
-        return null;
+        return progressMessage;
     }
 
     public int progressPercent() {
