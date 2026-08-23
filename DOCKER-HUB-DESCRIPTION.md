@@ -1,103 +1,83 @@
 # Reitti – Personal Location Tracking & Analysis
 
-Reitti is a comprehensive self-hosted application for tracking, analyzing, and visualizing your location data over time. It helps you understand your movement patterns and significant places while keeping your location data completely private and under your control.
+**Reitti** is a self-hosted personal location tracking and analysis application that helps you understand your movement
+patterns and significant places. The name comes from Finnish, meaning *"route"* or *"path"*.
 
-## Key Features
+Your location data never leaves your server. Reitti is fully self-hosted, multi-user capable and supports OIDC /
+single sign-on.
 
-### Core Functionality
-- **Advanced Location Analysis**: Automatic visit and trip detection with transport mode recognition
-- **Interactive Timeline**: Daily timeline view with visits, trips, durations, and distances
-- **Significant Places**: Smart recognition and categorization of frequently visited locations
-- **Real-time Tracking**: Live location updates via OwnTracks and GPSLogger mobile apps
-- **Multi-format Import**: Support for GPX, Google Takeout JSON, and GeoJSON files
+## Features
 
-### Photo Integration
-- **Immich Integration**: Connect with self-hosted Immich photo servers
-- **Location-based Photos**: View photos taken at specific locations on your timeline
-- **Interactive Photo Viewer**: Full-screen photo galleries with keyboard navigation
-
-### User Management & Security
-- **Multi-user Support**: Individual user accounts with data isolation
-- **Multi-language Support**: Available in English, Finnish, German, and French
-- **Geocoding Services**: Configurable address resolution with multiple provider support
-
-### Privacy & Performance
-- **Complete Privacy**: Your data never leaves your server – no cloud dependencies
-- **Asynchronous Processing**: Efficient handling of large location datasets with RabbitMQ
-- **Real-time Monitoring**: Queue status and job processing visibility
-- **Self-hosted**: Deploy on your own infrastructure with full control
+- **Visit & Trip Detection** – automatically identifies places you spend time at and tracks movements between them,
+  including transport-mode detection (walking, cycling, driving)
+- **Interactive Timeline & Map** – daily timeline showing visits and trips with duration and distance info
+- **Significant Places** – recognizes and names the locations you visit frequently
+- **Devices & Workbench** – track multiple devices per user; drag misplaced GPS points to their correct location or
+  delete outliers directly on the map
+- **Live Location Sharing** – follow family and friends on a single map, across instances (federation) or via revocable
+  magic links
+- **Custom Map Styles** – upload your own style files or link to remote ones (e.g. MapTiler, Stadia Maps or your own
+  tile server)
+- **Photos** – Immich integration; photos appear on your timeline at the locations where they were taken
+- **Statistics** – distance charts, top places and transport-mode breakdowns
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+The fastest way to try Reitti is with Docker Compose:
 
 ```bash
-# Clone the repository for docker-compose.yml
-git clone https://github.com/dedicatedcode/reitti.git
-cd reitti
-
-# Start all services (PostgreSQL, RabbitMQ, Reitti)
-docker-compose up -d
-
-# Access at http://localhost:8080
+mkdir reitti && cd reitti
+wget https://raw.githubusercontent.com/dedicatedcode/reitti/refs/heads/main/docker-compose.yml
+docker compose up -d
 ```
 
-### Standalone Docker
+Then open **http://localhost:8080**. On first login you'll be prompted to set an admin password. A default API token is
+created automatically, so you can jump straight into connecting your devices.
 
-```bash
-docker pull dedicatedcode/reitti:latest
-docker run -p 8080:8080 \
-  -e POSTGIS_HOST=postgres \
-  -e POSTGIS_PORT=5432 \
-  -e POSTGIS_DB=reittidb \
-  -e POSTGIS_USER=reitti \
-  -e POSTGIS_PASSWORD=reitti \
-  dedicatedcode/reitti:latest
-```
+The stack consists of Reitti, PostgreSQL with PostGIS, Redis and an optional tile cache
+(`dedicatedcode/reitti-tile-cache`). If you don't want the tile cache, remove that service from the compose file and set
+the environment variable `TILES_CACHE` to an empty value on the Reitti service.
 
-**Note**: Standalone mode requires separate PostgreSQL (with PostGIS) and RabbitMQ instances.
+> **ARM64 users** (Apple Silicon, etc.):
+> Until [postgis/docker-postgis#216](https://github.com/postgis/docker-postgis/issues/216) is resolved, change the
+> PostGIS image in the compose file to `imresamu/postgis:17-3.5-alpine`.
 
-## Environment Variables
+## Image Tags
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `POSTGIS_HOST` | PostgreSQL database host | postgis |
-| `POSTGIS_PORT` | PostgreSQL database port | 5432 |
-| `POSTGIS_DB` | PostgreSQL database name | reittidb |
-| `POSTGIS_USER` | Database username | reitti |
-| `POSTGIS_PASSWORD` | Database password | reitti |
-| `SERVER_PORT` | Application server port | 8080 |
-| `APP_UID` | User ID to run the application as | 1000 |
-| `APP_GID` | Group ID to run the application as | 1000 |
-| `JAVA_OPTS` | JVM options for the application | |
+| Tag      | Stability     | Use case                                                                                                                                                    |
+|----------|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `latest` | Stable        | Points to the most recent stable release.                                                                                                                    |
+| `5`      | Stable        | Latest release within a major version – bug fixes and minor features without the risk of a major version jump. **Recommended for most self-hosters.**        |
+| `x.y.z`  | Stable        | Pinned specific release (e.g. `5.0.2`) for reproducible deployments and full control over upgrades.                                                          |
+| `develop`| Bleeding edge | Rebuilt on every push to `main`. For testing upcoming changes and contributing – expect occasional rough edges.                                              |
+| `next`   | Alpha         | Next major version in development. **Do not use in production** – database schema may change in incompatible ways.                                           |
 
-## Getting Started
+## Data Import & Integrations
 
-1. **Deploy**: Use docker-compose for a complete setup with all dependencies
-2. **Create Account**: Set up your first user account via the web interface
-3. **Generate API Token**: Create tokens for mobile app integration
-4. **Import Data**: Upload existing location data (GPX, Google Takeout, GeoJSON)
-5. **Configure Mobile Apps**: Set up OwnTracks or GPSLogger for real-time tracking
-6. **Add Geocoding**: Configure address resolution services
-7. **Connect Photos**: Integrate with Immich for location-based photo viewing
+Reitti imports GPX files, Google Takeout / Timeline exports and GeoJSON, and ingests real-time locations from OwnTracks,
+GPSLogger, Overland and Home Assistant.
 
-## Mobile App Integration
+- File import: [Data Import Guide](https://www.dedicatedcode.com/projects/reitti/latest/usage/import-data/)
+- Real-time tracking: [Mobile App Guide](https://www.dedicatedcode.com/projects/reitti/latest/integrations/mobile-apps/)
+- Custom integrations: [Ingest API](https://www.dedicatedcode.com/projects/reitti/latest/api/ingest/)
 
-Configure real-time location tracking with:
-- **OwnTracks** (iOS/Android): Privacy-focused location sharing
-- **GPSLogger** (Android): Lightweight GPS logging with custom URL support
-- **Custom Apps**: Use the REST API for custom integrations
+## Configuration
 
-## Tags
+Reitti works out of the box with the provided compose file. All further configuration happens via environment variables.
+For the full list of variables, OIDC setup, reverse proxy and other deployment options, see the
+[Infrastructure Documentation](https://www.dedicatedcode.com/projects/reitti/latest/infrastructure/docker-config/).
 
-- `develop` - **Bleeding Edge**: Built from every push to main branch. For developers and early adopters who want the newest features and don't mind potential instability.
-- `latest` - **Stable Release**: Updated with each stable release. For most users who want reliable, tested functionality with new features.
-- `x.y.z` - **Conservative**: Specific version releases for users who want full control over updates and prefer to manually choose when to upgrade.
+## Backup
 
-## Source Code
+Back up the PostGIS database **and** the Reitti storage volume regularly. Redis and other stateless services do not need
+to be backed up. See the [Backup Guide](https://www.dedicatedcode.com/projects/reitti/latest/backup/) for details.
 
-The source code for this project is available on GitHub: [https://github.com/dedicatedcode/reitti](https://github.com/dedicatedcode/reitti)
+## More
+
+- Source code: [github.com/dedicatedcode/reitti](https://github.com/dedicatedcode/reitti)
+- Documentation: [dedicatedcode.com/projects/reitti](https://www.dedicatedcode.com/projects/reitti/)
+- Support: [open an issue](https://github.com/dedicatedcode/reitti/issues/new/choose)
 
 ## License
 
-This project is licensed under the GNU Affero General Public License Version 3 (AGPLv3) License.
+This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
