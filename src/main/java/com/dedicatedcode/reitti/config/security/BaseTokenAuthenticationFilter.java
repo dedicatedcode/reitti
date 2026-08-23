@@ -1,6 +1,5 @@
 package com.dedicatedcode.reitti.config.security;
 
-import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
@@ -67,7 +66,7 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
 
         if (tokenOpt.isPresent()) {
             ApiToken token = tokenOpt.get();
-            User authenticatedUser = token.getUser().withRole(Role.API_ACCESS);
+            User authenticatedUser = token.getUser();
             Device authenticatedDevice = token.getDevice();
 
             UserDeviceAuthenticationToken authenticationToken = new UserDeviceAuthenticationToken(

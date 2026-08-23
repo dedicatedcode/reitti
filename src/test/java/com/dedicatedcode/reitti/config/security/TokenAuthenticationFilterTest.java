@@ -74,6 +74,21 @@ class TokenAuthenticationFilterTest {
     }
 
     @Test
+    void whenTokenUsed_thenRealDatabaseRoleGrantsAccessToRoleProtectedEndpoints() throws Exception {
+        // /api/v1/visits/** requires ADMIN or USER. Token users must carry their
+        // real database role instead of a restricted one.
+        mockMvc.perform(get("/api/v1/visits")
+                                .param("date", "2026-01-01")
+                                .header("X-API-Token", token.getToken()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/visits")
+                                .param("date", "2026-01-01")
+                                .header("Authorization", "Bearer " + token.getToken()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void whenInvalidTokenProvided_thenReturns401Unauthorized() throws Exception {
         String invalidToken = "invalid-token";
         mockMvc.perform(get("/test-endpoint")

@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,12 +34,15 @@ public class ProcessedVisitApiController {
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final UserJdbcService userJdbcService;
-    
+    private final UserSharingJdbcService userSharingJdbcService;
+
     @Autowired
     public ProcessedVisitApiController(ProcessedVisitJdbcService processedVisitJdbcService,
-                                       UserJdbcService userJdbcService) {
+                                       UserJdbcService userJdbcService,
+                                       UserSharingJdbcService userSharingJdbcService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.userJdbcService = userJdbcService;
+        this.userSharingJdbcService = userSharingJdbcService;
     }
 
     @GetMapping("/visits")
@@ -109,8 +113,7 @@ public class ProcessedVisitApiController {
             }
 
             // Get the user from the repository by userId
-            User userToFetchDataFrom = userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
 
             // Fetch processed visits in the time range
             List<ProcessedVisit> visits = processedVisitJdbcService.findByUserAndTimeOverlap(
@@ -174,17 +177,6 @@ public class ProcessedVisitApiController {
         }
     }
 
-    private boolean isPlaceInBox(SignificantPlace place, Double minLat, Double maxLat, Double minLng, Double maxLng) {
-        if (place == null || place.getLatitudeCentroid() == null || place.getLongitudeCentroid() == null) {
-            return false;
-        }
-        
-        return place.getLatitudeCentroid() >= minLat &&
-               place.getLatitudeCentroid() <= maxLat &&
-               place.getLongitudeCentroid() >= minLng &&
-               place.getLongitudeCentroid() <= maxLng;
-    }
-    
     private String generateColorForPlace(SignificantPlace place) {
         // Simple color generation based on place ID
         // You can implement a more sophisticated color generation strategy
@@ -204,5 +196,23 @@ public class ProcessedVisitApiController {
         b = Math.max(b, 100);
         
         return String.format("#%02x%02x%02x", r, g, b);
+    }
+
+
+    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
+        if (user.getId().equals(userId)) {
+            return user;
+        }
+        if (user instanceof TokenUser) {
+            if (!Objects.equals(user.getId(), userId)) {
+                throw new IllegalAccessException("User not allowed to fetch data for other users");
+            }
+        }
+        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
+            throw new IllegalAccessException("User not allowed to fetch data for other user with id " + userId);
+        }
+
+        return userJdbcService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }
