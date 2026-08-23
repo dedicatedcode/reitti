@@ -1,5 +1,10 @@
 FROM nginx:1.30.1-trixie
 
+LABEL maintainer="dedicatedcode"
+LABEL org.opencontainers.image.source="https://github.com/dedicatedcode/reitti"
+LABEL org.opencontainers.image.description="Reitti Tile Cache - nginx-based caching proxy for map tiles"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
 RUN mkdir -p /var/cache/nginx/custom
 
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
