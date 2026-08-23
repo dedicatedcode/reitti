@@ -3,7 +3,7 @@ FROM eclipse-temurin:25-jre-alpine-3.22
 LABEL maintainer="dedicatedcode"
 LABEL org.opencontainers.image.source="https://github.com/dedicatedcode/reitti"
 LABEL org.opencontainers.image.description="Reitti - Personal Location Tracking & Analysis"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
 
 # Create a non-root user and group
 RUN addgroup -S reitti -g 1000 && adduser -S reitti -u 1000 -G reitti
