@@ -418,11 +418,6 @@
         mapRenderer.updateViewState(createViewState([]));
 
         if (isFollowing) {
-            const aggregateToggle = document.getElementById('aggregate-toggle');
-            const isAggregate = aggregateToggle ? aggregateToggle.checked : false;
-            const ct = timelineControl.getValue();
-            const testPos = gpsDataManagers[0].getCurrentPosition(ct, isAggregate);
-
             followTrail();
         }
 
@@ -439,8 +434,10 @@
 
     let followedManagerId = null;
 
-    let lastFollowTime = 0;
     let userInteracting = false;
+    let smoothTarget = null;
+    let lastCmdCenter = null;
+    let lastAggregateFollowTime = 0;
 
     // Detect user interaction
     mapRenderer.map.on('zoomstart', () => { userInteracting = true; });
@@ -453,13 +450,17 @@
     function followTrail() {
         if (userInteracting) return;  // Don't fight the user
 
-        // Throttle to every 200ms instead of every frame
-        const now = performance.now();
-        if (now - lastFollowTime < 200) return;
-        lastFollowTime = now;
-
         const aggregateToggle = document.getElementById('aggregate-toggle');
         const isAggregate = aggregateToggle ? aggregateToggle.checked : false;
+
+        // Linear mode follows every frame for smooth motion. Aggregate positions
+        // require full buffer scans, so throttle those updates.
+        if (isAggregate) {
+            const now = performance.now();
+            if (now - lastAggregateFollowTime < 500) return;
+            lastAggregateFollowTime = now;
+        }
+
         const currentTime = timelineControl.getValue();
 
         const map = mapRenderer.map;
@@ -494,10 +495,27 @@
 
         followedManagerId = bestManagerId;
 
-        // Use jumpTo instead of easeTo — instant, no animation conflict
-        map.easeTo({
-            center: [targetPos.lng, targetPos.lat]
-        });
+        // Exponentially smooth the camera anchor towards the target, then let
+        // Maplibre's own animation engine handle the movement: panTo is only
+        // issued when the anchor has drifted far enough from the last commanded
+        // center, giving it clean animation slots instead of per-frame restarts.
+        const FOLLOW_SMOOTHING = 0.3;
+        if (!smoothTarget) {
+            smoothTarget = {lng: targetPos.lng, lat: targetPos.lat};
+        } else {
+            smoothTarget.lng += (targetPos.lng - smoothTarget.lng) * FOLLOW_SMOOTHING;
+            smoothTarget.lat += (targetPos.lat - smoothTarget.lat) * FOLLOW_SMOOTHING;
+        }
+
+        if (!lastCmdCenter) {
+            lastCmdCenter = {lng: smoothTarget.lng, lat: smoothTarget.lat};
+            map.jumpTo({center: [lastCmdCenter.lng, lastCmdCenter.lat]});
+        } else if (Math.abs(smoothTarget.lng - lastCmdCenter.lng) > 0.0003
+                || Math.abs(smoothTarget.lat - lastCmdCenter.lat) > 0.0003) {
+            lastCmdCenter.lng = smoothTarget.lng;
+            lastCmdCenter.lat = smoothTarget.lat;
+            map.panTo([lastCmdCenter.lng, lastCmdCenter.lat], {duration: 250});
+        }
     }
     function updateStatus(message, current, total) {
         const bar = document.getElementById('progress-bar');
@@ -1268,6 +1286,8 @@
             playBtn.innerHTML = '<i class="lni lni-play"></i>';
             followedManagerId = null;    // ← reset
             lastFollowCenter = null;     // ← reset
+            smoothTarget = null;         // ← reset
+            lastCmdCenter = null;        // ← reset
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
@@ -1318,6 +1338,10 @@
                     break;
                 case 'followTrail':
                     isFollowing = value;
+                    if (value) {
+                        smoothTarget = null;
+                        lastCmdCenter = null;
+                    }
                     break;
                 case 'showTransportModes':
                     if (mapRenderer && typeof mapRenderer.setShowTransportModes === 'function') {

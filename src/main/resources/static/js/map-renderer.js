@@ -216,14 +216,16 @@ class MapRenderer {
         const defaultDeckParams = {
             trips: {
                 trailLength: 700,
-                cometWidth: 3,
-                cometOpacity: 155,
+                cometWidth: 4,
+                cometOpacity: 180,
                 shadowWidth: 3,
                 shadowOpacity: 155,
                 pathWidth: 1.5,
                 pathOpacity: 25,
                 staticPathWidth: 2.5,
                 staticPathOpacity: 200,
+                staticPathOpacityWhileAnimating: 30,
+                traveledOpacity: 200,
             },
             visits: {
                 minZoom: 12,
@@ -547,7 +549,10 @@ class MapRenderer {
                                 getPath: d => d.path,
                                 getColor: d => {
                                     const c = this._hexToRgbArray(d.color) || manager.color;
-                                    return [...c, this.deckParams.trips.staticPathOpacity];
+                                    const alpha = this.viewState.animating
+                                        ? this.deckParams.trips.staticPathOpacityWhileAnimating
+                                        : this.deckParams.trips.staticPathOpacity;
+                                    return [...c, alpha];
                                 },
                                 getWidth: this.deckParams.trips.staticPathWidth,
                                 widthMinPixels: this.deckParams.trips.staticPathWidth,
@@ -561,7 +566,7 @@ class MapRenderer {
                                     polygonOffsetFill: true
                                 },
                                 updateTriggers: {
-                                    getColor: [manager.color, this.showTransportModes],
+                                    getColor: [manager.color, this.showTransportModes, this.viewState.animating],
                                 }
                             }));
                         } catch (e) {
@@ -573,7 +578,9 @@ class MapRenderer {
                                 id: `paths-static-fixed-${layerKey}`,
                                 data: strippedData,
                                 positionFormat: 'XYZ',
-                                getColor: [...manager.color, this.deckParams.trips.staticPathOpacity],
+                                getColor: [...manager.color, this.viewState.animating
+                                    ? this.deckParams.trips.staticPathOpacityWhileAnimating
+                                    : this.deckParams.trips.staticPathOpacity],
                                 getWidth: this.deckParams.trips.staticPathWidth,
                                 widthMinPixels: this.deckParams.trips.staticPathWidth,
                                 visible: true,
@@ -588,7 +595,7 @@ class MapRenderer {
                                 updateTriggers: {
                                     data: [manager.buffer?.length, buffer],
                                     getPath: [cursor, buffer, this.viewState.renderTerrain],
-                                    getColor: [manager.color],
+                                    getColor: [manager.color, this.viewState.animating],
                                 }
                             }));
                         } catch (e) {
@@ -601,6 +608,30 @@ class MapRenderer {
                     }
 
                     if (this.viewState.animating) {
+                        // TRAVELED GROUND: never-fading trail that paints the
+                        // already-traveled past at the default static path alpha
+                        allLayers.push(new deck.TripsLayer({
+                            id: `trips-traveled-${layerKey}`,
+                            data: layerData,
+                            positionFormat: 'XYZ',
+                            getColor: manager.color,
+                            opacity: this.deckParams.trips.traveledOpacity,
+                            widthMinPixels: this.deckParams.trips.staticPathWidth,
+                            trailLength: 999999999,
+                            visible: this.viewState.animating,
+                            currentTime: this.viewState.currentTime,
+                            capRounded: true,
+                            jointRounded: true,
+                            parameters: { depthTest: false },
+                            extensions: extensions,
+                            ...(terrainDrawMode && { terrainDrawMode }),
+                            updateTriggers: {
+                                data: [manager.buffer?.length, buffer],
+                                getPath: [cursor, buffer, this.viewState.renderTerrain],
+                                getTimestamps: [this.viewState.aggregated],
+                            }
+                        }));
+
                         allLayers.push(new deck.TripsLayer({
                             id: `trips-shadow-${layerKey}`,
                             data: layerData,
@@ -643,6 +674,7 @@ class MapRenderer {
                                 getTimestamps: [this.viewState.aggregated],
                             }
                         }));
+                        allLayers.push(this._buildCurrentPositionHaloLayer(manager));
                         allLayers.push(this._buildCurrentPositionLayer(manager));
 
                     }
@@ -694,6 +726,14 @@ class MapRenderer {
             if (layer instanceof deck.TripsLayer) {
                 cloned++;
                 return layer.clone({ currentTime: this.viewState.currentTime });
+            }
+
+            if (id.startsWith('current-position-halo-')) {
+                const managerId = id.replace('current-position-halo-', '');
+                const manager = this.gpsDataManagers.find(m => m.id === managerId);
+                if (manager) {
+                    return this._buildCurrentPositionHaloLayer(manager);
+                }
             }
 
             if (id.startsWith('current-position-')) {
@@ -1617,6 +1657,29 @@ class MapRenderer {
             }
         }));
 
+        // Traveled ground (Animated) - never-fading trail at default alpha
+        layers.push(new deck.TripsLayer({
+            id: `bundled-path-traveled-${layerKey}`,
+            data: layerData,                                  // ← keep getTimestamps
+            positionFormat: 'XY',
+            getColor: color,
+            opacity: this.deckParams.trips.traveledOpacity,
+            visible: isAnimating,
+            widthMinPixels: this.deckParams.bundled.staticPathWidth,
+            trailLength: 999999999,
+            currentTime: currentTime,
+            capRounded: true,
+            jointRounded: true,
+            parameters: { depthTest: false },
+            extensions: extensions,
+            terrainDrawMode: 'offset',
+            updateTriggers: {
+                data: [manager.snappedVersion],
+                getPath: [manager.snappedVersion],
+                currentTime: [currentTime],
+            }
+        }));
+
         // Shadow trip (animated)
         layers.push(new deck.TripsLayer({
             id: `bundled-path-shadow-${layerKey}`,
@@ -1665,6 +1728,7 @@ class MapRenderer {
                 currentTime: [currentTime],
             }
         }));
+        layers.push(this._buildCurrentPositionHaloLayer(manager));
         layers.push(this._buildCurrentPositionLayer(manager));
 
         return layers;
@@ -1776,26 +1840,66 @@ class MapRenderer {
         ];
     }
 
+    _headPositionsFor(manager) {
+        // Aggregate mode animates many trail segments simultaneously and
+        // scanning them per frame is too expensive, so no beacon is drawn there.
+        if (this.viewState.aggregated) {
+            return [];
+        }
+        const single = manager.getCurrentPosition(this.viewState.currentTime, false);
+        return single ? [single] : [];
+    }
+
     _buildCurrentPositionLayer(manager) {
         const activeSeg = this.showTransportModes && manager.getActiveSegment ? manager.getActiveSegment(this.viewState.currentTime, this.viewState.aggregated) : null;
         const color = (activeSeg && activeSeg.color) ? (this._hexToRgbArray(activeSeg.color) || manager.color) : manager.color;
         const extensions = this._getTerrainExtensions();
         const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
 
-        const currentPosition = manager.getCurrentPosition(this.viewState.currentTime, this.viewState.aggregated);
         return new deck.ScatterplotLayer({
             id: `current-position-${manager.id}`,
-            data: [currentPosition],
+            data: this._headPositionsFor(manager),
             getPosition: d => {
                 const pos = d;
                 return pos ? [pos.lng, pos.lat, 0] : null;
             },
-            getRadius: 3,
-            radiusMinPixels: 2,
+            getRadius: 8,
+            radiusMinPixels: 5,
             getColor: [color[0], color[1], color[2], 255],
             stroked: true,
             getLineColor: [255, 255, 255, 255],
-            lineWidthMinPixels: 2,
+            lineWidthMinPixels: 3,
+            pickable: false,
+            depthTest: false,
+            parameters: { depthTest: false },
+            extensions: extensions,
+            terrainDrawMode: terrainDrawMode,
+            updateTriggers: {
+                getPosition: [this.viewState.currentTime, this.viewState.aggregated],
+                getColor: [this.viewState.currentTime, manager.color, activeSeg?.color],
+            }
+        });
+    }
+
+    _buildCurrentPositionHaloLayer(manager) {
+        const activeSeg = this.showTransportModes && manager.getActiveSegment ? manager.getActiveSegment(this.viewState.currentTime, this.viewState.aggregated) : null;
+        const color = (activeSeg && activeSeg.color) ? (this._hexToRgbArray(activeSeg.color) || manager.color) : manager.color;
+        const extensions = this._getTerrainExtensions();
+        const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
+
+        const phase = 0.5 + 0.5 * Math.sin(performance.now() / 150);
+        return new deck.ScatterplotLayer({
+            id: `current-position-halo-${manager.id}`,
+            data: this._headPositionsFor(manager),
+            getPosition: d => {
+                const pos = d;
+                return pos ? [pos.lng, pos.lat, 0] : null;
+            },
+            getRadius: 10 + phase * 12,
+            radiusUnits: 'pixels',
+            getColor: [color[0], color[1], color[2], 230 - phase * 150],
+            stroked: false,
+            filled: true,
             pickable: false,
             depthTest: false,
             parameters: { depthTest: false },
