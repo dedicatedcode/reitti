@@ -49,7 +49,7 @@
                             th:attr="hx-get=@{/settings/user-form(userId=${user.id}, username=${user.username}, displayName=${user.displayName}, role=${user.role})}"
                             hx-target="#user-management"
                             hx-swap="innerHTML"
-                            th:text="#{form.update}">Edit
+                            th:text="#{form.edit}">Edit
                     </button>
                     <button th:if="${isAdmin && user.username != currentUsername}"
                             class="btn btn-danger"
