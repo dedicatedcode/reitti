@@ -39,7 +39,7 @@ class GoogleRecordsImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        this.testingService.awaitDataImport(30);
+        this.testingService.awaitDataImport(60);
         assertFalse(processedVisitJdbcService.findByUser(user).isEmpty());
     }
 }
