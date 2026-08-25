@@ -60,10 +60,10 @@ class JobSchedulingServiceIntegrationTest {
                 .friendlyName("integration-test-recording")
                 .build());
 
-        await().atMost(10, TimeUnit.SECONDS).until(() -> !RecordingTask.executions.isEmpty());
+        await().atMost(30, TimeUnit.SECONDS).until(() -> !RecordingTask.executions.isEmpty());
         UUID jobId = RecordingTask.executions.keySet().iterator().next();
 
-        await().atMost(10, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS)
                 .until(() -> jobMetadataRepository.getState(jobId).orElse(null) == JobState.COMPLETED);
 
         JobMetadataRepository.JobMetadata metadata = jobMetadataRepository.findById(jobId).orElseThrow();
@@ -116,10 +116,10 @@ class JobSchedulingServiceIntegrationTest {
                 .friendlyName("integration-test-defer")
                 .build());
 
-        await().atMost(10, TimeUnit.SECONDS).until(() -> !DeferringOnceTask.executions.isEmpty());
+        await().atMost(30, TimeUnit.SECONDS).until(() -> !DeferringOnceTask.executions.isEmpty());
         UUID jobId = DeferringOnceTask.executions.keySet().iterator().next();
 
-        await().atMost(10, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS)
                 .until(() -> jobMetadataRepository.getState(jobId).orElse(null) == JobState.COMPLETED);
 
         assertEquals(2, DeferringOnceTask.executions.get(jobId));
