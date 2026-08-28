@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.*;
 import java.util.List;
 import java.util.Set;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -145,7 +146,7 @@ public class LocationPointStagingService {
             Timestamp end = rs.getTimestamp("end_time");
 
             if (start == null || end == null) {
-                return null;
+                return TimeRange.empty();
             }
 
             return new TimeRange(start.toInstant(), end.toInstant());
