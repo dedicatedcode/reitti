@@ -78,14 +78,22 @@ public class PromotionJobHandler implements Job {
             metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
 
             if (promote > 0) {
-                this.userNotificationService.newLocationData(user, data.device, timeRange);
-                this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                      new LocationDataCleanupTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
-                                                      JobSchedulingService.Metadata.builder()
-                                                              .user(user)
-                                                              .jobType(JobType.LOCATION_DATA_CLEANUP)
-                                                              .friendlyName("Location Data Cleanup")
-                                                              .build());
+                if (timeRange.equals(TimeRange.empty())) {
+                    log.debug("No timerange found for partitionKey [{}], recalculating", partitionKey);
+                    timeRange = this.stagingService.getWholeTimeRange(partitionKey);
+                }
+                if (timeRange.equals(TimeRange.empty())) {
+                    log.warn("Still no timerange found for partitionKey [{}], skipping cleanup", partitionKey);
+                } else {
+                    this.userNotificationService.newLocationData(user, data.device, timeRange);
+                    this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
+                                                          new LocationDataCleanupTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
+                                                          JobSchedulingService.Metadata.builder()
+                                                                  .user(user)
+                                                                  .jobType(JobType.LOCATION_DATA_CLEANUP)
+                                                                  .friendlyName("Location Data Cleanup")
+                                                                  .build());
+                }
             } else {
                 log.debug("No points to promote, timerange was [{}]", timeRange);
             }

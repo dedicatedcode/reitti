@@ -138,6 +138,20 @@ public class LocationPointStagingService {
         return insertedIds.size();
     }
 
+    public TimeRange getWholeTimeRange(String partitionKey) {
+        String sql = "SELECT MIN(timestamp) as start_time, MAX(timestamp) as end_time FROM staging_location_points WHERE partition_key = ?";
+        return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+            Timestamp start = rs.getTimestamp("start_time");
+            Timestamp end = rs.getTimestamp("end_time");
+
+            if (start == null || end == null) {
+                return TimeRange.empty();
+            }
+
+            return new TimeRange(start.toInstant(), end.toInstant());
+        }, partitionKey);
+    }
+
     public TimeRange getTimeRange(String partitionKey) {
         String sql = "SELECT MIN(timestamp) as start_time, MAX(timestamp) as end_time FROM staging_location_points WHERE partition_key = ? AND promoted = FALSE";
         return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
@@ -145,7 +159,7 @@ public class LocationPointStagingService {
             Timestamp end = rs.getTimestamp("end_time");
 
             if (start == null || end == null) {
-                return null;
+                return TimeRange.empty();
             }
 
             return new TimeRange(start.toInstant(), end.toInstant());
