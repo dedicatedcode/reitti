@@ -43,17 +43,6 @@ public class SyntheticPointInserter {
         this.maxBatchSize = maxBatchSize;
     }
 
-    /**
-     * Processes the given time range: deletes old synthetic points, then
-     * inserts new synthetic points where real-point gaps are too large.
-     * <p>
-     * The caller provides a range that already includes the boundary context (see
-     * {@link ProcessingWindowResolver}), so gaps closing at the range edges are bridged as
-     * long as they do not exceed the configured interpolation limit.
-     *
-     * @param user       the owning user
-     * @param inputRange the time range that covers the newly arrived points
-     */
     public void fillGaps(User user, TimeRange inputRange) {
         // 1. Fetch density configuration (using the earliest point time)
         DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(

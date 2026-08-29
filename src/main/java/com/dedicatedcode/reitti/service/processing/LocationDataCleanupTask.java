@@ -64,8 +64,6 @@ public class LocationDataCleanupTask implements Job {
         Instant end = data.getEnd();
         log.debug("Starting LocationDataCleanupJob for user [{}] and device [{}] between {} and {}", user, device, start, end);
         this.metadataRepository.updateProgress(jobId, 0,4, "Anomaly processing started ...");
-        // resolve how far around the promoted range we actually have to process: context
-        // margin for the filters, closed gaps and backfill - instead of a static ±24h window
         TimeRange window = processingWindowResolver.resolve(user, device, new TimeRange(start, end));
         TimeRange processedTimeRange = anomalyProcessingService.processAndMarkAnomalies(user, device, window.start(), window.end());
         this.metadataRepository.updateProgress(jobId, 1,4, "Density normalization started ...");

@@ -95,9 +95,6 @@ public class LocationBatchingService {
                                                     batch.getLocationPoints()
             );
             batch.clear();
-            // coalesce: the rows are staged, an already scheduled or running promotion for this
-            // partition will pick them up. This keeps us from enqueueing a new promotion trigger
-            // every few seconds, which lets the Quartz queue grow faster than it drains (#1212).
             if (promotionInflightGuard.tryAcquire(pKey)) {
                 try {
                     this.jobScheduler.enqueueTask(promotionTask,

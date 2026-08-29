@@ -12,11 +12,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Re-evaluates the anomaly status of the source points within the given time range and marks
- * outliers as invalid. The caller is responsible for passing a range that includes enough
- * neighbor context for the boundary points (see {@link ProcessingWindowResolver}).
- */
 @Service
 public class AnomalyProcessingService {
     private static final Logger logger = LoggerFactory.getLogger(AnomalyProcessingService.class);

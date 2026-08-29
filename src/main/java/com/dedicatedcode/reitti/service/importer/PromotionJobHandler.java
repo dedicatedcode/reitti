@@ -107,8 +107,6 @@ public class PromotionJobHandler implements Job {
             promotionInflightGuard.release(partitionKey);
         }
 
-        // points flushed by the ingest thread while this promotion was running are still
-        // unpromoted - make sure they get promoted instead of waiting for the next flush
         if (this.stagingService.hasUnpromotedPoints(partitionKey) && promotionInflightGuard.tryAcquire(partitionKey)) {
             try {
                 this.jobSchedulingService.enqueueTask(promotionTask,

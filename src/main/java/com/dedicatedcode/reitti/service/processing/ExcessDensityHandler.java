@@ -27,8 +27,6 @@ public class ExcessDensityHandler {
     }
 
     public TimeRange handleExcess(User user, Device device, TimeRange inputRange) {
-        // The caller provides a range that already includes the boundary context (see
-        // ProcessingWindowResolver), so adjacent points on both range edges are covered.
         List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, inputRange.start(), inputRange.end(), false, true);
         if (points.size() < 2) {
             return TimeRange.empty();
