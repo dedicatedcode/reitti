@@ -65,7 +65,7 @@ public class PromotionJobHandler implements Job {
         if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
             metadataRepository.updateProgress(jobId, 2, 3, "Live data only, skipping cleanup");
 
-            if (timeRange != null) {
+            if (!timeRange.equals(TimeRange.empty())) {
                 this.jobSchedulingService.enqueueTask(liveModeOnlyUpdateTask,
                                                       new LiveModeOnlyUpdateTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
                                                       JobSchedulingService.Metadata.builder()
