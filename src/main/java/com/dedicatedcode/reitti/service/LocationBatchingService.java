@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.jobs.PromotionInflightGuard;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import jakarta.annotation.PreDestroy;
 import org.quartz.JobDetail;
@@ -33,19 +34,22 @@ public class LocationBatchingService {
     private final LocationPointStagingService locationPointStagingService;
     private final JobDetail promotionTask;
     private final JobSchedulingService jobScheduler;
+    private final PromotionInflightGuard promotionInflightGuard;
 
     private final int maxBatchSize;
     private final long maxWaitTimeMs;
-    
+
     @Autowired
     public LocationBatchingService(LocationPointStagingService locationPointStagingService,
                                    @Qualifier("promotionJob") JobDetail promotionTask,
                                    JobSchedulingService jobScheduler,
+                                   PromotionInflightGuard promotionInflightGuard,
                                    @Value("${reitti.batching.max-batch-size:100}") int maxBatchSize,
                                    @Value("${reitti.batching.max-wait-time:5}") long maxWaitTime) {
         this.locationPointStagingService = locationPointStagingService;
         this.promotionTask = promotionTask;
         this.jobScheduler = jobScheduler;
+        this.promotionInflightGuard = promotionInflightGuard;
         this.maxBatchSize = maxBatchSize;
         this.maxWaitTimeMs = maxWaitTime * 1000;
     }
@@ -91,12 +95,24 @@ public class LocationBatchingService {
                                                     batch.getLocationPoints()
             );
             batch.clear();
-            this.jobScheduler.enqueueTask(promotionTask,
-                                          new PromotionJobHandler.TaskData(batch.user, batch.device, pKey, false),
-                                          JobSchedulingService.Metadata.builder()
-                                                  .user(batch.user)
-                                                  .jobType(JobType.GPS_INGESTION)
-                                                  .friendlyName("GPS Data Promotion").build());
+            // coalesce: the rows are staged, an already scheduled or running promotion for this
+            // partition will pick them up. This keeps us from enqueueing a new promotion trigger
+            // every few seconds, which lets the Quartz queue grow faster than it drains (#1212).
+            if (promotionInflightGuard.tryAcquire(pKey)) {
+                try {
+                    this.jobScheduler.enqueueTask(promotionTask,
+                                                  new PromotionJobHandler.TaskData(batch.user, batch.device, pKey, false),
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .user(batch.user)
+                                                          .jobType(JobType.GPS_INGESTION)
+                                                          .friendlyName("GPS Data Promotion").build());
+                } catch (RuntimeException e) {
+                    promotionInflightGuard.release(pKey);
+                    throw e;
+                }
+            } else {
+                logger.debug("Promotion already in flight for partition {}, skipping enqueue", pKey);
+            }
         } catch (Exception e) {
             logger.error("Failed to flush batch for partition {}", batch.getPartitionKey(), e);
         }

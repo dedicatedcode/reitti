@@ -8,15 +8,18 @@ import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.jobs.PromotionInflightGuard;
 import com.dedicatedcode.reitti.service.processing.LiveModeOnlyUpdateTask;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.processing.LocationPointStagingService.PromotionResult;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -28,76 +31,96 @@ public class PromotionJobHandler implements Job {
     private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository metadataRepository;
     private final UserNotificationService userNotificationService;
+    private final PromotionInflightGuard promotionInflightGuard;
     private final JobDetail locationDataCleanupTask;
     private final JobDetail liveModeOnlyUpdateTask;
+    private final JobDetail promotionTask;
 
     public PromotionJobHandler(LocationPointStagingService stagingService,
                                JobSchedulingService jobSchedulingService,
                                JobMetadataRepository metadataRepository,
                                UserNotificationService userNotificationService,
+                               PromotionInflightGuard promotionInflightGuard,
                                @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask,
-                               @Qualifier("liveModeUserUpdateJob") JobDetail liveModeOnlyUpdateTask) {
+                               @Qualifier("liveModeUserUpdateJob") JobDetail liveModeOnlyUpdateTask,
+                               @Qualifier("promotionJob") JobDetail promotionTask) {
         this.stagingService = stagingService;
         this.jobSchedulingService = jobSchedulingService;
         this.metadataRepository = metadataRepository;
         this.userNotificationService = userNotificationService;
+        this.promotionInflightGuard = promotionInflightGuard;
         this.locationDataCleanupTask = locationDataCleanupTask;
         this.liveModeOnlyUpdateTask = liveModeOnlyUpdateTask;
+        this.promotionTask = promotionTask;
     }
 
     @Override
+    @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         JobDataMap dataMap = context.getMergedJobDataMap();
         TaskData data = (TaskData) dataMap.get("data");
         UUID jobId = data.getJobId();
         User user = data.getUser();
         String partitionKey = data.getPartitionKey();
-        TimeRange timeRange = this.stagingService.getTimeRange(partitionKey);
-        metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
-        int promote = this.stagingService.promote(user, partitionKey);
-        metadataRepository.updateProgress(jobId, 1, 3, "Dropping partition");
+        try {
+            metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
+            PromotionResult promotionResult = this.stagingService.promote(user, partitionKey);
+            metadataRepository.updateProgress(jobId, 1, 3, "Dropping partition");
 
-        log.debug("Promoted [{}] points into live table", promote);
-        if (data.isManual()) {
-            this.stagingService.dropPartition(partitionKey);
-        }
-
-        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
-            metadataRepository.updateProgress(jobId, 2, 3, "Live data only, skipping cleanup");
-
-            if (!timeRange.equals(TimeRange.empty())) {
-                this.jobSchedulingService.enqueueTask(liveModeOnlyUpdateTask,
-                                                      new LiveModeOnlyUpdateTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
-                                                      JobSchedulingService.Metadata.builder()
-                                                              .user(user)
-                                                              .jobType(JobType.LOCATION_PROCESSING)
-                                                              .friendlyName("Location Data Cleanup")
-                                                              .build());
+            log.debug("Promoted [{}] points into live table", promotionResult.promotedCount());
+            if (data.isManual()) {
+                this.stagingService.dropPartition(partitionKey);
             }
-        } else {
-            metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
 
-            if (promote > 0) {
-                if (timeRange.equals(TimeRange.empty())) {
-                    log.debug("No timerange found for partitionKey [{}], recalculating", partitionKey);
-                    timeRange = this.stagingService.getWholeTimeRange(partitionKey);
+            if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+                metadataRepository.updateProgress(jobId, 2, 3, "Live data only, skipping cleanup");
+
+                if (promotionResult.hasPromoted()) {
+                    TimeRange promotedRange = promotionResult.promotedRange();
+                    this.jobSchedulingService.enqueueTask(liveModeOnlyUpdateTask,
+                                                          new LiveModeOnlyUpdateTask.TaskData(user, data.getDevice(), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
+                                                          JobSchedulingService.Metadata.builder()
+                                                                  .user(user)
+                                                                  .jobType(JobType.LOCATION_PROCESSING)
+                                                                  .friendlyName("Location Data Cleanup")
+                                                                  .build());
                 }
-                if (timeRange.equals(TimeRange.empty())) {
-                    log.warn("Still no timerange found for partitionKey [{}], skipping cleanup", partitionKey);
-                } else {
-                    this.userNotificationService.newLocationData(user, data.device, timeRange);
+            } else {
+                metadataRepository.updateProgress(jobId, 2, 3, "Scheduling cleanup job");
+
+                if (promotionResult.hasPromoted()) {
+                    TimeRange promotedRange = promotionResult.promotedRange();
+                    this.userNotificationService.newLocationData(user, data.device, promotedRange);
                     this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                          new LocationDataCleanupTask.TaskData(user, data.getDevice(), timeRange.start(), timeRange.end()).withParentJobId(data.getParentJobId()),
+                                                          new LocationDataCleanupTask.TaskData(user, data.getDevice(), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
                                                           JobSchedulingService.Metadata.builder()
                                                                   .user(user)
                                                                   .jobType(JobType.LOCATION_DATA_CLEANUP)
                                                                   .friendlyName("Location Data Cleanup")
                                                                   .build());
+                } else {
+                    log.debug("No points to promote for partitionKey [{}]", partitionKey);
                 }
-            } else {
-                log.debug("No points to promote, timerange was [{}]", timeRange);
+                metadataRepository.updateProgress(jobId, 3, 3, "Done");
             }
-            metadataRepository.updateProgress(jobId, 3, 3, "Done");
+        } finally {
+            promotionInflightGuard.release(partitionKey);
+        }
+
+        // points flushed by the ingest thread while this promotion was running are still
+        // unpromoted - make sure they get promoted instead of waiting for the next flush
+        if (this.stagingService.hasUnpromotedPoints(partitionKey) && promotionInflightGuard.tryAcquire(partitionKey)) {
+            try {
+                this.jobSchedulingService.enqueueTask(promotionTask,
+                                                      new TaskData(user, data.getDevice(), partitionKey, false),
+                                                      JobSchedulingService.Metadata.builder()
+                                                              .user(user)
+                                                              .jobType(JobType.GPS_INGESTION)
+                                                              .friendlyName("GPS Data Promotion").build());
+            } catch (RuntimeException e) {
+                promotionInflightGuard.release(partitionKey);
+                throw e;
+            }
         }
     }
 
