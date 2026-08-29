@@ -51,7 +51,8 @@ class AnomalyProcessingServiceTest {
 
         assertEquals(14, this.rawLocationPointJdbcService.bulkInsert(user, null, points));
 
-        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
+        // the caller passes the range to process - including enough context for the boundary
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:26:25Z"));
 
         List<SourceLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
         assertEquals(14, storedPoints.size(), "Point should be stored");
@@ -83,7 +84,7 @@ class AnomalyProcessingServiceTest {
 
         assertEquals(15, this.rawLocationPointJdbcService.bulkInsert(user, null, points));
 
-        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:26:24Z"), Instant.parse("2022-01-01T09:26:24Z"));
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:26:49Z"));
 
         List<SourceLocationPoint> storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
         assertEquals(15, storedPoints.size(), "Point should be stored");
@@ -121,7 +122,7 @@ class AnomalyProcessingServiceTest {
 
         //now store new points
         this.rawLocationPointJdbcService.bulkInsert(user, null, points);
-        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:03:03Z"), Instant.parse("2022-01-01T09:17:59Z"));
+        this.anomalyFilter.processAndMarkAnomalies(user, null, Instant.parse("2022-01-01T09:02:24Z"), Instant.parse("2022-01-01T09:17:59Z"));
 
         storedPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, null, Instant.parse("2022-01-01T09:00:00Z"), Instant.parse("2022-01-01T09:27:24Z"), true, true);
 

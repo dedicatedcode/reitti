@@ -43,51 +43,36 @@ public class SyntheticPointInserter {
         this.maxBatchSize = maxBatchSize;
     }
 
-    /**
-     * Processes the given time range: deletes old synthetic points, then
-     * inserts new synthetic points where real-point gaps are too large.
-     *
-     * @param user       the owning user
-     * @param inputRange the time range that covers the newly arrived points
-     */
     public void fillGaps(User user, TimeRange inputRange) {
         // 1. Fetch density configuration (using the earliest point time)
         DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(
                 user, inputRange.start());
         DetectionParameter.LocationDensity densityConfig = detectionParams.getLocationDensity();
 
-        // 2. Expand range to catch boundary gaps
-        long maxInterpolationGapMinutes = densityConfig.getMaxInterpolationGapMinutes();
-        Duration window = Duration.ofMinutes(maxInterpolationGapMinutes);
-        TimeRange expandedRange = new TimeRange(
-                inputRange.start().minus(window),
-                inputRange.end().plus(window)
-        );
+        // 2. Delete all existing synthetic points in the range
+        rawLocationPointService.deleteSyntheticPointsInRange(user, inputRange.start(), inputRange.end());
 
-        // 3. Delete all existing synthetic points in the expanded range
-        rawLocationPointService.deleteSyntheticPointsInRange(user, expandedRange.start(), expandedRange.end());
-
-        Instant currentStart = expandedRange.start();
-        while (currentStart.isBefore(expandedRange.end())) {
-            // 4. Fetch all real points in the expanded range
+        Instant currentStart = inputRange.start();
+        while (currentStart.isBefore(inputRange.end())) {
+            // 3. Fetch all real points in the range
             List<RawLocationPoint> realPoints = rawLocationPointService
                     .findByUserAndTimestampBetweenOrderByTimestampAsc(
                             user,
                             currentStart,
-                            expandedRange.end(),
+                            inputRange.end(),
                             false,
                             0,
                             maxBatchSize
                     );
 
-            // 5. Sort deterministically (same logic as original)
+            // 4. Sort deterministically (same logic as original)
             realPoints.sort(Comparator
                                     .comparing(RawLocationPoint::getTimestamp)
                                     .thenComparing(p -> p.getGeom().latitude())
                                     .thenComparing(p -> p.getGeom().longitude())
                                     .thenComparing(RawLocationPoint::isSynthetic));
 
-            // 6. Process gaps
+            // 5. Process gaps
             processGaps(user, realPoints, densityConfig);
             if (realPoints.isEmpty()) break;
             currentStart = realPoints.getLast().getTimestamp().plus(1, ChronoUnit.MILLIS);
