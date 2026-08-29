@@ -78,6 +78,7 @@ public class SourceLocationPointJdbcService {
         if (!includeIgnored) {
             sql.append("AND rlp.status = 0 ");
         }
+
         if (!includeInvalid) {
             sql.append("AND rlp.invalid = false ");
         }
@@ -87,6 +88,46 @@ public class SourceLocationPointJdbcService {
     }
     public List<SourceLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(User user, Device device, Instant startTime, Instant endTime, boolean includeIgnored, boolean includeInvalid) {
        return findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startTime, endTime, includeIgnored, includeInvalid, NO_PAGING, NO_PAGING);
+    }
+
+    /**
+     * @return the timestamp of the n-th valid (non-ignored) point before the given instant,
+     * or the oldest point before it if fewer than n exist. Empty if no point exists before.
+     */
+    public Optional<Instant> findNthPointTimestampBefore(User user, Device device, Instant when, int n) {
+        String sql = """
+                SELECT MIN(timestamp) FROM (
+                    SELECT timestamp FROM raw_source_points
+                    WHERE user_id = ? AND device_id IS NOT DISTINCT FROM ? AND status = 0 AND timestamp < ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                ) context_points
+                """;
+        List<Instant> result = jdbcTemplate.query(sql, (rs, _) -> {
+            Timestamp ts = rs.getTimestamp(1);
+            return ts == null ? null : ts.toInstant();
+        }, user.getId(), device != null ? device.id() : null, Timestamp.from(when), n);
+        return result.stream().filter(java.util.Objects::nonNull).findFirst();
+    }
+
+    /**
+     * @return the timestamp of the n-th valid (non-ignored) point at or after the given instant,
+     * or the newest point from there on if fewer than n exist. Empty if no point exists after.
+     */
+    public Optional<Instant> findNthPointTimestampAfter(User user, Device device, Instant when, int n) {
+        String sql = """
+                SELECT MAX(timestamp) FROM (
+                    SELECT timestamp FROM raw_source_points
+                    WHERE user_id = ? AND device_id IS NOT DISTINCT FROM ? AND status = 0 AND timestamp > ?
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                ) context_points
+                """;
+        List<Instant> result = jdbcTemplate.query(sql, (rs, _) -> {
+            Timestamp ts = rs.getTimestamp(1);
+            return ts == null ? null : ts.toInstant();
+        }, user.getId(), device != null ? device.id() : null, Timestamp.from(when), n);
+        return result.stream().filter(java.util.Objects::nonNull).findFirst();
     }
 
     public SourceLocationPoint create(User user, Device device, SourceLocationPoint rawLocationPoint) {
@@ -179,11 +220,6 @@ public class SourceLocationPointJdbcService {
                 .collect(Collectors.toList());
 
         jdbcTemplate.batchUpdate(sql, batchArgs);
-    }
-
-
-    public int updateLocation(User user, Long id, double lat, double lng) {
-        return updateLocation(user, id, lat, lng, null);
     }
 
     public int updateLocation(User user, Long id, double lat, double lng, Long h3Cell) {

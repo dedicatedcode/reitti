@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.*;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,55 +116,51 @@ public class LocationPointStagingService {
     }
 
     @Transactional
-    public int promote(User user, String partitionKey) {
+    public PromotionResult promote(User user, String partitionKey) {
         String sql = """
-            INSERT INTO raw_source_points (
-                user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, invalid, status, h3_cell
+            WITH promoted_rows AS (
+                UPDATE staging_location_points SET promoted = TRUE
+                WHERE partition_key = ? AND promoted = FALSE
+                RETURNING user_id, device_id, timestamp, accuracy_meters, elevation_meters, geom, h3_cell
+            ), inserted AS (
+                INSERT INTO raw_source_points (
+                    user_id, device_id, timestamp, accuracy_meters, elevation_meters,
+                    geom, invalid, status, h3_cell
+                )
+                SELECT
+                    user_id, device_id, timestamp, accuracy_meters, elevation_meters,
+                    geom, false, 0, h3_cell
+                FROM promoted_rows
+                ON CONFLICT (user_id, device_id, timestamp) DO NOTHING
+                RETURNING id, timestamp
             )
-            SELECT
-                user_id, device_id, timestamp, accuracy_meters, elevation_meters,
-                geom, false, 0, h3_cell
-            FROM staging_location_points
-                    WHERE partition_key = ? AND promoted = FALSE
-            ON CONFLICT (user_id, device_id, timestamp) DO NOTHING
-            RETURNING id;
-        """;
+            SELECT id, timestamp FROM inserted
+            """;
 
-        List<Long> insertedIds = jdbcTemplate.queryForList(sql, Long.class, partitionKey);
+        List<PromotedPoint> inserted = this.jdbcTemplate.query(sql, (rs, rowNum) -> new PromotedPoint(rs.getLong("id"), rs.getTimestamp("timestamp").toInstant()), partitionKey);
         if (user.getUserType() == UserType.NORMAL) {
-            spatialCoverageService.postPromotion(insertedIds);
+            spatialCoverageService.postPromotion(inserted.stream().map(PromotedPoint::id).toList());
         }
-        this.jdbcTemplate.update("UPDATE staging_location_points SET promoted = TRUE WHERE partition_key = ? AND promoted = FALSE", partitionKey);
-        return insertedIds.size();
+        if (inserted.isEmpty()) {
+            return new PromotionResult(0, TimeRange.empty());
+        }
+        Instant min = inserted.stream().map(PromotedPoint::timestamp).min(Instant::compareTo).orElseThrow();
+        Instant max = inserted.stream().map(PromotedPoint::timestamp).max(Instant::compareTo).orElseThrow();
+        return new PromotionResult(inserted.size(), new TimeRange(min, max));
     }
 
-    public TimeRange getWholeTimeRange(String partitionKey) {
-        String sql = "SELECT MIN(timestamp) as start_time, MAX(timestamp) as end_time FROM staging_location_points WHERE partition_key = ?";
-        return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-            Timestamp start = rs.getTimestamp("start_time");
-            Timestamp end = rs.getTimestamp("end_time");
-
-            if (start == null || end == null) {
-                return TimeRange.empty();
-            }
-
-            return new TimeRange(start.toInstant(), end.toInstant());
-        }, partitionKey);
+    public boolean hasUnpromotedPoints(String partitionKey) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM staging_location_points WHERE partition_key = ? AND promoted = FALSE)";
+        return Boolean.TRUE.equals(this.jdbcTemplate.queryForObject(sql, Boolean.class, partitionKey));
     }
 
-    public TimeRange getTimeRange(String partitionKey) {
-        String sql = "SELECT MIN(timestamp) as start_time, MAX(timestamp) as end_time FROM staging_location_points WHERE partition_key = ? AND promoted = FALSE";
-        return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-            Timestamp start = rs.getTimestamp("start_time");
-            Timestamp end = rs.getTimestamp("end_time");
+    public record PromotionResult(int promotedCount, TimeRange promotedRange) {
+        public boolean hasPromoted() {
+            return promotedCount > 0 && promotedRange != null && !promotedRange.equals(TimeRange.empty());
+        }
+    }
 
-            if (start == null || end == null) {
-                return TimeRange.empty();
-            }
-
-            return new TimeRange(start.toInstant(), end.toInstant());
-        }, partitionKey);
+    private record PromotedPoint(long id, Instant timestamp) {
     }
 
     @Scheduled(cron = "${reitti.import.staging.cleanup.cron}")

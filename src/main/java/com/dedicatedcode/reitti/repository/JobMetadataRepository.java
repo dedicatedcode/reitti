@@ -164,7 +164,7 @@ public class JobMetadataRepository {
     }
 
     public int deleteOlderThan(Instant cutoff) {
-        String sql = "DELETE FROM job_meta_data WHERE enqueued_at < ?";
+        String sql = "DELETE FROM job_meta_data WHERE enqueued_at < ? AND status IN ('COMPLETED', 'FAILED', 'CANCELLED')";
         return jdbcTemplate.update(sql, Timestamp.from(cutoff));
     }
 

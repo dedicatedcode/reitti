@@ -50,8 +50,8 @@ class SyntheticPointInserterTest {
 
         // When: we simulate a new point arriving in between and trigger gap filling
         Instant newPointTime = start.plus(1, ChronoUnit.MINUTES);
-        // Determine the time range of new points (just one point)
-        TimeRange range = new TimeRange(newPointTime, newPointTime);
+        // the caller passes a window covering the gap (see ProcessingWindowResolver)
+        TimeRange range = new TimeRange(start, end.plusMillis(1));
         syntheticPointInserter.fillGaps(testUser, range);
 
         // Then: synthetic points should be inserted
@@ -70,7 +70,7 @@ class SyntheticPointInserterTest {
         createAndSaveRawPoint(start, 50.0, 8.0);
         createAndSaveRawPoint(end, 50.01, 8.01);
 
-        TimeRange range = new TimeRange(start.plus(1, ChronoUnit.MINUTES), start.plus(1, ChronoUnit.MINUTES));
+        TimeRange range = new TimeRange(start, end.plusMillis(1));
         syntheticPointInserter.fillGaps(testUser, range);
 
         List<RawLocationPoint> all = rawLocationPointService
@@ -88,7 +88,7 @@ class SyntheticPointInserterTest {
         createAndSaveRawPoint(start, 50.0, 8.0);
         createAndSaveRawPoint(end, 50.001, 8.001);
 
-        TimeRange range = new TimeRange(start.plus(90, ChronoUnit.MINUTES), start.plus(90, ChronoUnit.MINUTES));
+        TimeRange range = new TimeRange(start, end.plusMillis(1));
         syntheticPointInserter.fillGaps(testUser, range);
 
         List<RawLocationPoint> all = rawLocationPointService
@@ -126,7 +126,7 @@ class SyntheticPointInserterTest {
 
         TimeRange range = new TimeRange(
                 Instant.parse("2013-04-15T06:31:26.860000Z"),
-                Instant.parse("2013-04-15T06:36:32.566000Z"));
+                Instant.parse("2013-04-15T06:36:32.566000Z").plusMillis(1));
         syntheticPointInserter.fillGaps(testUser, range);
 
         List<RawLocationPoint> stored = rawLocationPointService

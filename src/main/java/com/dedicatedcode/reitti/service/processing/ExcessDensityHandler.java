@@ -3,10 +3,8 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.config.LocationDensityConfig;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
-import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,28 +18,16 @@ public class ExcessDensityHandler {
     private static final Logger logger = LoggerFactory.getLogger(ExcessDensityHandler.class);
 
     private final LocationDensityConfig config;
-    private final VisitDetectionParametersService visitDetectionParametersService;
     private final SourceLocationPointJdbcService rawLocationPointService;
 
-    public ExcessDensityHandler(LocationDensityConfig config, VisitDetectionParametersService visitDetectionParametersService,
+    public ExcessDensityHandler(LocationDensityConfig config,
                                 SourceLocationPointJdbcService rawLocationPointService) {
         this.config = config;
-        this.visitDetectionParametersService = visitDetectionParametersService;
         this.rawLocationPointService = rawLocationPointService;
     }
 
     public TimeRange handleExcess(User user, Device device, TimeRange inputRange) {
-        DetectionParameter detectionParams = visitDetectionParametersService.getCurrentConfiguration(user, inputRange.start());
-        DetectionParameter.LocationDensity densityConfig = detectionParams.getLocationDensity();
-
-        // Step 2: Expand the time range by the interpolation window to catch boundary gaps
-        long maxInterpolationGapMinutes = densityConfig.getMaxInterpolationGapMinutes();
-        Duration window = Duration.ofMinutes(maxInterpolationGapMinutes);
-        TimeRange expandedRange = new TimeRange(
-                inputRange.start().minus(window),
-                inputRange.end().plus(window)
-        );
-        List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, expandedRange.start(), expandedRange.end(), false, true);
+        List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, inputRange.start(), inputRange.end(), false, true);
         if (points.size() < 2) {
             return TimeRange.empty();
         }
@@ -74,7 +60,7 @@ public class ExcessDensityHandler {
             rawLocationPointService.bulkUpdateIgnoredStatus(user, new ArrayList<>(pointsToIgnore));
             logger.debug("Marked {} points as ignored for user {}", pointsToIgnore.size(), user.getUsername());
         }
-        return expandedRange;
+        return inputRange;
     }
 
     // The selection logic is unchanged from the original, kept here for completeness.

@@ -231,15 +231,19 @@ public class UnifiedLocationProcessingService {
         long start = System.currentTimeMillis();
 
         String previewId = event.getPreviewId();
-        Instant windowStart = event.getEarliest().minus(1, ChronoUnit.DAYS);
-        Instant windowEnd = event.getLatest().plus(1, ChronoUnit.DAYS);
 
         DetectionParameter currentConfiguration;
         if (previewId == null) {
-            currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, windowStart);
+            currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, event.getEarliest());
         } else {
             currentConfiguration = previewVisitDetectionParametersJdbcService.findCurrent(user, previewId);
         }
+
+        Duration boundaryMargin = Duration.ofSeconds(
+                currentConfiguration.getVisitDetection().getMinimumStayTimeInSeconds()
+                        + 2 * currentConfiguration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
+        Instant windowStart = event.getEarliest().minus(boundaryMargin);
+        Instant windowEnd = event.getLatest().plus(boundaryMargin);
 
         List<ProcessedVisit> existingProcessedVisits;
         if (previewId == null) {
@@ -254,8 +258,8 @@ public class UnifiedLocationProcessingService {
             if (existingProcessedVisits.getFirst().getStartTime().isBefore(windowStart)) {
                 windowStart = existingProcessedVisits.getFirst().getStartTime();
             }
-            if (existingProcessedVisits.getLast().getEndTime().isAfter(windowEnd)) {
-                windowEnd = existingProcessedVisits.getLast().getEndTime();
+            if (!existingProcessedVisits.getLast().getEndTime().isBefore(windowEnd)) {
+                windowEnd = existingProcessedVisits.getLast().getEndTime().plus(1, ChronoUnit.MILLIS);
             }
         }
 
