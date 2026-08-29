@@ -22,24 +22,18 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 
 /**
- * Demonstrates the throughput problem behind #1212 ("promotion advances at ~1/8 real-time").
+ * Verifies the throughput fix for #1212 ("promotion advances at ~1/8 real-time").
  * <p>
- * Every promotion - no matter how small the flush - schedules a LocationDataCleanupTask.
- * That task widens the range by the anomaly lookback (reitti.geo-point-filter.history-lookback-hours,
- * default 24h) on both sides and hands that range to UpdateCuratedTimelineTask, which deletes
- * every raw_location_points row in the window (dropForReSeeding) and re-inserts it as
- * processed = false (updateFromDevices). The pipeline then re-detects visits/trips for all of them.
- * <p>
- * So promoting a few seconds of new data re-opens ~48h of already processed history. With the
- * default batching config a promotion job is enqueued every ~5s per stream, the chain
- * (promotion -> cleanup -> reseed -> pipeline) can never keep up with real time, jobs pile up
- * faster than they drain and the whole Quartz machinery saturates.
+ * Each promotion cycle used to widen the promoted range by a static ±24h lookback and reseed
+ * (delete + re-insert as unprocessed) that whole window, so promoting a few seconds of data
+ * re-opened ~48h of already processed history. The window is now resolved from the actual
+ * boundary conditions (context margin, capped at maxInterpolationGapMinutes), so a tiny
+ * promotion only re-opens the points within that margin.
  */
 @IntegrationTest
 class PromotionCleanupChurnTest {
@@ -63,7 +57,7 @@ class PromotionCleanupChurnTest {
     private JobSchedulingService jobSchedulingService;
 
     @Test
-    void singlePromotedPointReopensTwoDaysOfAlreadyProcessedTimeline() {
+    void tinyPromotionOnlyReopensTheContextMarginInsteadOfTwoDays() {
         User user = testingService.randomUser();
         Device device = testingService.findDefaultDevice(user);
 
@@ -76,20 +70,20 @@ class PromotionCleanupChurnTest {
         Instant flushEnd = HISTORY_START.plus(Duration.ofMinutes(5));
         TimeRange reseedRange1 = runCleanupAndCaptureReseedRange(user, device, flushStart, flushEnd);
 
-        // LocationDataCleanupTask hands the ±24h lookback window to the timeline update,
-        // not the 5 minutes that were actually promoted
-        assertEquals(Duration.ofHours(24), Duration.between(reseedRange1.start(), flushStart));
-        assertTrue(Duration.between(reseedRange1.start(), reseedRange1.end()).compareTo(Duration.ofHours(48)) >= 0);
+        // no prior points -> no backward extension; forward only up to 50 points of context,
+        // not the static +24h of the old lookback
+        assertEquals(flushStart, reseedRange1.start());
+        assertEquals(flushEnd.plus(Duration.ofMinutes(250)), reseedRange1.end());
 
         reseedFromView(user, reseedRange1);
 
-        // 289 timeline points were seeded although the flush contained only 2 points
-        assertEquals(289, timelineCount(user));
-        assertEquals(289, unprocessedCount(user));
+        // 51 timeline points were seeded (50 points of context + the flush), not 289
+        assertEquals(51, timelineCount(user));
+        assertEquals(51, unprocessedCount(user));
 
         // the pipeline finished - all points are processed now
         markAllProcessed(user);
-        assertEquals(289, processedCount(user));
+        assertEquals(51, processedCount(user));
 
         // --- promotion cycle 2: a single new point arrives ---
         Instant newPoint = HISTORY_END.plus(Duration.ofMinutes(1));
@@ -99,11 +93,12 @@ class PromotionCleanupChurnTest {
         TimeRange reseedRange2 = runCleanupAndCaptureReseedRange(user, device, newPoint, newPoint);
         reseedFromView(user, reseedRange2);
 
-        // the single new point wiped and re-opened the whole lookback window:
-        // 288 already processed points are unprocessed again and will be re-detected
-        assertEquals(288, processedCount(user));
-        assertEquals(289, unprocessedCount(user), "one new point was promoted, but the whole window was re-opened");
-        assertEquals(577, timelineCount(user));
+        // the single new point re-opens only the 50-point context margin before it,
+        // not the ~48h window the old lookback produced
+        assertEquals(HISTORY_END.minus(Duration.ofMinutes(49 * 5)), reseedRange2.start());
+        assertEquals(51, processedCount(user), "already processed points must stay processed");
+        assertEquals(51, unprocessedCount(user), "50 context points + the new point");
+        assertEquals(102, timelineCount(user));
     }
 
     private TimeRange runCleanupAndCaptureReseedRange(User user, Device device, Instant start, Instant end) {

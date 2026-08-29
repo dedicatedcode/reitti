@@ -24,6 +24,7 @@ public class LocationDataCleanupTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(LocationDataCleanupTask.class);
     private final ExcessDensityHandler excessDensityHandler;
     private final AnomalyProcessingService anomalyProcessingService;
+    private final ProcessingWindowResolver processingWindowResolver;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobScheduler;
@@ -32,6 +33,7 @@ public class LocationDataCleanupTask implements Job {
 
     public LocationDataCleanupTask(ExcessDensityHandler excessDensityHandler,
                                    AnomalyProcessingService anomalyProcessingService,
+                                   ProcessingWindowResolver processingWindowResolver,
                                    UserSettingsJdbcService userSettingsJdbcService,
                                    UserJdbcService userJdbcService,
                                    JobSchedulingService jobScheduler,
@@ -39,6 +41,7 @@ public class LocationDataCleanupTask implements Job {
                                    JobMetadataRepository metadataRepository) {
         this.excessDensityHandler = excessDensityHandler;
         this.anomalyProcessingService = anomalyProcessingService;
+        this.processingWindowResolver = processingWindowResolver;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userJdbcService = userJdbcService;
         this.jobScheduler = jobScheduler;
@@ -61,9 +64,12 @@ public class LocationDataCleanupTask implements Job {
         Instant end = data.getEnd();
         log.debug("Starting LocationDataCleanupJob for user [{}] and device [{}] between {} and {}", user, device, start, end);
         this.metadataRepository.updateProgress(jobId, 0,4, "Anomaly processing started ...");
-        TimeRange processedTimeRange = anomalyProcessingService.processAndMarkAnomalies(user, device, start, end);
+        // resolve how far around the promoted range we actually have to process: context
+        // margin for the filters, closed gaps and backfill - instead of a static ±24h window
+        TimeRange window = processingWindowResolver.resolve(user, device, new TimeRange(start, end));
+        TimeRange processedTimeRange = anomalyProcessingService.processAndMarkAnomalies(user, device, window.start(), window.end());
         this.metadataRepository.updateProgress(jobId, 1,4, "Density normalization started ...");
-        TimeRange densityTimeRange = excessDensityHandler.handleExcess(user, device, new TimeRange(start, end));
+        TimeRange densityTimeRange = excessDensityHandler.handleExcess(user, device, window);
         this.metadataRepository.updateProgress(jobId, 2,4, "Update user data started ...");
         this.userSettingsJdbcService.updateNewestData(user, end);
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());

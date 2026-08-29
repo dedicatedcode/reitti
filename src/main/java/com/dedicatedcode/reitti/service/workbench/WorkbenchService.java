@@ -102,7 +102,7 @@ public class WorkbenchService {
         this.spatialCoverageService.preMove(movedPoints);
         List<DeviceTimeRange> affectedTimeRange = this.sourceLocationPointJdbcService.findAffectedTimeRange(user, movedPointIds);
         for (MovedPointDto movedPoint : movedPoints) {
-            long newH3Cell = this.spatialCoverageService.getLevelCellForPoint(movedPoint.getLat(), movedPoint.getLng(), 12);
+            Long newH3Cell = this.spatialCoverageService.getLevelCellForPoint(movedPoint.getLat(), movedPoint.getLng(), 12);
             this.sourceLocationPointJdbcService.updateLocation(user, movedPoint.getSourceId(), movedPoint.getLat(), movedPoint.getLng(), newH3Cell);
         }
         scheduleUpdateJob(user, parentJob, affectedTimeRange);

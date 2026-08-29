@@ -231,15 +231,23 @@ public class UnifiedLocationProcessingService {
         long start = System.currentTimeMillis();
 
         String previewId = event.getPreviewId();
-        Instant windowStart = event.getEarliest().minus(1, ChronoUnit.DAYS);
-        Instant windowEnd = event.getLatest().plus(1, ChronoUnit.DAYS);
 
         DetectionParameter currentConfiguration;
         if (previewId == null) {
-            currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, windowStart);
+            currentConfiguration = visitDetectionParametersService.getCurrentConfiguration(user, event.getEarliest());
         } else {
             currentConfiguration = previewVisitDetectionParametersJdbcService.findCurrent(user, previewId);
         }
+
+        // The window only spans the batch plus enough margin for stays that continue across
+        // its edges (a stay becomes visible as processed visit and pulls the window out to
+        // its boundaries below). A static ±1 day window here made every pipeline run
+        // re-detect visits over days of already processed data (#1212).
+        Duration boundaryMargin = Duration.ofSeconds(
+                currentConfiguration.getVisitDetection().getMinimumStayTimeInSeconds()
+                        + 2 * currentConfiguration.getVisitDetection().getMaxMergeTimeBetweenSameStayPoints());
+        Instant windowStart = event.getEarliest().minus(boundaryMargin);
+        Instant windowEnd = event.getLatest().plus(boundaryMargin);
 
         List<ProcessedVisit> existingProcessedVisits;
         if (previewId == null) {
@@ -254,8 +262,10 @@ public class UnifiedLocationProcessingService {
             if (existingProcessedVisits.getFirst().getStartTime().isBefore(windowStart)) {
                 windowStart = existingProcessedVisits.getFirst().getStartTime();
             }
-            if (existingProcessedVisits.getLast().getEndTime().isAfter(windowEnd)) {
-                windowEnd = existingProcessedVisits.getLast().getEndTime();
+            if (!existingProcessedVisits.getLast().getEndTime().isBefore(windowEnd)) {
+                // the point queries load with an exclusive end, so the visit's defining last
+                // point must be covered by extending the window beyond the visit end
+                windowEnd = existingProcessedVisits.getLast().getEndTime().plus(1, ChronoUnit.MILLIS);
             }
         }
 
