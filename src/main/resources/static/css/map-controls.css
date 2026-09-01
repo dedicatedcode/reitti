@@ -1,19 +1,20 @@
 
+/* Intentionally NOT position:relative: the .map-controls dropdown must anchor
+   to the fixed bottom bar (nearest positioned ancestor) so it can never be
+   positioned partially outside the viewport, no matter where the trigger
+   button sits within the bar. */
 .map-controls-section {
-    position: relative;
     display: flex;
     align-items: center;
 }
 
 .map-controls {
     position: absolute;
-    left: 50%;
+    right: 22px;
     bottom: 54px;
-    transform: translateX(-50%);
     background: var(--color-background-dark-light);
     border-radius: 8px;
     padding: 8px;
-    margin-right: 8px;
     box-shadow: var(--box-shadow);
     display: flex;
     flex-direction: column;
@@ -29,10 +30,11 @@
     visibility: visible;
 }
 
-#map-controls-section .map-controls-section .fab-btn {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+/* Ghost fallback when the controls are mounted outside the bottom bar
+   (live mode user-selection area) */
+#live-mode-map-controls-section .map-controls-section .bar-btn {
     border: none;
+    background: transparent;
 }
 
 .map-controls button {

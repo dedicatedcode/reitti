@@ -1086,7 +1086,7 @@ tr:hover {
     line-height: 1.5;
     font-weight: 400;
     padding-top: 64px;
-    padding-bottom: 140px;
+    padding-bottom: 180px;
     transition: opacity 0.3s ease;
     -webkit-user-select: none; /* Safari */
     user-select: none;
@@ -1778,45 +1778,20 @@ body.auto-update-mode .today-fab {
 
 
 }
-/* FAB Container Styles */
-.fab-container {
-    position: fixed;
-    bottom: 117px;
-    left: 50%;
-    display: flex;
-    align-items: center;
-    background: var(--color-background-dark-light);
-    color: var(--color-highlight);
-    border: 1px solid var(--color-highlight);
-    padding: 0;
-    border-radius: 24px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    transition: all 0.3s ease;
-    transform: translateX(-50%);
-}
-
-.fab-container.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
 .range-selection-info {
     opacity: 1;
     pointer-events: none;
     position: absolute;
-    width: 100%;
-    text-align: center;
-    z-index: 2000;
-    border-radius: 24px;
-    background: var(--color-background-dark-light);
-    color: var(--color-highlight);
-    border: 1px solid var(--color-highlight);
-    padding-top: 8px;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* shifts the centered text 4px up while the overlay keeps covering the bar */
     padding-bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 300px;
+    z-index: 2000;
+    background: rgba(59, 59, 59, 0.6);
+    backdrop-filter: blur(6px);
+    color: var(--color-highlight);
     transition: opacity 0.3s ease-in-out;
 }
 .range-selection-info.hidden {
@@ -1824,10 +1799,6 @@ body.auto-update-mode .today-fab {
 
 }
 
-
-body.datepicker-hidden .fab-container {
-    bottom: 20px;
-}
 
 .fab-btn {
     height: 40px;
@@ -1877,6 +1848,7 @@ body.datepicker-hidden .fab-container {
     width: 0;
     white-space: nowrap;
     pointer-events: none; /* Add this to prevent interference */
+    transform: translateY(-4px);
 }
 
 .play-section:hover .speed-control {
@@ -1907,17 +1879,17 @@ body.datepicker-hidden .fab-container {
     font-weight: 500;
 }
 
-/* Expanded state when today button is visible */
-.fab-container.has-today {
-    padding: 8px 12px;
-    gap: 12px;
-}
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .fab-btn {
         width: 36px;
         height: 36px;
+        font-size: 14px;
+    }
+
+    .bar-btn {
+        width: 30px;
+        height: 30px;
         font-size: 14px;
     }
 
@@ -2739,3 +2711,90 @@ button:disabled {
     color: var(--color-text-white);
 }
 
+
+/* Type-to-jump overlay (date-jump.js) */
+.date-jump-overlay {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 440px;
+    max-width: calc(100vw - 24px);
+    padding: 14px 18px;
+    background: var(--color-background-dark-light);
+    border: 1px solid var(--color-highlight);
+    border-radius: 8px;
+    color: var(--color-highlight);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.date-jump-overlay.hidden {
+    display: none;
+}
+
+.date-jump-input-row {
+    display: flex;
+    font-family: var(--serif-font);
+    align-items: center;
+    gap: 8px;
+}
+
+.date-jump-label {
+    font-size: 1.4rem;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.date-jump-buffer {
+    font-size: 1.4rem;
+    min-width: 6ch;
+}
+
+.date-jump-buffer::after {
+    content: '▌';
+    opacity: 0.6;
+}
+
+.date-jump-preview {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.date-jump-overlay.is-invalid .date-jump-preview {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.date-jump-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(245, 222, 179, 0.2);
+}
+
+.date-jump-hints-label {
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.date-jump-hint-tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.date-jump-hint-token {
+    font-family: monospace;
+    font-size: 11px;
+    padding: 1px 6px;
+    border: 1px solid rgba(245, 222, 179, 0.35);
+    border-radius: 4px;
+    color: var(--color-highlight);
+    white-space: nowrap;
+}

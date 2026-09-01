@@ -9,7 +9,7 @@ class MapControls {
         this.element = document.getElementById(element);
         this.element.innerHTML = `
          <div class="map-controls-section">
-            <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="${t('map.display-control.title')}">
+            <button type="button" class="btn bar-btn map-controls-btn" id="map-controls-btn" title="${t('map.display-control.title')}">
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
