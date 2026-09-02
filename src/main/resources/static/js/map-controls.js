@@ -60,6 +60,17 @@ class MapControls {
 
 
     _setup() {
+        const triggerBtn = this.element.querySelector('.map-controls-btn');
+        triggerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.rootElement.classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (this.rootElement.classList.contains('open') && !this.rootElement.contains(e.target)) {
+                this.rootElement.classList.remove('open');
+            }
+        });
+
         this.mapStyleSelect.addEventListener('change', () => {
             const newValue = parseInt(this.mapStyleSelect.value);
             this._updateCapabilitiesUI(newValue);

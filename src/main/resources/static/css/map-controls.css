@@ -11,7 +11,9 @@
 .map-controls {
     position: absolute;
     right: 22px;
-    bottom: 54px;
+    /* opens just above the bottom bar, whatever its height (wrapped rows
+       on mobile) — the containing block is the fixed bar itself */
+    bottom: calc(100% + 6px);
     background: var(--color-background-dark-light);
     border-radius: 8px;
     padding: 8px;
@@ -25,7 +27,7 @@
     z-index: 1000;
 }
 
-.map-controls-section:hover .map-controls {
+.map-controls-section.open .map-controls {
     opacity: 1;
     visibility: visible;
 }

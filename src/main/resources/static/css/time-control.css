@@ -190,6 +190,9 @@ body.date-picker-inputs #date-picker-container {
         flex-wrap: wrap;
         padding-top: 10px;
         row-gap: 8px;
+        /* above the navbar (z-50) so the calendar popup can never be
+           painted over by it on small screens */
+        z-index: 60;
     }
 
     body.date-picker-inputs #date-picker-container {

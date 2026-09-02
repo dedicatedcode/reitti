@@ -315,6 +315,7 @@ header {
     color: var(--color-text-white);
     border-radius: 12px 12px 0 0;
     border-bottom: 1px solid #eee;
+    flex: 0 0 auto;
 }
 
 .settings-menu-header h3 {
@@ -340,8 +341,11 @@ header {
 }
 
 .settings-menu-content {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 16px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .settings-section {
@@ -1862,18 +1866,20 @@ body.auto-update-mode .today-fab {
     pointer-events: auto; /* Re-enable pointer events when visible */
 }
 
-/* While replay is running the speed control stays revealed — hover does not
-   exist on touch devices, and it keeps the selector reachable there. */
-.play-section.playing .speed-control {
-    opacity: 1;
-    visibility: visible;
-    width: 120px;
-    margin: 0 4px;
-    pointer-events: auto;
+/* While replay is running the speed control stays revealed (hover-capable
+   devices only — touch devices hide the speed control entirely). */
+@media (hover: hover) {
+    .play-section.playing .speed-control {
+        opacity: 1;
+        visibility: visible;
+        width: 120px;
+        margin: 0 4px;
+        pointer-events: auto;
+    }
 }
 
 /* Touch devices: hover is synthesized by taps and would make the selector
-   flash and stick; reveal it purely via .playing instead. */
+   flash and stick; the speed control is hidden entirely on touch. */
 @media (hover: none) {
     .play-section:hover .speed-control {
         opacity: 0;
@@ -1881,6 +1887,10 @@ body.auto-update-mode .today-fab {
         width: 0;
         margin: 0;
         pointer-events: none;
+    }
+
+    .speed-control {
+        display: none;
     }
 }
 

@@ -332,8 +332,10 @@ class SettingsMenu {
 
     open() {
         if (this.isVisible) return;
-        
-        this.menu.style.display = 'block';
+
+        // flex (not block): the menu is a flex column — the header stays
+        // pinned and the content scrolls within the max-height cap.
+        this.menu.style.display = 'flex';
         this.overlay.style.display = 'block';
         
         // Update checkbox states before showing
