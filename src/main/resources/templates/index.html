@@ -18,11 +18,15 @@
     <link rel="stylesheet" th:href="@{/css/avatar-marker.css}" href="/css/avatar-marker.css">
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
+    <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="/css/datetime-picker.css">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
 
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
+    <script th:src="@{/js/datetime-picker.js}"></script>
+    <script th:src="@{/js/date-parse.js}"></script>
+    <script th:src="@{/js/date-jump.js}"></script>
     <script th:src="@{/js/date-picker-combined.js}"></script>
     <script th:src="@{/js/timeline-scroll-indicator.js}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
@@ -150,41 +154,44 @@
 <div id="date-picker-container"></div>
 <div id="tooltip" class="map-tooltip"></div>
 
-<div id="timeline-controls"></div>
-<div class="fab-container" id="fab-container">
+<div id="bottom-bar" class="bottom-bar">
     <div id="hover-info" class="range-selection-info hidden">
         2012-01-01 - 2013-03-23
     </div>
-    <div class="play-section">
-        <button type="button" class="btn fab-btn" id="play-btn" title="Start Animation">
-            <i class="lni lni-play"></i>
-        </button>
-        <div class="speed-control" id="speed-control">
-            <select id="speed-selector" th:title="#{map.time-control.speed.title}">
-                <option value="1" th:text="#{map.time-control.speed.normal}">Normal (1x)</option>
-                <option value="60" th:text="#{map.time-control.speed.fast}">Fast (60x)</option>
-                <option value="3600" th:text="#{map.time-control.speed.super_fast}">Super Fast (3600x)</option>
-                <option value="auto" th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
-                <option value="adaptive" selected th:text="#{map.time-control.speed.adaptive}">Adaptive</option>
-            </select>
+    <div class="bar-cluster bar-left">
+        <div class="play-section">
+            <button type="button" class="btn bar-btn" id="play-btn" title="Start Animation">
+                <i class="lni lni-play"></i>
+            </button>
+            <div class="speed-control" id="speed-control">
+                <select id="speed-selector" th:title="#{map.time-control.speed.title}">
+                    <option value="1" th:text="#{map.time-control.speed.normal}">Normal (1x)</option>
+                    <option value="60" th:text="#{map.time-control.speed.fast}">Fast (60x)</option>
+                    <option value="3600" th:text="#{map.time-control.speed.super_fast}">Super Fast (3600x)</option>
+                    <option value="auto" th:text="#{map.time-control.speed.auto}">Auto-Adjust</option>
+                    <option value="adaptive" selected th:text="#{map.time-control.speed.adaptive}">Adaptive</option>
+                </select>
+            </div>
         </div>
     </div>
-    <button type="button" class="btn fab-btn" id="toggle-time-control-btn"  th:title="#{map.time-control.speed.show.title}" title="Show time controls">
-        <i class="lni lni-stopwatch"></i>
-    </button>
-    <span class="time-display" id="time-display"></span>
-    <button type="button" class="btn fab-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
-            th:title="#{datepicker.today.title}" title="Go to Today">
-        <i class="lni lni-calendar-days"></i>
-        <span th:text="#{datepicker.today}">Today</span>
-    </button>
+    <div id="timeline-controls"></div>
+    <div class="bar-cluster bar-right">
+        <button type="button" class="btn bar-btn" id="date-jump-hint" th:title="#{map.datejump.hint.title}" title="Jump to a date - just start typing">
+            <i class="lni lni-stopwatch"></i>
+        </button>
+        <button type="button" class="btn bar-btn today-btn" id="today-fab" onclick="goToToday()" style="display: none;"
+                th:title="#{datepicker.today.title}" title="Go to Today">
+            <i class="lni lni-calendar-days"></i>
+            <span th:text="#{datepicker.today}">Today</span>
+        </button>
 
-    <div id="map-controls-section"></div>
+        <div id="map-controls-section"></div>
 
-    <!-- Settings button -->
-    <button type="button" class="btn fab-btn settings-btn" id="settings-btn" th:title="#{map.map-settings.button.title}" title="Settings">
-        <i class="lni lni-gear-1"></i>
-    </button>
+        <!-- Settings button -->
+        <button type="button" class="btn bar-btn settings-btn" id="settings-btn" th:title="#{map.map-settings.button.title}" title="Settings">
+            <i class="lni lni-gear-1"></i>
+        </button>
+    </div>
 </div>
 
 <div id="settings-menu-container"></div>
@@ -231,14 +238,61 @@
     let activeId = null;
 
 
-    const timelineControl = new TimelineControl(
-        document.getElementById('timeline-controls'),
-        document.getElementById('time-display')
-    );
+        const timelineControl = new TimelineControl(
+            document.getElementById('timeline-controls')
+        );
 
     timelineControl.on('offsetChanged', () => {
         mapRenderer.updateViewState(createViewState([]));
     });
+
+    const ACTIVITY_BINS = 120;
+
+    function updateActivityGraph() {
+        timelineControl.setActivitySeries(computeActivitySeries());
+    }
+
+    /**
+     * Buckets GPS activity (per-point deltas of the managers' cumulative
+     * activityWeights) into ACTIVITY_BINS bins across the scrub bar range.
+     * Day view: bins span [minTimestamp, maxTimestamp]; aggregate mode: bins
+     * span the seconds-of-day axis (0-86400).
+     */
+    function computeActivitySeries() {
+        const bins = new Float64Array(ACTIVITY_BINS);
+        const minTs = timelineControl.minTimestamp;
+        const maxTs = timelineControl.maxTimestamp;
+        const span = maxTs - minTs;
+        if (span <= 0) return bins;
+
+        for (const manager of gpsDataManagers) {
+            // Only fully loaded managers whose range covers the current scrubber
+            // bounds may contribute — otherwise the graph would draw stale or
+            // partially streamed weights while a new range is still loading.
+            if (manager.loadingState !== 'complete') continue;
+            if (manager.minTimestamp == null || manager.maxTimestamp == null) continue;
+            if (manager.minTimestamp > minTs || manager.maxTimestamp < maxTs) continue;
+            const weights = manager.activityWeights;
+            const buffer = manager.cleanedBuffer;
+            if (!weights || !buffer || weights.length < 2) continue;
+
+            for (let i = 1; i < weights.length; i++) {
+                const delta = weights[i] - weights[i - 1];
+                if (!(delta > 0)) continue;
+                const prevIdx = (i - 1) * 6 + 3;
+                const mid = (buffer[prevIdx] + buffer[i * 6 + 3]) / 2;
+                let pos;
+                if (timelineControl.aggregate) {
+                    pos = (((mid % 86400) + 86400) % 86400) / 86400;
+                } else {
+                    pos = (mid - minTs) / span;
+                }
+                if (pos < 0 || pos > 1) continue;
+                bins[Math.min(ACTIVITY_BINS - 1, Math.floor(pos * ACTIVITY_BINS))] += delta;
+            }
+        }
+        return bins;
+    }
 
     const liveModeController = new LiveModeController('auto-update-btn', 'auto-update-overlay');
     const settingsMenu = new SettingsMenu('settings-menu-container');
@@ -246,22 +300,21 @@
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
-        const fabContainer = document.getElementById('fab-container');
+        const bottomBar = document.getElementById('bottom-bar');
         const autoUpdateUserSelection = document.getElementById('auto-update-user-selection');
 
         if (autoUpdateMode) {
             timeline.classList.add('hidden');
             datePicker.classList.add('hidden');
-            fabContainer.classList.add('hidden');
+            bottomBar.classList.add('hidden');
             autoUpdateUserSelection.classList.remove('hidden');
-            if (window.horizontalDatePicker) {
-                window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
+            if (window.datePicker) {
+                window.datePicker.setSelectedRange(getCurrentLocalDate(), null);
             }
-            timelineControl.hide();
         } else {
             timeline.classList.remove('hidden');
             datePicker.classList.remove('hidden');
-            fabContainer.classList.remove('hidden');
+            bottomBar.classList.remove('hidden');
             autoUpdateUserSelection.classList.add('hidden');
         }
         updateAvatarsVisibility();
@@ -290,6 +343,7 @@
     let timeMultiplier = 30; // Default: 1 second = 1 minute
 
     const playBtn = document.getElementById('play-btn');
+    const playSection = playBtn.closest('.play-section');
 
     playBtn.onclick = () => {
         if (isPlaying) {
@@ -332,6 +386,8 @@
     function startAnimation() {
         isPlaying = true;
         playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
+        playSection.classList.add('playing');
+        timelineControl.setAnimating(true);
         lastFrameTime = null;
         animationId = requestAnimationFrame(animate);
     }
@@ -339,6 +395,8 @@
     function stopAnimation() {
         isPlaying = false;
         playBtn.innerHTML = '<i class="lni lni-play"></i>'; // Change icon to Play
+        playSection.classList.remove('playing');
+        timelineControl.setAnimating(false);
         if (animationId) {
             cancelAnimationFrame(animationId);
         }
@@ -574,6 +632,7 @@
                             minTimestamp: gpsDataManager.minTimestamp,
                             maxTimestamp: gpsDataManager.maxTimestamp,
                         })
+                        updateActivityGraph();
                         calculateTimelineMultiplier();
                         updateStatus("Finished processing {1} points", current, total);
                         mapRenderer.updateViewState(createViewState());
@@ -860,8 +919,8 @@
                 // If the selected date is not today, switch to today
                 if (!isSelectedDateToday()) {
                     console.log('Auto-update: Switching to today\'s date');
-                    if (window.horizontalDatePicker) {
-                        window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate());
+                    if (window.datePicker) {
+                        window.datePicker.setSelectedRange(getCurrentLocalDate());
                     }
                 }
             }, 30000); // 30 seconds
@@ -886,14 +945,14 @@
 
     function updateTodayFabVisibility() {
         const todayFab = document.getElementById('today-fab');
-        if (!todayFab || !window.horizontalDatePicker) return;
+        if (!todayFab || !window.datePicker) return;
 
         const today = getCurrentLocalDate();
         const isDatePickerHidden = document.body.classList.contains('datepicker-hidden');
-        const isTodayVisible = window.horizontalDatePicker.isDateVisible(today);
+        const isTodayVisible = window.datePicker.isDateVisible(today);
 
         // Check if today is selected
-        const selectedRange = window.horizontalDatePicker.getSelectedRange();
+        const selectedRange = window.datePicker.getSelectedRange();
         const isTodaySelected = selectedRange && selectedRange.startDate === today &&
                                (!selectedRange.endDate || selectedRange.endDate === today);
 
@@ -906,10 +965,175 @@
     }
 
     function goToToday() {
-        if (window.horizontalDatePicker) {
-            window.horizontalDatePicker.setSelectedRange(getCurrentLocalDate(), null);
+        if (window.datePicker) {
+            window.datePicker.setSelectedRange(getCurrentLocalDate(), null);
         }
     }
+
+    let datePickerRolloverIntervalId = null;
+
+    /**
+     * The one downstream navigation path for a committed date range: URL sync,
+     * Today-button visibility and the dateChanged event that reloads the
+     * timeline and GPS data. Used by the picker itself and by type-to-jump.
+     */
+    function handleDateSelection(data) {
+        const startDate = new Date(data.startDate + 'T00:00:00');
+        let endDate;
+        if (data.endDate) {
+            endDate = new Date(data.endDate + 'T00:00:00');
+        } else {
+            switch (data.timeband) {
+                case 'day':
+                    endDate = startDate;
+                    break;
+                case 'month':
+                    endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+                    break;
+                case 'year':
+                    endDate = new Date(startDate.getFullYear(), 11, 31);
+                    break;
+            }
+        }
+        currentDateRange = {
+            startDate: window.datePicker.formatDate(startDate),
+            endDate: window.datePicker.formatDate(endDate)
+        };
+        updateUrlWithDate(currentDateRange);
+        updateTodayFabVisibility();
+        document.body.dispatchEvent(new CustomEvent('dateChanged'));
+    }
+
+    document.body.addEventListener('dateJump:commit', (e) => {
+        if (!window.datePicker) return;
+        window.datePicker.setSelectedRange(e.detail.startDate, e.detail.endDate);
+        handleDateSelection({ startDate: e.detail.startDate, endDate: e.detail.endDate, timeband: 'day' });
+    });
+
+    /**
+     * Creates (or re-creates) the date picker and wires all index-specific listeners.
+     * Re-invocation tears down the previous instance (destroy + interval cleanup);
+     * pass `initialRange` ([startDate, endDate?]) to preserve a selection across a re-init.
+     */
+    function createDatePicker(initialRange) {
+        if (window.datePicker) {
+            window.datePicker.destroy();
+            window.datePicker = null;
+        }
+        if (datePickerRolloverIntervalId) {
+            clearInterval(datePickerRolloverIntervalId);
+            datePickerRolloverIntervalId = null;
+        }
+
+        window.datePicker = new DatePicker('date-picker-container', {
+            mode: resolveDatePickerMode(),
+            daysToShow: 14,
+            prefetchDays: 25,
+            allowRangeSelection: true,
+            singleDateMode: true, // Enable single date mode with locking
+            dateFormat: 'YYYY-MM-DD',
+            locale: navigator.language,
+            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true',
+            strings: {
+                clickToUnlockDate: t('datepicker.click-to-unlock-date'),
+                clickToLockDate: t('datepicker.click-to-lock-date'),
+                clickToClearSelection: t('datepicker.click-to-clear-selection'),
+                clickToCreateRange: t('datepicker.click-to-create-range'),
+                clickToExpandRangeBackward: t('datepicker.click-to-expand-range-backward'),
+                clickToExpandRangeForward: t('datepicker.click-to-expand-range-forward'),
+                clickToAdjustRangeStart: t('datepicker.click-to-adjust-range-start'),
+                clickToUnlockMonth: t('datepicker.click-to-unlock-month'),
+                clickToLockMonth: t('datepicker.click-to-lock-month'),
+                clickToUnlockYear: t('datepicker.click-to-unlock-year'),
+                clickToLockYear: t('datepicker.click-to-lock-year'),
+                select: t('datepicker.select'),
+                to: t('datepicker.to'),
+                clear: t('datepicker.clear'),
+                showRange: t('datepicker.range.show'),
+                hideRange: t('datepicker.range.hide')
+            },
+            onHoverRange: (range, datePicker, itemData) => {
+                const element = document.getElementById('hover-info');
+
+                if (range === null) {
+                    element.classList.add('hidden');
+                } else {
+                    const dateTimeFormat = Intl.DateTimeFormat(window.userSettings.selectedLocale, { dateStyle: "medium",});
+                    if (range.mode === 'single' && range.timeband === 'day') {
+                        element.innerHTML = `<div class="date-info">${dateTimeFormat.format(range.startDate)}</div>`;
+                    } else {
+                        element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
+                    }
+                    element.classList.remove('hidden')
+                }
+            }
+        });
+        applyDatePickerModeLayout();
+
+        window.datePicker.on('selectionChange', function (data) {
+            console.log(`Selection changed`, data);
+            handleDateSelection(data);
+        });
+
+        // Listen for date picker view changes to update Today button visibility
+        window.datePicker.on('viewChange', function () {
+            updateTodayFabVisibility();
+        });
+
+        const startingDate = initialRange || loadStartingDate();
+        const startingId = loadStartingActiveId();
+        activeId = startingId;
+        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]} and active id ${startingId}`);
+        window.datePicker.setSelectedRange(startingDate[0], startingDate[1]);
+
+        let lastKnownDate = getCurrentLocalDate();
+        datePickerRolloverIntervalId = setInterval(() => {
+            const today = getCurrentLocalDate();
+            if (today !== lastKnownDate) {
+                lastKnownDate = today;
+                window.datePicker.setMaxDate(new Date());
+            }
+        }, 60000);
+    }
+
+    /**
+     * Mobile always uses the traditional inputs; on desktop the user's
+     * localStorage choice (via the settings menu) wins.
+     */
+    function resolveDatePickerMode() {
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile) return 'inputs';
+        return localStorage.getItem('datePickerStyle') === 'inputs' ? 'inputs' : 'strip';
+    }
+
+    /**
+     * In inputs mode the date-picker container joins the bottom bar as its
+     * first segment (single merged row); in strip mode it lives in the body.
+     */
+    function applyDatePickerModeLayout() {
+        const container = document.getElementById('date-picker-container');
+        const bottomBar = document.getElementById('bottom-bar');
+        if (!container || !bottomBar) return;
+        const inputsMode = !!(window.datePicker && window.datePicker.options
+            && window.datePicker.options.mode === 'inputs');
+        document.body.classList.toggle('date-picker-inputs', inputsMode);
+        if (inputsMode && container.parentElement !== bottomBar) {
+            bottomBar.insertBefore(container, bottomBar.firstChild);
+        } else if (!inputsMode && container.parentElement === bottomBar) {
+            document.body.insertBefore(container, document.getElementById('tooltip'));
+        }
+    }
+
+    function recreateDatePicker() {
+        if (!window.datePicker) {
+            createDatePicker();
+            return;
+        }
+        const previous = window.datePicker.getSelectedRange();
+        createDatePicker(previous ? [previous.startDate, previous.endDate] : undefined);
+    }
+
+    window.matchMedia('(max-width: 768px)').addEventListener('change', () => recreateDatePicker());
 
     function updateEditPlaceLinks() {
         const currentUrl = window.location.href;
@@ -966,7 +1190,7 @@
             mapRenderer.setShowTransportModes(localStorage.getItem('showTransportModes') !== 'false');
         } else {
             document.body.classList.add('datepicker-hidden')
-            timelineControl.hide();
+            document.getElementById('bottom-bar').classList.add('hidden');
         }
 
         function calculateUserConfigs() {
@@ -1031,6 +1255,7 @@
                     maxTimestamp: params.endDateUtcSeconds,
                     aggregate: aggregateToggle ? aggregateToggle.checked : false
                 });
+                updateActivityGraph();
 
                 userConfigs.forEach(config => {
                     const gpsDataManager = new GpsDataManager(config, window.userSettings, getUserTimezone());
@@ -1161,93 +1386,7 @@
             }
         });
 
-        window.horizontalDatePicker = new DatePicker('date-picker-container', {
-            daysToShow: 14,
-            prefetchDays: 25,
-            allowRangeSelection: true,
-            singleDateMode: true, // Enable single date mode with locking
-            dateFormat: 'YYYY-MM-DD',
-            locale: navigator.language,
-            allowFutureDates: localStorage.getItem('allowFutureDates') === 'true',
-            strings: {
-                clickToUnlockDate: t('datepicker.click-to-unlock-date'),
-                clickToLockDate: t('datepicker.click-to-lock-date'),
-                clickToClearSelection: t('datepicker.click-to-clear-selection'),
-                clickToCreateRange: t('datepicker.click-to-create-range'),
-                clickToExpandRangeBackward: t('datepicker.click-to-expand-range-backward'),
-                clickToExpandRangeForward: t('datepicker.click-to-expand-range-forward'),
-                clickToAdjustRangeStart: t('datepicker.click-to-adjust-range-start'),
-                clickToUnlockMonth: t('datepicker.click-to-unlock-month'),
-                clickToLockMonth: t('datepicker.click-to-lock-month'),
-                clickToUnlockYear: t('datepicker.click-to-unlock-year'),
-                clickToLockYear: t('datepicker.click-to-lock-year'),
-                select: t('datepicker.select'),
-                to: t('datepicker.to')
-            },
-            onHoverRange: (range, datePicker, itemData) => {
-                const element = document.getElementById('hover-info');
-
-                if (range === null) {
-                    element.classList.add('hidden');
-                } else {
-                    const dateTimeFormat = Intl.DateTimeFormat(window.userSettings.selectedLocale, { dateStyle: "medium",});
-                    if (range.mode === 'single' && range.timeband === 'day') {
-                        element.innerHTML = `<div class="date-info">${dateTimeFormat.format(range.startDate)}</div>`;
-                    } else {
-                        element.innerHTML = `<div class="date-info">${t('common.time-range', [dateTimeFormat.format(range.startDate), dateTimeFormat.format(range.endDate)])}</div>`;
-                    }
-                    element.classList.remove('hidden')
-                }
-            }
-        });
-
-        window.horizontalDatePicker.on('selectionChange', function (data) {
-            console.log(`Selection changed`, data);
-            const startDate = new Date(data.startDate + 'T00:00:00');
-            let endDate;
-            if (data.endDate) {
-                endDate = new Date(data.endDate + 'T00:00:00');
-            } else {
-                switch (data.timeband) {
-                    case 'day':
-                        endDate = startDate;
-                        break;
-                    case 'month':
-                        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-                        break;
-                    case 'year':
-                        endDate = new Date(startDate.getFullYear(), 11, 31);
-                        break;
-                }
-            }
-            currentDateRange = {
-                startDate: window.horizontalDatePicker.formatDate(startDate),
-                endDate: window.horizontalDatePicker.formatDate(endDate)
-            };
-            updateUrlWithDate(currentDateRange);
-            updateTodayFabVisibility();
-            document.body.dispatchEvent(new CustomEvent('dateChanged'));
-        });
-
-        // Listen for date picker view changes to update FAB visibility
-        window.horizontalDatePicker.on('viewChange', function () {
-            updateTodayFabVisibility();
-        });
-
-        const startingDate = loadStartingDate();
-        const startingId = loadStartingActiveId();
-        activeId = startingId;
-        console.log(`Starting date: ${startingDate[0]} - ${startingDate[1]} and active id ${startingId}`);
-        window.horizontalDatePicker.setSelectedRange(startingDate[0], startingDate[1]);
-
-        let lastKnownDate = getCurrentLocalDate();
-        setInterval(() => {
-            const today = getCurrentLocalDate();
-            if (today !== lastKnownDate) {
-                lastKnownDate = today;
-                window.horizontalDatePicker.setMaxDate(new Date());
-            }
-        }, 60000);
+        createDatePicker();
 
 
         document.getElementById('speed-selector').onchange = function(e) {
@@ -1274,9 +1413,19 @@
             });
         }
 
+        const dateJumpHint = document.getElementById('date-jump-hint');
+        if (dateJumpHint) {
+            dateJumpHint.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (window.DateJump) window.DateJump.open();
+            });
+        }
+
         function startAnimation() {
             isPlaying = true;
             playBtn.innerHTML = '<i class="lni lni-pause"></i>';
+            playSection.classList.add('playing');
+            timelineControl.setAnimating(true);
             lastFrameTime = null;
             animationId = requestAnimationFrame(animate);
         }
@@ -1284,6 +1433,8 @@
         function stopAnimation() {
             isPlaying = false;
             playBtn.innerHTML = '<i class="lni lni-play"></i>';
+            playSection.classList.remove('playing');
+            timelineControl.setAnimating(false);
             followedManagerId = null;    // ← reset
             lastFollowCenter = null;     // ← reset
             smoothTarget = null;         // ← reset
@@ -1324,6 +1475,7 @@
                         maxTimestamp: params.endDateUtcSeconds,
                         aggregate: value
                     });
+                    updateActivityGraph();
                     calculateTimelineMultiplier();
                     mapRenderer.updateViewState(createViewState([]));
                     break;
@@ -1349,65 +1501,15 @@
                     }
                     break;
                 case 'allowFutureDates':
-                    window.horizontalDatePicker.setAllowFutureDates(value);
+                    window.datePicker.setAllowFutureDates(value);
+                    break;
+                case 'datePickerStyle':
+                    recreateDatePicker();
                     break;
             }
         });
         mapRenderer.updateViewState(createViewState([]));
-
-        document.getElementById('toggle-time-control-btn').addEventListener('click', function () {
-            toggleTimeControls();
-        });
-        restoreTimelineControlsState(window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY');
     })
-
-    function toggleTimeControls() {
-        const timelineControls = document.getElementById('timeline-controls');
-        const toggleBtn = document.getElementById('toggle-time-control-btn');
-
-        if (!timelineControls || !toggleBtn) return;
-
-        const isVisible = timelineControl.isVisible();
-
-        if (isVisible) {
-            // Hide the controls
-            timelineControl.hide();
-
-            toggleBtn.classList.remove('active');
-            toggleBtn.title = t('timeline.state.show.title');
-
-            // Save state to localStorage
-            localStorage.setItem('timelineControlsHidden', 'true');
-        } else {
-            timelineControl.show();
-            // Show the controls
-            toggleBtn.classList.add('active');
-            toggleBtn.title = t('timeline.state.hide.title');
-
-            // Save state to localStorage
-            localStorage.setItem('timelineControlsHidden', 'false');
-        }
-    }
-
-    function restoreTimelineControlsState(defaultHidden) {
-        const timelineControls = document.getElementById('timeline-controls');
-        const toggleBtn = document.getElementById('toggle-time-control-btn');
-
-        if (!timelineControls || !toggleBtn) return;
-
-        const storedValue = localStorage.getItem('timelineControlsHidden');
-        const isHidden = storedValue === null ? defaultHidden : storedValue === 'true';
-
-        if (isHidden) {
-            timelineControls.classList.add('hidden');
-            toggleBtn.title = t('timeline.state.show.title');
-            toggleBtn.classList.remove('active');
-        } else {
-            timelineControls.classList.remove('hidden');
-            toggleBtn.title = t('timeline.state.hide.title');
-            toggleBtn.classList.add('active');
-        }
-    }
 
     function openMetadataOverlay() {
         document.getElementById('metadata-overlay').classList.remove('hidden');

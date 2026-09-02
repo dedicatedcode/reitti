@@ -237,3 +237,75 @@
     right: 0;
     border-radius: 10px 0 0 10px;
 }
+
+/* --- Inputs mode: traditional two-input date selection --- */
+
+.date-picker.date-picker-inputs {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.date-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-range-input .date-input {
+    height: 32px;
+    min-width: 130px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-highlight);
+    background: var(--color-background-dark-light);
+    color: var(--color-highlight);
+    font-size: 12px;
+}
+
+.date-picker.date-picker-inputs .picker-trigger {
+    height: 32px;
+    min-width: 32px;
+}
+
+.date-range-clear {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.date-picker.date-picker-inputs .date-range-input {
+    width: auto;
+    /* align with the ghost buttons, which sit 4px above the bar center */
+    transform: translateY(-4px);
+}
+
+@media (max-width: 768px) {
+    /* Expanded range inputs exceed the viewport on phones: the end input
+       moves to its own full-width row below the start input, Clear sits at
+       the right edge of the first row. */
+    .date-range-inputs {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+
+    .date-range-input {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .date-picker.date-picker-inputs .date-range-end {
+        order: 10;
+        flex: 0 0 100%;
+    }
+
+    .date-range-clear {
+        margin-left: auto;
+    }
+}

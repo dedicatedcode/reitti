@@ -213,11 +213,12 @@ class DateTimePicker {
         }
 
         // Close popup when clicking outside
-        document.addEventListener('click', (e) => {
+        this._onDocumentClick = (e) => {
             if (!this.element.contains(e.target)) {
                 this.closePopup();
             }
-        });
+        };
+        document.addEventListener('click', this._onDocumentClick);
 
         // Prevent popup from closing when clicking inside it
         this.popup.addEventListener('click', (e) => {
@@ -670,6 +671,36 @@ class DateTimePicker {
             this.timeInput.value = timePart ? timePart.substring(0, 5) : '';
         }
         this.updateFromInputs();
+    }
+
+    /**
+     * Update the latest selectable date after construction (no-op when null).
+     * @param {Date|null} date
+     */
+    setMaxDate(date) {
+        this.options.maxDate = date || null;
+        this.renderCalendar();
+    }
+
+    /**
+     * Update the earliest selectable date after construction (no-op when null).
+     * @param {Date|null} date
+     */
+    setMinDate(date) {
+        this.options.minDate = date || null;
+        this.renderCalendar();
+    }
+
+    /**
+     * Remove global listeners and close the popup. The element DOM stays
+     * intact; instances are cheap to re-create.
+     */
+    destroy() {
+        if (this._onDocumentClick) {
+            document.removeEventListener('click', this._onDocumentClick);
+            this._onDocumentClick = null;
+        }
+        this.closePopup();
     }
 
     /**

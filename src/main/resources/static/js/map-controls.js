@@ -9,7 +9,7 @@ class MapControls {
         this.element = document.getElementById(element);
         this.element.innerHTML = `
          <div class="map-controls-section">
-            <button type="button" class="btn fab-btn map-controls-btn" id="map-controls-btn" title="${t('map.display-control.title')}">
+            <button type="button" class="btn bar-btn map-controls-btn" id="map-controls-btn" title="${t('map.display-control.title')}">
                 <i class="lni lni-map-marker-1"></i>
             </button>
             <div class="map-controls" id="map-controls">
@@ -60,6 +60,17 @@ class MapControls {
 
 
     _setup() {
+        const triggerBtn = this.element.querySelector('.map-controls-btn');
+        triggerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.rootElement.classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (this.rootElement.classList.contains('open') && !this.rootElement.contains(e.target)) {
+                this.rootElement.classList.remove('open');
+            }
+        });
+
         this.mapStyleSelect.addEventListener('change', () => {
             const newValue = parseInt(this.mapStyleSelect.value);
             this._updateCapabilitiesUI(newValue);

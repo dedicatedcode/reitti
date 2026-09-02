@@ -610,7 +610,6 @@ class SelectionManager {
     }
 }
 
-/** DatePicker core **/
 
 class DatePicker {
     #container = null;
@@ -632,6 +631,15 @@ class DatePicker {
     #scrollTimeout = null;
     #horizontalTimeout = null;
     #pendingSelRaf = null;
+
+    // Inputs mode state ('mode: "inputs"')
+    #inputsStart = null;
+    #inputsEnd = null;
+    #inputsMaxDate = null;
+    #inputsCommittedRange = null;
+    #inputsToggle = null;
+    #inputsEndWrap = null;
+    #inputsExpanded = false;
 
     #dragState = {
         isActive: false,
@@ -686,10 +694,14 @@ class DatePicker {
             clickToExpandRangeForward: 'Click to expand range forward',
             clickToAdjustRangeStart: 'Click to adjust range start',
             select: 'Select',
-            to: 'to'
+            to: 'to',
+            clear: 'Clear',
+            showRange: 'Add end date',
+            hideRange: 'Remove end date'
         };
 
         this.#options = {
+            mode: 'strip',
             daysToShow: 14,
             prefetchDays: 25,
             allowRangeSelection: true,
@@ -759,12 +771,168 @@ class DatePicker {
     }
 
     #init() {
+        if (this.#options.mode === 'inputs') {
+            this.#initInputsMode();
+            return;
+        }
         this.#createContainer();
         this.#generateInitialItems();
         this.render();
         this.#setupEventListeners();
         this.#selectionManager.ensureSelection();
         this.#requestSelectionUpdate();
+    }
+
+    #initInputsMode() {
+        this.#container.innerHTML = '';
+        this.#container.className = 'date-picker date-picker-inputs';
+
+        const root = document.createElement('div');
+        root.className = 'date-range-inputs';
+
+        const startWrap = document.createElement('div');
+        startWrap.className = 'datetime-picker date-range-input';
+        startWrap.innerHTML =
+            '<input type="date" class="date-input" aria-label="Start date">' +
+            '<button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>';
+
+        const endWrap = document.createElement('div');
+        endWrap.className = 'datetime-picker date-range-input date-range-end';
+        endWrap.innerHTML =
+            '<input type="date" class="date-input" aria-label="End date">' +
+            '<button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>';
+        endWrap.classList.add('hidden');
+        this.#inputsEndWrap = endWrap;
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'btn bar-btn date-range-toggle';
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.title = this.#options.strings.showRange || 'Add end date';
+        toggleBtn.innerHTML = '<i class="lni lni-plus"></i>';
+        this.#inputsToggle = toggleBtn;
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'btn bar-btn date-range-clear';
+        clearBtn.textContent = this.#options.strings.clear || 'Clear';
+
+        root.appendChild(startWrap);
+        root.appendChild(toggleBtn);
+        root.appendChild(endWrap);
+        root.appendChild(clearBtn);
+        this.#container.appendChild(root);
+
+        this.#inputsStart = new DateTimePicker(startWrap, {
+            popupPlacement: 'top',
+            locale: this.#options.locale
+        });
+        this.#inputsEnd = new DateTimePicker(endWrap, {
+            popupPlacement: 'top',
+            locale: this.#options.locale
+        });
+
+        toggleBtn.addEventListener('click', () => this.#toggleRangeInputs());
+        clearBtn.addEventListener('click', () => this.#clearInputs());
+
+        // Every picked date applies immediately — start, end or single date,
+        // no matter whether the range toggle is expanded or collapsed.
+        for (const input of root.querySelectorAll('.date-input')) {
+            input.addEventListener('change', () => this.#commitInputs());
+        }
+
+        const today = this.#toYmd(clampToStartOfDay(new Date()));
+        this.#setCommittedRange(today, today, false);
+    }
+
+    #toYmd(value) {
+        if (!value) return null;
+        if (value instanceof Date) {
+            return isNaN(value.getTime()) ? null : this.formatDate(value);
+        }
+        const parsed = new Date(value + 'T00:00:00');
+        return isNaN(parsed.getTime()) ? null : this.formatDate(parsed);
+    }
+
+    #effectiveMaxDate() {
+        if (!this.#options.allowFutureDates) {
+            return clampToStartOfDay(new Date());
+        }
+        return this.#inputsMaxDate;
+    }
+
+    #applyInputConstraints() {
+        const max = this.#effectiveMaxDate();
+        const maxYmd = max ? this.formatDate(max) : '';
+        const startInput = this.#inputsStart.element.querySelector('.date-input');
+        const endInput = this.#inputsEnd.element.querySelector('.date-input');
+        startInput.max = maxYmd;
+        endInput.max = maxYmd;
+        this.#inputsStart.setMaxDate(max);
+        this.#inputsEnd.setMaxDate(max);
+
+        const startVal = startInput.value;
+        endInput.min = startVal || '';
+        this.#inputsEnd.setMinDate(startVal ? new Date(startVal + 'T00:00:00') : null);
+    }
+
+    #setCommittedRange(startDate, endDate, emit) {
+        // Guard against redundant commits (e.g. duplicate change events):
+        // re-setting the identical range must not re-trigger a GPS load.
+        const unchanged = !!this.#inputsCommittedRange &&
+            this.#inputsCommittedRange.startDate === startDate &&
+            this.#inputsCommittedRange.endDate === endDate;
+        this.#inputsCommittedRange = { startDate, endDate };
+        this.#inputsStart.setDateSilent(new Date(startDate + 'T00:00:00'));
+        this.#inputsEnd.setDateSilent(new Date(endDate + 'T00:00:00'));
+        this.#applyInputConstraints();
+        if (emit && !unchanged) {
+            this.emit('selectionChange', { startDate, endDate, timeband: 'day' });
+        }
+    }
+
+    #toggleRangeInputs() {
+        this.#inputsExpanded = !this.#inputsExpanded;
+        this.#applyInputsExpansion();
+    }
+
+    #applyInputsExpansion() {
+        if (!this.#inputsToggle || !this.#inputsEndWrap) return;
+        const strings = this.#options.strings;
+        const icon = this.#inputsToggle.querySelector('i');
+        if (this.#inputsExpanded) {
+            this.#inputsEndWrap.classList.remove('hidden');
+            if (icon) icon.className = 'lni lni-minus';
+            this.#inputsToggle.title = strings.hideRange || 'Remove end date';
+        } else {
+            this.#inputsEndWrap.classList.add('hidden');
+            if (icon) icon.className = 'lni lni-plus';
+            this.#inputsToggle.title = strings.showRange || 'Add end date';
+        }
+        this.#inputsToggle.setAttribute('aria-expanded', String(this.#inputsExpanded));
+    }
+
+    #commitInputs() {
+        const startVal = (this.#inputsStart.getValue() || '').split('T')[0];
+        let endVal = (this.#inputsEnd.getValue() || '').split('T')[0];
+        // Collapsed toggle = single-date selection: end always equals start.
+        if (!this.#inputsExpanded) endVal = startVal;
+        if (!startVal && !endVal) return;
+        let start = startVal || endVal;
+        let end = endVal || startVal;
+        if (start > end) {
+            const tmp = start;
+            start = end;
+            end = tmp;
+        }
+        this.#setCommittedRange(start, end, true);
+    }
+
+    #clearInputs() {
+        this.#inputsExpanded = false;
+        this.#applyInputsExpansion();
+        const today = this.#toYmd(clampToStartOfDay(new Date()));
+        this.#setCommittedRange(today, today, true);
     }
 
     #createContainer() {
@@ -1652,6 +1820,21 @@ class DatePicker {
     /* External API */
 
     setSelectedRange(startDate, endDate = null) {
+        if (this.#options.mode === 'inputs') {
+            const start = this.#toYmd(startDate) || this.#toYmd(clampToStartOfDay(new Date()));
+            const end = endDate ? (this.#toYmd(endDate) || start) : start;
+            // A real multi-day range auto-expands the end input; a single
+            // date keeps the collapsed single-input look.
+            this.#inputsExpanded = end !== start;
+            this.#applyInputsExpansion();
+            // Emit like the strip does — this is what triggers the initial
+            // timeline/GPS load after the factory syncs the starting date.
+            // The 30s auto-today timer is gated by isSelectedDateToday() in
+            // index.html, so an unchanged sync cannot loop.
+            this.#setCommittedRange(start < end ? start : end, start < end ? end : start, false);
+            this.emit('selectionChange', { startDate: start, endDate: end, timeband: 'day' });
+            return;
+        }
         this.#selectionManager.setSelectedRange(startDate, endDate);
 
         if (startDate) {
@@ -1682,6 +1865,11 @@ class DatePicker {
     }
 
     getSelectedRange() {
+        if (this.#options.mode === 'inputs') {
+            return this.#inputsCommittedRange
+                ? { startDate: this.#inputsCommittedRange.startDate, endDate: this.#inputsCommittedRange.endDate }
+                : null;
+        }
         return this.#selectionManager.getSelectedRange();
     }
 
@@ -1919,6 +2107,13 @@ class DatePicker {
     isDateVisible(date) {
         if (!date) return false;
 
+        if (this.#options.mode === 'inputs') {
+            const range = this.#inputsCommittedRange;
+            if (!range) return false;
+            const target = this.#toYmd(date);
+            return !!target && target >= range.startDate && target <= range.endDate;
+        }
+
         const range = this.getVisibleDateRange();
         if (!range) return false;
 
@@ -1980,6 +2175,11 @@ class DatePicker {
     isSameYear = areSameYear;
 
     setAllowFutureDates(allow) {
+        if (this.#options.mode === 'inputs') {
+            this.#options.allowFutureDates = !!allow;
+            this.#applyInputConstraints();
+            return;
+        }
         if (allow === this.#options.allowFutureDates) return;
         this.#options.allowFutureDates = allow;
         this.#generateInitialItems();
@@ -1988,6 +2188,11 @@ class DatePicker {
     }
 
     setMaxDate(date) {
+        if (this.#options.mode === 'inputs') {
+            this.#inputsMaxDate = date ? clampToStartOfDay(normalizeDate(date)) : null;
+            this.#applyInputConstraints();
+            return;
+        }
         if (this.#options.allowFutureDates) return;
         const clamped = clampToStartOfDay(normalizeDate(date));
         if (clamped) {
@@ -1998,6 +2203,14 @@ class DatePicker {
     }
 
     destroy() {
+        if (this.#inputsStart) {
+            this.#inputsStart.destroy();
+            this.#inputsStart = null;
+        }
+        if (this.#inputsEnd) {
+            this.#inputsEnd.destroy();
+            this.#inputsEnd = null;
+        }
         this.#stopMomentum();
 
         if (this.#scrollContainer) {

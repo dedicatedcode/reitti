@@ -262,8 +262,6 @@
 @media (max-width: 768px) {
     .picker-popup {
         min-width: 90vw;
-        left: 50%;
-        transform: translateX(-50%);
     }
 
     .picker-container {
