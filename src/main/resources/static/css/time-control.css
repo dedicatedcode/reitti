@@ -1,73 +1,213 @@
-#timeline-controls {
-    position: absolute;
-    bottom: 170px;
+/*
+ * Bottom bar: full-width console above the date picker strip containing
+ * the time scrub bar (with faded activity graph) and the action clusters.
+ */
+
+.bottom-bar {
+    position: fixed;
+    bottom: 96px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 22px 9px;
+    background: rgba(59, 59, 59, 0.66);
+    backdrop-filter: blur(10px);
+    z-index: 40;
     color: var(--color-highlight);
-    display: block;
-    background: #3b3b3ba6;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    max-width: 800px;
-    padding: 15px 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    z-index: 10;
-    font-family: var(--serif-font);
-    transition: all .4s ease-in-out;
+    transition: bottom .4s ease-in-out;
     user-select: none;
-    --webkit-user-select: none;
+    -webkit-user-select: none;
 }
 
-
-body.datepicker-hidden #timeline-controls {
-    bottom: 70px;
+/* Bar buttons: inline ghost style — merge with the bar background,
+   show the default btn highlight only on hover */
+#bottom-bar .bar-btn {
+    height: 34px;
+    min-width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-highlight);
+    font-size: 15px;
+    transform: translateY(-4px);
 }
 
-#timeline-controls.hidden {
+#bottom-bar .bar-btn:hover {
+    background: var(--color-highlight);
+    color: var(--color-background-dark);
+    box-shadow: none;
+    filter: none;
+}
+
+body.datepicker-hidden .bottom-bar {
+    bottom: 0;
+}
+
+.bottom-bar.hidden {
     opacity: 0;
-    visibility: hidden;
-    transform: translateX(-50%) translateY(-10px);
     pointer-events: none;
 }
 
-.timer-display {
-    text-align: center;
-}
-
-#current-date {
-    display: block;
-}
-
-.slider-container {
+.bar-cluster {
     display: flex;
     align-items: center;
-    gap: 15px;
 }
 
-#time-slider {
-    flex-grow: 1;
-    cursor: pointer;
-    accent-color: var(--color-highlight);
+.bar-right {
+    margin-left: auto;
 }
+
+#timeline-controls {
+    flex: 1 1 auto;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--serif-font);
+}
+
+/* --- Scrub bar --- */
+
+.scrub-bar {
+    --scrub-pct: 0%;
+    position: relative;
+    height: 30px;
+    cursor: pointer;
+    touch-action: none;
+    outline: none;
+}
+
+.scrub-bar:focus-visible {
+    outline: 1px solid var(--color-highlight);
+    border-radius: 4px;
+}
+
+.activity-graph {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(50% - 3px);
+    height: 24px;
+    width: 100%;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.scrub-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 6px;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.scrub-progress {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 6px;
+    width: var(--scrub-pct);
+    transform: translateY(-50%);
+    background: var(--color-highlight);
+    opacity: 0.55;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.scrub-thumb {
+    position: absolute;
+    left: var(--scrub-pct);
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--color-highlight);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.scrub-bar:hover .scrub-thumb,
+.scrub-bar:focus-visible .scrub-thumb {
+    opacity: 1;
+}
+
+.scrub-bubble {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-background-dark);
+    color: var(--color-text-white);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    border: 1px solid var(--color-highlight);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1100;
+}
+
+/* --- Labels --- */
 
 .time-bounds {
     display: flex;
     justify-content: space-between;
-    margin-top: 5px;
-    align-self: end;
+    align-items: end;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--color-text-white);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    margin-top: 8px;
 }
 
-.time-display {
-    transition: all 0.3s ease;
-    height: 40px;
-    line-height: 2.6em;
-    overflow: hidden;
-    white-space: nowrap;
+/* --- Inputs mode: date inputs join the bottom bar as first segment --- */
+
+body.date-picker-inputs .bottom-bar {
+    bottom: 0;
 }
 
-.time-display.hidden {
-    width: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.3s ease;
+body.date-picker-inputs #date-picker-container {
+    position: static;
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    body.date-picker-inputs .bottom-bar {
+        flex-wrap: wrap;
+        padding-top: 10px;
+        row-gap: 8px;
+        /* above the navbar (z-50) so the calendar popup can never be
+           painted over by it on small screens */
+        z-index: 60;
+    }
+
+    body.date-picker-inputs #date-picker-container {
+        flex: 0 0 100%;
+        /* containing block for the calendar popup */
+        position: relative;
+    }
+
+    .date-picker.date-picker-inputs .datetime-picker {
+        position: static;
+    }
+
+    .date-picker.date-picker-inputs .picker-popup {
+        top: auto;
+        bottom: calc(100% + 2px);
+        min-width: 300px;
+    }
 }

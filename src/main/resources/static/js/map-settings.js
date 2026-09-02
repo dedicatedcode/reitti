@@ -62,6 +62,14 @@ class SettingsMenu {
                                 <span class="label-text">${t('map.settings.dialog.interface.datepicker-visible')}</span>
                             </label>
                         </div>
+                        <div class="form-group">
+                            <label for="date-picker-style">${t('map.settings.interface.date-picker-style')}</label>
+                            <select id="date-picker-style">
+                                <option value="strip">${t('map.settings.interface.date-picker-style.strip')}</option>
+                                <option value="inputs">${t('map.settings.interface.date-picker-style.inputs')}</option>
+                            </select>
+                            <span class="form-description font-small">${t('map.settings.interface.date-picker-style.description')}</span>
+                        </div>
                         <div class="form-group slide-reveal-container">
                             <input type="checkbox" id="allow-future-dates-checkbox">
                             <label for="allow-future-dates-checkbox" class="slide-reveal">
@@ -130,6 +138,12 @@ class SettingsMenu {
             datepickerCheckbox.checked = !document.body.classList.contains('datepicker-hidden');
         }
 
+        // Date picker style
+        const datePickerStyleSelect = this.menu.querySelector('#date-picker-style');
+        if (datePickerStyleSelect) {
+            datePickerStyleSelect.value = localStorage.getItem('datePickerStyle') || 'strip';
+        }
+
         const showAvatarsCheckbox = this.menu.querySelector('#show-avatars-checkbox');
         if (showAvatarsCheckbox) {
             showAvatarsCheckbox.checked = localStorage.getItem('showAvatars') !== 'false'; // default true
@@ -168,6 +182,15 @@ class SettingsMenu {
         if (datepickerCheckbox) {
             datepickerCheckbox.addEventListener('change', (e) => {
                 this.toggleDatePicker(e.target.checked);
+            });
+        }
+
+        // Date picker style
+        const datePickerStyleSelect = this.menu.querySelector('#date-picker-style');
+        if (datePickerStyleSelect) {
+            datePickerStyleSelect.addEventListener('change', (e) => {
+                localStorage.setItem('datePickerStyle', e.target.value);
+                this.dispatchSettingsChange('datePickerStyle', e.target.value);
             });
         }
         
@@ -309,8 +332,10 @@ class SettingsMenu {
 
     open() {
         if (this.isVisible) return;
-        
-        this.menu.style.display = 'block';
+
+        // flex (not block): the menu is a flex column — the header stays
+        // pinned and the content scrolls within the max-height cap.
+        this.menu.style.display = 'flex';
         this.overlay.style.display = 'block';
         
         // Update checkbox states before showing
@@ -343,7 +368,6 @@ class SettingsMenu {
             viewMode: localStorage.getItem('view-mode') || 'LINEAR',
             timelineHidden: localStorage.getItem('timelineHidden') === 'true',
             datepickerHidden: localStorage.getItem('datepickerHidden') === 'true',
-            timelineControlsHidden: localStorage.getItem('timelineControlsHidden') === 'true',
             showAvatars: localStorage.getItem('showAvatars') !== 'false',
             followTrail: localStorage.getItem('followTrail') !== 'false',
             allowFutureDates: localStorage.getItem('allowFutureDates') === 'true',
@@ -397,9 +421,6 @@ class SettingsMenu {
             document.body.classList.add('datepicker-hidden');
         }
         this.updateDatePickerToggleButton();
-        
-        // Apply timeline controls visibility
-        this.applyTimelineControlsState(settings.timelineControlsHidden);
     }
     
     updateViewMode(value) {
@@ -433,24 +454,7 @@ class SettingsMenu {
         });
         document.dispatchEvent(event);
     }
-    
-    applyTimelineControlsState(isHidden) {
-        const timelineControls = document.getElementById('timeline-controls');
-        const toggleBtn = document.getElementById('toggle-time-control-btn');
 
-        if (!timelineControls || !toggleBtn) return;
-
-        if (isHidden) {
-            timelineControls.classList.add('hidden');
-            toggleBtn.title = t('timeline.state.show.title')
-            toggleBtn.classList.remove('active');
-        } else {
-            timelineControls.classList.remove('hidden');
-            toggleBtn.title = t('timeline.state.hide.title');
-            toggleBtn.classList.add('active');
-        }
-    }
-    
     restoreState() {
         this.loadSettings();
     }
