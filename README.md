@@ -227,6 +227,18 @@ We use [Weblate](https://hosted.weblate.org/engage/reitti/) for translations. He
 
 ---
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=dedicatedcode%2Freitti&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=dedicatedcode/reitti&type=date&theme=dark&legend=top-left&sealed_token=zYXLmhSdDiNq5SwCiSLvkHUaxNK64Tu4TAKjrnr6JSNZKpfaIYQRmYAdY9HlifGWpMg3iQWJvPkPb-tP67gro-y5iokwuoeUgmMqxZjeYWzz-AxPq80X17TPsEDAM0x0wjvx5EUIJSWRtjp97F3DpVe01kRs-MClpeR0vThC1IOpOF3sFPjwXtNonaqe" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=dedicatedcode/reitti&type=date&legend=top-left&sealed_token=zYXLmhSdDiNq5SwCiSLvkHUaxNK64Tu4TAKjrnr6JSNZKpfaIYQRmYAdY9HlifGWpMg3iQWJvPkPb-tP67gro-y5iokwuoeUgmMqxZjeYWzz-AxPq80X17TPsEDAM0x0wjvx5EUIJSWRtjp97F3DpVe01kRs-MClpeR0vThC1IOpOF3sFPjwXtNonaqe" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=dedicatedcode/reitti&type=date&legend=top-left&sealed_token=zYXLmhSdDiNq5SwCiSLvkHUaxNK64Tu4TAKjrnr6JSNZKpfaIYQRmYAdY9HlifGWpMg3iQWJvPkPb-tP67gro-y5iokwuoeUgmMqxZjeYWzz-AxPq80X17TPsEDAM0x0wjvx5EUIJSWRtjp97F3DpVe01kRs-MClpeR0vThC1IOpOF3sFPjwXtNonaqe" />
+ </picture>
+</a>
+
+---
+
 ## License
 
 This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). See the [LICENSE](LICENSE)
