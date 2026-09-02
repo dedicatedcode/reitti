@@ -285,6 +285,9 @@ header {
     bottom: 180px;
     right: 20px;
     width: 300px;
+    max-height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
     background: var(--color-background-dark);
     color: var(--color-text-white);
     border-radius: 12px;
@@ -1859,6 +1862,28 @@ body.auto-update-mode .today-fab {
     pointer-events: auto; /* Re-enable pointer events when visible */
 }
 
+/* While replay is running the speed control stays revealed — hover does not
+   exist on touch devices, and it keeps the selector reachable there. */
+.play-section.playing .speed-control {
+    opacity: 1;
+    visibility: visible;
+    width: 120px;
+    margin: 0 4px;
+    pointer-events: auto;
+}
+
+/* Touch devices: hover is synthesized by taps and would make the selector
+   flash and stick; reveal it purely via .playing instead. */
+@media (hover: none) {
+    .play-section:hover .speed-control {
+        opacity: 0;
+        visibility: hidden;
+        width: 0;
+        margin: 0;
+        pointer-events: none;
+    }
+}
+
 .speed-control select {
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -1884,12 +1909,6 @@ body.auto-update-mode .today-fab {
     .fab-btn {
         width: 36px;
         height: 36px;
-        font-size: 14px;
-    }
-
-    .bar-btn {
-        width: 30px;
-        height: 30px;
         font-size: 14px;
     }
 
@@ -2722,8 +2741,8 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-width: 440px;
-    max-width: calc(100vw - 24px);
+    width: min(440px, calc(100vw - 24px));
+    box-sizing: border-box;
     padding: 14px 18px;
     background: var(--color-background-dark-light);
     border: 1px solid var(--color-highlight);
@@ -2749,14 +2768,21 @@ button:disabled {
     white-space: nowrap;
 }
 
-.date-jump-buffer {
+input.date-jump-buffer {
     font-size: 1.4rem;
+    min-height: 1.4em;
     min-width: 6ch;
+    width: 12ch;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    color: inherit;
+    caret-color: var(--color-highlight);
 }
 
-.date-jump-buffer::after {
-    content: '▌';
-    opacity: 0.6;
+.date-jump-buffer:focus-visible {
+    outline: none;
 }
 
 .date-jump-preview {

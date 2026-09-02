@@ -285,3 +285,27 @@
     /* align with the ghost buttons, which sit 4px above the bar center */
     transform: translateY(-4px);
 }
+
+@media (max-width: 768px) {
+    /* Expanded range inputs exceed the viewport on phones: the end input
+       moves to its own full-width row below the start input, Clear sits at
+       the right edge of the first row. */
+    .date-range-inputs {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+
+    .date-range-input {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .date-picker.date-picker-inputs .date-range-end {
+        order: 10;
+        flex: 0 0 100%;
+    }
+
+    .date-range-clear {
+        margin-left: auto;
+    }
+}

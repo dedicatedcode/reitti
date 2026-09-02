@@ -797,7 +797,7 @@ class DatePicker {
             '<button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>';
 
         const endWrap = document.createElement('div');
-        endWrap.className = 'datetime-picker date-range-input';
+        endWrap.className = 'datetime-picker date-range-input date-range-end';
         endWrap.innerHTML =
             '<input type="date" class="date-input" aria-label="End date">' +
             '<button type="button" class="picker-trigger"><i class="lni lni-calendar-days"></i></button>';

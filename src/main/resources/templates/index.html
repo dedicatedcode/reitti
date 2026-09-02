@@ -343,6 +343,7 @@
     let timeMultiplier = 30; // Default: 1 second = 1 minute
 
     const playBtn = document.getElementById('play-btn');
+    const playSection = playBtn.closest('.play-section');
 
     playBtn.onclick = () => {
         if (isPlaying) {
@@ -385,6 +386,7 @@
     function startAnimation() {
         isPlaying = true;
         playBtn.innerHTML = '<i class="lni lni-pause"></i>'; // Change icon to Pause
+        playSection.classList.add('playing');
         timelineControl.setAnimating(true);
         lastFrameTime = null;
         animationId = requestAnimationFrame(animate);
@@ -393,6 +395,7 @@
     function stopAnimation() {
         isPlaying = false;
         playBtn.innerHTML = '<i class="lni lni-play"></i>'; // Change icon to Play
+        playSection.classList.remove('playing');
         timelineControl.setAnimating(false);
         if (animationId) {
             cancelAnimationFrame(animationId);
@@ -1421,6 +1424,7 @@
         function startAnimation() {
             isPlaying = true;
             playBtn.innerHTML = '<i class="lni lni-pause"></i>';
+            playSection.classList.add('playing');
             timelineControl.setAnimating(true);
             lastFrameTime = null;
             animationId = requestAnimationFrame(animate);
@@ -1429,6 +1433,7 @@
         function stopAnimation() {
             isPlaying = false;
             playBtn.innerHTML = '<i class="lni lni-play"></i>';
+            playSection.classList.remove('playing');
             timelineControl.setAnimating(false);
             followedManagerId = null;    // ← reset
             lastFollowCenter = null;     // ← reset

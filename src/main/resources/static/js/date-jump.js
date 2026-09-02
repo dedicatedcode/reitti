@@ -66,7 +66,8 @@
         overlay.innerHTML =
             '<div class="date-jump-input-row">' +
             '  <span class="date-jump-label">' + t('datejump.jump-to-date') + '</span>' +
-            '  <span id="date-jump-buffer" class="date-jump-buffer"></span>' +
+            '  <input type="text" id="date-jump-buffer" class="date-jump-buffer" ' +
+            '         autocomplete="off" spellcheck="false" aria-label="' + t('datejump.jump-to-date') + '">' +
             '</div>' +
             '<div id="date-jump-preview" class="date-jump-preview"></div>' +
             '<div class="date-jump-hints">' +
@@ -77,6 +78,15 @@
         bufferEl = overlay.querySelector('#date-jump-buffer');
         previewEl = overlay.querySelector('#date-jump-preview');
         overlay.addEventListener('click', (e) => e.stopPropagation());
+        // Touch devices have no hardware keyboard: the buffer doubles as a real
+        // input so focusing it opens the virtual keyboard. Desktop commits run
+        // through the window keydown handler; this sync covers soft keyboards.
+        bufferEl.addEventListener('input', () => {
+            if (session) {
+                session.buffer = bufferEl.value;
+                renderSession();
+            }
+        });
     }
 
     function formatDate(dateYmd) {
@@ -97,7 +107,9 @@
     function renderSession() {
         ensureOverlay();
         overlay.classList.remove('hidden');
-        bufferEl.textContent = session.buffer;
+        // Only write when different — setting .value would move the caret
+        // while the user edits mid-string.
+        if (bufferEl.value !== session.buffer) bufferEl.value = session.buffer;
         const result = window.DateJumpParser.parse(session.buffer, buildParserContext());
         session.result = result.status === 'ok' || result.status === 'incomplete' ? result : { status: 'invalid', alternatives: [] };
 
@@ -122,6 +134,9 @@
     function startSession(initialBuffer) {
         session = { buffer: initialBuffer || '', result: null, override: null, selected: 0 };
         renderSession();
+        // Focus opens the virtual keyboard on touch devices; on desktop the
+        // window-level keydown capture keeps handling every key.
+        if (bufferEl) bufferEl.focus({ preventScroll: true });
     }
 
     function cancelSession() {

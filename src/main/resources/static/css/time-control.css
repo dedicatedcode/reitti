@@ -188,9 +188,23 @@ body.date-picker-inputs #date-picker-container {
 @media (max-width: 768px) {
     body.date-picker-inputs .bottom-bar {
         flex-wrap: wrap;
+        padding-top: 10px;
+        row-gap: 8px;
     }
 
     body.date-picker-inputs #date-picker-container {
         flex: 0 0 100%;
+        /* containing block for the calendar popup */
+        position: relative;
+    }
+
+    .date-picker.date-picker-inputs .datetime-picker {
+        position: static;
+    }
+
+    .date-picker.date-picker-inputs .picker-popup {
+        top: auto;
+        bottom: calc(100% + 2px);
+        min-width: 300px;
     }
 }
