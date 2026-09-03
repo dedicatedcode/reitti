@@ -1113,13 +1113,7 @@
         }, 60000);
     }
 
-    /**
-     * Mobile always uses the traditional inputs; on desktop the user's
-     * localStorage choice (via the settings menu) wins.
-     */
     function resolveDatePickerMode() {
-        const isMobile = window.matchMedia('(max-width: 768px)').matches;
-        if (isMobile) return 'inputs';
         return localStorage.getItem('datePickerStyle') === 'inputs' ? 'inputs' : 'strip';
     }
 
@@ -1149,8 +1143,6 @@
         const previous = window.datePicker.getSelectedRange();
         createDatePicker(previous ? [previous.startDate, previous.endDate] : undefined);
     }
-
-    window.matchMedia('(max-width: 768px)').addEventListener('change', () => recreateDatePicker());
 
     function updateEditPlaceLinks() {
         const currentUrl = window.location.href;
