@@ -1,0 +1,127 @@
+.panoramax-panel-container {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    bottom: 12px;
+    width: min(420px, calc(100vw - 24px));
+    z-index: 500;
+    display: none;
+}
+
+.panoramax-panel-container.open {
+    display: block;
+}
+
+.panoramax-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--color-background-dark, #1a1f2e);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    color: #ece6d6;
+}
+
+.panoramax-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panoramax-panel-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.panoramax-panel-close {
+    background: transparent;
+    border: none;
+    color: rgba(236, 230, 214, 0.6);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 6px;
+    border-radius: 4px;
+}
+
+.panoramax-panel-close:hover {
+    color: #ece6d6;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.panoramax-viewer-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+.panoramax-viewer-container pnx-photo-viewer {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.panoramax-panel-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(236, 230, 214, 0.7);
+    padding: 16px;
+    text-align: center;
+}
+
+.panoramax-panel-attribution {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: rgba(236, 230, 214, 0.75);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panoramax-attribution-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.panoramax-attribution-item i {
+    font-size: 14px;
+}
+
+.panoramax-attribution-spacer {
+    flex: 1 1 auto;
+}
+
+.panoramax-panel-attribution a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.panoramax-dialog .reitti-dialog-card {
+    width: min(640px, calc(100vw - 32px));
+    height: min(520px, calc(100vh - 64px));
+}
+
+.panoramax-dialog .reitti-dialog-body {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.panoramax-dialog .panoramax-panel {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    flex: 1 1 auto;
+}

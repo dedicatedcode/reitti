@@ -19,6 +19,7 @@
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/time-control.css}" href="/css/time-control.css">
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="/css/datetime-picker.css">
+    <link rel="stylesheet" th:href="@{/css/panoramax.css}" href="/css/panoramax.css">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
 
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
@@ -41,6 +42,7 @@
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
     <script th:src="@{/js/map-controls.js}"></script>
+    <script th:src="@{/js/panoramax.js}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
     <script th:src="@{/js/map-settings.js}"></script>
@@ -195,6 +197,7 @@
 </div>
 
 <div id="settings-menu-container"></div>
+<div id="panoramax-panel-container" class="panoramax-panel-container"></div>
 
 <script th:inline="javascript">
     window.contextPath = /*[[@{/}]]*/ "/";
@@ -327,11 +330,25 @@
     let previousCameraState = null;
     let activeFocus = null;
 
+    mapRenderer.onPanoramaxFeatureClick = (lngLat) => {
+        openPanoramaxPanel(lngLat.lat, lngLat.lng);
+    };
+
     mapRenderer.updateViewState(createViewState( [] ) );
     mapControls.on('selectionChanged', () => {
         mapRenderer.updateViewState(createViewState([]));
     });
     mapControls.on('compassClicked', () => mapRenderer.setBearing(0));
+
+    function openPanoramaxPanel(lat, lng) {
+        const container = document.getElementById('panoramax-panel-container');
+        if (!container) return;
+        container.classList.add('open');
+        htmx.ajax('GET', `${window.contextPath}/panoramax/panel?lat=${lat}&lng=${lng}`, {
+            target: '#panoramax-panel-container',
+            swap: 'innerHTML'
+        });
+    }
 
     if (window.userSettings.uiMode === 'SHARED_LIVE_MODE_ONLY') {
         mapControls.mountTo(document.getElementById('live-mode-map-controls-section'));

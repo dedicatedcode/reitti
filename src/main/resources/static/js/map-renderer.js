@@ -123,6 +123,16 @@ class MapRenderer {
         }
     }
 
+    static get PANORAMAX_SOURCE_ID() { return 'panoramax-coverage'; }
+    static get PANORAMAX_SEQUENCES_LAYER_ID() { return 'panoramax-sequences'; }
+    static get PANORAMAX_PICTURES_LAYER_ID() { return 'panoramax-pictures'; }
+    static get PANORAMAX_GRID_LAYER_ID() { return 'panoramax-grid'; }
+
+    static _panoramaxTileUrl() {
+        const contextPath = (window.contextPath || '').replace(/\/$/, '');
+        return `${window.location.origin}${contextPath}/api/v1/tiles/panoramax/{z}/{x}/{y}.mvt`;
+    }
+
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         MapRenderer.ensureRTLTextPlugin();
         this.userSettings = userSettings;
@@ -204,6 +214,7 @@ class MapRenderer {
         this.avatarMarkers = new Map();
         this.showAvatars = false;
         this.showTransportModes = true;
+        this.onPanoramaxFeatureClick = null;
         this.transitionMarkers = [];
 
         this.terrainLayer = null;
@@ -888,6 +899,7 @@ class MapRenderer {
         await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
         await this._switchTerrainLayer(this.viewState.renderTerrain);
         await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+        this._switchPanoramaxLayer(this.viewState.renderPanoramax === true);
         await this._switchProjection(this.viewState.renderGlobe);
         this._syncPitchBearingState(false);
         this.element.classList.remove('is-loading');
@@ -915,6 +927,7 @@ class MapRenderer {
         const styleChanged = prev.mapStyleId !== next.mapStyleId;
         const projectionChanged = prev.renderGlobe !== next.renderGlobe;
         const satelliteChanged  = prev.renderSatelliteView !== next.renderSatelliteView;
+        const panoramaxChanged  = prev.renderPanoramax !== next.renderPanoramax;
         const terrainChanged    = prev.renderTerrain !== next.renderTerrain;
         const buildingsChanged  = (prev.renderBuildings !== next.renderBuildings) || (prev.is3d !== next.is3d);
 
@@ -930,6 +943,7 @@ class MapRenderer {
             await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             await this._switchTerrainLayer(this.viewState.renderTerrain);
             await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            this._switchPanoramaxLayer(this.viewState.renderPanoramax === true);
             await this._switchProjection(this.viewState.renderGlobe);
             this._syncPitchBearingState(false);
             this._rerenderOverlays();
@@ -952,6 +966,10 @@ class MapRenderer {
                 await this._switchSatelliteLayer(next.renderSatelliteView); // paint-only
             }
 
+            if (panoramaxChanged) {
+                this._switchPanoramaxLayer(next.renderPanoramax === true);
+            }
+
             // Re-enable terrain if final desired state is on
             if (next.renderTerrain) {
                 await this._switchTerrainLayer(true);
@@ -971,6 +989,11 @@ class MapRenderer {
         // 2) Else, toggle terrain alone if changed
         if (terrainChanged) {
             await this._switchTerrainLayer(next.renderTerrain);
+        }
+
+        // 2b) Panoramax coverage is a pure visibility toggle
+        if (panoramaxChanged) {
+            this._switchPanoramaxLayer(next.renderPanoramax === true);
         }
 
         // 3) Buildings if changed
@@ -1032,6 +1055,91 @@ class MapRenderer {
         this._ensureLayer(capabilities.satelliteLayerDefinition);
         this._ensureLayer(capabilities.hillshadeLayerDefinition);
         buildingLayerDefinitions.forEach(layerDefinition => this._ensureLayer(layerDefinition));
+        this._ensurePanoramaxLayers();
+    }
+
+    _ensurePanoramaxLayers() {
+        this._ensureSource(MapRenderer.PANORAMAX_SOURCE_ID, this._panoramaxSourceDefinition());
+        const definitions = this._panoramaxLayerDefinitions();
+        this._ensureLayer(definitions.sequences);
+        this._ensureLayer(definitions.pictures);
+        this._ensureLayer(definitions.grid);
+    }
+
+    _panoramaxSourceDefinition() {
+        return {
+            type: 'vector',
+            tiles: [MapRenderer._panoramaxTileUrl()],
+            minzoom: 0,
+            maxzoom: 15,
+            attribution: '<a href="https://panoramax.fr" target="_blank">&copy; Panoramax</a>'
+        };
+    }
+
+    _panoramaxLayerDefinitions() {
+        const sourceId = MapRenderer.PANORAMAX_SOURCE_ID;
+        return {
+            sequences: {
+                id: MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID,
+                type: 'line',
+                source: sourceId,
+                'source-layer': 'sequences',
+                layout: {
+                    'line-cap': 'square',
+                    visibility: 'none'
+                },
+                paint: {
+                    'line-color': '#FF6F00',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 10, 2, 14, 4, 16, 5, 22, 3],
+                    'line-opacity': ['interpolate', ['linear'], ['zoom'], 6.25, 0, 7, 1]
+                }
+            },
+            pictures: {
+                id: MapRenderer.PANORAMAX_PICTURES_LAYER_ID,
+                type: 'circle',
+                source: sourceId,
+                'source-layer': 'pictures',
+                layout: {
+                    visibility: 'none'
+                },
+                paint: {
+                    'circle-color': '#FF6F00',
+                    'circle-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1],
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 15, 4.5, 17, 8, 22, 12],
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 17, 0, 20, 2]
+                }
+            },
+            grid: {
+                id: MapRenderer.PANORAMAX_GRID_LAYER_ID,
+                type: 'circle',
+                source: sourceId,
+                'source-layer': 'grid',
+                layout: {
+                    visibility: 'none',
+                    'circle-sort-key': ['get', 'coef']
+                },
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'],
+                        1, ['match', ['get', 'coef'], 0, 0, 1],
+                        4, ['match', ['get', 'coef'], 0, 0, 6],
+                        5, ['match', ['get', 'coef'], 0, 0, 2.5],
+                        6, ['match', ['get', 'coef'], 0, 0, 4],
+                        7, ['match', ['get', 'coef'], 0, 0, 7]],
+                    'circle-color': ['interpolate', ['linear'], ['get', 'coef'], 0, '#FFA726', 0.5, '#E65100', 1, '#3E2723'],
+                    'circle-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.5, 5, 1, 6.75, 1, 7, 0]
+                }
+            }
+        };
+    }
+
+    _switchPanoramaxLayer(enable) {
+        const definitions = this._panoramaxLayerDefinitions();
+        [definitions.sequences, definitions.pictures, definitions.grid].forEach(definition => {
+            if (this.map.getLayer(definition.id)) {
+                this.map.setLayoutProperty(definition.id, 'visibility', enable ? 'visible' : 'none');
+            }
+        });
     }
 
     async _waitForStyleLoad(mapStyle, timeoutMs = 10000) {
@@ -2008,6 +2116,27 @@ class MapRenderer {
         // -------------------------------------------------------------
         this.map.on('resize', () => {
             this._updateAnimatedLayers();
+        });
+
+        // -------------------------------------------------------------
+        // PANORAMAX STREET LEVEL IMAGERY
+        // Notify the embedding page when the user clicks Panoramax coverage.
+        // -------------------------------------------------------------
+        [MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID, MapRenderer.PANORAMAX_PICTURES_LAYER_ID].forEach(layerId => {
+            this.map.on('click', layerId, (e) => {
+                if (typeof this.onPanoramaxFeatureClick === 'function' && e.lngLat) {
+                    if (e.originalEvent && typeof e.originalEvent.preventDefault === 'function') {
+                        e.originalEvent.preventDefault();
+                    }
+                    this.onPanoramaxFeatureClick(e.lngLat);
+                }
+            });
+            this.map.on('mouseenter', layerId, () => {
+                this.map.getCanvas().style.cursor = 'pointer';
+            });
+            this.map.on('mouseleave', layerId, () => {
+                this.map.getCanvas().style.cursor = '';
+            });
         });
     };
 

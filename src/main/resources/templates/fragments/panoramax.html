@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<body>
+
+<div th:fragment="panel" id="panoramax-active-panel" class="panoramax-panel">
+    <div class="panoramax-panel-header">
+        <h3 class="panoramax-panel-title" th:text="#{panoramax.panel.title}">Street Photos</h3>
+        <button type="button" class="panoramax-panel-close"
+                th:title="#{panoramax.panel.close}"
+                th:aria-label="#{panoramax.panel.close}"
+                onclick="PanoramaxViewer.closePanel(this)">&times;</button>
+    </div>
+
+    <div th:if="${picture != null}" class="panoramax-viewer-container"
+         th:attr="data-endpoint=${endpoint}, data-sequence=${picture.sequenceId()}, data-picture=${picture.pictureId()}"></div>
+
+    <div th:if="${picture == null}" class="panoramax-panel-empty"
+         th:text="#{panoramax.panel.none}">No street photos found near this location.</div>
+
+    <div th:if="${picture != null}" class="panoramax-panel-attribution">
+        <span class="panoramax-attribution-item">
+            <i class="lni lni-camera-1"></i>
+            <span th:text="${picture.providerName() != null ? picture.providerName() : 'Panoramax'}">Provider</span>
+        </span>
+        <span class="panoramax-attribution-item" th:if="${capturedDate != null}" th:text="${capturedDate}">Date</span>
+        <span class="panoramax-attribution-item" th:if="${picture.datetime() == null}"
+              th:text="#{panoramax.panel.unknown.date}">Unknown date</span>
+        <span class="panoramax-attribution-item panoramax-attribution-spacer"></span>
+        <a class="panoramax-attribution-item" th:if="${picture.licenseUrl() != null}"
+           th:href="${picture.licenseUrl()}" target="_blank" rel="license"
+           th:text="${picture.licenseName() != null ? picture.licenseName() : #messages.msg('panoramax.panel.license')}">License</a>
+        <a class="panoramax-attribution-item" href="https://panoramax.fr" target="_blank">Panoramax</a>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const panel = document.getElementById('panoramax-active-panel');
+            if (panel && window.PanoramaxViewer) {
+                PanoramaxViewer.initPanel(panel);
+            }
+        })();
+    </script>
+</div>
+
+</body>
+</html>
