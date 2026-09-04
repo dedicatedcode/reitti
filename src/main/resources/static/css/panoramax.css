@@ -145,23 +145,3 @@ body.panoramax-open #date-picker-container {
     color: inherit;
     text-decoration: underline;
 }
-
-.panoramax-dialog .reitti-dialog-card {
-    width: min(640px, calc(100vw - 32px));
-    height: min(520px, calc(100vh - 64px));
-}
-
-.panoramax-dialog .reitti-dialog-body {
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-}
-
-.panoramax-dialog .panoramax-panel {
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    flex: 1 1 auto;
-}

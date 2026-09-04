@@ -129,6 +129,8 @@ class MapControls {
             const isEnabled = this.togglePanoramaxBtn.classList.contains('active');
             if (isEnabled) {
                 this._disablePanoramax();
+                // Hiding the coverage also closes a possibly open photo drawer
+                PanoramaxViewer?.closeOpenPanel?.();
             } else {
                 this._enablePanoramax();
             }
@@ -173,7 +175,12 @@ class MapControls {
             this._disableSatellite();
         }
 
-        const isPanoramaxEnabled = localStorage.getItem('displayPanoramax') === 'true';
+        this._panoramaxDisabled = window.userSettings?.panoramaxEnabled === false;
+        if (this._panoramaxDisabled) {
+            this.togglePanoramaxBtn.disabled = true;
+        }
+
+        const isPanoramaxEnabled = !this._panoramaxDisabled && localStorage.getItem('displayPanoramax') === 'true';
         if (isPanoramaxEnabled) {
             this._enablePanoramax()
         } else {
@@ -238,7 +245,7 @@ class MapControls {
             renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
             renderBuildings: caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
             renderSatelliteView: !!caps.satelliteLayerId && this.toggleSatelliteModeBtn.classList.contains('active'),
-            renderPanoramax: this.togglePanoramaxBtn.classList.contains('active'),
+            renderPanoramax: !this._panoramaxDisabled && this.togglePanoramaxBtn.classList.contains('active'),
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
         };
     }
