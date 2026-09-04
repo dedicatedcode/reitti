@@ -1103,12 +1103,16 @@ class MapRenderer {
 
     _panoramaxLayerDefinitions() {
         const sourceId = MapRenderer.PANORAMAX_SOURCE_ID;
+        // Only equirectangular (360°) imagery is shown and clickable; the
+        // tiles carry the capture type on both layers.
+        const type360Filter = ['==', ['get', 'type'], 'equirectangular'];
         return {
             sequences: {
                 id: MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID,
                 type: 'line',
                 source: sourceId,
                 'source-layer': 'sequences',
+                filter: type360Filter,
                 layout: {
                     'line-cap': 'square',
                     visibility: 'none'
@@ -1124,6 +1128,7 @@ class MapRenderer {
                 type: 'circle',
                 source: sourceId,
                 'source-layer': 'pictures',
+                filter: type360Filter,
                 layout: {
                     visibility: 'none'
                 },
@@ -1140,6 +1145,10 @@ class MapRenderer {
                 type: 'circle',
                 source: sourceId,
                 'source-layer': 'grid',
+                // Only show overview blobs that actually contain 360° content,
+                // so the zoomed-out map predicts where colored lines will
+                // appear when zooming in (matches the 360°-only lines/dots).
+                filter: ['>', ['to-number', ['get', 'nb_360_pictures']], 0],
                 layout: {
                     visibility: 'none',
                     'circle-sort-key': ['get', 'coef']

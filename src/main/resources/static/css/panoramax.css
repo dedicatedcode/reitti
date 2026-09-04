@@ -74,24 +74,14 @@ body.panoramax-open #date-picker-container {
     color: #ece6d6;
 }
 
-.panoramax-panel-close {
+.btn.panoramax-panel-close {
     position: absolute;
     top: 12px;
     right: 12px;
-    background: transparent;
-    border: none;
-    color: rgba(236, 230, 214, 0.6);
-    font-size: 22px;
-    line-height: 1;
     cursor: pointer;
     padding: 0 6px;
     border-radius: 4px;
     z-index: 2000;
-}
-
-.panoramax-panel-close:hover {
-    color: #ece6d6;
-    background: rgba(255, 255, 255, 0.08);
 }
 
 .panoramax-viewer-container {

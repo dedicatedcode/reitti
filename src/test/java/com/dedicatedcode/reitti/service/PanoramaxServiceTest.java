@@ -73,6 +73,7 @@ class PanoramaxServiceTest {
     void findNearby_WithMatchingPicture_ShouldReturnParsedPicture() {
         server.expect(requestTo(containsString("https://api.panoramax.example/api/search?bbox=")))
                 .andExpect(method(HttpMethod.GET))
+                .andExpect(requestTo(containsString("filter=field_of_view%20%3D%20360")))
                 .andRespond(withSuccess(SEARCH_RESPONSE, MediaType.APPLICATION_JSON));
 
         PanoramaxService service = new PanoramaxService(restTemplate,

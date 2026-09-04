@@ -27,6 +27,11 @@ public class PanoramaxService {
     private static final String USER_AGENT = "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)";
     // Roughly 45 meters on each side of the queried position.
     private static final double SEARCH_BBOX_DELTA = 0.0004;
+    // CQL2 filter for the STAC search: only equirectangular (360°) pictures
+    // offer a real street level experience. This is the documented example
+    // filter of the Panoramax API ("field_of_view = 360"), pre-encoded because
+    // the request URI is passed to RestTemplate as an already encoded URI.
+    private static final String FIELD_OF_VIEW_360_FILTER = "&filter=field_of_view%20%3D%20360";
 
     public record NearbyPicture(String pictureId,
                                 String sequenceId,
@@ -71,7 +76,7 @@ public class PanoramaxService {
         }
         String bbox = (longitude - deltaDegrees) + "," + (latitude - deltaDegrees) + ","
                 + (longitude + deltaDegrees) + "," + (latitude + deltaDegrees);
-        String upstreamUrl = baseUrl + "/search?bbox=" + bbox + "&limit=" + limit;
+        String upstreamUrl = baseUrl + "/search?bbox=" + bbox + "&limit=" + limit + FIELD_OF_VIEW_360_FILTER;
         try {
             JsonNode root = fetchJson(upstreamUrl);
             JsonNode features = root.path("features");
@@ -127,7 +132,9 @@ public class PanoramaxService {
             headers.set(CACHE_UPSTREAM_HEADER, upstreamUrl);
         }
 
-        ResponseEntity<String> response = restTemplate.exchange(requestUrl,
+        // Passing a URI (not a String) prevents RestTemplate from re-encoding
+        // the already encoded query (e.g. the %3D of the CQL2 filter).
+        ResponseEntity<String> response = restTemplate.exchange(URI.create(requestUrl),
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
                 String.class);
