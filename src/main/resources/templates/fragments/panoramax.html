@@ -3,16 +3,13 @@
 <body>
 
 <div th:fragment="panel" id="panoramax-active-panel" class="panoramax-panel">
-    <div class="panoramax-panel-header">
-        <h3 class="panoramax-panel-title" th:text="#{panoramax.panel.title}">Street Photos</h3>
-        <button type="button" class="panoramax-panel-close"
-                th:title="#{panoramax.panel.close}"
-                th:aria-label="#{panoramax.panel.close}"
-                onclick="PanoramaxViewer.closePanel(this)">&times;</button>
-    </div>
-
+    <button type="button" class="panoramax-panel-close"
+            th:title="#{panoramax.panel.close}"
+            th:aria-label="#{panoramax.panel.close}"
+            onclick="PanoramaxViewer.closePanel(this)">&times;</button>
     <div th:if="${picture != null}" class="panoramax-viewer-container"
-         th:attr="data-endpoint=${endpoint}, data-sequence=${picture.sequenceId()}, data-picture=${picture.pictureId()}"></div>
+         th:attr="data-endpoint=${endpoint}, data-sequence=${picture.sequenceId()}, data-picture=${picture.pictureId()}">
+    </div>
 
     <div th:if="${picture == null}" class="panoramax-panel-empty"
          th:text="#{panoramax.panel.none}">No street photos found near this location.</div>
@@ -31,15 +28,6 @@
            th:text="${picture.licenseName() != null ? picture.licenseName() : #messages.msg('panoramax.panel.license')}">License</a>
         <a class="panoramax-attribution-item" href="https://panoramax.fr" target="_blank">Panoramax</a>
     </div>
-
-    <script th:inline="javascript">
-        (function () {
-            const panel = document.getElementById('panoramax-active-panel');
-            if (panel && window.PanoramaxViewer) {
-                PanoramaxViewer.initPanel(panel);
-            }
-        })();
-    </script>
 </div>
 
 </body>

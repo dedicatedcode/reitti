@@ -25,6 +25,7 @@ class PanoramaxServiceTest {
                   "id": "f75cc63c-696d-4b43-988c-ceda9064b02c",
                   "bbox": [13.397461, 52.509064, 13.397461, 52.509064],
                   "type": "Feature",
+                  "geometry": {"type": "Point", "coordinates": [13.397461, 52.509064]},
                   "links": [
                     {"rel": "license", "href": "https://creativecommons.org/licenses/by-sa/4.0/", "title": "License for this object (CC-BY-SA-4.0)"},
                     {"rel": "self", "href": "https://api.panoramax.xyz/api/collections/35c03fdc/items/f75cc63c", "type": "application/geo+json"}
@@ -32,6 +33,28 @@ class PanoramaxServiceTest {
                   "providers": [{"id": "db49c677", "name": "p4n-pics", "roles": ["producer"]}],
                   "collection": "35c03fdc-bb47-4a01-92b7-b602d04369ee",
                   "properties": {"datetime": "2024-09-11T10:00:00+00:00"}
+                }
+              ]
+            }
+            """;
+
+    private static final String MULTI_FEATURE_RESPONSE = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "id": "picture-a",
+                  "type": "Feature",
+                  "geometry": {"type": "Point", "coordinates": [13.3970, 52.5090]},
+                  "collection": "sequence-a",
+                  "properties": {"datetime": "2024-01-01T10:00:00+00:00"}
+                },
+                {
+                  "id": "picture-b",
+                  "type": "Feature",
+                  "geometry": {"type": "Point", "coordinates": [13.3980, 52.5095]},
+                  "collection": "sequence-b",
+                  "properties": {"datetime": "2024-02-02T10:00:00+00:00"}
                 }
               ]
             }
@@ -64,7 +87,32 @@ class PanoramaxServiceTest {
             assertThat(picture.providerName()).isEqualTo("p4n-pics");
             assertThat(picture.licenseUrl()).isEqualTo("https://creativecommons.org/licenses/by-sa/4.0/");
             assertThat(picture.licenseName()).isEqualTo("CC-BY-SA-4.0");
+            assertThat(picture.lon()).isEqualTo(13.397461);
+            assertThat(picture.lat()).isEqualTo(52.509064);
         });
+        server.verify();
+    }
+
+    @Test
+    void findNearbyList_WithMultiplePictures_ShouldReturnAllParsed() {
+        server.expect(requestTo(containsString("limit=2")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(MULTI_FEATURE_RESPONSE, MediaType.APPLICATION_JSON));
+
+        PanoramaxService service = new PanoramaxService(restTemplate,
+                new tools.jackson.databind.ObjectMapper(),
+                "https://api.panoramax.example/api",
+                "");
+
+        assertThat(service.findNearbyList(52.5, 13.4, 150 / 111320.0, 2)).hasSize(2)
+                .satisfies(pictures -> {
+                    assertThat(pictures.get(0).pictureId()).isEqualTo("picture-a");
+                    assertThat(pictures.get(0).sequenceId()).isEqualTo("sequence-a");
+                    assertThat(pictures.get(0).lon()).isEqualTo(13.3970);
+                    assertThat(pictures.get(1).pictureId()).isEqualTo("picture-b");
+                    assertThat(pictures.get(1).sequenceId()).isEqualTo("sequence-b");
+                    assertThat(pictures.get(1).lat()).isEqualTo(52.5095);
+                });
         server.verify();
     }
 

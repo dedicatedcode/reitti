@@ -14,7 +14,6 @@
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../../static/css/datetime-picker.css">
     <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}" href="/css/maplibre-gl.5.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/dialog.css}" href="../../static/css/dialog.css">
-    <link rel="stylesheet" th:href="@{/css/panoramax.css}" href="../../static/css/panoramax.css">
     <link rel="stylesheet" th:href="@{/css/photo-client.css}" href="../../static/css/gallery-block.css">
 
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
@@ -31,7 +30,6 @@
 
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
-    <script th:src="@{/js/panoramax.js}"></script>
     <script th:src="@{/js/memories-data-providers.js}"></script>
 
 
@@ -524,15 +522,6 @@
 
 <div id="share-overlay-container"></div>
 
-<!-- Panoramax Street Photo Dialog -->
-<div id="panoramax-dialog" class="reitti-dialog panoramax-dialog" role="dialog" aria-hidden="true">
-    <div class="reitti-dialog-backdrop"></div>
-    <div class="reitti-dialog-card">
-        <div class="reitti-dialog-body"></div>
-    </div>
-</div>
-
-
 <!-- Memory Processing Overlay -->
 <div id="memory-processing-overlay" class="memory-processing-overlay">
     <div class="memory-processing-content">
@@ -628,7 +617,6 @@
             renderTerrain: false,
             renderBuildings: true,
             renderSatelliteView: false,
-            renderPanoramax: localStorage.getItem('displayPanoramax') === 'true',
             renderGlobe: false,
             aggregated: false,
             viewMode: 'LINEAR',
@@ -678,9 +666,6 @@
         }, window.userSettings, getUserTimezone());
         console.log(`Initializing Map: ${elementId} with ${rawLocationUrl}`);
         mapRenderer.setGpsDataManagers([gpsDataManager]);
-        mapRenderer.onPanoramaxFeatureClick = (lngLat) => {
-            openPanoramaxDialog(lngLat.lat, lngLat.lng);
-        };
         gpsDataManager.loadFixedWithVisits([], (current, total, stage) => {
             if (stage === 'complete') {
                 mapRenderer.updateViewState(viewState)
@@ -689,37 +674,6 @@
         })
 
         mapRegistry.set(elementId, mapRenderer);
-    }
-
-    function openPanoramaxDialog(lat, lng) {
-        const dialog = document.getElementById('panoramax-dialog');
-        if (!dialog) return;
-        dialog.classList.add('open');
-        dialog.setAttribute('aria-hidden', 'false');
-        htmx.ajax('GET', `${window.contextPath}/panoramax/panel?lat=${lat}&lng=${lng}`, {
-            target: '#panoramax-dialog .reitti-dialog-body',
-            swap: 'innerHTML'
-        });
-    }
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closePanoramaxDialog();
-        }
-    });
-
-    document.querySelector('#panoramax-dialog .reitti-dialog-backdrop')?.addEventListener('click', () => {
-        closePanoramaxDialog();
-    });
-
-    function closePanoramaxDialog() {
-        const dialog = document.getElementById('panoramax-dialog');
-        if (dialog && dialog.classList.contains('open')) {
-            dialog.classList.remove('open');
-            dialog.setAttribute('aria-hidden', 'true');
-            const body = dialog.querySelector('.reitti-dialog-body');
-            if (body) body.innerHTML = '';
-        }
     }
 
     // Start watching all map containers

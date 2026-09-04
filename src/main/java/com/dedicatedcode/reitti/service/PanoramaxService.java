@@ -15,6 +15,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -31,7 +33,9 @@ public class PanoramaxService {
                                 String datetime,
                                 String providerName,
                                 String licenseUrl,
-                                String licenseName) {
+                                String licenseName,
+                                Double lon,
+                                Double lat) {
     }
 
     private final RestTemplate restTemplate;
@@ -58,38 +62,56 @@ public class PanoramaxService {
     }
 
     public Optional<NearbyPicture> findNearby(double latitude, double longitude) {
-        if (!isEnabled()) {
-            return Optional.empty();
+        return findNearbyList(latitude, longitude, SEARCH_BBOX_DELTA, 1).stream().findFirst();
+    }
+
+    public List<NearbyPicture> findNearbyList(double latitude, double longitude, double deltaDegrees, int limit) {
+        if (!isEnabled() || limit <= 0 || deltaDegrees <= 0) {
+            return List.of();
         }
-        String bbox = (longitude - SEARCH_BBOX_DELTA) + "," + (latitude - SEARCH_BBOX_DELTA) + ","
-                + (longitude + SEARCH_BBOX_DELTA) + "," + (latitude + SEARCH_BBOX_DELTA);
-        String upstreamUrl = baseUrl + "/search?bbox=" + bbox + "&limit=1";
+        String bbox = (longitude - deltaDegrees) + "," + (latitude - deltaDegrees) + ","
+                + (longitude + deltaDegrees) + "," + (latitude + deltaDegrees);
+        String upstreamUrl = baseUrl + "/search?bbox=" + bbox + "&limit=" + limit;
         try {
             JsonNode root = fetchJson(upstreamUrl);
             JsonNode features = root.path("features");
-            if (!features.isArray() || features.isEmpty()) {
-                return Optional.empty();
+            if (!features.isArray()) {
+                return List.of();
             }
-            JsonNode feature = features.get(0);
-            String pictureId = feature.path("id").asString(null);
-            if (!StringUtils.hasText(pictureId)) {
-                return Optional.empty();
+            List<NearbyPicture> pictures = new ArrayList<>();
+            for (JsonNode feature : features) {
+                parsePicture(feature).ifPresent(pictures::add);
             }
-            String sequenceId = feature.path("collection").asString(null);
-            String datetime = feature.path("properties").path("datetime").asString(null);
-            String providerName = firstProviderName(feature);
-            String licenseUrl = licenseLink(feature, "href");
-            String licenseTitle = licenseLink(feature, "title");
-            return Optional.of(new NearbyPicture(pictureId,
-                    sequenceId,
-                    datetime,
-                    providerName,
-                    licenseUrl,
-                    licenseName(licenseTitle)));
+            return pictures;
         } catch (Exception e) {
             log.warn("Unable to query Panoramax for pictures near [{}, {}]: {}", latitude, longitude, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private Optional<NearbyPicture> parsePicture(JsonNode feature) {
+        String pictureId = feature.path("id").asString(null);
+        if (!StringUtils.hasText(pictureId)) {
             return Optional.empty();
         }
+        String sequenceId = feature.path("collection").asString(null);
+        String datetime = feature.path("properties").path("datetime").asString(null);
+        String providerName = firstProviderName(feature);
+        String licenseUrl = licenseLink(feature, "href");
+        String licenseTitle = licenseLink(feature, "title");
+        JsonNode coordinates = feature.path("geometry").path("coordinates");
+        Double lon = coordinates.isArray() && !coordinates.isEmpty() && coordinates.get(0).isNumber()
+                ? coordinates.get(0).asDouble() : null;
+        Double lat = coordinates.isArray() && coordinates.size() > 1 && coordinates.get(1).isNumber()
+                ? coordinates.get(1).asDouble() : null;
+        return Optional.of(new NearbyPicture(pictureId,
+                sequenceId,
+                datetime,
+                providerName,
+                licenseUrl,
+                licenseName(licenseTitle),
+                lon,
+                lat));
     }
 
     private JsonNode fetchJson(String upstreamUrl) {

@@ -42,7 +42,7 @@
     <script th:src="@{/js/gps-data-manager.js}"></script>
     <script th:src="@{/js/map-renderer.js}"></script>
     <script th:src="@{/js/map-controls.js}"></script>
-    <script th:src="@{/js/panoramax.js}"></script>
+    <script th:src="@{/js/panoramax.js(v=${appVersion})}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
     <script th:src="@{/js/map-settings.js}"></script>
@@ -334,6 +334,20 @@
         openPanoramaxPanel(lngLat.lat, lngLat.lng);
     };
 
+    PanoramaxViewer.onPictureMove = (lngLat) => {
+        // The drawer pushes the map instead of covering it, so the whole map
+        // canvas is visible — no reservation needed. The first photo after the
+        // drawer opened is always centered to compensate the resize shift.
+        PanoramaxViewer.updatePhotoLocation(mapRenderer, lngLat, 0, lngLat.first);
+    };
+
+    mapRenderer.onPanoramaxMapClick = (lngLat) => {
+        const drawer = document.getElementById('panoramax-panel-container');
+        if (drawer && drawer.classList.contains('open')) {
+            openPanoramaxPanel(lngLat.lat, lngLat.lng);
+        }
+    };
+
     mapRenderer.updateViewState(createViewState( [] ) );
     mapControls.on('selectionChanged', () => {
         mapRenderer.updateViewState(createViewState([]));
@@ -344,6 +358,7 @@
         const container = document.getElementById('panoramax-panel-container');
         if (!container) return;
         container.classList.add('open');
+        document.body.classList.add('panoramax-open');
         htmx.ajax('GET', `${window.contextPath}/panoramax/panel?lat=${lat}&lng=${lng}`, {
             target: '#panoramax-panel-container',
             swap: 'innerHTML'
