@@ -177,7 +177,7 @@ class MapControls {
 
         this._panoramaxDisabled = window.userSettings?.panoramaxEnabled === false;
         if (this._panoramaxDisabled) {
-            this.togglePanoramaxBtn.disabled = true;
+            this.togglePanoramaxBtn.remove();
         }
 
         const isPanoramaxEnabled = !this._panoramaxDisabled && localStorage.getItem('displayPanoramax') === 'true';
