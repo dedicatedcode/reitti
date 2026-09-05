@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.config.ConditionalOnPropertyNotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@ConditionalOnPropertyNotEmpty("reitti.panoramax.base-url")
 public class PanoramaxService {
 
     private static final Logger log = LoggerFactory.getLogger(PanoramaxService.class);

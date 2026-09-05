@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.config.ConditionalOnPropertyNotEmpty;
 import com.dedicatedcode.reitti.service.PanoramaxService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeParseException;
 
 @Controller
 @RequestMapping("/panoramax")
+@ConditionalOnPropertyNotEmpty("reitti.panoramax.base-url")
 public class PanoramaxPanelController {
 
     private final PanoramaxService panoramaxService;

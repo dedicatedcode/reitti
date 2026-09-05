@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.config.ConditionalOnPropertyNotEmpty;
 import com.dedicatedcode.reitti.service.PanoramaxService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/panoramax")
+@ConditionalOnPropertyNotEmpty("reitti.panoramax.base-url")
 public class PanoramaxApiController {
 
     private static final double METERS_PER_DEGREE = 111320.0;
