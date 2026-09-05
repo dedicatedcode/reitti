@@ -123,6 +123,33 @@ class MapRenderer {
         }
     }
 
+    static get PANORAMAX_SOURCE_ID() { return 'panoramax-coverage'; }
+    static get PANORAMAX_SEQUENCES_LAYER_ID() { return 'panoramax-sequences'; }
+    static get PANORAMAX_PICTURES_LAYER_ID() { return 'panoramax-pictures'; }
+    static get PANORAMAX_GRID_LAYER_ID() { return 'panoramax-grid'; }
+    static get PANORAMAX_HIGHLIGHT_SOURCE_ID() { return 'panoramax-highlight'; }
+    static get PANORAMAX_HIGHLIGHT_LINE_LAYER_ID() { return 'panoramax-highlight-line'; }
+    static get PANORAMAX_HIGHLIGHT_DOT_LAYER_ID() { return 'panoramax-highlight-dot'; }
+
+    static _panoramaxTileUrl() {
+        const contextPath = (window.contextPath || '').replace(/\/$/, '');
+        return `${window.location.origin}${contextPath}/api/v1/tiles/panoramax/{z}/{x}/{y}.mvt`;
+    }
+
+    /**
+     * Colors features per sequence: the first hex character of the sequence id
+     * selects one of 16 hues, so neighboring sequences get different colors
+     * with high probability.
+     */
+    static _panoramaxSequenceColorExpression(idProperty) {
+        const hues = [0, 24, 48, 72, 96, 120, 145, 170, 195, 220, 245, 270, 295, 310, 330, 350];
+        const branches = [];
+        '0123456789abcdef'.split('').forEach((character, index) => {
+            branches.push(character, `hsl(${hues[index]}, 78%, 55%)`);
+        });
+        return ['match', ['slice', ['to-string', ['get', idProperty]], 0, 1], ...branches, '#FF6F00'];
+    }
+
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
         MapRenderer.ensureRTLTextPlugin();
         this.userSettings = userSettings;
@@ -204,6 +231,9 @@ class MapRenderer {
         this.avatarMarkers = new Map();
         this.showAvatars = false;
         this.showTransportModes = true;
+        this.onPanoramaxFeatureClick = null;
+        this.onPanoramaxMapClick = null;
+        this._panoramaxHighlightRaf = null;
         this.transitionMarkers = [];
 
         this.terrainLayer = null;
@@ -888,6 +918,7 @@ class MapRenderer {
         await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
         await this._switchTerrainLayer(this.viewState.renderTerrain);
         await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+        this._switchPanoramaxLayer(this.viewState.renderPanoramax === true);
         await this._switchProjection(this.viewState.renderGlobe);
         this._syncPitchBearingState(false);
         this.element.classList.remove('is-loading');
@@ -915,6 +946,7 @@ class MapRenderer {
         const styleChanged = prev.mapStyleId !== next.mapStyleId;
         const projectionChanged = prev.renderGlobe !== next.renderGlobe;
         const satelliteChanged  = prev.renderSatelliteView !== next.renderSatelliteView;
+        const panoramaxChanged  = prev.renderPanoramax !== next.renderPanoramax;
         const terrainChanged    = prev.renderTerrain !== next.renderTerrain;
         const buildingsChanged  = (prev.renderBuildings !== next.renderBuildings) || (prev.is3d !== next.is3d);
 
@@ -930,6 +962,7 @@ class MapRenderer {
             await this._switchMapBuildingLayer(this.viewState.renderBuildings && this.viewState.is3d);
             await this._switchTerrainLayer(this.viewState.renderTerrain);
             await this._switchSatelliteLayer(this.viewState.renderSatelliteView);
+            this._switchPanoramaxLayer(this.viewState.renderPanoramax === true);
             await this._switchProjection(this.viewState.renderGlobe);
             this._syncPitchBearingState(false);
             this._rerenderOverlays();
@@ -952,6 +985,10 @@ class MapRenderer {
                 await this._switchSatelliteLayer(next.renderSatelliteView); // paint-only
             }
 
+            if (panoramaxChanged) {
+                this._switchPanoramaxLayer(next.renderPanoramax === true);
+            }
+
             // Re-enable terrain if final desired state is on
             if (next.renderTerrain) {
                 await this._switchTerrainLayer(true);
@@ -971,6 +1008,11 @@ class MapRenderer {
         // 2) Else, toggle terrain alone if changed
         if (terrainChanged) {
             await this._switchTerrainLayer(next.renderTerrain);
+        }
+
+        // 2b) Panoramax coverage is a pure visibility toggle
+        if (panoramaxChanged) {
+            this._switchPanoramaxLayer(next.renderPanoramax === true);
         }
 
         // 3) Buildings if changed
@@ -1032,6 +1074,136 @@ class MapRenderer {
         this._ensureLayer(capabilities.satelliteLayerDefinition);
         this._ensureLayer(capabilities.hillshadeLayerDefinition);
         buildingLayerDefinitions.forEach(layerDefinition => this._ensureLayer(layerDefinition));
+        this._ensurePanoramaxLayers();
+    }
+
+    _ensurePanoramaxLayers() {
+        this._ensureSource(MapRenderer.PANORAMAX_SOURCE_ID, this._panoramaxSourceDefinition());
+        this._ensureSource(MapRenderer.PANORAMAX_HIGHLIGHT_SOURCE_ID, {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        const definitions = this._panoramaxLayerDefinitions();
+        this._ensureLayer(definitions.sequences);
+        this._ensureLayer(definitions.pictures);
+        this._ensureLayer(definitions.grid);
+        this._ensureLayer(definitions.highlightLine);
+        this._ensureLayer(definitions.highlightDot);
+    }
+
+    _panoramaxSourceDefinition() {
+        return {
+            type: 'vector',
+            tiles: [MapRenderer._panoramaxTileUrl()],
+            minzoom: 0,
+            maxzoom: 15,
+            attribution: '<a href="https://panoramax.fr" target="_blank">&copy; Panoramax</a>'
+        };
+    }
+
+    _panoramaxLayerDefinitions() {
+        const sourceId = MapRenderer.PANORAMAX_SOURCE_ID;
+        // Only equirectangular (360°) imagery is shown and clickable; the
+        // tiles carry the capture type on both layers.
+        const type360Filter = ['==', ['get', 'type'], 'equirectangular'];
+        return {
+            sequences: {
+                id: MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID,
+                type: 'line',
+                source: sourceId,
+                'source-layer': 'sequences',
+                filter: type360Filter,
+                layout: {
+                    'line-cap': 'square',
+                    visibility: 'none'
+                },
+                paint: {
+                    'line-color': MapRenderer._panoramaxSequenceColorExpression('id'),
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 10, 2, 14, 4, 16, 5, 22, 3],
+                    'line-opacity': ['interpolate', ['linear'], ['zoom'], 6.25, 0, 7, 1]
+                }
+            },
+            pictures: {
+                id: MapRenderer.PANORAMAX_PICTURES_LAYER_ID,
+                type: 'circle',
+                source: sourceId,
+                'source-layer': 'pictures',
+                filter: type360Filter,
+                layout: {
+                    visibility: 'none'
+                },
+                paint: {
+                    'circle-color': MapRenderer._panoramaxSequenceColorExpression('first_sequence'),
+                    'circle-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1],
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 15, 4.5, 17, 8, 22, 12],
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 17, 0, 20, 2]
+                }
+            },
+            grid: {
+                id: MapRenderer.PANORAMAX_GRID_LAYER_ID,
+                type: 'circle',
+                source: sourceId,
+                'source-layer': 'grid',
+                // Only show overview blobs that actually contain 360° content,
+                // so the zoomed-out map predicts where colored lines will
+                // appear when zooming in (matches the 360°-only lines/dots).
+                filter: ['>', ['to-number', ['get', 'nb_360_pictures']], 0],
+                layout: {
+                    visibility: 'none',
+                    'circle-sort-key': ['get', 'coef']
+                },
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'],
+                        1, ['match', ['get', 'coef'], 0, 0, 1],
+                        4, ['match', ['get', 'coef'], 0, 0, 6],
+                        5, ['match', ['get', 'coef'], 0, 0, 2.5],
+                        6, ['match', ['get', 'coef'], 0, 0, 4],
+                        7, ['match', ['get', 'coef'], 0, 0, 7]],
+                    'circle-color': ['interpolate', ['linear'], ['get', 'coef'], 0, '#FFA726', 0.5, '#E65100', 1, '#3E2723'],
+                    'circle-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.5, 5, 1, 6.75, 1, 7, 0]
+                }
+            },
+            highlightLine: {
+                id: MapRenderer.PANORAMAX_HIGHLIGHT_LINE_LAYER_ID,
+                type: 'line',
+                source: MapRenderer.PANORAMAX_HIGHLIGHT_SOURCE_ID,
+                filter: ['==', ['geometry-type'], 'LineString'],
+                layout: {
+                    visibility: 'none'
+                },
+                paint: {
+                    'line-color': '#FFFFFF',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7, 18, 10],
+                    'line-opacity': 0.9
+                }
+            },
+            highlightDot: {
+                id: MapRenderer.PANORAMAX_HIGHLIGHT_DOT_LAYER_ID,
+                type: 'circle',
+                source: MapRenderer.PANORAMAX_HIGHLIGHT_SOURCE_ID,
+                filter: ['==', ['geometry-type'], 'Point'],
+                layout: {
+                    visibility: 'none'
+                },
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 15, 7, 20, 14],
+                    'circle-color': '#FFFFFF',
+                    'circle-opacity': 0.95,
+                    'circle-stroke-color': '#FF6F00',
+                    'circle-stroke-width': 3
+                }
+            }
+        };
+    }
+
+    _switchPanoramaxLayer(enable) {
+        const definitions = this._panoramaxLayerDefinitions();
+        [definitions.sequences, definitions.pictures, definitions.grid, definitions.highlightLine, definitions.highlightDot].forEach(definition => {
+            if (this.map.getLayer(definition.id)) {
+                this.map.setLayoutProperty(definition.id, 'visibility', enable ? 'visible' : 'none');
+            }
+        });
     }
 
     async _waitForStyleLoad(mapStyle, timeoutMs = 10000) {
@@ -2009,7 +2181,66 @@ class MapRenderer {
         this.map.on('resize', () => {
             this._updateAnimatedLayers();
         });
+
+        // -------------------------------------------------------------
+        // PANORAMAX STREET LEVEL IMAGERY
+        // Notify the embedding page when the user clicks Panoramax coverage.
+        // -------------------------------------------------------------
+        [MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID, MapRenderer.PANORAMAX_PICTURES_LAYER_ID].forEach(layerId => {
+            this.map.on('click', layerId, (e) => {
+                if (typeof this.onPanoramaxFeatureClick === 'function' && e.lngLat) {
+                    e.preventDefault();
+                    this.onPanoramaxFeatureClick(e.lngLat);
+                }
+            });
+            this.map.on('mouseenter', layerId, () => {
+                this.map.getCanvas().style.cursor = 'pointer';
+            });
+            this.map.on('mouseleave', layerId, () => {
+                this.map.getCanvas().style.cursor = '';
+                this._setPanoramaxHighlight(null);
+            });
+            this.map.on('mousemove', layerId, (e) => {
+                if (this._panoramaxHighlightRaf) {
+                    cancelAnimationFrame(this._panoramaxHighlightRaf);
+                }
+                this._panoramaxHighlightRaf = requestAnimationFrame(() => {
+                    this._panoramaxHighlightRaf = null;
+                    this._setPanoramaxHighlight(e.features?.[0] || null);
+                });
+            });
+        });
+        // Clicks next to the thin coverage lines: when the coverage layer is
+        // enabled, any map click can be used to open nearby photos.
+        this.map.on('click', (e) => {
+            if (e.defaultPrevented) return;
+            if (typeof this.onPanoramaxMapClick === 'function' && this._isPanoramaxCoverageVisible()) {
+                this.onPanoramaxMapClick(e.lngLat);
+            }
+        });
     };
+
+    _setPanoramaxHighlight(feature) {
+        const source = this.map.getSource(MapRenderer.PANORAMAX_HIGHLIGHT_SOURCE_ID);
+        if (!source) return;
+        source.setData({
+            type: 'FeatureCollection',
+            features: feature ? [{
+                type: 'Feature',
+                properties: {},
+                geometry: feature.geometry
+            }] : []
+        });
+    }
+
+    _isPanoramaxCoverageVisible() {
+        try {
+            return !!this.map.getLayer(MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID)
+                && this.map.getLayoutProperty(MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID, 'visibility') === 'visible';
+        } catch (_) {
+            return false;
+        }
+    }
 
     _getActiveVisitEffect(visit) {
         const exitFadeDuration = 3000;
@@ -2148,6 +2379,9 @@ class MapRenderer {
         const protectedLayers = new Set([
             satelliteLayerId,
             'sky',
+            MapRenderer.PANORAMAX_SEQUENCES_LAYER_ID,
+            MapRenderer.PANORAMAX_PICTURES_LAYER_ID,
+            MapRenderer.PANORAMAX_GRID_LAYER_ID,
             ...(this._getStyleCapabilities().building3dLayerIds || [])
         ]);
 

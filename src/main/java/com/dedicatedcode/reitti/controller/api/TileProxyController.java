@@ -52,6 +52,7 @@ public class TileProxyController {
     private final boolean tileCacheEnabled;
     private final String defaultTileService;
     private final String customTileService;
+    private final String panoramaxBaseUrl;
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final MapLibreMapStylesService mapLibreMapStylesService;
@@ -62,6 +63,7 @@ public class TileProxyController {
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
             @Value("${reitti.ui.tiles.default.service}") String defaultTileService,
             @Value("${reitti.ui.tiles.custom.service:}") String customTileService,
+            @Value("${reitti.panoramax.base-url:}") String panoramaxBaseUrl,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
             MapLibreMapStylesService mapLibreMapStylesService) {
@@ -69,6 +71,7 @@ public class TileProxyController {
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
         this.defaultTileService = defaultTileService;
         this.customTileService = customTileService;
+        this.panoramaxBaseUrl = panoramaxBaseUrl;
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
@@ -100,6 +103,26 @@ public class TileProxyController {
             return fetchTile(tileUrl, MediaType.IMAGE_PNG_VALUE, "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
         } else {
             return fetchTile(upstreamTileUrl, MediaType.IMAGE_PNG_VALUE, "custom");
+        }
+    }
+
+    @GetMapping("/panoramax/{z}/{x}/{y}.mvt")
+    public ResponseEntity<byte[]> getPanoramaxTile(
+            @PathVariable int z,
+            @PathVariable int x,
+            @PathVariable int y) {
+        if (!StringUtils.hasText(panoramaxBaseUrl)) {
+            return ResponseEntity.notFound().build();
+        }
+        String upstreamTileUrl = panoramaxBaseUrl + "/map/" + z + "/" + x + "/" + y + ".mvt";
+        log.trace("Fetching Panoramax coverage tile: {}", upstreamTileUrl);
+
+        if (this.tileCacheEnabled) {
+            String cachePath = URI.create(upstreamTileUrl).getRawPath();
+            String tileUrl = tileCacheUrl + "/panoramax/tiles" + cachePath;
+            return fetchTile(tileUrl, "application/x-protobuf", "panoramax", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+        } else {
+            return fetchTile(upstreamTileUrl, "application/x-protobuf", "panoramax");
         }
     }
 

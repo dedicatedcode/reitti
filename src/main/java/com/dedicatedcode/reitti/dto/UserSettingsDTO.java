@@ -24,7 +24,8 @@ public record UserSettingsDTO(
         ZoneId timezoneOverride,
         String customCssUrl,
         String timelineColor,
-        boolean h3Enabled
+        boolean h3Enabled,
+        boolean panoramaxEnabled
 ) {
 
     public enum UIMode {

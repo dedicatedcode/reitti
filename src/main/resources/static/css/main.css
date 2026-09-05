@@ -534,9 +534,14 @@ header {
 }
 
 
+/* Vendor components (Panoramax viewer: psv-*, pnx-*) render their own buttons
+   into light DOM — keep our global button styling from leaking onto them.
+   :where() keeps the selector's specificity identical to a plain `button`
+   (the previous :not() chains raised it above component class rules like
+   .map-control-btn and broke button styling across the app). */
 .btn,
 a.btn,
-button {
+button:where(:not([class^="psv-"], [class^="pnx-"])) {
     font-size: 14px;
     color: var(--color-highlight);
     border: 1px solid var(--color-highlight);
@@ -549,7 +554,7 @@ button {
 
 .btn:hover,
 a.btn:hover,
-button:hover {
+button:where(:not([class^="psv-"], [class^="pnx-"])):hover {
     background-color: #525252;
     filter: brightness(1.05);
     box-shadow: 0 0 0 1px rgba(242, 196, 112, 0.5), 0 8px 28px rgba(217, 164, 65, 0.5), inset 0 1px 0 rgba(255, 245, 215, 0.7), inset 0 -1px 0 rgba(120, 80, 20, 0.3);
