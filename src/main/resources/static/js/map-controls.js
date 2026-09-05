@@ -37,6 +37,10 @@ class MapControls {
                     <i class="lni lni-globe-stand"></i>
                     <span>${t('map.display-control.satellite.disabled.text')}</span>
                 </button>
+                <button type="button" class="btn map-control-btn" id="toggle-panoramax-btn" title="${t('map.display-control.panoramax.disabled.title')}">
+                    <i class="lni lni-camera-1"></i>
+                    <span>${t('map.display-control.panoramax.disabled.text')}</span>
+                </button>
                 <button type="button" class="btn map-control-btn" id="compass-btn" title="${t('map.display-control.north-up.title')}">
                     <i class="lni lni-location-arrow-right"></i>
                     <span>${t('map.display-control.north-up.text')}</span>
@@ -51,6 +55,7 @@ class MapControls {
         this.toggleTerrainModeBtn = document.getElementById('toggle-terrain-btn');
         this.toggleBuildingsModeBtn = document.getElementById('toggle-buildings-btn');
         this.toggleSatelliteModeBtn = document.getElementById('toggle-satellite-btn');
+        this.togglePanoramaxBtn = document.getElementById('toggle-panoramax-btn');
         this.toggleGlobeProjectionModeBtn = document.getElementById('toggle-globeprojection-btn');
         this.compassBtn = document.getElementById('compass-btn');
         this.mapStyleSelect = document.getElementById('map-style-select');
@@ -120,6 +125,17 @@ class MapControls {
             }
             this.emit('selectionChanged', this.getState());
         });
+        this.togglePanoramaxBtn.addEventListener('click', () => {
+            const isEnabled = this.togglePanoramaxBtn.classList.contains('active');
+            if (isEnabled) {
+                this._disablePanoramax();
+                // Hiding the coverage also closes a possibly open photo drawer
+                PanoramaxViewer?.closeOpenPanel?.();
+            } else {
+                this._enablePanoramax();
+            }
+            this.emit('selectionChanged', this.getState());
+        });
         this.toggleGlobeProjectionModeBtn.addEventListener('click', () => {
             const isEnabled = this.toggleGlobeProjectionModeBtn.classList.contains('active');
             if (isEnabled) {
@@ -157,6 +173,18 @@ class MapControls {
             this._enableSatellite()
         } else {
             this._disableSatellite();
+        }
+
+        this._panoramaxDisabled = window.userSettings?.panoramaxEnabled === false;
+        if (this._panoramaxDisabled) {
+            this.togglePanoramaxBtn.remove();
+        }
+
+        const isPanoramaxEnabled = !this._panoramaxDisabled && localStorage.getItem('displayPanoramax') === 'true';
+        if (isPanoramaxEnabled) {
+            this._enablePanoramax()
+        } else {
+            this._disablePanoramax();
         }
 
         const isGlobeEnabled = localStorage.getItem('displayGlobeProjection') === 'true';
@@ -217,6 +245,7 @@ class MapControls {
             renderTerrain: !!caps.terrainSourceId && this.toggleTerrainModeBtn.classList.contains('active'),
             renderBuildings: caps.building3dLayerIds && caps.building3dLayerIds.length > 0 && this.toggleBuildingsModeBtn.classList.contains('active'),
             renderSatelliteView: !!caps.satelliteLayerId && this.toggleSatelliteModeBtn.classList.contains('active'),
+            renderPanoramax: !this._panoramaxDisabled && this.togglePanoramaxBtn.classList.contains('active'),
             renderGlobe: this.toggleGlobeProjectionModeBtn.classList.contains('active'),
         };
     }
@@ -301,6 +330,22 @@ class MapControls {
         this.toggleSatelliteModeBtn.classList.remove('active');
         span.textContent = t('map.display-control.satellite.disabled.text');
         this.toggleSatelliteModeBtn.title = t('map.display-control.satellite.disabled.title');
+    }
+
+    _enablePanoramax() {
+        const span = this.togglePanoramaxBtn.querySelector('span');
+        localStorage.setItem('displayPanoramax', 'true')
+        this.togglePanoramaxBtn.classList.add('active');
+        span.textContent = t('map.display-control.panoramax.enabled.text');
+        this.togglePanoramaxBtn.title = t('map.display-control.panoramax.enabled.title');
+    }
+
+    _disablePanoramax() {
+        const span = this.togglePanoramaxBtn.querySelector('span');
+        localStorage.setItem('displayPanoramax', 'false')
+        this.togglePanoramaxBtn.classList.remove('active');
+        span.textContent = t('map.display-control.panoramax.disabled.text');
+        this.togglePanoramaxBtn.title = t('map.display-control.panoramax.disabled.title');
     }
 
     _enableGlobeProjection() {

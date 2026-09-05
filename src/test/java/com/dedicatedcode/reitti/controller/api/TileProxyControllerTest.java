@@ -44,6 +44,7 @@ class TileProxyControllerTest {
                 "",                        // tileCacheUrl (empty => caching disabled)
                 null,
                 null,
+                "",                        // panoramaxBaseUrl
                 objectMapper,
                 userMapStyleJdbcService,
                 mapLibreMapStylesService

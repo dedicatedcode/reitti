@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
@@ -36,17 +37,20 @@ public class UserSettingsControllerAdvice {
     private final TilesCustomizationProvider tilesCustomizationProvider;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final boolean h3Enabled;
+    private final boolean panoramaxEnabled;
 
     public UserSettingsControllerAdvice(UserJdbcService userJdbcService,
                                         UserSettingsJdbcService userSettingsJdbcService,
                                         TilesCustomizationProvider tilesCustomizationProvider,
                                         RawLocationPointJdbcService rawLocationPointJdbcService,
-                                        @Value("${reitti.h3.enabled:false}") boolean h3Enabled) {
+                                        @Value("${reitti.h3.enabled:false}") boolean h3Enabled,
+                                        @Value("${reitti.panoramax.base-url:}") String panoramaxBaseUrl) {
         this.userJdbcService = userJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.tilesCustomizationProvider = tilesCustomizationProvider;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.h3Enabled = h3Enabled;
+        this.panoramaxEnabled = StringUtils.hasText(panoramaxBaseUrl);
     }
     
     @ModelAttribute("userSettings")
@@ -70,7 +74,8 @@ public class UserSettingsControllerAdvice {
                                        null,
                                        null,
                                        DEFAULT_COLOR,
-                                       h3Enabled
+                                       h3Enabled,
+                                       panoramaxEnabled
                                        );
         }
         
@@ -105,7 +110,8 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getTimeZoneOverride(),
                                        dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null,
                                        dbSettings.getColor(),
-                                       h3Enabled);
+                                       h3Enabled,
+                                       panoramaxEnabled);
         }
         // Fallback for authenticated users not found in database
         return new UserSettingsDTO(Language.EN,
@@ -123,7 +129,8 @@ public class UserSettingsControllerAdvice {
                                    null,
                                    null,
                                    DEFAULT_COLOR,
-                                   h3Enabled);
+                                   h3Enabled,
+                                   panoramaxEnabled);
 
     }
 

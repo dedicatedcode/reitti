@@ -54,6 +54,13 @@ http {
         loader_threshold=300 loader_files=200 loader_sleep=50ms
         manager_threshold=300 manager_files=200 manager_sleep=50ms;
 
+    # Panoramax street level imagery coverage tiles and search responses.
+    # Coverage tiles are stable enough for a week, search responses for a day.
+    proxy_cache_path /var/cache/nginx/panoramax
+        levels=1:2 keys_zone=panoramax:128m max_size=1g inactive=14d use_temp_path=off
+        loader_threshold=300 loader_files=200 loader_sleep=50ms
+        manager_threshold=300 manager_files=200 manager_sleep=50ms;
+
     # Cache lock tuning
     proxy_cache_lock on;
     proxy_cache_lock_timeout 5s;
@@ -99,6 +106,56 @@ http {
             add_header X-Cache-Status $upstream_cache_status;
             add_header Cache-Control $tile_client_cache_control;
             expires 1y;
+        }
+
+        location /panoramax/tiles/ {
+            set $panoramax_upstream $http_x_reitti_upstream_url;
+            if ($panoramax_upstream = "") {
+                return 400;
+            }
+
+            # Strip the /panoramax/tiles/ prefix so the upstream receives the correct path
+            rewrite ^/panoramax/tiles/(.*) /$1 break;
+
+            proxy_pass $panoramax_upstream;
+            proxy_set_header Host $proxy_host;
+            proxy_set_header User-Agent "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)";
+            proxy_ssl_server_name on;
+
+            proxy_cache panoramax;
+            proxy_cache_key "$panoramax_upstream";
+            proxy_cache_valid 200 302 7d;
+            proxy_cache_valid 404 10m;
+            proxy_cache_use_stale error timeout invalid_header updating http_500 http_502 http_503 http_504;
+
+            add_header X-Cache-Status $upstream_cache_status;
+            add_header Cache-Control "public, max-age=604800";
+            expires 7d;
+        }
+
+        location /panoramax/search/ {
+            set $panoramax_upstream $http_x_reitti_upstream_url;
+            if ($panoramax_upstream = "") {
+                return 400;
+            }
+
+            # Strip the /panoramax/search/ prefix so the upstream receives the correct path
+            rewrite ^/panoramax/search/(.*) /$1 break;
+
+            proxy_pass $panoramax_upstream;
+            proxy_set_header Host $proxy_host;
+            proxy_set_header User-Agent "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)";
+            proxy_ssl_server_name on;
+
+            proxy_cache panoramax;
+            proxy_cache_key "$panoramax_upstream";
+            proxy_cache_valid 200 302 1d;
+            proxy_cache_valid 404 10m;
+            proxy_cache_use_stale error timeout invalid_header updating http_500 http_502 http_503 http_504;
+
+            add_header X-Cache-Status $upstream_cache_status;
+            add_header Cache-Control "public, max-age=86400";
+            expires 1d;
         }
 
         location /health {
