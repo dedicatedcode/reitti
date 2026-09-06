@@ -283,8 +283,8 @@ class PhotoClusterManager {
         closeButton.innerHTML = '<i class="lni lni-xmark"></i>';
         closeButton.className = 'photo-grid-close-button';
 
-        // Count time-matched photos (excluding already-written ones)
-        const timeMatchedPhotos = photos.filter(function (p) { return p.timeMatched === true && !self._writtenAssetIds.has(p.id); });
+        // Count time-matched photos (excluding already-written ones and shared photos, which we can not write back)
+        const timeMatchedPhotos = photos.filter(function (p) { return p.timeMatched === true && p.shared !== true && !self._writtenAssetIds.has(p.id); });
         const hasTimeMatched = timeMatchedPhotos.length > 0;
 
         // Create photo grid
@@ -328,7 +328,7 @@ class PhotoClusterManager {
             });
 
             // Add time-matched indicator if photo was aligned by time and not yet written
-            if (photo.timeMatched === true && !self._writtenAssetIds.has(photo.id)) {
+            if (photo.timeMatched === true && photo.shared !== true && !self._writtenAssetIds.has(photo.id)) {
                 const timeMatchedIndicator = document.createElement('div');
                 timeMatchedIndicator.className = 'time-matched-indicator';
                 timeMatchedIndicator.innerHTML = '!';
@@ -345,7 +345,7 @@ class PhotoClusterManager {
             });
 
             // Add write-back button for time-matched photos not yet written
-            if (photo.timeMatched === true && !self._writtenAssetIds.has(photo.id)) {
+            if (photo.timeMatched === true && photo.shared !== true && !self._writtenAssetIds.has(photo.id)) {
                 const writeBtn = document.createElement('button');
                 writeBtn.className = 'btn write-location-btn';
                 writeBtn.setAttribute('data-asset-id', photo.id);
@@ -539,8 +539,8 @@ class PhotoClusterManager {
             imageContainer.appendChild(errorMsg);
         });
 
-        // Time-matched info bar (only if not yet written)
-        if (photo.timeMatched === true && !this._writtenAssetIds.has(photo.id)) {
+        // Time-matched info bar (only if not yet written and not a shared photo)
+        if (photo.timeMatched === true && photo.shared !== true && !this._writtenAssetIds.has(photo.id)) {
             const timeMatchBar = document.createElement('div');
             timeMatchBar.className = 'photo-time-match-bar';
 

@@ -26,6 +26,8 @@ public class ImmichIntegrationJdbcService {
             rs.getLong("id"),
             rs.getString("server_url"),
             rs.getString("api_token"),
+            rs.getString("album_id"),
+            rs.getString("album_name"),
             rs.getBoolean("use_best_guess_location"),
             rs.getBoolean("enabled"),
             rs.getTimestamp("created_at").toInstant(),
@@ -49,13 +51,15 @@ public class ImmichIntegrationJdbcService {
     public ImmichIntegration save(User user, ImmichIntegration immichIntegration) {
         if (immichIntegration.getId() == null) {
             // Insert new record
-            String sql = "INSERT INTO immich_integrations (user_id, server_url, api_token, use_best_guess_location, enabled, created_at, updated_at, version) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            String sql = "INSERT INTO immich_integrations (user_id, server_url, api_token, album_id, album_name, use_best_guess_location, enabled, created_at, updated_at, version) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
             Instant now = Instant.now();
             Long id = jdbcTemplate.queryForObject(sql, Long.class,
                     user.getId(),
                     immichIntegration.getServerUrl(),
                     immichIntegration.getApiToken(),
+                    immichIntegration.getAlbumId(),
+                    immichIntegration.getAlbumName(),
                     immichIntegration.isUseBestGuessLocation(),
                     immichIntegration.isEnabled(),
                     java.sql.Timestamp.from(now),
@@ -65,11 +69,13 @@ public class ImmichIntegrationJdbcService {
             return immichIntegration.withId(id);
         } else {
             // Update existing record
-            String sql = "UPDATE immich_integrations SET server_url = ?, api_token = ?, use_best_guess_location = ?, enabled = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?";
+            String sql = "UPDATE immich_integrations SET server_url = ?, api_token = ?, album_id = ?, album_name = ?, use_best_guess_location = ?, enabled = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?";
             Instant now = Instant.now();
             jdbcTemplate.update(sql,
                     immichIntegration.getServerUrl(),
                     immichIntegration.getApiToken(),
+                    immichIntegration.getAlbumId(),
+                    immichIntegration.getAlbumName(),
                     immichIntegration.isUseBestGuessLocation(),
                     immichIntegration.isEnabled(),
                     java.sql.Timestamp.from(now),

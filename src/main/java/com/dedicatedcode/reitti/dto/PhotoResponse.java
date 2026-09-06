@@ -10,9 +10,15 @@ public class PhotoResponse {
     private Double longitude;
     private String dateTime;
     private boolean timeMatched;
+    private boolean shared;
 
     public PhotoResponse(String id, String fileName, String thumbnailUrl, String fullImageUrl,
                         Double latitude, Double longitude, String dateTime, boolean timeMatched) {
+        this(id, fileName, thumbnailUrl, fullImageUrl, latitude, longitude, dateTime, timeMatched, false);
+    }
+
+    public PhotoResponse(String id, String fileName, String thumbnailUrl, String fullImageUrl,
+                        Double latitude, Double longitude, String dateTime, boolean timeMatched, boolean shared) {
         this.id = id;
         this.fileName = fileName;
         this.thumbnailUrl = thumbnailUrl;
@@ -21,6 +27,7 @@ public class PhotoResponse {
         this.longitude = longitude;
         this.dateTime = dateTime;
         this.timeMatched = timeMatched;
+        this.shared = shared;
     }
 
     public String getId() {
@@ -85,5 +92,13 @@ public class PhotoResponse {
 
     public void setTimeMatched(boolean timeMatched) {
         this.timeMatched = timeMatched;
+    }
+
+    public boolean isShared() {
+        return shared;
+    }
+
+    public void setShared(boolean shared) {
+        this.shared = shared;
     }
 }

@@ -1,14 +1,22 @@
 package com.dedicatedcode.reitti.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+
 public class ImmichSearchRequest {
-    
+
     @JsonProperty("takenAfter")
     private String takenAfter;
-    
-    @JsonProperty("takenBefore") 
+
+    @JsonProperty("takenBefore")
     private String takenBefore;
+
+    @JsonProperty("albumIds")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<String> albumIds;
+
     
     @JsonProperty("type")
     private String type = "IMAGE";
@@ -43,6 +51,14 @@ public class ImmichSearchRequest {
 
     public void setTakenBefore(String takenBefore) {
         this.takenBefore = takenBefore;
+    }
+
+    public List<String> getAlbumIds() {
+        return albumIds;
+    }
+
+    public void setAlbumIds(List<String> albumIds) {
+        this.albumIds = albumIds;
     }
 
     public String getType() {
