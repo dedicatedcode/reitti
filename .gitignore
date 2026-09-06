@@ -37,3 +37,4 @@ docker-compose.override.yml
 /e2e/test-results/
 
 /secrets/
+/.junie/

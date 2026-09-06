@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.ImmichAsset;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.model.ImmichAlbumResult;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -28,8 +29,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
@@ -85,7 +89,7 @@ class ImmichIntegrationServiceTest {
         boolean enabled = true;
         
         // When
-        ImmichIntegration saved = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, useBestGuessLocation, enabled);
+        ImmichIntegration saved = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, useBestGuessLocation, enabled);
         
         // Then
         assertNotNull(saved);
@@ -205,13 +209,13 @@ class ImmichIntegrationServiceTest {
         boolean enabled = true;
         
         // Create initial integration
-        ImmichIntegration initial = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, useBestGuessLocation, enabled);
+        ImmichIntegration initial = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, useBestGuessLocation, enabled);
         assertNotNull(initial.getId());
-        
+
         // When - Update the integration
         String newServerUrl = "http://localhost:8090";
         String newApiToken = "new-test-token";
-        ImmichIntegration updated = immichIntegrationService.saveIntegration(user, newServerUrl, newApiToken, false, false);
+        ImmichIntegration updated = immichIntegrationService.saveIntegration(user, newServerUrl, newApiToken, null, null, false, false);
         
         // Then
         assertNotNull(updated);
@@ -230,7 +234,7 @@ class ImmichIntegrationServiceTest {
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
         
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
@@ -265,7 +269,7 @@ class ImmichIntegrationServiceTest {
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
         
         String assetId = "test-asset-id";
         String size = "thumbnail";
@@ -295,7 +299,7 @@ class ImmichIntegrationServiceTest {
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
         
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 2);
@@ -348,7 +352,7 @@ class ImmichIntegrationServiceTest {
         String apiToken = "test-token";
         
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
@@ -400,7 +404,7 @@ class ImmichIntegrationServiceTest {
         String apiToken = "test-token";
         
         // Create integration with useBestGuessLocation = false
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, false, true);
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, false, true);
         
         // Create a raw location point for matching
         Instant photoTime = Instant.parse("2024-01-01T12:00:00Z");
@@ -445,27 +449,194 @@ class ImmichIntegrationServiceTest {
         User user = testingService.randomUser();
         String serverUrl = IMMICH_BASE_URL;
         String apiToken = "test-token";
-        
+
         // Create integration
-        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, true, true);
-        
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
+
         String assetId = "test-asset-id";
         String targetPath = "test-path";
-        
+
         // Mock the image download endpoint
         byte[] imageData = new byte[]{1, 2, 3, 4, 5};
         mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/assets/" + assetId + "/thumbnail?size=fullsize"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header("x-api-key", apiToken))
                 .andRespond(withSuccess(imageData, MediaType.IMAGE_JPEG));
-        
+
         // When
         String filename = immichIntegrationService.downloadImage(user, assetId, targetPath);
-        
+
         // Then
         assertNotNull(filename);
         assertTrue(filename.endsWith(".jpg"));
         assertTrue(storageService.exists(targetPath + "/" + filename));
         mockServer.verify();
+    }
+
+    @Test
+    void testSaveIntegration_WithAlbum() {
+        // Given
+        User user = testingService.randomUser();
+        String serverUrl = IMMICH_BASE_URL;
+        String apiToken = "test-token";
+        String albumId = "9f4d3a00-1234-4bcd-8a1f-abcdefabcdef";
+        String albumName = "My Trip";
+
+        // When
+        ImmichIntegration saved = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, albumId, albumName, false, true);
+
+        // Then
+        assertNotNull(saved);
+        assertEquals(albumId, saved.getAlbumId());
+        assertEquals(albumName, saved.getAlbumName());
+
+        // When - reload from database
+        Optional<ImmichIntegration> reloaded = immichIntegrationService.getIntegrationForUser(user);
+
+        // Then
+        assertTrue(reloaded.isPresent());
+        assertEquals(albumId, reloaded.get().getAlbumId());
+        assertEquals(albumName, reloaded.get().getAlbumName());
+
+        // When - saving again without album clears the selection
+        ImmichIntegration cleared = immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, false, true);
+
+        // Then
+        assertNull(cleared.getAlbumId());
+        assertNull(cleared.getAlbumName());
+    }
+
+    @Test
+    void testSearchPhotosForRange_WithAlbumFilter() throws Exception {
+        // Given
+        User user = testingService.randomUser();
+        String serverUrl = IMMICH_BASE_URL;
+        String apiToken = "test-token";
+        String albumId = "9f4d3a00-1234-4bcd-8a1f-abcdefabcdef";
+
+        // Create integration with album
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, albumId, "My Trip", true, true);
+
+        LocalDate start = LocalDate.of(2024, 1, 1);
+        LocalDate end = LocalDate.of(2024, 1, 2);
+        String timezone = "UTC";
+
+        // Mock the search endpoint and capture the request body
+        ImmichSearchResponse searchResponse = new ImmichSearchResponse();
+        ImmichSearchResponse.AssetsResult assetsResult = new ImmichSearchResponse.AssetsResult();
+        assetsResult.setItems(List.of());
+        assetsResult.setTotal(0);
+        searchResponse.setAssets(assetsResult);
+
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/search/metadata"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("x-api-key", apiToken))
+                .andExpect(content().string(containsString("\"albumIds\":[\"" + albumId + "\"]")))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(searchResponse), MediaType.APPLICATION_JSON));
+
+        // When
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(user, start, end, timezone);
+
+        // Then
+        assertNotNull(photos);
+        assertTrue(photos.isEmpty());
+        mockServer.verify();
+    }
+
+    @Test
+    void testSearchPhotosForRange_WithoutAlbumFilter_SendsNoAlbumIds() throws Exception {
+        // Given
+        User user = testingService.randomUser();
+        String serverUrl = IMMICH_BASE_URL;
+        String apiToken = "test-token";
+
+        // Create integration without album
+        immichIntegrationService.saveIntegration(user, serverUrl, apiToken, null, null, true, true);
+
+        // Mock the search endpoint and assert that no albumIds are sent
+        ImmichSearchResponse searchResponse = new ImmichSearchResponse();
+        ImmichSearchResponse.AssetsResult assetsResult = new ImmichSearchResponse.AssetsResult();
+        assetsResult.setItems(List.of());
+        assetsResult.setTotal(0);
+        searchResponse.setAssets(assetsResult);
+
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/search/metadata"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().string(not(containsString("albumIds"))))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(searchResponse), MediaType.APPLICATION_JSON));
+
+        // When
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(user, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2), "UTC");
+
+        // Then
+        assertNotNull(photos);
+        assertTrue(photos.isEmpty());
+        mockServer.verify();
+    }
+
+    @Test
+    void testGetAlbums_Success() {
+        // Given
+        String apiToken = "test-token";
+        String albumsJson = """
+                [{"id":"9f4d3a00-1234-4bcd-8a1f-abcdefabcdef","albumName":"My Trip","assetCount":42,"shared":false},
+                 {"id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee","albumName":"Partner Album","assetCount":7,"shared":true}]
+                """;
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/albums"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("x-api-key", apiToken))
+                .andRespond(withSuccess(albumsJson, MediaType.APPLICATION_JSON));
+
+        // When
+        ImmichAlbumResult result = immichIntegrationService.getAlbums(IMMICH_BASE_URL, apiToken);
+
+        // Then
+        assertEquals(ImmichAlbumResult.Status.OK, result.status());
+        assertNotNull(result.albums());
+        assertEquals(2, result.albums().size());
+        assertEquals("My Trip", result.albums().get(0).getAlbumName());
+        assertEquals(42, result.albums().get(0).getAssetCount());
+        assertFalse(result.albums().get(0).isShared());
+        assertTrue(result.albums().get(1).isShared());
+        mockServer.verify();
+    }
+
+    @Test
+    void testGetAlbums_PermissionDenied() {
+        // Given
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/albums"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+        // When
+        ImmichAlbumResult result = immichIntegrationService.getAlbums(IMMICH_BASE_URL, "test-token");
+
+        // Then
+        assertEquals(ImmichAlbumResult.Status.PERMISSION_DENIED, result.status());
+        mockServer.verify();
+    }
+
+    @Test
+    void testGetAlbums_Unauthorized() {
+        // Given
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/albums"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withUnauthorizedRequest());
+
+        // When
+        ImmichAlbumResult result = immichIntegrationService.getAlbums(IMMICH_BASE_URL, "invalid-token");
+
+        // Then
+        assertEquals(ImmichAlbumResult.Status.AUTH_FAILED, result.status());
+        mockServer.verify();
+    }
+
+    @Test
+    void testGetAlbums_MissingParameters() {
+        // When
+        ImmichAlbumResult result = immichIntegrationService.getAlbums("", "");
+
+        // Then
+        assertEquals(ImmichAlbumResult.Status.FAILED, result.status());
     }
 }

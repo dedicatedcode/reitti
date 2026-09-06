@@ -1,0 +1,1 @@
+ALTER TABLE user_sharing ADD COLUMN share_photos BOOLEAN NOT NULL DEFAULT FALSE;

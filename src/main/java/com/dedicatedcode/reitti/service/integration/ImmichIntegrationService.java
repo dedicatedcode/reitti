@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.integration;
 
 import com.dedicatedcode.reitti.dto.*;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
+import com.dedicatedcode.reitti.model.ImmichAlbumResult;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.security.User;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
@@ -49,21 +51,22 @@ public class ImmichIntegrationService {
     }
     
     @Transactional
-    public ImmichIntegration saveIntegration(User user, String serverUrl, String apiToken, boolean useBestGuessLocation, boolean enabled) {
+    public ImmichIntegration saveIntegration(User user, String serverUrl, String apiToken, String albumId, String albumName, boolean useBestGuessLocation, boolean enabled) {
         Optional<ImmichIntegration> existingIntegration = immichIntegrationJdbcService.findByUser(user);
-        
+
         ImmichIntegration integration;
         if (existingIntegration.isPresent()) {
             integration = existingIntegration.get()
                     .withServerUrl(serverUrl)
                     .withApiToken(apiToken)
+                    .withAlbum(albumId, albumName)
                     .withEnabled(enabled)
                     .withUseBestGuessLocation(useBestGuessLocation);
 
         } else {
-            integration = new ImmichIntegration(serverUrl, apiToken, useBestGuessLocation, enabled);
+            integration = new ImmichIntegration(serverUrl, apiToken, albumId, albumName, useBestGuessLocation, enabled);
         }
-        
+
         return immichIntegrationJdbcService.save(user, integration);
     }
     
@@ -98,6 +101,43 @@ public class ImmichIntegrationService {
             return new IntegrationTestResult(false, e.getMessage());
         }
     }
+
+    public ImmichAlbumResult getAlbums(String serverUrl, String apiToken) {
+        if (serverUrl == null || serverUrl.trim().isEmpty() ||
+            apiToken == null || apiToken.trim().isEmpty()) {
+            return ImmichAlbumResult.failed(null);
+        }
+
+        try {
+            String baseUrl = serverUrl.endsWith("/") ? serverUrl : serverUrl + "/";
+            String albumsUrl = baseUrl + "api/albums";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("x-api-key", apiToken);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<ImmichAlbum[]> response = restTemplate.exchange(
+                albumsUrl,
+                HttpMethod.GET,
+                entity,
+                ImmichAlbum[].class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return ImmichAlbumResult.ok(List.of(response.getBody()));
+            }
+            return ImmichAlbumResult.failed("StatusCode: " + response.getStatusCode());
+        } catch (HttpClientErrorException.Forbidden e) {
+            log.debug("Album listing not permitted for Immich server [{}]", serverUrl, e);
+            return ImmichAlbumResult.permissionDenied();
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.debug("Unauthorized when listing albums from Immich server [{}]", serverUrl, e);
+            return ImmichAlbumResult.authFailed();
+        } catch (Exception e) {
+            return ImmichAlbumResult.failed(e.getMessage());
+        }
+    }
     
     public List<PhotoResponse> searchPhotosForRange(User user, LocalDate start, LocalDate end, String timezone) {
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
@@ -119,6 +159,9 @@ public class ImmichIntegrationService {
             Instant endOfDay = end.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
 
             ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(startOfDay), DateTimeFormatter.ISO_INSTANT.format(endOfDay));
+            if (integration.getAlbumId() != null && !integration.getAlbumId().isBlank()) {
+                searchRequest.setAlbumIds(List.of(integration.getAlbumId()));
+            }
             
             HttpHeaders headers = new HttpHeaders();
             headers.add("x-api-key", integration.getApiToken());
@@ -150,8 +193,8 @@ public class ImmichIntegrationService {
         
         if (searchResponse.getAssets() != null && searchResponse.getAssets().getItems() != null) {
             for (ImmichAsset asset : searchResponse.getAssets().getItems()) {
-                String thumbnailUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/thumbnail";
-                String fullImageUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/original";
+                String thumbnailUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/thumbnail?userId=" + user.getId();
+                String fullImageUrl = "/api/v1/photos/immich/proxy/" + asset.getId() + "/original?userId=" + user.getId();
                 
                 Double latitude = null;
                 Double longitude = null;

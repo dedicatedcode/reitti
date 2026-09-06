@@ -583,6 +583,42 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                    th:value="${hasIntegration ? immichIntegration.apiToken : ''}">
                         </div>
 
+                        <div class="form-group">
+                            <label for="immichAlbumId" th:text="#{integrations.immich.album.label}">Album</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div th:fragment="immich-album-select" id="immich-album-select" style="flex: 1;">
+                                    <select id="immichAlbumId" name="albumId" class="form-control" onchange="updateImmichAlbumName(this)">
+                                        <option value="" th:text="#{integrations.immich.album.none}">All photos</option>
+                                        <option th:if="${currentAlbumId != null && #lists.isEmpty(immichAlbums)}"
+                                                th:value="${currentAlbumId}"
+                                                selected
+                                                th:attr="data-name=${currentAlbumName}"
+                                                th:text="${currentAlbumName != null ? currentAlbumName : currentAlbumId}">Current album</option>
+                                        <option th:each="album : ${immichAlbums}"
+                                                th:value="${album.id}"
+                                                th:selected="${album.id == currentAlbumId}"
+                                                th:attr="data-name=${album.albumName}"
+                                                th:text="${album.albumName + ' (' + album.assetCount + ')' + (album.shared ? ' [' + #messages.msg('integrations.immich.album.shared') + ']' : '')}">Album</option>
+                                    </select>
+                                    <input type="hidden" name="albumName" id="immichAlbumName" th:value="${currentAlbumName}">
+                                    <div th:if="${albumPermissionDenied}" class="alert alert-warning" style="display: block; margin-top: 10px;">
+                                        <span th:text="#{integrations.immich.album.permission.denied}">Your Immich API token is missing the album read permission.</span>
+                                    </div>
+                                    <div th:if="${albumError}" class="alert alert-danger" style="display: block; margin-top: 10px;">
+                                        <span th:text="${albumError}">Error loading albums</span>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        class="btn"
+                                        th:attr="hx-post=@{/settings/integrations/immich-integration/albums}"
+                                        hx-include="closest form"
+                                        hx-target="#immich-album-select"
+                                        hx-swap="outerHTML"
+                                        th:text="#{integrations.immich.album.load}">Load Albums</button>
+                            </div>
+                            <small th:text="#{integrations.immich.album.description}">Optional: select an album to only show photos from that album. Loading albums requires the album read permission for your API key.</small>
+                        </div>
+
                         <div class="form-group slide-reveal-container">
                             <input type="checkbox"
                                    name="useBestGuessLocation"
@@ -621,6 +657,14 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                     <div id="connection-test-result" style="margin-top: 10px;"></div>
 
                     <script>
+                        function updateImmichAlbumName(select) {
+                            const option = select.options[select.selectedIndex];
+                            const nameInput = document.getElementById('immichAlbumName');
+                            if (nameInput && option) {
+                                nameInput.value = option.dataset.name || '';
+                            }
+                        }
+
                         document.getElementById('test-connection-btn').addEventListener('click', function () {
                             const serverUrl = document.getElementById('serverUrl').value;
                             const apiToken = document.getElementById('apiToken').value;
@@ -649,6 +693,9 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                 .then(data => {
                                     if (data.success) {
                                         resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                        if (data.warning) {
+                                            resultDiv.innerHTML += '<div class="alert alert-warning" style="display: block;">' + data.warning + '</div>';
+                                        }
                                     } else {
                                         resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
                                     }

@@ -722,6 +722,33 @@
         }
     }
 
+    function loadPhotos() {
+        if (window.userSettings.photoMode !== 'ENABLED') {
+            return;
+        }
+        let userIdParam = '';
+        if (activeId) {
+            const selectedUserId = String(activeId).split('_')[0];
+            if (/^\d+$/.test(selectedUserId)) {
+                userIdParam = `&userId=${selectedUserId}`;
+            }
+        }
+        try {
+            const params = getTimelineParams();
+            fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}${userIdParam}`)
+                .then(response => {
+                        if (response.ok) {
+                            return response.json()
+                        } else {
+                            return Promise.reject(response)
+                        }
+                    }
+                ).then(value => mapRenderer.setPhotos(value), error => mapRenderer.setPhotos([]));
+        } catch (error) {
+            mapRenderer.setPhotos([]);
+        }
+    }
+
     function toggleDeviceMenu(btn) {
         const container = btn.closest('.device-toggle-container');
         const menu = container.querySelector('.device-menu');
@@ -806,12 +833,10 @@
         document.querySelectorAll('.device-header').forEach(header => {
             header.classList.remove('active');
         });
-        // document.querySelectorAll('.user-timeline-section').forEach(section => {
-        //     section.classList.remove('active');
-        // });
         mapRenderer.setSelectedManager(null);
         activeId = null;
         updateUrlWithDate(currentDateRange);
+        loadPhotos();
     }
 
     function selectDevice(userHeader) {
@@ -839,6 +864,7 @@
         mapRenderer.setSelectedManager(id);
         activeId = id;
         updateUrlWithDate(currentDateRange);
+        loadPhotos();
     }
 
     function selectUser(userHeader) {
@@ -869,6 +895,7 @@
         mapRenderer.setSelectedManager(userId);
         activeId = userId;
         updateUrlWithDate(currentDateRange);
+        loadPhotos();
     }
 
     function updateUrlWithDate(currentDateRange) {
@@ -1255,21 +1282,7 @@
                 mapRenderer.reset();
                 activeFocus = null;
                 previousCameraState = null;
-                if (window.userSettings.photoMode === 'ENABLED') {
-                    try {
-                        fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}`)
-                            .then(response => {
-                                    if (response.ok) {
-                                        return response.json()
-                                    } else {
-                                        reject(response)
-                                    }
-                                }
-                            ).then(value => mapRenderer.setPhotos(value), error => mapRenderer.setPhotos([]));
-                    } catch (error) {
-                        mapRenderer.setPhotos([]);
-                    }
-                }
+                loadPhotos();
 
                 linearProgress = 0;
                 isPlaying = false;
