@@ -1392,23 +1392,8 @@ class MapRenderer {
         }
 
         this.map.once('idle', () => {
-            console.log('Idle after fit, recreating overlay for globe sync...');
+            console.log('Idle after fit, rebuilding layers...');
 
-            // Remove the old overlay
-            if (this._deckOverlay) {
-                this.map.removeControl(this._deckOverlay);
-            }
-
-            // Recreate it — this forces deck.gl to re-read the globe
-            // projection from the current map state
-            this._deckOverlay = new deck.MapboxOverlay({
-                interleaved: true,
-                layers: []
-            });
-
-            this.map.addControl(this._deckOverlay);
-
-            // Now rebuild all layers into the fresh overlay
             this._layerContextKey = null;
             this._buildLayers();
         });
@@ -2177,9 +2162,12 @@ class MapRenderer {
         // -------------------------------------------------------------
         // RESIZE HANDLING
         // Ensure deck.gl stays in sync if the container resizes.
+        // The extra idle repaint settles fullscreen changes, so the
+        // overlay re-renders once MapLibre has applied the new viewport.
         // -------------------------------------------------------------
         this.map.on('resize', () => {
             this._updateAnimatedLayers();
+            this.map.once('idle', () => this.map.triggerRepaint());
         });
 
         // -------------------------------------------------------------
@@ -2483,7 +2471,6 @@ class MapRenderer {
             }
 
             let finalTileUrl;
-            let elevationScale = 1.5;
 
             // Handle the two types detected
             if (terrainData.type === 'manifest') {
@@ -2491,8 +2478,6 @@ class MapRenderer {
                 const tileJson = await response.json();
                 terrainData.profile = this._detectProfile(tileJson);
                 finalTileUrl = tileJson.tiles[0];
-                // Dynamically set scale if provided in TileJSON
-                elevationScale = tileJson.scale ? parseFloat(tileJson.scale) : 1.5;
             } else {
                 finalTileUrl = terrainData.value;
             }
@@ -2507,8 +2492,13 @@ class MapRenderer {
                 elevationDecoder: terrainData.profile.decoder,
                 minZoom: 0,
                 maxZoom: 14,
-                elevationScale: elevationScale,
                 operation: 'terrain',
+                // deck.gl only rebuilds the TerrainExtension height map when the
+                // viewport or the terrain layer identity changes, never when DEM
+                // tiles finish loading. A truthy transitions prop makes the height
+                // map refresh on every render, so paths re-drape as soon as tiles
+                // arrive. Workaround for https://github.com/visgl/deck.gl/issues/10335
+                transitions: {},
                 loadOptions: {
                     terrain: {
                         maxRequests: 6
