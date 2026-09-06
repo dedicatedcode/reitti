@@ -262,6 +262,8 @@ class PhotoClusterManager {
     }
 
     showPhotoGridModal(photos) {
+        var self = this;
+
         // Remove any existing photo grid modal first
         const existingModal = document.querySelector('.photo-grid-modal');
         if (existingModal) {
@@ -292,8 +294,6 @@ class PhotoClusterManager {
         const thumbnailSize = getComputedStyle(document.documentElement)
             .getPropertyValue('--photo-grid-thumbnail-size').trim();
         photoGrid.style.gridTemplateColumns = `repeat(${columns}, ${thumbnailSize})`;
-
-        var self = this;
 
         photos.forEach((photo, index) => {
             const photoElement = document.createElement('div');
@@ -344,7 +344,7 @@ class PhotoClusterManager {
                 }, photos, index);
             });
 
-// Add write-back button for time-matched photos not yet written
+            // Add write-back button for time-matched photos not yet written
             if (photo.timeMatched === true && !self._writtenAssetIds.has(photo.id)) {
                 const writeBtn = document.createElement('button');
                 writeBtn.className = 'btn write-location-btn';
