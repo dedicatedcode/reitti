@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.model.ImmichAlbumResult;
 import com.dedicatedcode.reitti.model.IntegrationTestResult;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
@@ -121,9 +122,12 @@ public class IntegrationsSettingsController {
         if (integration.isPresent()) {
             model.addAttribute("immichIntegration", integration.get());
             model.addAttribute("hasIntegration", true);
+            model.addAttribute("currentAlbumId", integration.get().getAlbumId());
+            model.addAttribute("currentAlbumName", integration.get().getAlbumName());
         } else {
             model.addAttribute("hasIntegration", false);
         }
+        model.addAttribute("immichAlbums", List.of());
 
         model.addAttribute("openSection", openSection);
         model.addAttribute("serverUrl", calculateServerUrl(request));
@@ -177,18 +181,42 @@ public class IntegrationsSettingsController {
     @PostMapping("/immich-integration")
     public String saveImmichIntegration(@RequestParam String serverUrl,
                                         @RequestParam String apiToken,
+                                        @RequestParam(required = false) String albumId,
+                                        @RequestParam(required = false) String albumName,
                                         @RequestParam(defaultValue = "false") boolean enabled,
                                         @RequestParam(defaultValue = "false") boolean useBestGuessLocation,
                                         @AuthenticationPrincipal User currentUser,
                                         RedirectAttributes model) {
+        String selectedAlbumId = albumId == null || albumId.isBlank() ? null : albumId;
+        String selectedAlbumName = selectedAlbumId == null || albumName == null || albumName.isBlank() ? null : albumName;
         try {
-            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, useBestGuessLocation, enabled);
+            immichIntegrationService.saveIntegration(currentUser, serverUrl, apiToken, selectedAlbumId, selectedAlbumName, useBestGuessLocation, enabled);
             model.addFlashAttribute("successMessage", i18n.translate("integrations.immich.config.saved"));
         } catch (Exception e) {
             model.addFlashAttribute("errorMessage", i18n.translate("integrations.immich.config.error", e.getMessage()));
         }
 
         return "redirect:/settings/integrations/integrations-content?openSection=photos";
+    }
+
+    @PostMapping("/immich-integration/albums")
+    public String loadImmichAlbums(@RequestParam String serverUrl,
+                                   @RequestParam String apiToken,
+                                   @RequestParam(name = "albumId", required = false) String currentAlbumId,
+                                   @RequestParam(name = "albumName", required = false) String currentAlbumName,
+                                   Model model) {
+        ImmichAlbumResult result = immichIntegrationService.getAlbums(serverUrl, apiToken);
+        switch (result.status()) {
+            case OK -> model.addAttribute("immichAlbums", result.albums());
+            case PERMISSION_DENIED -> model.addAttribute("albumPermissionDenied", true);
+            case AUTH_FAILED -> model.addAttribute("albumError", i18n.translate("integrations.immich.album.auth.failed"));
+            case FAILED -> model.addAttribute("albumError", i18n.translate("integrations.immich.album.error", result.message() != null ? result.message() : ""));
+        }
+        if (currentAlbumId != null && !currentAlbumId.isBlank()) {
+            model.addAttribute("currentAlbumId", currentAlbumId);
+            model.addAttribute("currentAlbumName", currentAlbumName);
+        }
+        return "settings/fragments/integrations :: immich-album-select";
     }
 
     @PostMapping("/immich-integration/test")
@@ -203,6 +231,10 @@ public class IntegrationsSettingsController {
             if (result.success()) {
                 response.put("success", true);
                 response.put("message", i18n.translate("integrations.immich.connection.success"));
+                ImmichAlbumResult albumResult = immichIntegrationService.getAlbums(serverUrl, apiToken);
+                if (albumResult.status() == ImmichAlbumResult.Status.PERMISSION_DENIED) {
+                    response.put("warning", i18n.translate("integrations.immich.connection.no.album.permission"));
+                }
             } else {
                 response.put("success", false);
                 response.put("message", i18n.translate("integrations.immich.connection.failed", result.message()));

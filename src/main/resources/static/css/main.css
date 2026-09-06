@@ -1242,6 +1242,23 @@ tr:hover {
     transition: all 0.3s ease;
 }
 
+.user-sharing-button-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.photos-toggle {
+    display: none;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 0.85rem;
+}
+
+.user-sharing-btn.active + .photos-toggle {
+    display: block;
+}
+
 .language-btn {
     display: flex;
     align-items: center;

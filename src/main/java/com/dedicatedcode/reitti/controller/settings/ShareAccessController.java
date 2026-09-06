@@ -63,10 +63,15 @@ public class ShareAccessController {
 
         List<UserDto> availableUsers = loadAvailableUsers(user);
         Set<Long> sharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        Set<Long> photoSharedUserIds = userSharingJdbcService.findBySharingUser(user.getId()).stream()
+                .filter(UserSharing::isSharePhotos)
+                .map(UserSharing::getSharedWithUserId)
+                .collect(Collectors.toSet());
         List<UserSharingDto> sharedWithMeUsers = loadSharedWithMeUsers(user);
 
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", sharedUserIds);
+        model.addAttribute("photoSharedUserIds", photoSharedUserIds);
         model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
 
         return "settings/share-access";
@@ -140,12 +145,14 @@ public class ShareAccessController {
 
     @PostMapping("/users")
     public String updateUserSharing(@AuthenticationPrincipal User user,
-                                   @RequestParam(value = "sharedUserIds", required = false) List<Long> sharedUserIds,
-                                   Model model) {
+                                    @RequestParam(value = "sharedUserIds", required = false) List<Long> sharedUserIds,
+                                    @RequestParam(value = "photoUserIds", required = false) List<Long> photoUserIds,
+                                    Model model) {
         try {
             if (sharedUserIds == null) {
                 sharedUserIds = java.util.Collections.emptyList();
             }
+            Set<Long> photoIds = photoUserIds == null ? java.util.Collections.emptySet() : new java.util.HashSet<>(photoUserIds);
 
             List<UserSharing> bySharingUser = this.userSharingJdbcService.findBySharingUser(user.getId());
             List<Long> finalSharedUserIds = sharedUserIds;
@@ -153,10 +160,20 @@ public class ShareAccessController {
             Set<UserSharing> toDelete = bySharingUser.stream().filter(s -> !finalSharedUserIds.contains(s.getSharedWithUserId())).collect(Collectors.toSet());
             Set<UserSharing> toCreate = sharedUserIds.stream().filter(id -> bySharingUser.stream()
                     .noneMatch(s -> s.getSharedWithUserId().equals(id)))
-                    .map(s -> new UserSharing(null, user.getId(), s, null, generateColorForUser(user.getId()), null))
+                    .map(s -> new UserSharing(null, user.getId(), s, null, generateColorForUser(user.getId()), photoIds.contains(s), null))
                     .collect(Collectors.toSet());
             this.userSharingJdbcService.delete(toDelete);
             this.userSharingJdbcService.create(user, toCreate);
+
+            for (UserSharing existing : bySharingUser) {
+                if (toDelete.stream().anyMatch(d -> d.getId().equals(existing.getId()))) {
+                    continue;
+                }
+                boolean wantPhotos = photoIds.contains(existing.getSharedWithUserId());
+                if (existing.isSharePhotos() != wantPhotos) {
+                    this.userSharingJdbcService.updateSharePhotos(user.getId(), existing.getSharedWithUserId(), wantPhotos);
+                }
+            }
             model.addAttribute("shareSuccessMessage", i18n.translate("share-with.updated.success"));
         } catch (Exception e) {
             model.addAttribute("shareErrorMessage", i18n.translate("share-with.update.error", e.getMessage()));
@@ -164,10 +181,15 @@ public class ShareAccessController {
 
         List<UserDto> availableUsers = loadAvailableUsers(user);
         Set<Long> currentSharedUserIds = userSharingJdbcService.getSharedUserIds(user.getId());
+        Set<Long> photoSharedUserIds = userSharingJdbcService.findBySharingUser(user.getId()).stream()
+                .filter(UserSharing::isSharePhotos)
+                .map(UserSharing::getSharedWithUserId)
+                .collect(Collectors.toSet());
         List<UserSharingDto> sharedWithMeUsers = loadSharedWithMeUsers(user);
 
         model.addAttribute("availableUsers", availableUsers);
         model.addAttribute("sharedUserIds", currentSharedUserIds);
+        model.addAttribute("photoSharedUserIds", photoSharedUserIds);
         model.addAttribute("sharedWithMeUsers", sharedWithMeUsers);
 
         return "settings/share-access :: share-with-content";

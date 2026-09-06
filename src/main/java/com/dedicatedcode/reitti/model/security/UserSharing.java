@@ -8,14 +8,20 @@ public class UserSharing {
     private final Long sharedWithUserId;
     private final Instant createdAt;
     private final String color;
+    private final boolean sharePhotos;
     private final Long version;
 
     public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, Long version) {
+        this(id, sharingUserId, sharedWithUserId, createdAt, color, false, version);
+    }
+
+    public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, boolean sharePhotos, Long version) {
         this.id = id;
         this.sharingUserId = sharingUserId;
         this.sharedWithUserId = sharedWithUserId;
         this.createdAt = createdAt;
         this.color = color;
+        this.sharePhotos = sharePhotos;
         this.version = version;
     }
 
@@ -31,12 +37,16 @@ public class UserSharing {
         return sharedWithUserId;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
     public String getColor() {
         return color;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public boolean isSharePhotos() {
+        return sharePhotos;
     }
 
     public Long getVersion() {
