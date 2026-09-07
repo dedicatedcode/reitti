@@ -25,7 +25,6 @@
     cursor: default;
     position: relative;
     overflow: auto;
-
 }
 
 .photo-grid {
@@ -285,10 +284,9 @@
     align-items: center;
     justify-content: space-between;
     background: rgba(44, 62, 80, 0.9);
-    padding: 8px 12px;
-    border-radius: 0 0 8px 8px;
-    margin-top: -8px;
-    margin-bottom: 8px;
+    padding: 16px 16px 25px;
+    border-radius: 8px 8px 0;
+    margin-bottom: -12px;
 }
 
 .write-location-toolbar-label {
