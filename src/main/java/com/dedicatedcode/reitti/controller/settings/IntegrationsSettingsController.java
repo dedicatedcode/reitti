@@ -164,6 +164,7 @@ public class IntegrationsSettingsController {
         String url = serverUrl + contextPathHolder.getContextPath() + "/api/v2/gpslogger/file";
         String properties = "httpfileupload_url=" + url + "\n" +
                 "httpfileupload_method=POST\n" +
+                "autosend_sendzip=false\n" +
                 "autohttpfileupload_enabled=true\n" +
                 "httpfileupload_basicauth_password=\n" +
                 "httpfileupload_body_type=form-data\n" +
