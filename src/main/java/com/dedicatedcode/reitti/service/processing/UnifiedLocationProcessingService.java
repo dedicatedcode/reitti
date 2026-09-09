@@ -58,6 +58,7 @@ public class UnifiedLocationProcessingService {
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
     private final MetadataOverrideService metadataOverrideService;
+    private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
 
@@ -78,6 +79,7 @@ public class UnifiedLocationProcessingService {
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
+            VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
             @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
@@ -97,6 +99,7 @@ public class UnifiedLocationProcessingService {
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
         this.metadataOverrideService = metadataOverrideService;
+        this.visitSuppressionService = visitSuppressionService;
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
     }
@@ -283,6 +286,12 @@ public class UnifiedLocationProcessingService {
                         sp.getDurationSeconds(), false))
                 .toList();
 
+        int detectedVisits = visits.size();
+        visits = visitSuppressionService.removeVisitsInsideNoVisitZones(user, visits);
+        if (visits.size() != detectedVisits) {
+            logger.debug("Suppressed [{}] of [{}] detected visits inside no-visit zones", detectedVisits - visits.size(), detectedVisits);
+        }
+
         return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
 
@@ -337,6 +346,7 @@ public class UnifiedLocationProcessingService {
 
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, traceId, allVisits, mergeConfig, parentJobId);
+        processedVisits = visitSuppressionService.removeSuppressedVisits(user, searchStart, searchEnd, processedVisits, mergeConfig.getPlaceRadiusMeters());
 
         // Save processed visits
         if (previewId == null) {
