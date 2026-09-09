@@ -436,6 +436,11 @@ public class RawLocationPointJdbcService {
                                  affectedDays.stream().map(d -> Timestamp.valueOf(d.atStartOfDay())).toList().toArray(new Timestamp[0]));
     }
 
+    public void markUnprocessedForUserAndTimeRange(User user, Instant start, Instant end) {
+        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp >= ? AND timestamp <= ?",
+                                 user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());

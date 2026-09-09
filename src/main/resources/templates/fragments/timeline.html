@@ -351,6 +351,7 @@
             </div>
             </div>
             <div th:unless="${entry.aggregated}" th:class="|timeline-entry ${entry.type.name().toLowerCase()}|"
+                 th:id="${'timeline-entry-' + entry.resourceId}"
                  th:data-id="${entry.id}"
                  th:data-lat="${entry.place?.latitudeCentroid}"
                  th:data-lng="${entry.place?.longitudeCentroid}"
@@ -371,6 +372,12 @@
                                    hx-vals='js:{"timezone": getUserTimezone(), returnUrl: window.location.href}'
                                    hx-swap="innerHTML"
                                    hx-on::after-request="if(event.detail.successful) openMetadataOverlay()"></a>
+                                <a class="lni lni-trash-3 edit-icon"
+                                   th:hx-get="@{/timeline/visits/{id}/delete-dialog(id=${entry.resourceId})}"
+                                   hx-target="#visit-delete-dialog-body"
+                                   hx-vals='js:{"timezone": getUserTimezone()}'
+                                   hx-swap="innerHTML"
+                                   hx-on::after-request="if(event.detail.successful) openVisitDeleteDialog()"></a>
                             </div>
                         </div>
 

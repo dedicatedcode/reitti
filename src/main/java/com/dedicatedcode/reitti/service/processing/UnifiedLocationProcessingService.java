@@ -407,6 +407,17 @@ public class UnifiedLocationProcessingService {
                     trips.add(tripAfter);
                 }
             }
+        } else if (previewId == null) {
+            //all visits in the search range were suppressed, stitch the surrounding visits back together
+            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
+            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
+            if (firstProcessedVisitBefore.isPresent() && processedVisitAfter.isPresent()
+                    && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
+                Trip spanningTrip = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisitAfter.get());
+                if (spanningTrip != null) {
+                    trips.add(spanningTrip);
+                }
+            }
         }
         trips.sort(Comparator.comparing(Trip::getStartTime));
         // Save trips
