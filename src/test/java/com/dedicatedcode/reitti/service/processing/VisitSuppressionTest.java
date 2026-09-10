@@ -169,10 +169,11 @@ class VisitSuppressionTest {
         List<SuppressedVisit> tombstones = suppressedVisitJdbcService.findByUser(user);
         assertEquals(1, tombstones.size());
 
-        SuppressedVisit tombstone = tombstones.getFirst();
-        suppressedVisitJdbcService.delete(user, tombstone.id());
-        rawLocationPointJdbcService.markUnprocessedForUserAndTimeRange(user, tombstone.startTime(), tombstone.endTime());
-        process();
+        suppressedVisitService.restore(user, tombstones.getFirst());
+
+        Awaitility.await("waiting for recalculation to restore the suppressed visit")
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> sortedVisits().size() == 2 && tripJdbcService.findByUser(user).size() == 1);
 
         assertEquals(2, sortedVisits().size());
         assertEquals(1, tripJdbcService.findByUser(user).size());

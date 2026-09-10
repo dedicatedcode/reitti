@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="zones-list">
+    <h2 class="panel-title" th:text="#{places.editor.zones.title}">No-Visit Zones</h2>
+
+    <div id="zone-draw-controls">
+        <button type="button" id="draw-zone-btn" class="btn btn-default btn-block"
+                th:text="#{places.editor.zones.draw}">Draw Zone</button>
+        <div id="zone-draw-active" style="display: none;">
+            <p class="zone-draw-hint" th:text="#{places.editor.zones.draw.active}">Click on the map to place the zone corners. Finish with at least three points.</p>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" id="finish-zone-btn" class="btn btn-default" disabled
+                        th:text="#{places.editor.zones.finish}">Finish</button>
+                <button type="button" id="cancel-zone-btn" class="btn btn-secondary"
+                        th:text="#{form.cancel}">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="zone-row" th:each="zone : ${zones}"
+         th:attr="data-zone-id=${zone.id()}">
+        <span class="zone-name" th:text="${zone.name()}">Zone</span>
+        <button type="button" class="btn btn-small"
+                th:attr="hx-post=@{/settings/places/zones/{id}/delete(id=${zone.id()})}"
+                hx-target="#zones-section"
+                hx-swap="innerHTML">
+            <span class="btn-text" th:text="#{places.editor.zones.delete}">Delete</span>
+        </button>
+    </div>
+
+    <p class="zones-empty" th:if="${zones.isEmpty()}"
+       th:text="#{places.editor.zones.none}">No no-visit zones.</p>
+</div>
+
+</body>
+</html>

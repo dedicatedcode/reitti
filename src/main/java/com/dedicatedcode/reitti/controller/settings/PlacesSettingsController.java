@@ -1,20 +1,28 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.dto.PlaceInfo;
+import com.dedicatedcode.reitti.dto.SuppressedVisitInfo;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
+import com.dedicatedcode.reitti.model.geo.NoVisitZone;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
+import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
+import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
 import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
+import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
 import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.NoVisitZoneService;
 import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
 import com.dedicatedcode.reitti.service.PlaceService;
+import com.dedicatedcode.reitti.service.SuppressedVisitService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -38,7 +46,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,6 +70,10 @@ public class PlacesSettingsController {
     private final JobDetail locationDataCleanupTask;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
+    private final SuppressedVisitJdbcService suppressedVisitJdbcService;
+    private final SuppressedVisitService suppressedVisitService;
+    private final NoVisitZoneJdbcService noVisitZoneJdbcService;
+    private final NoVisitZoneService noVisitZoneService;
 
     public PlacesSettingsController(PlaceService placeService,
                                     SignificantPlaceJdbcService placeJdbcService,
@@ -70,7 +85,11 @@ public class PlacesSettingsController {
                                     PlaceChangeDetectionService placeChangeDetectionService, JobSchedulingService jobSchedulingService,
                                     @Qualifier("polygonUpdateJob") JobDetail locationDataCleanupTask,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    SuppressedVisitJdbcService suppressedVisitJdbcService,
+                                    SuppressedVisitService suppressedVisitService,
+                                    NoVisitZoneJdbcService noVisitZoneJdbcService,
+                                    NoVisitZoneService noVisitZoneService) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
@@ -83,6 +102,10 @@ public class PlacesSettingsController {
         this.locationDataCleanupTask = locationDataCleanupTask;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
+        this.suppressedVisitJdbcService = suppressedVisitJdbcService;
+        this.suppressedVisitService = suppressedVisitService;
+        this.noVisitZoneJdbcService = noVisitZoneJdbcService;
+        this.noVisitZoneService = noVisitZoneService;
     }
 
     @GetMapping
@@ -160,6 +183,103 @@ public class PlacesSettingsController {
         model.addAttribute("currentPage", placesPage.getNumber());
         model.addAttribute("isLast", placesPage.getNumber() >= placesPage.getTotalPages() - 1);
         return "fragments/place-search :: search-results";
+    }
+
+    @GetMapping("/suppressed-fragment")
+    public String getSuppressedFragment(@AuthenticationPrincipal User user,
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "UTC") String timezone,
+                                        Model model) {
+        populateSuppressedModel(user, page, timezone, model);
+        return "fragments/suppressed-visits :: suppressed-list";
+    }
+
+    @GetMapping("/suppressed-locations")
+    @ResponseBody
+    public List<SuppressedVisitInfo> getSuppressedLocations(@AuthenticationPrincipal User user) {
+        return suppressedVisitJdbcService.findAllInfosByUser(user);
+    }
+
+    @GetMapping("/zones-fragment")
+    public String getZonesFragment(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("zones", noVisitZoneJdbcService.findByUser(user));
+        return "fragments/no-visit-zones :: zones-list";
+    }
+
+    @GetMapping("/zones-locations")
+    @ResponseBody
+    public List<NoVisitZone> getZoneLocations(@AuthenticationPrincipal User user) {
+        return noVisitZoneJdbcService.findByUser(user);
+    }
+
+    @PostMapping("/zones")
+    public String createZone(@AuthenticationPrincipal User user,
+                             @RequestParam String name,
+                             @RequestParam String polygonData,
+                             Model model) {
+        if (name == null || name.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zone name must not be empty");
+        }
+        List<GeoPoint> polygon;
+        try {
+            polygon = parsePolygonData(polygonData);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+        noVisitZoneService.create(user, new NoVisitZone(name.trim(), polygon));
+        model.addAttribute("zones", noVisitZoneJdbcService.findByUser(user));
+        return "fragments/no-visit-zones :: zones-list";
+    }
+
+    @PostMapping("/zones/{id}/delete")
+    public String deleteZone(@AuthenticationPrincipal User user,
+                             @PathVariable Long id,
+                             Model model) {
+        NoVisitZone zone = noVisitZoneJdbcService.findById(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        noVisitZoneService.delete(user, zone);
+        model.addAttribute("zones", noVisitZoneJdbcService.findByUser(user));
+        return "fragments/no-visit-zones :: zones-list";
+    }
+
+    @PostMapping("/suppressed/{id}/restore")
+    public String restoreSuppressedVisit(@AuthenticationPrincipal User user,
+                                         @PathVariable Long id,
+                                         @RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "UTC") String timezone,
+                                         Model model) {
+        SuppressedVisit suppressedVisit = suppressedVisitJdbcService.findById(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        suppressedVisitService.restore(user, suppressedVisit);
+        populateSuppressedModel(user, page, timezone, model);
+        return "fragments/suppressed-visits :: suppressed-list";
+    }
+
+    private void populateSuppressedModel(User user, int page, String timezoneParam, Model model) {
+        ZoneId timezone = parseTimezone(timezoneParam);
+        Page<SuppressedVisitInfo> suppressedPage = suppressedVisitJdbcService.findInfosByUser(user, PageRequest.of(Math.max(0, page), 10));
+        List<SuppressedVisitView> items = suppressedPage.getContent().stream()
+                .map(info -> new SuppressedVisitView(
+                        info.id(),
+                        info.placeId(),
+                        info.placeName(),
+                        info.latitudeCentroid(),
+                        info.longitudeCentroid(),
+                        TimeUtil.adjustInstant(info.startTime(), timezone),
+                        TimeUtil.adjustInstant(info.endTime(), timezone)))
+                .toList();
+        model.addAttribute("items", items);
+        model.addAttribute("currentPage", suppressedPage.getNumber());
+        model.addAttribute("totalPages", suppressedPage.getTotalPages());
+        model.addAttribute("timezone", timezone.getId());
+    }
+
+    private ZoneId parseTimezone(String timezoneParam) {
+        try {
+            return ZoneId.of(timezoneParam);
+        } catch (Exception e) {
+            return ZoneId.of("UTC");
+        }
     }
 
     @PostMapping("/{placeId}/check-update")
@@ -327,6 +447,21 @@ public class PlacesSettingsController {
         return "redirect:" + redirectUrl;
     }
 
+    @GetMapping("/nearby")
+    @ResponseBody
+    public List<PlaceInfo> getNearbyPlaces(@AuthenticationPrincipal User user,
+                                           @RequestParam double lat,
+                                           @RequestParam double lng,
+                                           @RequestParam(defaultValue = "5000") double radius) {
+        double clampedRadius = Math.min(Math.max(radius, 500), 200_000);
+        Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
+        return placeJdbcService.findNearbyPlaces(user.getId(), point, clampedRadius).stream()
+                .map(PlacesSettingsController::convertToPlaceInfo)
+                .sorted(Comparator.comparingDouble(p -> GeoUtils.distanceInMeters(lat, lng, p.lat(), p.lng())))
+                .limit(100)
+                .toList();
+    }
+
     @GetMapping("/{placeId}/geocoding-response")
     public String getGeocodingResponse(@PathVariable Long placeId,
                                        @RequestParam(defaultValue = "0") int page,
@@ -360,6 +495,18 @@ public class PlacesSettingsController {
         }
 
         return "fragments/places :: geocoding-response-content";
+    }
+
+    @GetMapping("/editor")
+    public String editor(@AuthenticationPrincipal User user, Model model) {
+        if (user.getUserType() == UserType.LIVE_DATA_ONLY) {
+            model.addAttribute("activeSection", "places");
+            model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+            model.addAttribute("dataManagementEnabled", dataManagementEnabled);
+            return "settings/unavailable";
+        }
+        model.addAttribute("nearbyPlaces", List.of());
+        return "settings/edit-place";
     }
 
     @GetMapping("/{placeId}/edit")
@@ -437,6 +584,10 @@ public class PlacesSettingsController {
     }
 
     public record CheckUpdateResponse(boolean canProceed, List<String> warnings) {
+    }
+
+    public record SuppressedVisitView(long id, Long placeId, String placeName, double lat, double lng,
+                                      LocalDateTime start, LocalDateTime end) {
     }
 
 }

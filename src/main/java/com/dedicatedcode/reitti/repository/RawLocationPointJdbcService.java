@@ -441,6 +441,11 @@ public class RawLocationPointJdbcService {
                                  user.getId(), Timestamp.from(start), Timestamp.from(end));
     }
 
+    public void markUnprocessedForUserAndBoundingBox(User user, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude) {
+        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND ST_Intersects(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))",
+                                 user.getId(), minLongitude, minLatitude, maxLongitude, maxLatitude);
+    }
+
     public void deleteAllForUser(User user) {
         String sql = "DELETE FROM raw_location_points WHERE user_id = ?";
         jdbcTemplate.update(sql, user.getId());

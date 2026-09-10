@@ -17,6 +17,7 @@ class PolygonEditor {
         this.dragStartPoint = null;
         this.onPolygonChange = null;
         this.onNearbyPlaceSelect = null;
+        this.suspended = false;
         this._layersReady = false;
 
         this._initLayers();
@@ -77,7 +78,7 @@ class PolygonEditor {
 
     _bindEvents() {
         this.map.on('click', (e) => {
-            if (this.isDragging) return;
+            if (this.isDragging || this.suspended) return;
             if (this._layersReady) {
                 const hits = this.map.queryRenderedFeatures(
                     [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]],
@@ -96,9 +97,7 @@ class PolygonEditor {
 
         document.addEventListener('keydown', (e) => {
             if (e.target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-            if (e.key === 'Escape') {
-                this.clearPolygon();
-            } else if (e.key === 'Enter' && e.ctrlKey) {
+            if (e.key === 'Enter' && e.ctrlKey) {
                 this.savePolygon();
             } else if (e.key === 'z' && e.ctrlKey) {
                 e.preventDefault();
@@ -139,6 +138,14 @@ class PolygonEditor {
         }
         this.polygonPoints[this.dragIndex] = {lat: e.lngLat.lat, lng: e.lngLat.lng};
         this._redraw();
+    }
+
+    suspend() {
+        this.suspended = true;
+    }
+
+    resume() {
+        this.suspended = false;
     }
 
     setPlace(placeData, animate = false) {

@@ -5,13 +5,8 @@ import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
-import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.dedicatedcode.reitti.service.jobs.JobType;
-import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
-import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,17 +16,14 @@ public class SuppressedVisitService {
 
     private final SuppressedVisitJdbcService suppressedVisitJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final JobSchedulingService jobScheduler;
-    private final JobDetail processingPipelineTask;
+    private final ManualRecalculationService manualRecalculationService;
 
     public SuppressedVisitService(SuppressedVisitJdbcService suppressedVisitJdbcService,
                                   RawLocationPointJdbcService rawLocationPointJdbcService,
-                                  JobSchedulingService jobScheduler,
-                                  @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
+                                  ManualRecalculationService manualRecalculationService) {
         this.suppressedVisitJdbcService = suppressedVisitJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.jobScheduler = jobScheduler;
-        this.processingPipelineTask = processingPipelineTask;
+        this.manualRecalculationService = manualRecalculationService;
     }
 
     public void suppressVisit(User user, ProcessedVisit visit) {
@@ -44,12 +36,13 @@ public class SuppressedVisitService {
                 visit.getEndTime());
         suppressedVisitJdbcService.create(user, suppressedVisit);
         rawLocationPointJdbcService.markUnprocessedForUserAndTimeRange(user, visit.getStartTime(), visit.getEndTime());
-        jobScheduler.enqueueTask(processingPipelineTask,
-                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null),
-                                 JobSchedulingService.Metadata.builder()
-                                         .user(user)
-                                         .jobType(JobType.MANUAL_MODIFICATION)
-                                         .friendlyName("Recalculate visits after manual change")
-                                         .build());
+        manualRecalculationService.schedule(user, "Recalculate visits after suppressing a visit");
+    }
+
+    public void restore(User user, SuppressedVisit suppressedVisit) {
+        logger.info("Restoring suppressed visit [{}] for user [{}] between [{}] and [{}]", suppressedVisit.id(), user.getUsername(), suppressedVisit.startTime(), suppressedVisit.endTime());
+        suppressedVisitJdbcService.delete(user, suppressedVisit.id());
+        rawLocationPointJdbcService.markUnprocessedForUserAndTimeRange(user, suppressedVisit.startTime(), suppressedVisit.endTime());
+        manualRecalculationService.schedule(user, "Recalculate visits after restoring a visit");
     }
 }

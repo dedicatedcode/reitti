@@ -1,5 +1,8 @@
 package com.dedicatedcode.reitti.repository;
 
+import com.dedicatedcode.reitti.dto.SuppressedVisitInfo;
+import com.dedicatedcode.reitti.model.Page;
+import com.dedicatedcode.reitti.model.PageRequest;
 import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,6 +21,7 @@ public class SuppressedVisitJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<SuppressedVisit> rowMapper;
+    private final RowMapper<SuppressedVisitInfo> infoRowMapper;
 
     public SuppressedVisitJdbcService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -29,6 +33,14 @@ public class SuppressedVisitJdbcService {
                 rs.getTimestamp("start_time").toInstant(),
                 rs.getTimestamp("end_time").toInstant(),
                 rs.getTimestamp("created_at").toInstant());
+        this.infoRowMapper = (rs, _) -> new SuppressedVisitInfo(
+                rs.getLong("id"),
+                rs.getObject("place_id") != null ? rs.getLong("place_id") : null,
+                rs.getString("place_name"),
+                rs.getDouble("latitude_centroid"),
+                rs.getDouble("longitude_centroid"),
+                rs.getTimestamp("start_time").toInstant(),
+                rs.getTimestamp("end_time").toInstant());
     }
 
     public SuppressedVisit create(User user, SuppressedVisit suppressedVisit) {
@@ -63,6 +75,29 @@ public class SuppressedVisitJdbcService {
         String sql = "SELECT id, place_id, latitude_centroid, longitude_centroid, start_time, end_time, created_at " +
                      "FROM suppressed_visits WHERE user_id = ? AND start_time < ? AND end_time > ?";
         return jdbcTemplate.query(sql, rowMapper, user.getId(), Timestamp.from(end), Timestamp.from(start));
+    }
+
+    public List<SuppressedVisitInfo> findAllInfosByUser(User user) {
+        return jdbcTemplate.query(
+                """
+                        SELECT sv.id, sv.place_id, sp.name AS place_name, sv.latitude_centroid, sv.longitude_centroid, sv.start_time, sv.end_time
+                        FROM suppressed_visits sv
+                        LEFT JOIN significant_places sp ON sv.place_id = sp.id
+                        """ + " WHERE sv.user_id = ? ORDER BY sv.start_time DESC",
+                infoRowMapper, user.getId());
+    }
+
+    public Page<SuppressedVisitInfo> findInfosByUser(User user, PageRequest pageable) {
+        Integer total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM suppressed_visits WHERE user_id = ?", Integer.class, user.getId());
+        List<SuppressedVisitInfo> content = jdbcTemplate.query(
+                """
+                        SELECT sv.id, sv.place_id, sp.name AS place_name, sv.latitude_centroid, sv.longitude_centroid, sv.start_time, sv.end_time
+                        FROM suppressed_visits sv
+                        LEFT JOIN significant_places sp ON sv.place_id = sp.id
+                        """ + " WHERE sv.user_id = ? ORDER BY sv.start_time DESC LIMIT ? OFFSET ?",
+                infoRowMapper, user.getId(), pageable.getPageSize(), pageable.getOffset());
+        return new Page<>(content, pageable, total != null ? total : 0);
     }
 
     public void delete(User user, Long id) {
