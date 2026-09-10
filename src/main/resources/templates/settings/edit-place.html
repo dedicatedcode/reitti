@@ -7,9 +7,10 @@
     <link rel="icon" th:href="@{/img/logo-64x64.png}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
-    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.5.16.0.min.css}">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <link rel="stylesheet" th:href="@{/css/dialog.css}">
     <style>
         body {
             margin: 0;
@@ -17,7 +18,7 @@
             height: 100vh;
             overflow: hidden;
         }
-        
+
         #map {
             position: absolute;
             top: 0;
@@ -43,30 +44,100 @@
             left: 24px;
             width: 324px;
         }
-        
+
+        .sidebar-search {
+            padding: 16px;
+            border-bottom: 1px solid var(--color-highlight);
+        }
+
+        #place-search-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--color-highlight);
+            border-radius: 4px;
+            background: var(--color-background-dark-light);
+            color: var(--color-text-white);
+            box-sizing: border-box;
+        }
+
+        .place-search-results {
+            border-bottom: 1px solid var(--color-highlight);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .search-result {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .search-result:hover {
+            background: var(--color-background-dark-light);
+        }
+
+        .search-result-name {
+            color: var(--color-text-white);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .search-result-type {
+            color: var(--color-text-white);
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        .search-result-coords {
+            color: var(--color-text-white);
+            opacity: 0.5;
+            font-size: 11px;
+        }
+
+        .place-centroid-marker {
+            background: #ff0000;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .nearby-place-marker {
+            background: #ffcccb;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid #ff6b6b;
+            cursor: pointer;
+        }
+
         .sidebar-header {
             padding: 24px;
             border-bottom: 1px solid var(--color-highlight);
         }
-        
+
         .sidebar-title {
             font-size: 18px;
             font-weight: 600;
             margin: 0 0 8px 0;
             color: var(--color-highlight);
         }
-        
+
         .sidebar-subtitle {
             font-size: 14px;
             color: var(--color-text-white);
             margin: 0;
             opacity: 0.8;
         }
-        
+
         .sidebar-content {
             padding: 24px;
         }
-        
+
         .polygon-info {
             background: var(--color-background-dark-light);
             border-radius: 6px;
@@ -76,14 +147,14 @@
             margin-bottom: 16px;
             opacity: 0.9;
         }
-        
+
         .coordinates-display {
             font-size: 12px;
             color: var(--color-text-white);
             margin-top: 4px;
             opacity: 0.7;
         }
-        
+
         .geocoding-drawer {
             position: absolute;
             top: 24px;
@@ -91,11 +162,11 @@
             display: none;
             width: calc(100vw - 390px);
         }
-        
+
         .geocoding-drawer.active {
             display: block;
         }
-        
+
         .drawer-header {
             padding: 24px;
             border-bottom: 1px solid var(--color-highlight);
@@ -103,14 +174,14 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .drawer-title {
             font-size: 16px;
             font-weight: 600;
             margin: 0;
             color: var(--color-highlight);
         }
-        
+
         .drawer-close {
             background: none;
             border: none;
@@ -124,172 +195,218 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .drawer-content {
             padding: 24px;
         }
     </style>
-    <script th:src="@{/js/vendor/leaflet.js}"></script>
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.5.17.0.min.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
     <script th:src="@{/js/polygon-editor.js}"></script>
-    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
+    <script th:src="@{/js/util.js}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
 </head>
 <body>
     <div id="map"></div>
-    
+
     <div class="sidebar polygon-editor-sidebar">
-        <div class="sidebar-header">
-            <h1 class="sidebar-title" th:text="${place.name()}">Place Name</h1>
-            <p class="sidebar-subtitle" th:text="#{places.polygon.editor.subtitle}">Edit polygon boundary</p>
-            <div class="coordinates-display">
-                <span th:text="#{places.coordinates.label}">Coordinates</span>:
-                <span id="current-lat" th:text="${#numbers.formatDecimal(place.lat(), 1, 6)}">0.000000</span>,
-                <span id="current-lng" th:text="${#numbers.formatDecimal(place.lng(), 1, 6)}">0.000000</span>
-            </div>
+        <div class="sidebar-search">
+            <input type="text" id="place-search-input" name="search"
+                   th:placeholder="#{places.search.placeholder}"
+                   th:hx-get="@{/settings/places/search-fragment}"
+                   hx-target="#place-search-results"
+                   hx-swap="innerHTML"
+                   hx-trigger="input changed delay:300ms"
+                   hx-vals='{"page": 0}'/>
         </div>
-        
-        <div class="sidebar-content">
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-            
-            <div class="polygon-info" th:text="#{places.polygon.editor.instructions}">
-                Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
+
+        <div id="place-search-results" class="place-search-results"></div>
+
+        <div th:fragment="edit-form" id="place-edit-root">
+            <script th:inline="javascript">window.currentPlaceData = /*[[${place}]]*/ {};</script>
+
+            <div class="sidebar-header">
+                <h1 class="sidebar-title" th:text="${place.name()}">Place Name</h1>
+                <p class="sidebar-subtitle" th:text="#{places.polygon.editor.subtitle}">Edit polygon boundary</p>
+                <div class="coordinates-display">
+                    <span th:text="#{places.coordinates.label}">Coordinates</span>:
+                    <span id="current-lat" th:text="${#numbers.formatDecimal(place.lat(), 1, 6)}">0.000000</span>,
+                    <span id="current-lng" th:text="${#numbers.formatDecimal(place.lng(), 1, 6)}">0.000000</span>
+                </div>
             </div>
-            
-            <form id="polygon-form" th:action="@{/settings/places/{placeId}/update(placeId=${place.id()})}" method="post">
-                <input type="hidden" name="returnUrl" th:value="${returnUrl}">
-                <input type="hidden" name="polygonData" id="polygonData">
-                
-                <div class="form-group">
-                    <label for="name" th:text="#{places.name.label}">Name</label>
-                    <input id="name" type="text" name="name" th:value="${place.name()}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="address" th:text="#{places.address.label}">Address</label>
-                    <input id="address" type="text" name="address" th:value="${place.address()}">
-                </div>
-                <div class="form-group">
-                    <label for="city" th:text="#{places.city.label}">City</label>
-                    <input id="city" type="text" name="city" th:value="${place.city()}">
-                </div>
-                <div class="form-group">
-                    <label for="country" th:text="#{places.country.label}">Country</label>
-                    <select id="country" name="countryCode">
-                        <option value="" th:text="#{form.select.placeholder}">Select...</option>
-                        <option th:each="country : ${availableCountries}"
-                                th:value="${country.code}"
-                                th:text="#{${country.messageKey}}"
-                                th:selected="${country.code == place.countryCode()}">Country</option>
-                    </select>
+
+            <div class="sidebar-content">
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+                <div class="polygon-info" th:text="#{places.polygon.editor.instructions}">
+                    Click on the map to add polygon points. The polygon will automatically close when you have 3 or more points.
                 </div>
 
-                <div class="form-group">
-                    <label th:text="#{places.category.label}" for="place-type">Type</label>
-                    <select name="type" id="place-type" >
-                        <option th:each="placeType : ${placeTypes}" 
-                                th:value="${placeType}" 
-                                th:text="#{${placeType.messageKey}}"
-                                th:selected="${placeType == place.type()}">Type</option>
-                    </select>
-                </div>
-            </form>
-            
-            <div class="polygon-actions">
-                <button type="button" id="remove-polygon-btn" class="btn btn-danger" 
-                        th:text="#{places.polygon.remove}">Remove Polygon</button>
-
-                <form th:hx-post="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}"
-                      hx-target="#geocoding-drawer"
-                      hx-swap="innerHTML"
-                      style="margin-top: 10px;">
+                <form id="polygon-form" th:action="@{/settings/places/{placeId}/update(placeId=${place.id()})}" method="post">
                     <input type="hidden" name="returnUrl" th:value="${returnUrl}">
-                    <button type="submit" class="btn btn-default btn-block"
-                            th:text="#{places.geocode.button}">Geocode Place</button>
+                    <input type="hidden" name="polygonData" id="polygonData">
+
+                    <div class="form-group">
+                        <label for="name" th:text="#{places.name.label}">Name</label>
+                        <input id="name" type="text" name="name" th:value="${place.name()}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address" th:text="#{places.address.label}">Address</label>
+                        <input id="address" type="text" name="address" th:value="${place.address()}">
+                    </div>
+                    <div class="form-group">
+                        <label for="city" th:text="#{places.city.label}">City</label>
+                        <input id="city" type="text" name="city" th:value="${place.city()}">
+                    </div>
+                    <div class="form-group">
+                        <label for="country" th:text="#{places.country.label}">Country</label>
+                        <select id="country" name="countryCode">
+                            <option value="" th:text="#{form.select.placeholder}">Select...</option>
+                            <option th:each="country : ${availableCountries}"
+                                    th:value="${country.code}"
+                                    th:text="#{${country.messageKey}}"
+                                    th:selected="${country.code == place.countryCode()}">Country</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label th:text="#{places.category.label}" for="place-type">Type</label>
+                        <select name="type" id="place-type" >
+                            <option th:each="placeType : ${placeTypes}"
+                                    th:value="${placeType}"
+                                    th:text="#{${placeType.messageKey}}"
+                                    th:selected="${placeType == place.type()}">Type</option>
+                        </select>
+                    </div>
                 </form>
-                
-                <button type="button" class="btn btn-default btn-block" 
-                        th:attr="hx-get=@{/settings/places/{placeId}/geocoding-response(placeId=${place.id()}, context='edit')}"
-                        hx-target="#geocoding-drawer"
-                        hx-swap="innerHTML"
-                        style="margin-top: 10px;"
-                        th:text="#{places.geocoding.response.button}">View Geocoding Response</button>
-                
-                <div class="separator"></div>
-                <div>
-                    <button type="button" id="save-btn" class="btn btn-default btn-block">
-                        <span class="btn-text" th:text="#{form.save}">Save</span>
-                    </button>
-                    <a th:href="@{${returnUrl}}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
+
+                <div class="polygon-actions">
+                    <button type="button" id="remove-polygon-btn" class="btn btn-danger"
+                            th:text="#{places.polygon.remove}">Remove Polygon</button>
+
+                    <form th:hx-post="@{/settings/places/{placeId}/geocode(placeId=${place.id()})}"
+                          hx-target="#geocoding-drawer"
+                          hx-swap="innerHTML"
+                          style="margin-top: 10px;">
+                        <input type="hidden" name="returnUrl" th:value="${returnUrl}">
+                        <button type="submit" class="btn btn-default btn-block"
+                                th:text="#{places.geocode.button}">Geocode Place</button>
+                    </form>
+
+                    <button type="button" class="btn btn-default btn-block"
+                            th:attr="hx-get=@{/settings/places/{placeId}/geocoding-response(placeId=${place.id()}, context='edit')}"
+                            hx-target="#geocoding-drawer"
+                            hx-swap="innerHTML"
+                            style="margin-top: 10px;"
+                            th:text="#{places.geocoding.response.button}">View Geocoding Response</button>
+
+                    <div class="separator"></div>
+                    <div>
+                        <button type="button" id="save-btn" class="btn btn-default btn-block">
+                            <span class="btn-text" th:text="#{form.save}">Save</span>
+                        </button>
+                        <a th:href="@{${returnUrl}}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div id="geocoding-drawer" class="sidebar geocoding-drawer">
         <!-- Geocoding response content will be loaded here via HTMX -->
     </div>
 
     <script th:inline="javascript">
-        const placeData = /*[[${place}]]*/ {};
         window.contextPath = /*[[@{/}]]*/ "/";
         window.contextPath = window.contextPath.replace(/\/$/, '');
         window.userSettings = /*[[${userSettings}]]*/ {};
+        window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+        window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
 
-        // Initialize the map
-        const map = L.map('map', {
-            zoomControl: false,
-            attributionControl: false
-        }).setView([placeData.lat, placeData.lng], 25);
+        function getMapStyle() {
+            if (window.reittiCustomMapStyles && window.reittiCustomMapStyles.length > 0) {
+                const mapStyle = MapRenderer.getMapStyle(MapRenderer.getActiveMapStyleId());
+                if (mapStyle) {
+                    try {
+                        return MapRenderer.getMapStyleValue(mapStyle);
+                    } catch (e) {
+                        console.warn('Failed to resolve active map style, falling back to default:', e);
+                        const fallback = MapRenderer.getMapStyles()[0];
+                        try {
+                            return MapRenderer.getMapStyleValue(fallback);
+                        } catch (e2) {
+                            console.warn('Default style also failed:', e2);
+                        }
+                    }
+                }
+            }
+            return {
+                version: 8,
+                sources: {
+                    raster: {
+                        type: 'raster',
+                        tiles: [window.userSettings.tiles.service],
+                        tileSize: 256,
+                        attribution: window.userSettings.tiles.attribution || ''
+                    }
+                },
+                layers: [{id: 'tiles', type: 'raster', source: 'raster'}]
+            };
+        }
 
-        // Add tile layer based on user settings
-        const tilesUrl = window.userSettings.tiles.service;
-        const tilesAttribution = window.userSettings.tiles.attribution;
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: getMapStyle(),
+            center: [window.currentPlaceData.lng, window.currentPlaceData.lat],
+            zoom: 19,
+            maxPitch: 0,
+            dragRotate: false
+        });
 
-        const tileLayer = L.tileLayer.grayscale;
-        tileLayer(tilesUrl, {
-            maxZoom: 19,
-            attribution: tilesAttribution
-        }).addTo(map);
-        
-        L.control.attribution({position: 'topright'}).addAttribution(tilesAttribution).addTo(map);
+        map.on('load', () => {
+            disableHeavyLayers();
+            document.getElementById('map').classList.add('is-loaded');
+        });
 
-        // Initialize polygon editor
-        const polygonEditor = new PolygonEditor(map, placeData.lat, placeData.lng, placeData.name);
-
-        // Create centroid marker
-        let centroidMarker = L.circleMarker([placeData.lat, placeData.lng], {
-            radius: 8,
-            fillColor: '#ff0000',
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(map);
-        
-        centroidMarker.bindTooltip('Centroid', { permanent: false, direction: 'top' });
-
-        // Load existing polygon if it exists
-        if (placeData.polygon && placeData.polygon.length >= 3) {
-            polygonEditor.loadExistingPolygon(placeData.polygon);
-            // Calculate and show centroid for existing polygon
-            const centroid = calculatePolygonCentroid(placeData.polygon);
-            if (centroid && !isNaN(centroid.lat) && !isNaN(centroid.lng)) {
-                updateCoordinatesDisplay(centroid.lat, centroid.lng);
+        function disableHeavyLayers() {
+            try {
+                if (map.getTerrain()) {
+                    map.setTerrain(null);
+                }
+                (map.getStyle()?.layers || []).forEach(layer => {
+                    if ((layer.type === 'hillshade' || layer.type === 'fill-extrusion') && map.getLayer(layer.id)) {
+                        map.setLayoutProperty(layer.id, 'visibility', 'none');
+                    }
+                });
+            } catch (e) {
+                console.warn('Failed to disable heavy map layers:', e);
             }
         }
 
-        // Function to calculate polygon centroid
+        const polygonEditor = new PolygonEditor(map);
+        polygonEditor.onNearbyPlaceSelect = (placeId) => selectPlace(placeId);
+        polygonEditor.onPolygonChange = (points) => {
+            if (points && points.length >= 3) {
+                const centroid = calculatePolygonCentroid(points);
+                updateCoordinatesDisplay(centroid.lat, centroid.lng);
+            } else {
+                updateCoordinatesDisplay(window.currentPlaceData.lat, window.currentPlaceData.lng);
+            }
+        };
+        polygonEditor.setPlace(window.currentPlaceData);
+        polygonEditor.loadNearbyPlaces(/*[[${nearbyPlaces}]]*/ []);
+
         function calculatePolygonCentroid(points) {
             if (!points || points.length === 0) {
-                return { lat: placeData.lat, lng: placeData.lng };
+                return {lat: window.currentPlaceData.lat, lng: window.currentPlaceData.lng};
             }
-            
+
             let validPoints = [];
-            
-            // Handle different point formats and filter valid points
             for (let point of points) {
                 let lat, lng;
-                
+
                 if (point.lat !== undefined && point.lng !== undefined) {
                     lat = point.lat;
                     lng = point.lng;
@@ -300,116 +417,100 @@
                     lat = point[0];
                     lng = point[1];
                 } else {
-                    continue; // Skip invalid points
+                    continue;
                 }
-                
-                // Validate that lat/lng are numbers
-                if (typeof lat === 'number' && typeof lng === 'number' && 
-                    !isNaN(lat) && !isNaN(lng) && 
+
+                if (typeof lat === 'number' && typeof lng === 'number' &&
+                    !isNaN(lat) && !isNaN(lng) &&
                     lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                    validPoints.push({ lat: lat, lng: lng });
+                    validPoints.push({lat: lat, lng: lng});
                 }
             }
-            
+
             if (validPoints.length === 0) {
-                return { lat: placeData.lat, lng: placeData.lng };
+                return {lat: window.currentPlaceData.lat, lng: window.currentPlaceData.lng};
             }
-            
-            // Remove duplicate points (especially the closing point that duplicates the first point)
+
             let uniquePoints = [];
             for (let i = 0; i < validPoints.length; i++) {
                 const point = validPoints[i];
-                const isDuplicate = uniquePoints.some(existing => 
-                    Math.abs(existing.lat - point.lat) < 0.000001 && 
+                const isDuplicate = uniquePoints.some(existing =>
+                    Math.abs(existing.lat - point.lat) < 0.000001 &&
                     Math.abs(existing.lng - point.lng) < 0.000001
                 );
                 if (!isDuplicate) {
                     uniquePoints.push(point);
                 }
             }
-            
+
             if (uniquePoints.length === 0) {
-                return { lat: placeData.lat, lng: placeData.lng };
+                return {lat: window.currentPlaceData.lat, lng: window.currentPlaceData.lng};
             }
-            
+
             const avgLat = uniquePoints.reduce((sum, point) => sum + point.lat, 0) / uniquePoints.length;
             const avgLng = uniquePoints.reduce((sum, point) => sum + point.lng, 0) / uniquePoints.length;
-            
-            return { lat: avgLat, lng: avgLng };
+
+            return {lat: avgLat, lng: avgLng};
         }
 
-        // Function to update coordinates display and centroid marker
         function updateCoordinatesDisplay(lat, lng) {
-            // Validate coordinates before updating
-            if (typeof lat !== 'number' || typeof lng !== 'number' || 
-                isNaN(lat) || isNaN(lng) || 
+            if (typeof lat !== 'number' || typeof lng !== 'number' ||
+                isNaN(lat) || isNaN(lng) ||
                 lat < -90 || lat > 90 || lng < -180 || lng > 180) {
                 console.warn('Invalid coordinates:', lat, lng);
                 return;
             }
-            
+
             document.getElementById('current-lat').textContent = lat.toFixed(6);
             document.getElementById('current-lng').textContent = lng.toFixed(6);
-            
-            // Update centroid marker position
-            if (centroidMarker) {
-                centroidMarker.setLatLng([lat, lng]);
-            }
         }
 
-        if (typeof polygonEditor.onPolygonChange === 'function') {
-            const originalOnPolygonChange = polygonEditor.onPolygonChange;
-            polygonEditor.onPolygonChange = function(points) {
-                originalOnPolygonChange.call(this, points);
-                
-                if (points && points.length >= 3) {
-                    const centroid = calculatePolygonCentroid(points);
-                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
-                } else {
-                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
-                }
-            };
-        } else {
-            // If no callback exists, create one
-            polygonEditor.onPolygonChange = function(points) {
-                if (points && points.length >= 3) {
-                    const centroid = calculatePolygonCentroid(points);
-                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
-                } else {
-                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
-                }
-            };
+        function currentReturnUrl() {
+            const input = document.querySelector('#place-edit-root input[name="returnUrl"]');
+            return input ? input.value : '';
         }
 
-        // Functions to manage button loading state
+        function selectPlace(placeId) {
+            const returnUrl = currentReturnUrl();
+            const url = window.contextPath + '/settings/places/' + placeId + '/edit-form' +
+                (returnUrl ? '?returnUrl=' + encodeURIComponent(returnUrl) : '');
+            htmx.ajax('GET', url, {target: '#place-edit-root', swap: 'outerHTML'});
+        }
+
+        function bindEditControls() {
+            document.getElementById('save-btn').addEventListener('click', function() {
+                checkBeforeSave();
+            });
+
+            document.getElementById('remove-polygon-btn').addEventListener('click', function() {
+                polygonEditor.clearPolygon();
+                updateCoordinatesDisplay(window.currentPlaceData.lat, window.currentPlaceData.lng);
+            });
+        }
+
         function showSaveLoading() {
             const saveBtn = document.getElementById('save-btn');
             saveBtn.disabled = true;
             saveBtn.classList.add('btn-loading');
         }
-        
+
         function hideSaveLoading() {
             const saveBtn = document.getElementById('save-btn');
             saveBtn.disabled = false;
             saveBtn.classList.remove('btn-loading');
         }
 
-        // Save button handler
-        document.getElementById('save-btn').addEventListener('click', function() {
-            checkBeforeSave();
-        });
-
         function checkBeforeSave() {
             showSaveLoading();
-            
+
             const formData = new FormData(document.getElementById('polygon-form'));
-            
-            fetch(window.contextPath + `/settings/places/${placeData.id}/check-update`, {
+
+            fetch(window.contextPath + `/settings/places/${window.currentPlaceData.id}/check-update`, {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
-.then(data => {
+            .then(data => {
                 if (data.canProceed) {
                     polygonEditor.savePolygon();
                 } else {
@@ -423,72 +524,28 @@
             });
         }
 
-        function showConfirmationDialog(warnings, allowProceed = true) {
-            const warningsList = warnings.map(warning => `• ${warning}`).join('\n');
-            const message = t('places.update.confirmation.message', [warningsList]);
-            if (confirm(message) && allowProceed) {
-                showSaveLoading();
-                polygonEditor.savePolygon();
-            }
-        }
-
         function showBlockingWarnings(warnings) {
             const warningsHtml = warnings.map(w => `<p>• ${w}</p>`).join('');
             showWarningsModal(warningsHtml);
         }
 
-        document.getElementById('remove-polygon-btn').addEventListener('click', function() {
-            polygonEditor.clearPolygon();
-            updateCoordinatesDisplay(placeData.lat, placeData.lng);
-        });
+        // afterSettle instead of afterSwap: scripts inside the swapped fragment
+        // (window.currentPlaceData) are only evaluated during the settle phase,
+        // so afterSwap would still read the previous place.
+        document.body.addEventListener('htmx:afterSettle', function(event) {
+            if (event.detail.target.id !== 'place-edit-root') return;
 
-        const nearbyPlaces = /*[[${nearbyPlaces}]]*/ [];
-        polygonEditor.loadNearbyPlaces(nearbyPlaces);
-        
-        let lastPolygonPoints = null;
-        let lastPolygonString = '';
-        
-        function checkPolygonChanges() {
-            let currentPoints = null;
-            
-            // Try multiple methods to get polygon points
-            if (polygonEditor.getPolygonPoints) {
-                currentPoints = polygonEditor.getPolygonPoints();
-            } else if (polygonEditor.polygon && polygonEditor.polygon.getLatLngs) {
-                const latLngs = polygonEditor.polygon.getLatLngs();
-                if (latLngs && latLngs.length > 0) {
-                    currentPoints = latLngs[0].map(latlng => ({ lat: latlng.lat, lng: latlng.lng }));
-                }
-            } else if (polygonEditor.polygonPoints) {
-                currentPoints = polygonEditor.polygonPoints;
+            bindEditControls();
+
+            const place = window.currentPlaceData;
+            if (place && place.id !== polygonEditor.placeId) {
+                polygonEditor.setPlace(place, true);
             }
-            
-            const currentString = JSON.stringify(currentPoints);
-            
-            // Check if polygon has changed
-            if (currentString !== lastPolygonString) {
-                lastPolygonString = currentString;
-                lastPolygonPoints = currentPoints;
-                
-                if (currentPoints && currentPoints.length >= 3) {
-                    const centroid = calculatePolygonCentroid(currentPoints);
-                    updateCoordinatesDisplay(centroid.lat, centroid.lng);
-                } else {
-                    updateCoordinatesDisplay(placeData.lat, placeData.lng);
-                }
-            }
-        }
-        
-        // Check for changes every 300ms
-        setInterval(checkPolygonChanges, 300);
-        
-        // Also listen for map events that might indicate polygon changes
-        map.on('click', function() {
-            setTimeout(checkPolygonChanges, 100);
-        });
-        
-        map.on('contextmenu', function() {
-            setTimeout(checkPolygonChanges, 100);
+
+            const returnUrl = currentReturnUrl();
+            const newUrl = window.contextPath + '/settings/places/' + place.id + '/edit' +
+                (returnUrl ? '?returnUrl=' + encodeURIComponent(returnUrl) : '');
+            window.history.replaceState({}, '', newUrl);
         });
 
         document.addEventListener('click', function(event) {
@@ -500,20 +557,17 @@
                 if (btn.dataset.country) document.getElementById('country').value = btn.dataset.country;
                 if (btn.dataset.type) document.getElementById('place-type').value = btn.dataset.type;
 
-                // Close the drawer
                 const drawer = document.getElementById('geocoding-drawer');
                 drawer.classList.remove('active');
                 drawer.innerHTML = '';
             }
         });
 
-        // Handle geocoding drawer
         document.body.addEventListener('htmx:afterSettle', function(event) {
             if (event.detail.target.id === 'geocoding-drawer') {
                 const drawer = document.getElementById('geocoding-drawer');
                 drawer.classList.add('active');
-                
-                // Add close button functionality
+
                 const closeBtn = drawer.querySelector('.drawer-close');
                 if (closeBtn) {
                     closeBtn.addEventListener('click', function() {
@@ -523,6 +577,15 @@
                 }
             }
         });
+
+        document.getElementById('place-search-results').addEventListener('click', function(event) {
+            const item = event.target.closest('.search-result');
+            if (item) {
+                selectPlace(item.dataset.placeId);
+            }
+        });
+
+        bindEditControls();
     </script>
 
 <div id="warningsModal" class="reitti-dialog" role="dialog" aria-hidden="true">

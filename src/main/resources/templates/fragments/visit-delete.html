@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="visit-delete-dialog">
+    <p>
+        <strong th:text="${placeName}">Place Name</strong><br/>
+        <span th:text="${#temporals.format(visitStartTime, 'MMM d, HH:mm') + ' - ' + #temporals.format(visitEndTime, 'MMM d, HH:mm')}">Aug 23, 08:26 - Aug 23, 08:55</span>
+    </p>
+    <div class="alert alert-danger">
+        <span th:text="#{timeline.visit.delete.warning}">This visit will not be recreated when the data is recalculated and the surrounding trips will be merged.</span>
+    </div>
+    <div class="form-buttons">
+        <button type="button" class="btn btn-danger"
+                th:hx-delete="@{/timeline/visits/{id}(id=${visitId})}"
+                th:hx-target="${'#timeline-entry-' + visitId}"
+                hx-swap="outerHTML"
+                hx-on::after-request="if(event.detail.successful) closeVisitDeleteDialog()"
+                th:text="#{form.delete}">Delete</button>
+        <button type="button" class="btn btn-secondary" onclick="closeVisitDeleteDialog()"
+                th:text="#{form.cancel}">Cancel</button>
+    </div>
+</div>
+
+</body>
+</html>

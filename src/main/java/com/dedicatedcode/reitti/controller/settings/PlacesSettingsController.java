@@ -127,6 +127,41 @@ public class PlacesSettingsController {
         return "settings/places :: places-content";
     }
 
+    @GetMapping("/{placeId}/edit-form")
+    public String getEditForm(@PathVariable Long placeId,
+                              @RequestParam(required = false) String returnUrl,
+                              Authentication authentication,
+                              Model model) {
+        User user = (User) authentication.getPrincipal();
+        if (!this.placeJdbcService.exists(user, placeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+
+        SignificantPlace place = placeJdbcService.findById(placeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        model.addAttribute("place", convertToPlaceInfo(place));
+        model.addAttribute("placeTypes", SignificantPlace.PlaceType.values());
+        model.addAttribute("availableCountries", AvailableCountry.values());
+        model.addAttribute("returnUrl", returnUrl);
+        return "settings/edit-place :: edit-form";
+    }
+
+    @GetMapping("/search-fragment")
+    public String searchPlacesFragment(@AuthenticationPrincipal User user,
+                                       @RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "") String search,
+                                       Model model) {
+        Page<SignificantPlace> placesPage = placeService.getPlacesForUser(user, PageRequest.of(page, 10), search);
+        List<PlaceInfo> places = placesPage.getContent().stream()
+                .map(PlacesSettingsController::convertToPlaceInfo)
+                .toList();
+        model.addAttribute("places", places);
+        model.addAttribute("search", search);
+        model.addAttribute("currentPage", placesPage.getNumber());
+        model.addAttribute("isLast", placesPage.getNumber() >= placesPage.getTotalPages() - 1);
+        return "fragments/place-search :: search-results";
+    }
+
     @PostMapping("/{placeId}/check-update")
     @ResponseBody
     public CheckUpdateResponse checkUpdate(@PathVariable Long placeId,
