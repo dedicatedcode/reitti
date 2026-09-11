@@ -11,6 +11,7 @@ import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +34,13 @@ public class RawLocationPointJdbcService {
     private final SpatialCoverageService spatialCoverageService;
     private final PointReaderWriter pointReaderWriter;
     private final GeometryFactory geometryFactory;
+    private final int pointChunkSize;
 
     public RawLocationPointJdbcService(JdbcTemplate jdbcTemplate,
                                        PointReaderWriter pointReaderWriter,
                                        SpatialCoverageService spatialCoverageService,
-                                       GeometryFactory geometryFactory) {
+                                       GeometryFactory geometryFactory,
+                                       @Value("${reitti.processing.point-chunk-size:5000}") int pointChunkSize) {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
@@ -54,6 +57,7 @@ public class RawLocationPointJdbcService {
         this.pointReaderWriter = pointReaderWriter;
         this.spatialCoverageService = spatialCoverageService;
         this.geometryFactory = geometryFactory;
+        this.pointChunkSize = pointChunkSize;
     }
 
 
@@ -97,6 +101,64 @@ public class RawLocationPointJdbcService {
                 .append(" OFFSET ").append(page * pageSize).append(" LIMIT ").append(pageSize);
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
+    /**
+     * Streams all points of the user inside [startTime, endTime) in bounded
+     * chunks ordered by (timestamp, id), without materializing the whole range.
+     */
+    public RawLocationPointStream streamByUserAndTimestampBetween(User user, Instant startTime, Instant endTime,
+                                                                  boolean includeSynthetic, boolean includeIgnored) {
+        StringBuilder statsSql = new StringBuilder()
+                .append("SELECT count(*) AS point_count, min(timestamp) AS min_ts, max(timestamp) AS max_ts ")
+                .append("FROM raw_location_points WHERE user_id = ? ");
+        if (!includeSynthetic) {
+            statsSql.append("AND synthetic = false ");
+        }
+        if (!includeIgnored) {
+            statsSql.append("AND status = 0 ");
+        }
+        statsSql.append("AND timestamp >= ? AND timestamp < ?");
+        RawLocationPointStream.Stats stats = this.jdbcTemplate.query(statsSql.toString(), PointStreamSupport.STATS_EXTRACTOR,
+                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+        return new RawLocationPointStream(stats,
+                (afterTimestamp, afterId, limit) -> fetchPointChunk(user, startTime, endTime, includeSynthetic, includeIgnored, afterTimestamp, afterId, limit),
+                pointChunkSize);
+    }
+
+    /**
+     * Streams all points (synthetic and ignored included) of the user inside
+     * [startTime, endTime), matching
+     * {@link #findByUserAndTimestampBetweenOrderByTimestampAsc(User, Instant, Instant)}.
+     */
+    public RawLocationPointStream streamByUserAndTimestampBetween(User user, Instant startTime, Instant endTime) {
+        return streamByUserAndTimestampBetween(user, startTime, endTime, true, true);
+    }
+
+    private List<RawLocationPoint> fetchPointChunk(User user, Instant startTime, Instant endTime,
+                                                   boolean includeSynthetic, boolean includeIgnored,
+                                                   Instant afterTimestamp, Long afterId, int limit) {
+        Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.status = 0 ");
+        }
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ");
+        PointStreamSupport.appendKeysetPredicate(sql, after);
+        sql.append("ORDER BY rlp.timestamp, rlp.id LIMIT ?");
+        if (after != null) {
+            return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                    user.getId(), Timestamp.from(startTime), Timestamp.from(endTime),
+                    after, after, afterId, limit);
+        }
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), limit);
     }
 
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, int limit, int offset) {
@@ -434,6 +496,16 @@ public class RawLocationPointJdbcService {
         this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND date_trunc('day', timestamp) = ANY(?)",
                                  user.getId(),
                                  affectedDays.stream().map(d -> Timestamp.valueOf(d.atStartOfDay())).toList().toArray(new Timestamp[0]));
+    }
+
+    public void markUnprocessedForUserAndTimeRange(User user, Instant start, Instant end) {
+        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp >= ? AND timestamp <= ?",
+                                 user.getId(), Timestamp.from(start), Timestamp.from(end));
+    }
+
+    public void markUnprocessedForUserAndBoundingBox(User user, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude) {
+        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND ST_Intersects(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))",
+                                 user.getId(), minLongitude, minLatitude, maxLongitude, maxLatitude);
     }
 
     public void deleteAllForUser(User user) {

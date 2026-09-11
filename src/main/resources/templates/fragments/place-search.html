@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="search-results">
+    <div th:each="place : ${places}" class="search-result"
+         th:attr="data-place-id=${place.id()}, data-lat=${place.lat()}, data-lng=${place.lng()}"
+         role="button" tabindex="0">
+        <span class="search-result-name" th:text="${place.name() != null ? place.name() : 'Unnamed Place'}">Name</span>
+        <span class="search-result-type" th:text="#{${place.type().messageKey}}">Type</span>
+        <span class="search-result-coords"
+              th:text="${#numbers.formatDecimal(place.lat(), 1, 5) + ', ' + #numbers.formatDecimal(place.lng(), 1, 5)}">53.55109, 9.99368</span>
+    </div>
+    <p th:if="${places.isEmpty()}" th:text="#{places.no.places}">No significant places were found.</p>
+    <button type="button" class="btn btn-block"
+            th:if="${!isLast && !places.isEmpty()}"
+            th:attr="hx-get=@{/settings/places/search-fragment(search=${search},page=${currentPage + 1})}"
+            hx-swap="outerHTML"
+            th:text="#{places.editor.search.show_more}">Show more</button>
+</div>
+
+</body>
+</html>

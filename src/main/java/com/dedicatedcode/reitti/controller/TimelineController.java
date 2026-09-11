@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.controller;
 
 import com.dedicatedcode.reitti.dto.timeline.*;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 import com.dedicatedcode.reitti.model.geo.Trip;
@@ -9,6 +10,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.service.SuppressedVisitService;
 import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
@@ -18,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +47,8 @@ public class TimelineController {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TransportModeService transportModeService;
     private final TripJdbcService tripJdbcService;
+    private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final SuppressedVisitService suppressedVisitService;
     private final TimelineOverviewStatisticsService timelineOverviewStatisticsService;
     private final boolean h3Enabled;
 
@@ -57,6 +62,8 @@ public class TimelineController {
                               UserSettingsJdbcService userSettingsJdbcService,
                               TransportModeService transportModeService,
                               TripJdbcService tripJdbcService,
+                              ProcessedVisitJdbcService processedVisitJdbcService,
+                              SuppressedVisitService suppressedVisitService,
                               TimelineOverviewStatisticsService timelineOverviewStatisticsService,
                               @Value("${reitti.h3.enabled:false}") boolean h3Enabled) {
         this.userJdbcService = userJdbcService;
@@ -68,6 +75,8 @@ public class TimelineController {
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.transportModeService = transportModeService;
         this.tripJdbcService = tripJdbcService;
+        this.processedVisitJdbcService = processedVisitJdbcService;
+        this.suppressedVisitService = suppressedVisitService;
         this.timelineOverviewStatisticsService = timelineOverviewStatisticsService;
         this.h3Enabled = h3Enabled;
     }
@@ -249,6 +258,27 @@ public class TimelineController {
             return "redirect:" + returnUrl;
         }
         return "redirect:/";
+    }
+
+    @GetMapping("/visits/{id}/delete-dialog")
+    public String getVisitDeleteDialog(@PathVariable Long id,
+                                       @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                       @AuthenticationPrincipal User user, Model model) {
+        ProcessedVisit visit = processedVisitJdbcService.findByUserAndId(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        model.addAttribute("visitId", id);
+        model.addAttribute("placeName", visit.getPlace().getName());
+        model.addAttribute("visitStartTime", TimeUtil.adjustInstant(visit.getStartTime(), timezone));
+        model.addAttribute("visitEndTime", TimeUtil.adjustInstant(visit.getEndTime(), timezone));
+        return "fragments/visit-delete :: visit-delete-dialog";
+    }
+
+    @DeleteMapping("/visits/{id}")
+    @ResponseBody
+    public void deleteVisit(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        ProcessedVisit visit = processedVisitJdbcService.findByUserAndId(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        suppressedVisitService.suppressVisit(user, visit);
     }
 
     private List<TransportMode> distinctModes(List<TransportModeSegment> segments) {

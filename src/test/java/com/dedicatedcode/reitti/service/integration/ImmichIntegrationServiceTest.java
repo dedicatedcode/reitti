@@ -13,6 +13,7 @@ import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.StorageService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
@@ -60,11 +62,19 @@ class ImmichIntegrationServiceTest {
 
     private MockRestServiceServer mockServer;
 
+    private ClientHttpRequestFactory originalRequestFactory;
+
     private static final String IMMICH_BASE_URL = "http://localhost:8089";
 
     @BeforeEach
     void setUp() {
+        originalRequestFactory = restTemplate.getRequestFactory();
         mockServer = MockRestServiceServer.createServer(restTemplate);
+    }
+
+    @AfterEach
+    void tearDown() {
+        restTemplate.setRequestFactory(originalRequestFactory);
     }
 
     @Test

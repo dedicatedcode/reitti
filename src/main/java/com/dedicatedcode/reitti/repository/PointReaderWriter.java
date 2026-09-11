@@ -3,7 +3,9 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 import org.springframework.stereotype.Component;
@@ -54,6 +56,24 @@ public class PointReaderWriter {
 
     public String write(GeoPoint point) {
         return write(point.longitude(), point.latitude());
+    }
+
+    /**
+     * Converts an open or closed ring of points into a JTS polygon, closing
+     * the ring with the first point when necessary.
+     */
+    public Polygon toJtsPolygon(List<GeoPoint> polygon) {
+        List<Coordinate> coordinates = new ArrayList<>(polygon.size() + 1);
+        for (GeoPoint point : polygon) {
+            coordinates.add(new Coordinate(point.longitude(), point.latitude()));
+        }
+        GeoPoint first = polygon.getFirst();
+        GeoPoint last = polygon.getLast();
+        if (first.latitude() != last.latitude() || first.longitude() != last.longitude()) {
+            coordinates.add(new Coordinate(first.longitude(), first.latitude()));
+        }
+        LinearRing ring = geometryFactory.createLinearRing(coordinates.toArray(new Coordinate[0]));
+        return geometryFactory.createPolygon(ring);
     }
 
     public String polygonToWkt(List<GeoPoint> polygon) {
