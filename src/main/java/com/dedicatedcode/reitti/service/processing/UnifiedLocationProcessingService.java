@@ -41,6 +41,8 @@ public class UnifiedLocationProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(UnifiedLocationProcessingService.class);
 
+    private static final int BUFFER_COMPACT_THRESHOLD = 10_000;
+
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
@@ -58,6 +60,7 @@ public class UnifiedLocationProcessingService {
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
     private final MetadataOverrideService metadataOverrideService;
+    private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
 
@@ -78,6 +81,7 @@ public class UnifiedLocationProcessingService {
             UserNotificationService userNotificationService,
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
+            VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
             @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
         this.userJdbcService = userJdbcService;
@@ -97,6 +101,7 @@ public class UnifiedLocationProcessingService {
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
         this.metadataOverrideService = metadataOverrideService;
+        this.visitSuppressionService = visitSuppressionService;
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
     }
@@ -263,18 +268,18 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        List<RawLocationPoint> timeOrderedPoints;
+        Iterator<RawLocationPoint> pointStream;
         if (previewId == null) {
-            timeOrderedPoints = rawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, windowStart, windowEnd, true, false);
+            pointStream = rawLocationPointJdbcService
+                    .streamByUserAndTimestampBetween(user, windowStart, windowEnd, true, false)
+                    .iterator();
         } else {
-            timeOrderedPoints = previewRawLocationPointJdbcService
-                    .findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, windowStart, windowEnd);
+            pointStream = previewRawLocationPointJdbcService
+                    .streamByUserAndTimestampBetween(user, previewId, windowStart, windowEnd)
+                    .iterator();
         }
 
-        logger.debug("Loaded {} valid points in [{}, {}]", timeOrderedPoints.size(), windowStart, windowEnd);
-
-        List<StayPoint> stayPoints = detectStayPointsSlidingWindow(timeOrderedPoints, currentConfiguration);
+        List<StayPoint> stayPoints = detectStayPointsSlidingWindow(pointStream, currentConfiguration);
 
         List<Visit> visits = stayPoints.stream()
                 .map(sp -> new Visit(
@@ -282,6 +287,12 @@ public class UnifiedLocationProcessingService {
                         sp.getArrivalTime(), sp.getDepartureTime(),
                         sp.getDurationSeconds(), false))
                 .toList();
+
+        int detectedVisits = visits.size();
+        visits = visitSuppressionService.removeVisitsInsideNoVisitZones(user, visits);
+        if (visits.size() != detectedVisits) {
+            logger.debug("Suppressed [{}] of [{}] detected visits inside no-visit zones", detectedVisits - visits.size(), detectedVisits);
+        }
 
         return new VisitDetectionResult(visits, windowStart, windowEnd, System.currentTimeMillis() - start);
     }
@@ -337,6 +348,7 @@ public class UnifiedLocationProcessingService {
 
         // Merge visits chronologically
         List<ProcessedVisit> processedVisits = mergeVisitsChronologically(user, previewId, traceId, allVisits, mergeConfig, parentJobId);
+        processedVisits = visitSuppressionService.removeSuppressedVisits(user, searchStart, searchEnd, processedVisits, mergeConfig.getPlaceRadiusMeters());
 
         // Save processed visits
         if (previewId == null) {
@@ -397,6 +409,17 @@ public class UnifiedLocationProcessingService {
                     trips.add(tripAfter);
                 }
             }
+        } else if (previewId == null) {
+            //all visits in the search range were suppressed, stitch the surrounding visits back together
+            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
+            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
+            if (firstProcessedVisitBefore.isPresent() && processedVisitAfter.isPresent()
+                    && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
+                Trip spanningTrip = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisitAfter.get());
+                if (spanningTrip != null) {
+                    trips.add(spanningTrip);
+                }
+            }
         }
         trips.sort(Comparator.comparing(Trip::getStartTime));
         // Save trips
@@ -420,14 +443,14 @@ public class UnifiedLocationProcessingService {
      * Output is chronologically ordered and non-overlapping by construction:
      * after a valid stay, the scan resumes from the point after the last
      * included one, guaranteeing the next stay starts strictly later.
+     * <p>
+     * The points are consumed from a chunked stream so only a bounded buffer
+     * (the current cluster plus points within one max-gap window of it) is
+     * held in memory, regardless of the size of the scanned range.
      */
     private List<StayPoint> detectStayPointsSlidingWindow(
-            List<RawLocationPoint> timeOrderedPoints,
+            Iterator<RawLocationPoint> pointStream,
             DetectionParameter parameter) {
-
-        if (timeOrderedPoints.size() < 2) {
-            return List.of();
-        }
 
         final double stayRadiusMeters = parameter.getVisitMerging().getPlaceRadiusMeters();
         final long minStaySeconds = parameter.getVisitDetection().getMinimumStayTimeInSeconds();
@@ -437,25 +460,43 @@ public class UnifiedLocationProcessingService {
         final int minPointsPerStay = Math.max(2, (int) (minStaySeconds / 60));
 
         List<StayPoint> stayPoints = new ArrayList<>();
+        List<RawLocationPoint> buffer = new ArrayList<>();
+        int head = 0;
+        long totalPoints = 0;
 
-        int i = 0;
-        while (i < timeOrderedPoints.size()) {
-            RawLocationPoint anchor = timeOrderedPoints.get(i);
+        while (true) {
+            while (buffer.size() <= head && pointStream.hasNext()) {
+                buffer.add(pointStream.next());
+                totalPoints++;
+            }
+            if (buffer.size() <= head) {
+                break;
+            }
+
+            RawLocationPoint anchor = buffer.get(head);
             List<RawLocationPoint> cluster = new ArrayList<>();
             cluster.add(anchor);
 
             double centroidLat = anchor.getLatitude();
             double centroidLon = anchor.getLongitude();
 
-            int lastIncludedIdx = i;
-            int j = i + 1;
+            int lastIncludedPos = head;
+            int pos = head;
 
-            while (j < timeOrderedPoints.size()) {
-                RawLocationPoint candidate = timeOrderedPoints.get(j);
+            while (true) {
+                pos++;
+                while (pos >= buffer.size() && pointStream.hasNext()) {
+                    buffer.add(pointStream.next());
+                    totalPoints++;
+                }
+                if (pos >= buffer.size()) {
+                    break;
+                }
+                RawLocationPoint candidate = buffer.get(pos);
 
                 // Time since last point that was actually part of this stay
                 long gapSeconds = Duration.between(
-                        timeOrderedPoints.get(lastIncludedIdx).getTimestamp(),
+                        buffer.get(lastIncludedPos).getTimestamp(),
                         candidate.getTimestamp()).getSeconds();
 
                 if (gapSeconds > maxGapSeconds) {
@@ -471,12 +512,11 @@ public class UnifiedLocationProcessingService {
                     int n = cluster.size();
                     centroidLat += (candidate.getLatitude() - centroidLat) / n;
                     centroidLon += (candidate.getLongitude() - centroidLon) / n;
-                    lastIncludedIdx = j;
+                    lastIncludedPos = pos;
                 }
                 // Outside radius: skip silently. The gap timer runs from
-                // lastIncludedIdx, so transit points just tick the clock
+                // lastIncludedPos, so transit points just tick the clock
                 // until maxGapSeconds is exceeded.
-                j++;
             }
 
             long durationSeconds = Duration.between(
@@ -485,13 +525,18 @@ public class UnifiedLocationProcessingService {
 
             if (durationSeconds >= minStaySeconds && cluster.size() >= minPointsPerStay) {
                 stayPoints.add(createStayPoint(cluster));
-                i = lastIncludedIdx + 1;
+                head = lastIncludedPos + 1;
             } else {
-                i++;
+                head++;
+            }
+
+            if (head > BUFFER_COMPACT_THRESHOLD) {
+                buffer = new ArrayList<>(buffer.subList(head, buffer.size()));
+                head = 0;
             }
         }
 
-        logger.debug("Sliding window: {} stay points from {} points", stayPoints.size(), timeOrderedPoints.size());
+        logger.debug("Sliding window: {} stay points from {} points", stayPoints.size(), totalPoints);
         return stayPoints;
     }
 
@@ -531,14 +576,14 @@ public class UnifiedLocationProcessingService {
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
             if (samePlace && !withinTimeThreshold) {
-                List<RawLocationPoint> pointsBetweenVisits;
+                RawLocationPointStream pointsBetweenVisits;
                 if (previewId == null) {
-                    pointsBetweenVisits = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, currentEndTime, nextVisit.getStartTime(), true, false);
+                    pointsBetweenVisits = this.rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, currentEndTime, nextVisit.getStartTime(), true, false);
                 } else {
-                    pointsBetweenVisits = this.previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, currentEndTime, nextVisit.getStartTime());
+                    pointsBetweenVisits = this.previewRawLocationPointJdbcService.streamByUserAndTimestampBetween(user, previewId, currentEndTime, nextVisit.getStartTime());
                 }
-                if (pointsBetweenVisits.size() > 2) {
-                    double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits);
+                if (pointsBetweenVisits.getCount() > 2) {
+                    double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
                 } else {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
@@ -779,20 +824,20 @@ public class UnifiedLocationProcessingService {
         }
 
         // Get location points between the two visits
-        List<RawLocationPoint> tripPoints;
+        RawLocationPointStream tripPoints;
         if (previewId == null) {
-            tripPoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, tripStartTime, tripEndTime.plusMillis(1));
+            tripPoints = rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, tripStartTime, tripEndTime.plusMillis(1));
         } else {
-            tripPoints = previewRawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
+            tripPoints = previewRawLocationPointJdbcService.streamByUserAndTimestampBetween(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
         }
 
-        if (tripPoints.size() < 2) {
+        if (tripPoints.getCount() < 2) {
             logger.warn("Unable to create Trip for user [{}] between [{}] and [{}]: only [{}] point(s) available",
-                    user.getUsername(), tripStartTime, tripEndTime, tripPoints.size());
+                    user.getUsername(), tripStartTime, tripEndTime, tripPoints.getCount());
             return null;
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());
-        double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints);
+        double travelledDistanceMeters = GeoUtils.calculateTripDistance(tripPoints.iterator());
         // Create a new trip
         List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, tripStartTime, tripEndTime);
         Map<String, Object> metadata = this.metadataOverrideService.findOverlappingMetadata(user, tripStartTime, tripEndTime).map(MemoryMetadata::getProperties).orElse(null);

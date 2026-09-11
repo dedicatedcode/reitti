@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<div th:fragment="suppressed-list">
+    <h2 class="panel-title" th:text="#{places.editor.suppressed.title}">Suppressed Visits</h2>
+
+    <div class="suppressed-visit-row" th:each="item : ${items}"
+         th:attr="data-lat=${item.lat()}, data-lng=${item.lng()}">
+        <div class="suppressed-visit-info">
+            <span class="suppressed-visit-name"
+                  th:text="${item.placeName() != null ? item.placeName() : 'Unnamed Place'}">Place Name</span>
+            <span class="suppressed-visit-time"
+                  th:text="${#temporals.format(item.start(), 'MMM d, HH:mm') + ' - ' + #temporals.format(item.end(), 'MMM d, HH:mm')}">Aug 23, 08:26 - Aug 23, 08:55</span>
+        </div>
+        <button type="button" class="btn btn-small"
+                th:hx-post="@{/settings/places/suppressed/{id}/restore(id=${item.id}, page=${currentPage})}"
+                hx-target="#suppressed-section"
+                hx-swap="innerHTML"
+                hx-vals='js:{"timezone": getUserTimezone()}'>
+            <span class="btn-text" th:text="#{places.editor.suppressed.restore}">Restore</span>
+        </button>
+    </div>
+
+    <p class="suppressed-empty" th:if="${items.isEmpty()}"
+       th:text="#{places.editor.suppressed.none}">No suppressed visits.</p>
+
+    <div class="pagination-controls" th:if="${totalPages > 1}">
+        <span th:text="#{places.page.info(${currentPage + 1}, ${totalPages})}">Page 1 of 1</span>
+        <button type="button" th:if="${currentPage > 0}"
+                th:attr="hx-get=@{/settings/places/suppressed-fragment(page=${currentPage - 1}, timezone=${timezone})}"
+                hx-target="#suppressed-section"
+                hx-swap="innerHTML"
+                th:text="#{form.previous}">Previous</button>
+        <button type="button" th:if="${currentPage < totalPages - 1}"
+                th:attr="hx-get=@{/settings/places/suppressed-fragment(page=${currentPage + 1}, timezone=${timezone})}"
+                hx-target="#suppressed-section"
+                hx-swap="innerHTML"
+                th:text="#{form.next}">Next</button>
+    </div>
+</div>
+
+</body>
+</html>

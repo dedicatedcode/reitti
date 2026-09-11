@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.RawLocationPointStream;
 import com.dedicatedcode.reitti.repository.TransportModeJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService;
 import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService.TransportModeOverride;
@@ -13,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,14 +42,24 @@ public class TransportModeService {
     public List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd) {
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
         double totalDistanceMeters = GeoUtils.calculateTripDistance(points);
-        return segmentTrip(user, points, tripStart, tripEnd, configs, totalDistanceMeters);
+        return segmentTrip(user, points.iterator(), points.size(), points.getFirst().getTimestamp(), points.getLast().getTimestamp(),
+                tripStart, tripEnd, configs, totalDistanceMeters);
     }
 
-    private List<TransportModeSegment> segmentTrip(User user, List<RawLocationPoint> points, Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs, double totalDistanceMeters) {
-        if (points.size() < 2) {
+    public List<TransportModeSegment> segmentTrip(User user, RawLocationPointStream points, Instant tripStart, Instant tripEnd) {
+        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
+        double totalDistanceMeters = GeoUtils.calculateTripDistance(points.iterator());
+        return segmentTrip(user, points.iterator(), points.getCount(), points.getFirstTimestamp(), points.getLastTimestamp(),
+                tripStart, tripEnd, configs, totalDistanceMeters);
+    }
+
+    private List<TransportModeSegment> segmentTrip(User user, Iterator<RawLocationPoint> pointIterator, long pointCount,
+                                                   Instant firstPointTimestamp, Instant lastPointTimestamp,
+                                                   Instant tripStart, Instant tripEnd, List<TransportModeConfig> configs, double totalDistanceMeters) {
+        if (pointCount < 2) {
             long duration = Duration.between(tripStart, tripEnd).getSeconds();
             TransportMode fallbackMode = slowestConfiguredMode(configs);
-            log.debug("segmentTrip: only {} point(s), returning single {} segment, duration={}s", points.size(), fallbackMode, duration);
+            log.debug("segmentTrip: only {} point(s), returning single {} segment, duration={}s", pointCount, fallbackMode, duration);
             return List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
@@ -57,8 +69,8 @@ public class TransportModeService {
             log.trace("segmentTrip: loaded {} override(s) for trip [{}..{}]", overrides.size(), tripStart, tripEnd);
         }
 
-        List<ChunkClass> chunks = chunkAndClassify(points, configs);
-        log.trace("segmentTrip: {} points, {} chunks, trip [{}-{}]", points.size(), chunks.size(), tripStart, tripEnd);
+        List<ChunkClass> chunks = chunkAndClassify(pointIterator, firstPointTimestamp, lastPointTimestamp, pointCount, configs);
+        log.trace("segmentTrip: {} points, {} chunks, trip [{}-{}]", pointCount, chunks.size(), tripStart, tripEnd);
 
         List<TransportModeSegment> result = new ArrayList<>();
         long chunkStartOffset = 0;
@@ -105,7 +117,7 @@ public class TransportModeService {
         }
 
         // Adjust segment offsets from first-point-relative to tripStart-relative
-        long firstPointOffset = Duration.between(tripStart, points.getFirst().getTimestamp()).getSeconds();
+        long firstPointOffset = Duration.between(tripStart, firstPointTimestamp).getSeconds();
         if (firstPointOffset > 0) {
             result = result.stream()
                     .map(s -> new TransportModeSegment(s.mode(), s.offsetSeconds() + firstPointOffset, s.durationSeconds(), s.distanceMeters()))
@@ -138,25 +150,24 @@ public class TransportModeService {
                 .collect(Collectors.joining(", "));
     }
 
-    private List<ChunkClass> chunkAndClassify(List<RawLocationPoint> points, List<TransportModeConfig> configs) {
+    private List<ChunkClass> chunkAndClassify(Iterator<RawLocationPoint> pointIterator, Instant firstPointTimestamp,
+                                              Instant lastPointTimestamp, long pointCount, List<TransportModeConfig> configs) {
         List<ChunkClass> chunks = new ArrayList<>();
-        Instant tripStart = points.getFirst().getTimestamp();
-        Instant tripEnd = points.getLast().getTimestamp();
-        long totalDuration = Duration.between(tripStart, tripEnd).getSeconds();
+        long totalDuration = Duration.between(firstPointTimestamp, lastPointTimestamp).getSeconds();
 
-        int pointIndex = 0;
         int chunkCount = 0;
         Long pendingStartOffset = null;
         long pendingEndOffset = 0;
         List<RawLocationPoint> pendingPoints = new ArrayList<>();
-        for (long offset = 0; offset < totalDuration; offset += CHUNK_DURATION_SECONDS) {
+        RawLocationPoint nextPoint = pointIterator.hasNext() ? pointIterator.next() : null;
+        for (long offset = 0; offset < totalDuration && nextPoint != null; offset += CHUNK_DURATION_SECONDS) {
             long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
-            Instant chunkEndTime = tripStart.plusSeconds(chunkEnd);
+            Instant chunkEndTime = firstPointTimestamp.plusSeconds(chunkEnd);
 
             List<RawLocationPoint> chunkPoints = new ArrayList<>();
-            while (pointIndex < points.size() && !points.get(pointIndex).getTimestamp().isAfter(chunkEndTime)) {
-                chunkPoints.add(points.get(pointIndex));
-                pointIndex++;
+            while (nextPoint != null && !nextPoint.getTimestamp().isAfter(chunkEndTime)) {
+                chunkPoints.add(nextPoint);
+                nextPoint = pointIterator.hasNext() ? pointIterator.next() : null;
             }
 
             if (chunkPoints.size() < 2) {
@@ -184,7 +195,7 @@ public class TransportModeService {
 
         flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
 
-        log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), points.size(), totalDuration);
+        log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), pointCount, totalDuration);
         return chunks;
     }
 

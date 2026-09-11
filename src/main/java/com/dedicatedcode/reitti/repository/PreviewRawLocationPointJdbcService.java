@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,11 @@ public class PreviewRawLocationPointJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<RawLocationPoint> rawLocationPointRowMapper;
+    private final int pointChunkSize;
 
-    public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
+    public PreviewRawLocationPointJdbcService(JdbcTemplate jdbcTemplate,
+                                              PointReaderWriter pointReaderWriter,
+                                              @Value("${reitti.processing.point-chunk-size:5000}") int pointChunkSize) {
         this.jdbcTemplate = jdbcTemplate;
         this.rawLocationPointRowMapper = (rs, _) -> new RawLocationPoint(
                 rs.getLong("id"),
@@ -32,6 +36,7 @@ public class PreviewRawLocationPointJdbcService {
                 rs.getBoolean("synthetic"),
                 rs.getLong("version")
         );
+        this.pointChunkSize = pointChunkSize;
     }
 
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
@@ -51,6 +56,40 @@ public class PreviewRawLocationPointJdbcService {
                 "ORDER BY rlp.timestamp " +
                 "LIMIT ? OFFSET ?";
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), previewId, limit, offset);
+    }
+
+    /**
+     * Streams all preview points of the user inside [startTime, endTime] in
+     * bounded chunks ordered by (timestamp, id), without materializing the
+     * whole range.
+     */
+    public RawLocationPointStream streamByUserAndTimestampBetween(User user, String previewId, Instant startTime, Instant endTime) {
+        RawLocationPointStream.Stats stats = this.jdbcTemplate.query(
+                "SELECT count(*) AS point_count, min(timestamp) AS min_ts, max(timestamp) AS max_ts " +
+                        "FROM preview_raw_location_points WHERE user_id = ? AND preview_id = ? AND timestamp BETWEEN ? AND ?",
+                PointStreamSupport.STATS_EXTRACTOR,
+                user.getId(), previewId, Timestamp.from(startTime), Timestamp.from(endTime));
+        return new RawLocationPointStream(stats,
+                (afterTimestamp, afterId, limit) -> fetchPointChunk(user, previewId, startTime, endTime, afterTimestamp, afterId, limit),
+                pointChunkSize);
+    }
+
+    private List<RawLocationPoint> fetchPointChunk(User user, String previewId, Instant startTime, Instant endTime,
+                                                   Instant afterTimestamp, Long afterId, int limit) {
+        Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("FROM preview_raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ? ");
+        PointStreamSupport.appendKeysetPredicate(sql, after);
+        sql.append("ORDER BY rlp.timestamp, rlp.id LIMIT ?");
+        if (after != null) {
+            return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                    user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId,
+                    after, after, afterId, limit);
+        }
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId, limit);
     }
 
     public void bulkUpdateProcessedStatus(List<RawLocationPoint> points) {

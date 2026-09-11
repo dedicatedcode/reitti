@@ -52,7 +52,10 @@
 
 .reitti-dialog-close:hover { color: #ece6d6; background: rgba(255, 255, 255, 0.08); }
 
-.reitti-dialog-body { padding: 18px; overflow-y: auto; }
+.reitti-dialog-body {
+    color: var(--color-text-white);
+    padding: 18px; overflow-y: auto;
+}
 
 .btn-loading {
     position: relative;

@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
+import com.dedicatedcode.reitti.service.jobs.ZoneRecalculationTask;
 import com.dedicatedcode.reitti.service.processing.*;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -90,6 +91,14 @@ public class TaskConfig {
     public JobDetail transportModeRecalculationJobDetail() {
         return JobBuilder.newJob(TransportModeRecalculationTask.class)
                 .withIdentity("transport-mode-recalculation-job")
+                .storeDurably()
+                .build();
+    }
+
+    @Bean("zoneRecalculationJob")
+    public JobDetail zoneRecalculationJobDetail() {
+        return JobBuilder.newJob(ZoneRecalculationTask.class)
+                .withIdentity("zone-recalculation-job")
                 .storeDurably()
                 .build();
     }

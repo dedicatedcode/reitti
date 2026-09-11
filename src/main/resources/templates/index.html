@@ -21,6 +21,7 @@
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="/css/datetime-picker.css">
     <link rel="stylesheet" th:href="@{/css/panoramax.css}" href="/css/panoramax.css">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/dialog.css}" href="/css/dialog.css">
 
     <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="${userSettings.customCssUrl}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
@@ -118,6 +119,17 @@
 <div id="transport-mode-overlay" class="overlay hidden">
     <div class="overlay-backdrop" onclick="closeTransportModeOverlay()"></div>
     <div class="overlay-content" id="transport-mode-overlay-content">
+    </div>
+</div>
+<div id="visit-delete-dialog" class="reitti-dialog" role="dialog" aria-hidden="true">
+    <div class="reitti-dialog-backdrop" onclick="closeVisitDeleteDialog()"></div>
+    <div class="reitti-dialog-card">
+        <div class="reitti-dialog-head">
+            <h3 th:text="#{timeline.visit.delete.title}">Delete Visit</h3>
+            <button type="button" class="reitti-dialog-close" aria-label="Close" onclick="closeVisitDeleteDialog()">&times;</button>
+        </div>
+        <div class="reitti-dialog-body" id="visit-delete-dialog-body">
+        </div>
     </div>
 </div>
 <!-- Auto-update overlay -->
@@ -1564,6 +1576,14 @@
         document.getElementById('transport-mode-overlay-content').innerHTML = '';
     }
 
+    function openVisitDeleteDialog() {
+        document.getElementById('visit-delete-dialog').classList.add('open');
+    }
+    function closeVisitDeleteDialog() {
+        document.getElementById('visit-delete-dialog').classList.remove('open');
+        document.getElementById('visit-delete-dialog-body').innerHTML = '';
+    }
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             if (!document.getElementById('metadata-overlay').classList.contains('hidden')) {
@@ -1571,6 +1591,9 @@
             }
             if (!document.getElementById('transport-mode-overlay').classList.contains('hidden')) {
                 closeTransportModeOverlay();
+            }
+            if (document.getElementById('visit-delete-dialog').classList.contains('open')) {
+                closeVisitDeleteDialog();
             }
         }
     });
