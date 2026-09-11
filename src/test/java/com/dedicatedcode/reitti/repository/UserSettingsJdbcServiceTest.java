@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -64,7 +65,7 @@ public class UserSettingsJdbcServiceTest {
                                                     24.9384,
                                                     null,
                                                     TimeDisplayMode.DEFAULT,
-                                                    TimeMode.TWENTY_FOUR_HOUR, null,
+                                                    TimeMode.TWENTY_FOUR_HOUR, LocalTime.MIDNIGHT, null,
                                                     Instant.now(),
                                                     "#f1ba63",
                                                     null);
@@ -89,6 +90,7 @@ public class UserSettingsJdbcServiceTest {
                                                         null,
                                                         TimeDisplayMode.DEFAULT,
                                                         TimeMode.TWENTY_FOUR_HOUR,
+                                                        LocalTime.MIDNIGHT,
                                                         null,
                                                         Instant.now(),
                                                         "#f1ba63",
@@ -105,6 +107,7 @@ public class UserSettingsJdbcServiceTest {
                 null,
                 TimeDisplayMode.DEFAULT,
                 TimeMode.TWENTY_FOUR_HOUR,
+                LocalTime.MIDNIGHT,
                 null,
                 Instant.now(),
                 "#f1ba63",
@@ -131,6 +134,7 @@ public class UserSettingsJdbcServiceTest {
                                                     null,
                                                     TimeDisplayMode.DEFAULT,
                                                     TimeMode.TWENTY_FOUR_HOUR,
+                                                    LocalTime.MIDNIGHT,
                                                     null,
                                                     Instant.now(),
                                                     "#f1ba63",
@@ -173,6 +177,7 @@ public class UserSettingsJdbcServiceTest {
                                                          null,
                                                          TimeDisplayMode.DEFAULT,
                                                          TimeMode.TWENTY_FOUR_HOUR,
+                                                         LocalTime.MIDNIGHT,
                                                          null,
                                                          Instant.now(),
                                                          "#f1ba63",
@@ -195,6 +200,7 @@ public class UserSettingsJdbcServiceTest {
         assertThat(defaultSettings.getUnitSystem()).isEqualTo(UnitSystem.METRIC);
         assertThat(defaultSettings.getHomeLatitude()).isNull();
         assertThat(defaultSettings.getHomeLongitude()).isNull();
+        assertThat(defaultSettings.getDayStartTime()).isEqualTo(LocalTime.MIDNIGHT);
         assertThat(defaultSettings.getVersion()).isNull();
     }
 
@@ -209,6 +215,7 @@ public class UserSettingsJdbcServiceTest {
                                                            null,
                                                            TimeDisplayMode.DEFAULT,
                                                            TimeMode.TWELVE_HOUR,
+                                                           LocalTime.MIDNIGHT,
                                                            null,
                                                            Instant.now(),
                                                            "#f1ba63",
@@ -229,6 +236,7 @@ public class UserSettingsJdbcServiceTest {
                 null,
                 TimeDisplayMode.DEFAULT,
                 TimeMode.TWENTY_FOUR_HOUR,
+                LocalTime.MIDNIGHT,
                 null,
                 Instant.now(),
                 "#f1ba63",
@@ -239,6 +247,51 @@ public class UserSettingsJdbcServiceTest {
         Optional<UserSettings> updated = userSettingsJdbcService.findByUserId(testUserId1);
         assertThat(updated).isPresent();
         assertThat(updated.get().getTimeMode()).isEqualTo(TimeMode.TWENTY_FOUR_HOUR);
+    }
+
+    @Test
+    void saveAndRetrieve_ShouldCorrectlyStoreDayStartTime() {
+        // Test saving 04:30
+        UserSettings fourThirtySettings = new UserSettings(testUserId1,
+                                                           Language.EN,
+                                                           UnitSystem.METRIC,
+                                                           null,
+                                                           null,
+                                                           null,
+                                                           TimeDisplayMode.DEFAULT,
+                                                           TimeMode.TWENTY_FOUR_HOUR,
+                                                           LocalTime.of(4, 30),
+                                                           null,
+                                                           Instant.now(),
+                                                           "#f1ba63",
+                                                           null);
+        userSettingsJdbcService.save(fourThirtySettings);
+
+        Optional<UserSettings> retrieved = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getDayStartTime()).isEqualTo(LocalTime.of(4, 30));
+
+        // Update to 02:15
+        UserSettings twoFifteenSettings = new UserSettings(
+                testUserId1,
+                Language.EN,
+                UnitSystem.METRIC,
+                null,
+                null,
+                null,
+                TimeDisplayMode.DEFAULT,
+                TimeMode.TWENTY_FOUR_HOUR,
+                LocalTime.of(2, 15),
+                null,
+                Instant.now(),
+                "#f1ba63",
+                retrieved.get().getVersion());
+
+        userSettingsJdbcService.save(twoFifteenSettings);
+
+        Optional<UserSettings> updated = userSettingsJdbcService.findByUserId(testUserId1);
+        assertThat(updated).isPresent();
+        assertThat(updated.get().getDayStartTime()).isEqualTo(LocalTime.of(2, 15));
     }
 
     @Test

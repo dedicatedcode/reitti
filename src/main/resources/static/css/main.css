@@ -1689,7 +1689,7 @@ body.auto-update-mode .today-fab {
 
 .settings-page .settings-section input:focus,
 .settings-page .settings-section select:focus {
-    border: 2px solid var(--color-highlight);
+    border: 1px solid var(--color-highlight);
     outline: none;
 }
 

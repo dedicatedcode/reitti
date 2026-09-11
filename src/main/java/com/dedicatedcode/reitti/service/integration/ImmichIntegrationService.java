@@ -140,25 +140,27 @@ public class ImmichIntegrationService {
     }
     
     public List<PhotoResponse> searchPhotosForRange(User user, LocalDate start, LocalDate end, String timezone) {
+        ZoneId userTimezone = ZoneId.of(timezone);
+        Instant startOfDay = start.atStartOfDay(userTimezone).toInstant();
+        Instant endOfDay = end.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+        return searchPhotosForRange(user, startOfDay, endOfDay);
+    }
+
+    public List<PhotoResponse> searchPhotosForRange(User user, Instant start, Instant end) {
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
-        
+
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
             return new ArrayList<>();
         }
-        
+
         ImmichIntegration integration = integrationOpt.get();
-        
+
         try {
-            String baseUrl = integration.getServerUrl().endsWith("/") ? 
+            String baseUrl = integration.getServerUrl().endsWith("/") ?
                 integration.getServerUrl() : integration.getServerUrl() + "/";
             String searchUrl = baseUrl + "api/search/metadata";
 
-            ZoneId userTimezone = ZoneId.of(timezone);
-            // Convert LocalDate to start and end Instant for the selected date in user's timezone
-            Instant startOfDay = start.atStartOfDay(userTimezone).toInstant();
-            Instant endOfDay = end.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
-
-            ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(startOfDay), DateTimeFormatter.ISO_INSTANT.format(endOfDay));
+            ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(start), DateTimeFormatter.ISO_INSTANT.format(end));
             if (integration.getAlbumId() != null && !integration.getAlbumId().isBlank()) {
                 searchRequest.setAlbumIds(List.of(integration.getAlbumId()));
             }

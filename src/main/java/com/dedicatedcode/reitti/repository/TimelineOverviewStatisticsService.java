@@ -36,7 +36,7 @@ public class TimelineOverviewStatisticsService {
         this.contextPathHolder = contextPathHolder;
     }
 
-    public List<GroupedTimelineEntry> load(User user, Instant start, Instant end, ZoneId userTimezone) {
+    public List<GroupedTimelineEntry> load(User user, Instant start, Instant end, ZoneId userTimezone, LocalTime dayStartTime) {
 
         Duration duration = Duration.between(start, end.plus(1, ChronoUnit.SECONDS));
         Granularity granularity = duration.toDays() >= 365 ? Granularity.MONTHLY : Granularity.WEEKLY;
@@ -46,7 +46,8 @@ public class TimelineOverviewStatisticsService {
                 .addValue("timezone", userTimezone.toString())
                 .addValue("userId", user.getId())
                 .addValue("start", Timestamp.from(start))
-                .addValue("end", Timestamp.from(end));
+                .addValue("end", Timestamp.from(end))
+                .addValue("dayStartMinutes", dayStartTime != null ? dayStartTime.get(ChronoField.MINUTE_OF_DAY) : 0);
 
         List<Map<String, Object>> allTripsByLower = this.jdbcTemplate.queryForList("""
                                                                                   SELECT
@@ -54,12 +55,12 @@ public class TimelineOverviewStatisticsService {
                                                                                       COUNT(t.id) AS amount
                                                                                   FROM (
                                                                                       SELECT GENERATE_SERIES(
-                                                                                                 (:start AT TIME ZONE :timezone)::date, 
-                                                                                                 (:end AT TIME ZONE :timezone)::date,   
+                                                                                                 (:start AT TIME ZONE :timezone)::date,
+                                                                                                 (:end AT TIME ZONE :timezone)::date,
                                                                                                  '1 day'::interval
                                                                                              )::date AS day
                                                                                   ) d LEFT JOIN trips t ON
-                                                                                  DATE_TRUNC('day', t.start_time AT TIME ZONE :timezone)::date = d.day
+                                                                                  ((t.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes))::date = d.day
                                                                                       AND t.user_id = :userId
                                                                                       AND t.start_time >= :start AND t.start_time <= :end
                                                                                   GROUP BY d.day
@@ -72,13 +73,13 @@ public class TimelineOverviewStatisticsService {
                                                                                        COUNT(pv.id) AS amount
                                                                                    FROM (
                                                                                        SELECT GENERATE_SERIES(
-                                                                                                  (:start AT TIME ZONE :timezone)::date, 
-                                                                                                  (:end AT TIME ZONE :timezone)::date,   
+                                                                                                  (:start AT TIME ZONE :timezone)::date,
+                                                                                                  (:end AT TIME ZONE :timezone)::date,
                                                                                                   '1 day'::interval
                                                                                               )::date AS day
                                                                                    ) d
                                                                                    LEFT JOIN processed_visits pv ON
-                                                                                       DATE_TRUNC('day', pv.start_time AT TIME ZONE :timezone)::date = d.day
+                                                                                       ((pv.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes))::date = d.day
                                                                                        AND pv.user_id = :userId
                                                                                        AND pv.start_time >= :start AND pv.start_time <= :end
                                                                                    GROUP BY d.day
@@ -86,8 +87,8 @@ public class TimelineOverviewStatisticsService {
                                                                                    """, params);
 
         List<Map<String, Object>> tripMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
-                                                                                          SELECT
-                                                                                              DATE_TRUNC(:granularity, t.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
+SELECT
+                                                                                              DATE_TRUNC(:granularity, DATE_TRUNC('day', t.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes)) AT TIME ZONE :timezone AS time_bucket,
                                                                                               tm.transportation_mode AS name,
                                                                                               lm.metadata->>'mood' AS mood,
                                                                                               SUM(tm.duration_in_seconds)::BIGINT AS duration_seconds,
@@ -114,13 +115,13 @@ public class TimelineOverviewStatisticsService {
                                                                                           """, params);
 
         List<Map<String, Object>> visitMoodCountsPerSlice = this.jdbcTemplate.queryForList("""
-                                                                                          SELECT
-                                                                                              DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
-                                                                                              lm.metadata->>'mood' AS mood,
-                                                                                              SUM(v.duration_seconds)::BIGINT AS duration_seconds,
-                                                                                              COUNT(*) AS mood_count
-                                                                                          FROM processed_visits v
-                                                                                          LEFT JOIN LATERAL (
+SELECT
+                                                                                           DATE_TRUNC(:granularity, DATE_TRUNC('day', v.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes)) AT TIME ZONE :timezone AS time_bucket,
+                                                                                           lm.metadata->>'mood' AS mood,
+                                                                                           SUM(v.duration_seconds)::BIGINT AS duration_seconds,
+                                                                                           COUNT(*) AS mood_count
+                                                                                       FROM processed_visits v
+                                                                                       LEFT JOIN LATERAL (
                                                                                               SELECT metadata
                                                                                               FROM location_metadata lm
                                                                                               WHERE lm.user_id = :userId
@@ -140,10 +141,10 @@ public class TimelineOverviewStatisticsService {
 
 
         List<Map<String, Object>> visitCountsPerSlice = this.jdbcTemplate.queryForList("""
-                                                                                      SELECT
-                                                                                          DATE_TRUNC(:granularity, v.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
-                                                                                          lm.metadata->>'mood' AS mood,
-                                                                                          v.id,
+SELECT
+                                                                                           DATE_TRUNC(:granularity, DATE_TRUNC('day', v.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes)) AT TIME ZONE :timezone AS time_bucket,
+                                                                                           lm.metadata->>'mood' AS mood,
+                                                                                           v.id,
                                                                                           s.id AS place_id,
                                                                                           s.name AS place_name,
                                                                                           SUM(v.duration_seconds)::BIGINT AS duration_seconds,
@@ -169,7 +170,7 @@ public class TimelineOverviewStatisticsService {
 
         List<Map<String, Object>> visits = this.jdbcTemplate.queryForList("""
                                                                             SELECT
-                                                                                DATE_TRUNC(:granularity, pv.start_time AT TIME ZONE :timezone) AT TIME ZONE :timezone AS time_bucket,
+                                                                                DATE_TRUNC(:granularity, DATE_TRUNC('day', pv.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes)) AT TIME ZONE :timezone AS time_bucket,
                                                                                 COUNT(DISTINCT pv.place_id) AS amount
                                                                             FROM processed_visits pv
                                                                             WHERE pv.user_id = :userId
