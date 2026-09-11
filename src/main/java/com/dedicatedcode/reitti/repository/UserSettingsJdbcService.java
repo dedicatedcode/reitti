@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
@@ -23,7 +24,7 @@ import java.util.Optional;
 
 @Service
 public class UserSettingsJdbcService {
-    
+
     private final JdbcTemplate jdbcTemplate;
 
     public UserSettingsJdbcService(JdbcTemplate jdbcTemplate) {
@@ -42,6 +43,7 @@ public class UserSettingsJdbcService {
                 rs.getString("time_zone_override") != null ? ZoneId.of(rs.getString("time_zone_override")) : null,
                 TimeDisplayMode.valueOf(rs.getString("time_display_mode")),
                 TimeMode.valueOf(rs.getString("time_mode")),
+                LocalTime.ofSecondOfDay(rs.getInt("day_start_minutes") * 60L),
                 rs.getString("custom_css"),
                 newestData != null ? newestData.toInstant() : null,
                 rs.getString("color"),
@@ -66,7 +68,7 @@ public class UserSettingsJdbcService {
     public UserSettings save(UserSettings userSettings) {
         if (userSettings.getVersion() == null) {
             // Insert new settings
-            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, time_mode, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            this.jdbcTemplate.update("INSERT INTO user_settings (user_id, selected_language, unit_system, home_lat, home_lng, time_zone_override, time_display_mode, time_mode, day_start_minutes, custom_css, latest_data, color, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
                                      userSettings.getUserId(),
                                      userSettings.getSelectedLanguage().name(),
                                      userSettings.getUnitSystem().name(),
@@ -75,6 +77,7 @@ public class UserSettingsJdbcService {
                                      userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                                      userSettings.getTimeDisplayMode().name(),
                                      userSettings.getTimeMode().name(),
+                                     userSettings.getDayStartTime().toSecondOfDay() / 60,
                                      userSettings.getCustomCss(),
                                      userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                                      userSettings.getColor());
@@ -83,7 +86,7 @@ public class UserSettingsJdbcService {
         } else {
             // Update existing settings
             jdbcTemplate.update(
-                    "UPDATE user_settings SET selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, time_mode = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
+                    "UPDATE user_settings SET selected_language = ?, unit_system = ?, home_lat = ?, home_lng = ?, time_zone_override = ?, time_display_mode = ?, time_mode = ?, day_start_minutes = ?, custom_css = ?, latest_data = GREATEST(latest_data, ?), color = ?, version = version + 1 WHERE user_id = ?",
                     userSettings.getSelectedLanguage().name(),
                     userSettings.getUnitSystem().name(),
                     userSettings.getHomeLatitude(),
@@ -91,6 +94,7 @@ public class UserSettingsJdbcService {
                     userSettings.getTimeZoneOverride() != null ? userSettings.getTimeZoneOverride().getId() : null,
                     userSettings.getTimeDisplayMode().name(),
                     userSettings.getTimeMode().name(),
+                    userSettings.getDayStartTime().toSecondOfDay() / 60,
                     userSettings.getCustomCss(),
                     userSettings.getLatestData() != null ? Timestamp.from(userSettings.getLatestData()) : null,
                     userSettings.getColor(),

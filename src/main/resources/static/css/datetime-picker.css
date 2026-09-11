@@ -32,6 +32,26 @@
     display: none;
     -webkit-appearance: none;
 }
+
+/* Time-only pickers open their custom popup on input click; hide the native indicator
+   (same clip technique as the date inputs, also works in Firefox).
+   The focus highlight moves to the container so it spans the whole clipped input. */
+.datetime-picker.time-only input[type="time"] {
+    clip-path: inset(0 30px 0 0);
+}
+.datetime-picker.time-only input[type="time"]:focus {
+    border: none;
+    outline: none;
+}
+.datetime-picker.time-only:focus-within {
+    border-color: var(--color-highlight);
+}
+.datetime-picker.time-only input[type="time"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+    -webkit-appearance: none !important;
+    opacity: 0;
+    pointer-events: none;
+}
 .datetime-picker input[type="date"] {
     border: none;
     clip-path: inset(0 30px 0 0);
@@ -92,6 +112,10 @@
     padding: 16px;
     gap: 16px;
     height: 400px; /* Fixed height for the container */
+}
+
+.datetime-picker.time-only .picker-container {
+    padding: 0;
 }
 
 /* Calendar section */

@@ -283,6 +283,7 @@ class UserServiceTest {
                 null,
                 TimeDisplayMode.DEFAULT,
                 TimeMode.TWENTY_FOUR_HOUR,
+                "00:00",
                 "#f1ba63",
                 UserType.LIVE_DATA_ONLY
         );

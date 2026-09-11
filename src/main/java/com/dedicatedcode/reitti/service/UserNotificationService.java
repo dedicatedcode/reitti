@@ -9,8 +9,10 @@ import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
@@ -33,15 +35,18 @@ public class UserNotificationService {
     private final ReittiSubscriptionService reittiSubscriptionService;
     private final UserJdbcService userJdbcService;
     private final UserSharingJdbcService userSharingJdbcService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserSseEmitterService userSseEmitterService;
 
     public UserNotificationService(ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
                                    UserSharingJdbcService userSharingJdbcService,
+                                   UserSettingsJdbcService userSettingsJdbcService,
                                    UserSseEmitterService userSseEmitterService) {
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
         this.userSseEmitterService = userSseEmitterService;
     }
 
@@ -54,7 +59,7 @@ public class UserNotificationService {
     public void newVisits(User user, List<ProcessedVisit> processedVisits) {
         SSEType eventType = SSEType.VISITS;
         log.debug("New Visits for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(processedVisits.stream().map(ProcessedVisit::getStartTime).toList(), processedVisits.stream().map(ProcessedVisit::getEndTime).toList());
+        Set<LocalDate> dates = calculateAffectedDates(user, processedVisits.stream().map(ProcessedVisit::getStartTime).toList(), processedVisits.stream().map(ProcessedVisit::getEndTime).toList());
         sendToQueue(user, dates, eventType, null);
         notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
@@ -67,7 +72,7 @@ public class UserNotificationService {
     public void newTrips(User user, List<Trip> trips, String previewId) {
         SSEType eventType = SSEType.TRIPS;
         log.debug("New trips for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
+        Set<LocalDate> dates = calculateAffectedDates(user, trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
         sendToQueue(user, dates, eventType, previewId);
         notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
@@ -76,7 +81,7 @@ public class UserNotificationService {
     public void newRawLocationData(User user, List<LocationPoint> filtered) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}]", user.getId());
-        Set<LocalDate> dates = calculateAffectedDates(filtered.stream().map(LocationPoint::getTimestamp).toList());
+        Set<LocalDate> dates = calculateAffectedDates(user, filtered.stream().map(LocationPoint::getTimestamp).toList());
         sendToQueue(user, dates, eventType, null);
         notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
@@ -85,7 +90,7 @@ public class UserNotificationService {
     public void newLocationData(User user, Device device, TimeRange timeRange) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}] and device [{}]", user.getId(), device.id());
-        Set<LocalDate> dates = calculateAffectedDates(timeRange);
+        Set<LocalDate> dates = calculateAffectedDates(user, timeRange);
         sendToQueue(user, dates, eventType, null);
         notifyOtherUsers(user, eventType, dates);
         notifyReittiSubscriptions(user, eventType, dates);
@@ -130,30 +135,41 @@ public class UserNotificationService {
     }
 
     @SafeVarargs
-    private Set<LocalDate> calculateAffectedDates(List<Instant>... list) {
+    private Set<LocalDate> calculateAffectedDates(User user, List<Instant>... list) {
         if (list == null) {
             return new HashSet<>();
         } else {
+            ZoneId zoneId = effectiveZone(user);
+            UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
             Set<LocalDate> result = new HashSet<>();
             for (List<Instant> instants : list) {
-                result.addAll(instants.stream().map(instant -> instant.atZone(ZoneId.of("Z")).toLocalDate()).collect(Collectors.toSet()));
+                result.addAll(instants.stream().map(instant -> TimeUtil.dayKey(instant, zoneId, userSettings.getDayStartTime())).collect(Collectors.toSet()));
             }
             return result;
         }
     }
 
 
-    private Set<LocalDate> calculateAffectedDates(TimeRange timeRange) {
+    private Set<LocalDate> calculateAffectedDates(User user, TimeRange timeRange) {
+        ZoneId zoneId = effectiveZone(user);
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         Set<LocalDate> result = new HashSet<>();
         if (timeRange != null && timeRange.start() != null && timeRange.end() != null) {
-            LocalDate startDate = timeRange.start().atZone(ZoneId.of("Z")).toLocalDate();
-            LocalDate endDate = timeRange.end().atZone(ZoneId.of("Z")).toLocalDate();
+            LocalDate startDate = TimeUtil.dayKey(timeRange.start(), zoneId, userSettings.getDayStartTime());
+            LocalDate endDate = TimeUtil.dayKey(timeRange.end(), zoneId, userSettings.getDayStartTime());
             LocalDate current = startDate;
             while (!current.isAfter(endDate)) {
                 result.add(current);
                 current = current.plusDays(1);
             }
         }
-        return result;    }
+        return result;
+    }
+
+    private ZoneId effectiveZone(User user) {
+        return userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeZoneOverride() != null
+                ? userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeZoneOverride()
+                : ZoneId.of("Z");
+    }
 
 }

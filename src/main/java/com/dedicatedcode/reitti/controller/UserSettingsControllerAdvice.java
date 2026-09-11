@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.time.Instant;
+import java.time.temporal.ChronoField;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -72,13 +73,14 @@ public class UserSettingsControllerAdvice {
                                        TimeDisplayMode.DEFAULT,
                                        TimeMode.TWENTY_FOUR_HOUR,
                                        null,
+                                       0,
                                        null,
                                        DEFAULT_COLOR,
                                        h3Enabled,
                                        panoramaxEnabled
                                        );
         }
-        
+
         String username = authentication.getName();
         Optional<User> userOptional = userJdbcService.findByUsername(username);
         UserSettingsDTO.UIMode uiMode = mapUserToUiMode(authentication);
@@ -108,6 +110,7 @@ public class UserSettingsControllerAdvice {
                                        dbSettings.getTimeDisplayMode(),
                                        dbSettings.getTimeMode(),
                                        dbSettings.getTimeZoneOverride(),
+                                       dbSettings.getDayStartTime() != null ? dbSettings.getDayStartTime().get(ChronoField.MINUTE_OF_DAY) : 0,
                                        dbSettings.getCustomCss() !=null ? "/user-css/" + user.getId() : null,
                                        dbSettings.getColor(),
                                        h3Enabled,
@@ -127,6 +130,7 @@ public class UserSettingsControllerAdvice {
                                    TimeDisplayMode.DEFAULT,
                                    TimeMode.TWENTY_FOUR_HOUR,
                                    null,
+                                   0,
                                    null,
                                    DEFAULT_COLOR,
                                    h3Enabled,

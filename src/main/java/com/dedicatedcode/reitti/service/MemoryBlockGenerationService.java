@@ -7,8 +7,10 @@ import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,19 +48,22 @@ public class MemoryBlockGenerationService {
     private final ImmichIntegrationService immichIntegrationService;
     private final StorageService storageService;
     private final HomeDetectionService homeDetectionService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
 
     public MemoryBlockGenerationService(ProcessedVisitJdbcService processedVisitJdbcService,
                                         TripJdbcService tripJdbcService,
                                         I18nService i18nService,
                                         ImmichIntegrationService immichIntegrationService,
                                         StorageService storageService,
-                                        HomeDetectionService homeDetectionService) {
+                                        HomeDetectionService homeDetectionService,
+                                        UserSettingsJdbcService userSettingsJdbcService) {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.i18n = i18nService;
         this.immichIntegrationService = immichIntegrationService;
         this.storageService = storageService;
         this.homeDetectionService = homeDetectionService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
     public List<MemoryBlockPart> generate(User user, Memory memory, ZoneId timeZone) {
@@ -66,6 +71,9 @@ public class MemoryBlockGenerationService {
         boolean openEnded = memory.getEndDate() == null;
 
         Instant endDate = openEnded ? Instant.now() : memory.getEndDate();
+
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        LocalTime dayStartTime = userSettings.getDayStartTime();
 
         List<ProcessedVisit> allVisitsInRange = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
         List<Trip> allTripsInRange = this.tripJdbcService.findByUserAndTimeOverlap(user, startDate, endDate);
@@ -141,7 +149,7 @@ public class MemoryBlockGenerationService {
             blockParts.add(clusterBlock);
         }
 
-        Map<LocalDate, List<PhotoResponse>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate);
+        Map<LocalDate, List<PhotoResponse>> imagesByDay = loadImagesFromIntegrations(user, startDate, endDate, timeZone, dayStartTime);
 
         accommodation.ifPresent(a -> {
             MemoryBlockText intro = new MemoryBlockText(null,
@@ -150,7 +158,7 @@ public class MemoryBlockGenerationService {
             blockParts.add(intro);
             MemoryClusterBlock clusterBlock = new MemoryClusterBlock(null, List.of(a.getId()), null, null, BlockType.CLUSTER_VISIT);
             blockParts.add(clusterBlock);
-            LocalDate dayOfAccommodation = a.getStartTime().atZone(ZoneId.of("UTC")).toLocalDate();
+            LocalDate dayOfAccommodation = TimeUtil.dayKey(a.getStartTime(), timeZone, dayStartTime);
             List<PhotoResponse> images = imagesByDay.get(dayOfAccommodation);
             if (images != null && !images.isEmpty()) {
                 MemoryBlockImageGallery imageGallery = new MemoryBlockImageGallery(null, fetchImagesFromImmich(user, memory, images));
@@ -167,7 +175,7 @@ public class MemoryBlockGenerationService {
         for (int i = 0; i < clusters.size(); i++) {
 
             VisitCluster cluster = clusters.get(i);
-            LocalDate today = cluster.getStartTime().atZone(ZoneId.systemDefault()).toLocalDate();
+            LocalDate today = TimeUtil.dayKey(cluster.getStartTime(), timeZone, dayStartTime);
 
 
             //filter out visits before the first stay at accommodation
@@ -180,7 +188,7 @@ public class MemoryBlockGenerationService {
             }
 
             if (!handledDays.contains(today)) {
-                long daysFromStart = Duration.between(startDate.truncatedTo(ChronoUnit.DAYS), cluster.getStartTime().truncatedTo(ChronoUnit.DAYS)).toDays();
+                long daysFromStart = ChronoUnit.DAYS.between(TimeUtil.dayKey(startDate, timeZone, dayStartTime), today);
                 String headline = daysFromStart > 0 ? i18n.translate("memory.generator.day.text", daysFromStart, cluster.getHighestScoredVisit().visit.getPlace().getCity()) : cluster.getHighestScoredVisit().visit.getPlace().getCity();
                 blockParts.add(new MemoryBlockText(null, headline, null));
                 handledDays.add(today);
@@ -271,17 +279,16 @@ public class MemoryBlockGenerationService {
                 }).toList();
     }
 
-    private Map<LocalDate, List<PhotoResponse>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate) {
+    private Map<LocalDate, List<PhotoResponse>> loadImagesFromIntegrations(User user, Instant startDate, Instant endDate, ZoneId timeZone, LocalTime dayStartTime) {
         Map<LocalDate, List<PhotoResponse>> map = new HashMap<>();
-        LocalDate currentStart = startDate.atZone(ZoneId.of("UTC")).toLocalDate();
-        LocalDate currentEnd = startDate.plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).toLocalDate();
-        LocalDate end = endDate.atZone(ZoneId.of("UTC")).toLocalDate();
-        while (!currentEnd.isAfter(end)) {
-            map.put(currentStart, this.immichIntegrationService.searchPhotosForRange(user, currentStart, currentStart, "UTC")
+        LocalDate currentDay = TimeUtil.dayKey(startDate, timeZone, dayStartTime);
+        LocalDate end = TimeUtil.dayKey(endDate, timeZone, dayStartTime);
+        while (!currentDay.isAfter(end)) {
+            Instant windowStart = TimeUtil.startOfDay(currentDay, timeZone, dayStartTime);
+            Instant windowEnd = TimeUtil.startOfDay(currentDay.plusDays(1), timeZone, dayStartTime);
+            map.put(currentDay, this.immichIntegrationService.searchPhotosForRange(user, windowStart, windowEnd)
                     .stream().sorted(Comparator.comparing(PhotoResponse::getDateTime)).toList());
-
-            currentStart = currentEnd;
-            currentEnd = currentEnd.plusDays(1);
+            currentDay = currentDay.plusDays(1);
         }
         return map;
     }

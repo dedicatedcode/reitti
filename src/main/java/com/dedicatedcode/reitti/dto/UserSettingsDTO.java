@@ -22,6 +22,7 @@ public record UserSettingsDTO(
         TimeDisplayMode displayMode,
         TimeMode timeMode,
         ZoneId timezoneOverride,
+        int dayStartMinutes,
         String customCssUrl,
         String timelineColor,
         boolean h3Enabled,

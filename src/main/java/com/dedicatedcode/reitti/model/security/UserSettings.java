@@ -7,11 +7,12 @@ import com.dedicatedcode.reitti.model.UnitSystem;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Objects;
 
 public class UserSettings implements Serializable {
-    
+
     private final Long userId;
     private final Language selectedLanguage;
     private final UnitSystem unitSystem;
@@ -20,12 +21,13 @@ public class UserSettings implements Serializable {
     private final ZoneId timeZoneOverride;
     private final TimeDisplayMode timeDisplayMode;
     private final TimeMode timeMode;
+    private final LocalTime dayStartTime;
     private final String customCss;
     private final Instant latestData;
     private final String color;
     private final Long version;
 
-    public UserSettings(Long userId, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, TimeMode timeMode, String customCss, Instant latestData, String color, Long version) {
+    public UserSettings(Long userId, Language selectedLanguage, UnitSystem unitSystem, Double homeLatitude, Double homeLongitude, ZoneId timeZoneOverride, TimeDisplayMode timeDisplayMode, TimeMode timeMode, LocalTime dayStartTime, String customCss, Instant latestData, String color, Long version) {
         this.userId = userId;
         this.selectedLanguage = selectedLanguage;
         this.unitSystem = unitSystem;
@@ -34,6 +36,7 @@ public class UserSettings implements Serializable {
         this.timeZoneOverride = timeZoneOverride;
         this.timeDisplayMode = timeDisplayMode;
         this.timeMode = timeMode;
+        this.dayStartTime = dayStartTime;
         this.customCss = customCss;
         this.latestData = latestData;
         this.color = color;
@@ -41,7 +44,7 @@ public class UserSettings implements Serializable {
     }
 
     public static UserSettings defaultSettings(Long userId) {
-        return new UserSettings(userId,  Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, null, null, "#f1ba63", null);
+        return new UserSettings(userId,  Language.EN, UnitSystem.METRIC, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, LocalTime.MIDNIGHT, null, null, "#f1ba63", null);
     }
     public Long getUserId() {
         return userId;
@@ -79,6 +82,10 @@ public class UserSettings implements Serializable {
         return timeMode;
     }
 
+    public LocalTime getDayStartTime() {
+        return dayStartTime;
+    }
+
     public ZoneId getTimeZoneOverride() {
         return timeZoneOverride;
     }
@@ -88,7 +95,7 @@ public class UserSettings implements Serializable {
     }
 
     public UserSettings withHomeCoordinates(Double homeLatitude, Double homeLongitude) {
-        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, this.timeMode, customCss, latestData, color, version);
+        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, this.timeMode, dayStartTime, customCss, latestData, color, version);
     }
 
     public String getColor() {
@@ -108,16 +115,17 @@ public class UserSettings implements Serializable {
                 Objects.equals(timeZoneOverride, that.timeZoneOverride) &&
                 Objects.equals(timeDisplayMode, that.timeDisplayMode) &&
                 Objects.equals(timeMode, that.timeMode) &&
+                Objects.equals(dayStartTime, that.dayStartTime) &&
                 Objects.equals(customCss, that.customCss) &&
                 Objects.equals(latestData, that.latestData) &&
                 Objects.equals(version, that.version);
     }
-    
+
     @Override
     public int hashCode() {
-        return Objects.hash(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, version);
+        return Objects.hash(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, dayStartTime, customCss, latestData, version);
     }
-    
+
     @Override
     public String toString() {
         return "UserSettings{" +
@@ -129,6 +137,7 @@ public class UserSettings implements Serializable {
                 ", timeZoneOverride=" + timeZoneOverride +
                 ", timeDisplayMode=" + timeDisplayMode +
                 ", timeMode=" + timeMode +
+                ", dayStartTime=" + dayStartTime +
                 ", customCss=" + (customCss != null ? "[" + customCss.length() + " chars]" : "null") +
                 ", latestData=" + latestData +
                 ", version=" + version +
@@ -136,6 +145,6 @@ public class UserSettings implements Serializable {
     }
 
     public UserSettings withVersion(long version) {
-        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, customCss, latestData, color, version);
+        return new UserSettings(userId, selectedLanguage, unitSystem, homeLatitude, homeLongitude, timeZoneOverride, timeDisplayMode, timeMode, dayStartTime, customCss, latestData, color, version);
     }
 }
