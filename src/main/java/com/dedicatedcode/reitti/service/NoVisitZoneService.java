@@ -1,11 +1,15 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.NoVisitZone;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class NoVisitZoneService {
@@ -28,9 +32,24 @@ public class NoVisitZoneService {
         return created;
     }
 
+    public NoVisitZone updateGeometry(User user, Long zoneId, List<GeoPoint> polygon) {
+        logger.info("Updating no-visit zone [{}] for user [{}]", zoneId, user.getUsername());
+        NoVisitZone zone = noVisitZoneJdbcService.findById(user, zoneId).orElseThrow();
+        NoVisitZone updated = noVisitZoneJdbcService.update(user, zone.withPolygon(polygon));
+        manualRecalculationService.scheduleZoneArea(user, union(zone.polygon(), polygon), "Recalculate visits after editing a no-visit zone");
+        return updated;
+    }
+
     public void delete(User user, NoVisitZone zone) {
         logger.info("Deleting no-visit zone [{}] for user [{}]", zone.id(), user.getUsername());
         noVisitZoneJdbcService.delete(user, zone.id());
         manualRecalculationService.scheduleZoneArea(user, zone.polygon(), "Recalculate visits after deleting a no-visit zone");
+    }
+
+    private List<GeoPoint> union(List<GeoPoint> first, List<GeoPoint> second) {
+        List<GeoPoint> result = new ArrayList<>(first.size() + second.size());
+        result.addAll(first);
+        result.addAll(second);
+        return result;
     }
 }

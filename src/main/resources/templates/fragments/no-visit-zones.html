@@ -10,7 +10,7 @@
 
     <div id="zone-draw-controls">
         <button type="button" id="draw-zone-btn" class="btn btn-default btn-block"
-                th:text="#{places.editor.zones.draw}">Draw Zone</button>
+                th:text="#{places.editor.zones.draw}">Add Zone</button>
         <div id="zone-draw-active" style="display: none;">
             <p class="zone-draw-hint" th:text="#{places.editor.zones.draw.active}">Click on the map to place the zone corners. Finish with at least three points.</p>
             <div style="display: flex; gap: 8px;">
@@ -21,6 +21,8 @@
             </div>
         </div>
     </div>
+
+    <div class="separator"></div>
 
     <div class="zone-row" th:each="zone : ${zones}"
          th:attr="data-zone-id=${zone.id()}">

@@ -231,6 +231,22 @@ public class PlacesSettingsController {
         return "fragments/no-visit-zones :: zones-list";
     }
 
+    @PostMapping("/zones/{id}/update")
+    public String updateZone(@AuthenticationPrincipal User user,
+                             @PathVariable Long id,
+                             @RequestParam String polygonData,
+                             Model model) {
+        List<GeoPoint> polygon;
+        try {
+            polygon = parsePolygonData(polygonData);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+        noVisitZoneService.updateGeometry(user, id, polygon);
+        model.addAttribute("zones", noVisitZoneJdbcService.findByUser(user));
+        return "fragments/no-visit-zones :: zones-list";
+    }
+
     @PostMapping("/zones/{id}/delete")
     public String deleteZone(@AuthenticationPrincipal User user,
                              @PathVariable Long id,

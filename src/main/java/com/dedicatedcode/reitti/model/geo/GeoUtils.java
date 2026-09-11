@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 public final class GeoUtils {
@@ -83,6 +84,25 @@ public final class GeoUtils {
             totalDistance += distanceInMeters(p1, p2);
         }
 
+        return totalDistance;
+    }
+
+    /**
+     * Streaming variant of {@link #calculateTripDistance(List)} for points
+     * that are already delivered in chronological order. Only two points are
+     * ever held in memory.
+     */
+    public static double calculateTripDistance(Iterator<RawLocationPoint> points) {
+        if (!points.hasNext()) {
+            return 0.0;
+        }
+        RawLocationPoint previous = points.next();
+        double totalDistance = 0.0;
+        while (points.hasNext()) {
+            RawLocationPoint current = points.next();
+            totalDistance += distanceInMeters(previous, current);
+            previous = current;
+        }
         return totalDistance;
     }
 

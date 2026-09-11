@@ -14,6 +14,10 @@ public record NoVisitZone(Long id, String name, List<GeoPoint> polygon, Instant 
         return new NoVisitZone(id, this.name, this.polygon, this.createdAt);
     }
 
+    public NoVisitZone withPolygon(List<GeoPoint> polygon) {
+        return new NoVisitZone(this.id, this.name, polygon, this.createdAt);
+    }
+
     public NoVisitZone withCreatedAt(Instant createdAt) {
         return new NoVisitZone(this.id, this.name, this.polygon, createdAt);
     }

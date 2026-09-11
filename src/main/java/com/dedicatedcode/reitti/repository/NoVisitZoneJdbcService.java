@@ -35,6 +35,12 @@ public class NoVisitZoneJdbcService {
         return findById(user, id).orElseThrow();
     }
 
+    public NoVisitZone update(User user, NoVisitZone zone) {
+        String sql = "UPDATE no_visit_zones SET geom = ST_GeomFromText(?, '4326') WHERE user_id = ? AND id = ?";
+        jdbcTemplate.update(sql, this.pointReaderWriter.polygonToWkt(zone.polygon()), user.getId(), zone.id());
+        return findById(user, zone.id()).orElseThrow();
+    }
+
     public Optional<NoVisitZone> findById(User user, Long id) {
         String sql = "SELECT id, name, ST_AsText(geom) as geom, created_at FROM no_visit_zones WHERE user_id = ? AND id = ?";
         List<NoVisitZone> result = jdbcTemplate.query(sql, rowMapper, user.getId(), id);

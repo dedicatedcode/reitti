@@ -253,6 +253,45 @@ class PlacesEditorIntegrationTest {
     }
 
     @Test
+    void shouldUpdateZoneGeometry() throws Exception {
+        NoVisitZone zone = noVisitZoneJdbcService.create(user, new NoVisitZone("Editable Zone", List.of(
+                new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
+
+        String polygonData = "[{\"lat\":53.7,\"lng\":10.1},{\"lat\":53.8,\"lng\":10.1},{\"lat\":53.8,\"lng\":10.2}]";
+        String body = mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id())
+                        .param("polygonData", polygonData)
+                        .with(user(user)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).contains("Editable Zone");
+
+        NoVisitZone updated = noVisitZoneJdbcService.findById(user, zone.id()).orElseThrow();
+        //stored WKT polygons carry the closing point as the last entry
+        assertThat(updated.polygon()).hasSize(4);
+        assertThat(updated.polygon().getFirst().latitude()).isEqualTo(53.7);
+        assertThat(updated.polygon().getFirst().longitude()).isEqualTo(10.1);
+        assertThat(updated.polygon().getLast()).isEqualTo(updated.polygon().getFirst());
+    }
+
+    @Test
+    void shouldRejectZoneUpdateWithInvalidPolygon() throws Exception {
+        NoVisitZone zone = noVisitZoneJdbcService.create(user, new NoVisitZone("Stable Zone", List.of(
+                new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
+
+        mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id())
+                        .param("polygonData", "[{\"lat\":53.7,\"lng\":10.1}]")
+                        .with(user(user)))
+                .andExpect(status().isBadRequest());
+
+        NoVisitZone unchanged = noVisitZoneJdbcService.findById(user, zone.id()).orElseThrow();
+        assertThat(unchanged.polygon()).hasSize(4);
+        assertThat(unchanged.polygon().getFirst().latitude()).isEqualTo(53.5);
+        assertThat(unchanged.polygon().get(1).latitude()).isEqualTo(53.6);
+        assertThat(unchanged.polygon().get(2).longitude()).isEqualTo(10.0);
+    }
+
+    @Test
     void shouldNotDeleteForeignZone() throws Exception {
         User other = testingService.randomUser();
         NoVisitZone zone = noVisitZoneJdbcService.create(other, new NoVisitZone("Foreign Zone", List.of(
