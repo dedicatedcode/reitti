@@ -4,23 +4,32 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 
 import java.time.Instant;
 import java.util.Iterator;
-
+import java.util.List;
+import java.util.NoSuchElementException;
 /**
- * A single-use view over the points of a time range that knows its count and
+ * A read-only view over the points of a time range that knows its count and
  * time bounds upfront (via an aggregate query) and streams the points
- * themselves in bounded chunks. Each call to {@link #iterator()} returns a
- * fresh cursor over the same range.
+ * themselves in bounded chunks using a keyset cursor on (timestamp, id), so
+ * arbitrarily large ranges can be traversed with bounded memory.
+ * <p>
+ * Each call to {@link #iterator()} returns a fresh cursor over the same range,
+ * so the stream can be iterated multiple times.
  */
 public class RawLocationPointStream implements Iterable<RawLocationPoint> {
 
     public record Stats(long count, Instant firstTimestamp, Instant lastTimestamp) {
     }
 
+    @FunctionalInterface
+    public interface ChunkFetcher {
+        List<RawLocationPoint> fetch(Instant afterTimestamp, Long afterId, int limit);
+    }
+
     private final Stats stats;
-    private final KeysetPointIterator.ChunkFetcher fetcher;
+    private final ChunkFetcher fetcher;
     private final int chunkSize;
 
-    public RawLocationPointStream(Stats stats, KeysetPointIterator.ChunkFetcher fetcher, int chunkSize) {
+    public RawLocationPointStream(Stats stats, ChunkFetcher fetcher, int chunkSize) {
         this.stats = stats;
         this.fetcher = fetcher;
         this.chunkSize = chunkSize;
@@ -40,6 +49,45 @@ public class RawLocationPointStream implements Iterable<RawLocationPoint> {
 
     @Override
     public Iterator<RawLocationPoint> iterator() {
-        return new KeysetPointIterator(fetcher, chunkSize);
+        return new KeysetIterator();
+    }
+
+    /**
+     * Lazily loads points in chunks using a keyset cursor on (timestamp, id),
+     * so arbitrarily large time ranges can be traversed with bounded memory.
+     */
+    private class KeysetIterator implements Iterator<RawLocationPoint> {
+
+        private Iterator<RawLocationPoint> currentChunk = List.<RawLocationPoint>of().iterator();
+        private Instant afterTimestamp;
+        private Long afterId;
+        private boolean exhausted;
+
+        @Override
+        public boolean hasNext() {
+            while (!currentChunk.hasNext() && !exhausted) {
+                List<RawLocationPoint> chunk = fetcher.fetch(afterTimestamp, afterId, chunkSize);
+                if (chunk.isEmpty()) {
+                    exhausted = true;
+                } else {
+                    RawLocationPoint last = chunk.getLast();
+                    afterTimestamp = last.getTimestamp();
+                    afterId = last.getId();
+                    if (chunk.size() < chunkSize) {
+                        exhausted = true;
+                    }
+                }
+                currentChunk = chunk.iterator();
+            }
+            return currentChunk.hasNext();
+        }
+
+        @Override
+        public RawLocationPoint next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return currentChunk.next();
+        }
     }
 }

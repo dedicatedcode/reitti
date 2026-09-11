@@ -271,10 +271,12 @@ public class UnifiedLocationProcessingService {
         Iterator<RawLocationPoint> pointStream;
         if (previewId == null) {
             pointStream = rawLocationPointJdbcService
-                    .iterateByUserAndTimestampBetween(user, windowStart, windowEnd, true, false);
+                    .streamByUserAndTimestampBetween(user, windowStart, windowEnd, true, false)
+                    .iterator();
         } else {
             pointStream = previewRawLocationPointJdbcService
-                    .iterateByUserAndTimestampBetween(user, previewId, windowStart, windowEnd);
+                    .streamByUserAndTimestampBetween(user, previewId, windowStart, windowEnd)
+                    .iterator();
         }
 
         List<StayPoint> stayPoints = detectStayPointsSlidingWindow(pointStream, currentConfiguration);
@@ -574,24 +576,14 @@ public class UnifiedLocationProcessingService {
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
             if (samePlace && !withinTimeThreshold) {
-                Iterator<RawLocationPoint> pointsBetweenVisits;
+                RawLocationPointStream pointsBetweenVisits;
                 if (previewId == null) {
-                    pointsBetweenVisits = this.rawLocationPointJdbcService.iterateByUserAndTimestampBetween(user, currentEndTime, nextVisit.getStartTime(), true, false);
+                    pointsBetweenVisits = this.rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, currentEndTime, nextVisit.getStartTime(), true, false);
                 } else {
-                    pointsBetweenVisits = this.previewRawLocationPointJdbcService.iterateByUserAndTimestampBetween(user, previewId, currentEndTime, nextVisit.getStartTime());
+                    pointsBetweenVisits = this.previewRawLocationPointJdbcService.streamByUserAndTimestampBetween(user, previewId, currentEndTime, nextVisit.getStartTime());
                 }
-                long pointsBetweenCount = 0;
-                double travelledDistanceInMeters = 0.0;
-                RawLocationPoint previous = null;
-                while (pointsBetweenVisits.hasNext()) {
-                    RawLocationPoint current = pointsBetweenVisits.next();
-                    if (previous != null) {
-                        travelledDistanceInMeters += GeoUtils.distanceInMeters(previous, current);
-                    }
-                    previous = current;
-                    pointsBetweenCount++;
-                }
-                if (pointsBetweenCount > 2) {
+                if (pointsBetweenVisits.getCount() > 2) {
+                    double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
                 } else {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());

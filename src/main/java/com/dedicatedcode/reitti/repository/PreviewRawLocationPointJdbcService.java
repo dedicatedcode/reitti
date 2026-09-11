@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -64,28 +63,12 @@ public class PreviewRawLocationPointJdbcService {
      * bounded chunks ordered by (timestamp, id), without materializing the
      * whole range.
      */
-    public Iterator<RawLocationPoint> iterateByUserAndTimestampBetween(User user, String previewId, Instant startTime, Instant endTime) {
-        return new KeysetPointIterator(
-                (afterTimestamp, afterId, limit) -> fetchPointChunk(user, previewId, startTime, endTime, afterTimestamp, afterId, limit),
-                pointChunkSize);
-    }
-
-    /**
-     * Streams all preview points of the user inside [startTime, endTime]
-     * together with their count and time bounds.
-     */
     public RawLocationPointStream streamByUserAndTimestampBetween(User user, String previewId, Instant startTime, Instant endTime) {
         RawLocationPointStream.Stats stats = this.jdbcTemplate.query(
                 "SELECT count(*) AS point_count, min(timestamp) AS min_ts, max(timestamp) AS max_ts " +
                         "FROM preview_raw_location_points WHERE user_id = ? AND preview_id = ? AND timestamp BETWEEN ? AND ?",
-                rs -> {
-                    rs.next();
-                    Timestamp minTs = rs.getTimestamp("min_ts");
-                    Timestamp maxTs = rs.getTimestamp("max_ts");
-                    return new RawLocationPointStream.Stats(rs.getLong("point_count"),
-                            minTs != null ? minTs.toInstant() : null,
-                            maxTs != null ? maxTs.toInstant() : null);
-                }, user.getId(), previewId, Timestamp.from(startTime), Timestamp.from(endTime));
+                PointStreamSupport.STATS_EXTRACTOR,
+                user.getId(), previewId, Timestamp.from(startTime), Timestamp.from(endTime));
         return new RawLocationPointStream(stats,
                 (afterTimestamp, afterId, limit) -> fetchPointChunk(user, previewId, startTime, endTime, afterTimestamp, afterId, limit),
                 pointChunkSize);
@@ -93,18 +76,17 @@ public class PreviewRawLocationPointJdbcService {
 
     private List<RawLocationPoint> fetchPointChunk(User user, String previewId, Instant startTime, Instant endTime,
                                                    Instant afterTimestamp, Long afterId, int limit) {
+        Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
         StringBuilder sql = new StringBuilder()
                 .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
                 .append("FROM preview_raw_location_points rlp ")
                 .append("WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ? ");
-        if (afterTimestamp != null) {
-            sql.append("AND (rlp.timestamp > ? OR (rlp.timestamp = ? AND rlp.id > ?)) ");
-        }
+        PointStreamSupport.appendKeysetPredicate(sql, after);
         sql.append("ORDER BY rlp.timestamp, rlp.id LIMIT ?");
-        if (afterTimestamp != null) {
+        if (after != null) {
             return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                     user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId,
-                    Timestamp.from(afterTimestamp), Timestamp.from(afterTimestamp), afterId, limit);
+                    after, after, afterId, limit);
         }
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId, limit);

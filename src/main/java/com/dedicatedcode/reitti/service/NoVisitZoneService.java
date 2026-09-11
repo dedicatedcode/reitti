@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,7 @@ public class NoVisitZoneService {
         this.manualRecalculationService = manualRecalculationService;
     }
 
+    @Transactional
     public NoVisitZone create(User user, NoVisitZone zone) {
         logger.info("Creating no-visit zone [{}] for user [{}]", zone.name(), user.getUsername());
         NoVisitZone created = noVisitZoneJdbcService.create(user, zone);
@@ -32,14 +34,15 @@ public class NoVisitZoneService {
         return created;
     }
 
-    public NoVisitZone updateGeometry(User user, Long zoneId, List<GeoPoint> polygon) {
-        logger.info("Updating no-visit zone [{}] for user [{}]", zoneId, user.getUsername());
-        NoVisitZone zone = noVisitZoneJdbcService.findById(user, zoneId).orElseThrow();
+    @Transactional
+    public NoVisitZone updateGeometry(User user, NoVisitZone zone, List<GeoPoint> polygon) {
+        logger.info("Updating no-visit zone [{}] for user [{}]", zone.id(), user.getUsername());
         NoVisitZone updated = noVisitZoneJdbcService.update(user, zone.withPolygon(polygon));
         manualRecalculationService.scheduleZoneArea(user, union(zone.polygon(), polygon), "Recalculate visits after editing a no-visit zone");
         return updated;
     }
 
+    @Transactional
     public void delete(User user, NoVisitZone zone) {
         logger.info("Deleting no-visit zone [{}] for user [{}]", zone.id(), user.getUsername());
         noVisitZoneJdbcService.delete(user, zone.id());

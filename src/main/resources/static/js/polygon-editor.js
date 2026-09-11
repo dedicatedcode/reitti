@@ -165,6 +165,7 @@ class PolygonEditor {
     }
 
     addPolygonPoint(point) {
+        if (this.placeId == null) return;
         if (typeof point.lat !== 'number' || typeof point.lng !== 'number' ||
             isNaN(point.lat) || isNaN(point.lng)) {
             return;
@@ -191,14 +192,29 @@ class PolygonEditor {
         this._redraw();
     }
 
+    reset() {
+        if (this.centerMarker) {
+            this.centerMarker.remove();
+            this.centerMarker = null;
+        }
+        this.placeId = null;
+        this.clearPolygon();
+    }
+
     getPolygonPoints() {
         return this.polygonPoints.map(p => ({lat: p.lat, lng: p.lng}));
     }
 
     savePolygon() {
+        if (this.onSave) {
+            this.onSave();
+            return;
+        }
         const saveBtn = document.getElementById('save-btn');
+        const form = document.getElementById('polygon-form');
+        if (!saveBtn || !form) return;
         if (!saveBtn.disabled || saveBtn.classList.contains('btn-loading')) {
-            document.getElementById('polygon-form').submit();
+            form.submit();
         }
     }
 

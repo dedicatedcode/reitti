@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -54,6 +55,8 @@ class ImmichPhotoApiControllerTest {
 
     private MockRestServiceServer mockServer;
 
+    private ClientHttpRequestFactory originalRequestFactory;
+
     private User owner;
     private User viewer;
 
@@ -61,6 +64,7 @@ class ImmichPhotoApiControllerTest {
 
     @BeforeEach
     void setUp() {
+        originalRequestFactory = restTemplate.getRequestFactory();
         mockServer = MockRestServiceServer.createServer(restTemplate);
         owner = testingService.randomUser();
         viewer = testingService.randomUser();
@@ -69,6 +73,7 @@ class ImmichPhotoApiControllerTest {
 
     @AfterEach
     void tearDown() {
+        restTemplate.setRequestFactory(originalRequestFactory);
         testingService.clearData();
         SecurityContextHolder.clearContext();
     }

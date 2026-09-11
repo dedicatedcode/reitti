@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SuppressedVisitService {
@@ -26,6 +27,7 @@ public class SuppressedVisitService {
         this.manualRecalculationService = manualRecalculationService;
     }
 
+    @Transactional
     public void suppressVisit(User user, ProcessedVisit visit) {
         logger.info("Suppressing visit [{}] for user [{}] between [{}] and [{}]", visit.getId(), user.getUsername(), visit.getStartTime(), visit.getEndTime());
         SuppressedVisit suppressedVisit = new SuppressedVisit(
@@ -39,6 +41,7 @@ public class SuppressedVisitService {
         manualRecalculationService.schedule(user, "Recalculate visits after suppressing a visit");
     }
 
+    @Transactional
     public void restore(User user, SuppressedVisit suppressedVisit) {
         logger.info("Restoring suppressed visit [{}] for user [{}] between [{}] and [{}]", suppressedVisit.id(), user.getUsername(), suppressedVisit.startTime(), suppressedVisit.endTime());
         suppressedVisitJdbcService.delete(user, suppressedVisit.id());

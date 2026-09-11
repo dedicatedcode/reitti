@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -61,9 +61,11 @@
         }
 
         .place-search-results {
+            color: var(--color-text-white);
             border-bottom: 1px solid var(--color-highlight);
             max-height: 220px;
             overflow-y: auto;
+            padding: 0 16px;
         }
 
         .search-result {
@@ -262,9 +264,17 @@
             justify-content: space-between;
             align-items: center;
             gap: 8px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px;
             cursor: pointer;
+        }
+
+        .zone-row:hover {
+            background-color: #525252;
+            filter: brightness(1.05);
+            margin-left: -16px;
+            margin-right: -16px;
+            padding: 8px 24px;
+
         }
 
         .zone-name {
@@ -433,9 +443,15 @@
                         <button type="button" id="save-btn" class="btn btn-default btn-block">
                             <span class="btn-text" th:text="#{form.save}">Save</span>
                         </button>
-                         <a th:href="@{${returnUrl}}" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</a>
+                        <button type="button" id="cancel-btn" class="btn btn-default btn-block" th:text="#{form.cancel}">Cancel</button>
                      </div>
                   </div>
+
+                  <template id="place-empty-template">
+                      <div id="place-edit-root" class="place-edit-empty">
+                          <p th:text="#{places.editor.select.place}">Select a place to edit. Use the search or click a place on the map.</p>
+                      </div>
+                  </template>
               </div>
           </div>
 
@@ -453,6 +469,7 @@
         </div>
 
         <div id="zone-edit-controls" style="display: none;">
+            <div class="separator"></div>
             <p class="zone-draw-hint" id="zone-edit-title"></p>
             <div style="display: flex; gap: 8px;">
                 <button type="button" id="save-zone-edit-btn" class="btn btn-default" disabled>
@@ -568,19 +585,43 @@
                 id: 'no-visit-zones-fill',
                 type: 'fill',
                 source: 'no-visit-zones',
-                paint: {'fill-color': '#ff4d4d', 'fill-opacity': 0.2}
+                paint: {
+                    'fill-color': ['case', ['get', 'selected'], '#f2c470', '#ff4d4d'],
+                    'fill-opacity': ['case', ['get', 'selected'], 0.4, 0.2]
+                }
             });
             map.addLayer({
                 id: 'no-visit-zones-outline',
                 type: 'line',
                 source: 'no-visit-zones',
-                paint: {'line-color': '#ff4d4d', 'line-width': 2}
+                paint: {
+                    'line-color': ['case', ['get', 'selected'], '#f2c470', '#ff4d4d'],
+                    'line-width': ['case', ['get', 'selected'], 3, 2]
+                }
             });
             map.on('mouseenter', 'no-visit-zones-fill', () => {
-                if (!zoneDrawActive && !zoneEditActive) map.getCanvas().style.cursor = 'pointer';
+                zoneHover.fill = true;
+                updateZoneCursor();
             });
             map.on('mouseleave', 'no-visit-zones-fill', () => {
-                map.getCanvas().style.cursor = '';
+                zoneHover.fill = false;
+                updateZoneCursor();
+            });
+            map.on('mouseenter', 'zone-draw-vertices', () => {
+                zoneHover.drawVertex = true;
+                updateZoneCursor();
+            });
+            map.on('mouseleave', 'zone-draw-vertices', () => {
+                zoneHover.drawVertex = false;
+                updateZoneCursor();
+            });
+            map.on('mouseenter', 'zone-edit-vertices', () => {
+                zoneHover.editVertex = true;
+                updateZoneCursor();
+            });
+            map.on('mouseleave', 'zone-edit-vertices', () => {
+                zoneHover.editVertex = false;
+                updateZoneCursor();
             });
 
             map.addSource('zone-draw', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
@@ -605,7 +646,7 @@
                 type: 'circle',
                 source: 'zone-edit-vertices',
                 filter: ['==', ['geometry-type'], 'Point'],
-                paint: {'circle-radius': 5, 'circle-color': '#ff4d4d', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff'}
+                paint: {'circle-radius': 5, 'circle-color': '#f2c470', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff'}
             });
 
             const startZoneVertexDrag = (mode) => (e) => {
@@ -619,6 +660,23 @@
             map.on('touchstart', 'zone-draw-vertices', startZoneVertexDrag('draw'));
             map.on('mousedown', 'zone-edit-vertices', startZoneVertexDrag('edit'));
             map.on('touchstart', 'zone-edit-vertices', startZoneVertexDrag('edit'));
+
+            const startZoneAreaDrag = (e) => {
+                if (!zoneEditActive || zoneAreaDrag || zoneVertexDrag) return;
+                if (!e.features || e.features.length === 0) return;
+                if (String(e.features[0].properties.id) !== String(editingZoneId)) return;
+                if (vertexAt(e, ['zone-edit-vertices'])) return;
+                zoneAreaDrag = {
+                    startLngLat: {lat: e.lngLat.lat, lng: e.lngLat.lng},
+                    original: editedZonePoints.map(p => ({lat: p.lat, lng: p.lng})),
+                    startPoint: e.point,
+                    moved: false
+                };
+                map.dragPan.disable();
+                e.preventDefault();
+            };
+            map.on('mousedown', 'no-visit-zones-fill', startZoneAreaDrag);
+            map.on('touchstart', 'no-visit-zones-fill', startZoneAreaDrag);
         }
 
         function loadZoneOverlays() {
@@ -661,7 +719,7 @@
                 return {
                     type: 'Feature',
                     geometry: {type: 'Polygon', coordinates: [coordinates]},
-                    properties: {id: zone.id, name: zone.name}
+                    properties: {id: zone.id, name: zone.name, selected: editing}
                 };
             }).filter(Boolean);
             source.setData({type: 'FeatureCollection', features});
@@ -727,9 +785,40 @@
         let editingZoneId = null;
         let editedZonePoints = [];
         let zoneVertexDrag = null;
+        let zoneAreaDrag = null;
+        let zoneAreaDragMoved = false;
         let zoneEditSavePending = false;
+        let zoneHover = {fill: false, drawVertex: false, editVertex: false};
+
+        const updateZoneCursor = () => {
+            if (zoneAreaDrag) {
+                map.getCanvas().style.cursor = 'move';
+            } else if (zoneVertexDrag || zoneHover.drawVertex || zoneHover.editVertex) {
+                map.getCanvas().style.cursor = 'default';
+            } else if (zoneHover.fill) {
+                if (zoneEditActive) {
+                    map.getCanvas().style.cursor = 'move';
+                } else if (!zoneDrawActive) {
+                    map.getCanvas().style.cursor = 'pointer';
+                } else {
+                    map.getCanvas().style.cursor = '';
+                }
+            } else {
+                map.getCanvas().style.cursor = '';
+            }
+        };
 
         const moveZoneVertex = (e) => {
+            if (zoneAreaDrag) {
+                if (Math.hypot(e.point.x - zoneAreaDrag.startPoint.x, e.point.y - zoneAreaDrag.startPoint.y) > 3) {
+                    zoneAreaDrag.moved = true;
+                }
+                const dLat = e.lngLat.lat - zoneAreaDrag.startLngLat.lat;
+                const dLng = e.lngLat.lng - zoneAreaDrag.startLngLat.lng;
+                editedZonePoints = zoneAreaDrag.original.map(p => ({lat: p.lat + dLat, lng: p.lng + dLng}));
+                renderZonesOverlay();
+                return;
+            }
             if (!zoneVertexDrag) return;
             if (Math.hypot(e.point.x - zoneVertexDrag.startPoint.x, e.point.y - zoneVertexDrag.startPoint.y) > 3) {
                 zoneVertexDrag.moved = true;
@@ -751,6 +840,7 @@
             const drag = zoneVertexDrag;
             zoneVertexDrag = null;
             map.dragPan.enable();
+            updateZoneCursor();
             if (drag.moved) return;
             if (drag.mode === 'draw' && drag.index < zoneDrawPoints.length) {
                 zoneDrawPoints.splice(drag.index, 1);
@@ -769,6 +859,23 @@
         document.addEventListener('mouseup', endZoneVertexDrag);
         document.addEventListener('touchend', endZoneVertexDrag);
 
+        const endZoneAreaDrag = () => {
+            if (!zoneAreaDrag) return;
+            const drag = zoneAreaDrag;
+            zoneAreaDrag = null;
+            map.dragPan.enable();
+            updateZoneCursor();
+            zoneAreaDragMoved = drag.moved;
+        };
+        map.on('mouseup', endZoneAreaDrag);
+        map.on('touchend', endZoneAreaDrag);
+        document.addEventListener('mouseup', endZoneAreaDrag);
+        document.addEventListener('touchend', endZoneAreaDrag);
+
+        map.on('mousedown', () => {
+            zoneAreaDragMoved = false;
+        });
+
         map.on('click', (e) => {
             if (zoneDrawActive) {
                 if (vertexAt(e, ['zone-draw-vertices'])) return;
@@ -778,7 +885,12 @@
                 return;
             }
             if (zoneEditActive) {
+                if (zoneAreaDragMoved) {
+                    zoneAreaDragMoved = false;
+                    return;
+                }
                 if (vertexAt(e, ['zone-edit-vertices'])) return;
+                if (vertexAt(e, ['no-visit-zones-fill'])) return;
                 editedZonePoints.push({lat: e.lngLat.lat, lng: e.lngLat.lng});
                 updateZoneEditUi();
                 renderZonesOverlay();
@@ -802,6 +914,7 @@
         }
 
         const polygonEditor = new PolygonEditor(map);
+        polygonEditor.onSave = submitPlaceUpdate;
         polygonEditor.onNearbyPlaceSelect = (placeId) => selectPlace(placeId);
         polygonEditor.onPolygonChange = (points) => {
             if (points && points.length >= 3) {
@@ -866,6 +979,9 @@
             editingZoneId = zone.id;
             editedZonePoints = toOpenRing(zone.polygon);
             zoneEditActive = true;
+            zoneHover.drawVertex = false;
+            zoneHover.editVertex = false;
+            updateZoneCursor();
             polygonEditor.suspend();
             updateZoneDrawUi();
             updateZoneEditUi();
@@ -876,6 +992,9 @@
             zoneEditActive = false;
             editingZoneId = null;
             editedZonePoints = [];
+            zoneHover.drawVertex = false;
+            zoneHover.editVertex = false;
+            updateZoneCursor();
             polygonEditor.resume();
             updateZoneDrawUi();
             updateZoneEditUi();
@@ -960,6 +1079,7 @@
             }
             const row = event.target.closest('.zone-row');
             if (row && !event.target.closest('button')) {
+                startZoneEdit(row.dataset.zoneId);
                 flyToZone(row.dataset.zoneId);
             }
         });
@@ -1118,6 +1238,19 @@
             return input ? input.value : '';
         }
 
+        function submitPlaceUpdate() {
+            const form = document.getElementById('polygon-form');
+            if (!form) return;
+            const returnUrl = currentReturnUrl();
+            if (returnUrl) {
+                form.submit();
+                return;
+            }
+            const values = {};
+            new FormData(form).forEach((value, key) => { values[key] = value; });
+            htmx.ajax('POST', form.action, {target: '#place-edit-root', swap: 'outerHTML', values: values});
+        }
+
         function selectPlace(placeId) {
             if (zoneDrawActive || zoneEditActive) return;
             const returnUrl = currentReturnUrl();
@@ -1126,11 +1259,37 @@
             htmx.ajax('GET', url, {target: '#place-edit-root', swap: 'outerHTML'});
         }
 
+        function deselectPlace() {
+            polygonEditor.reset();
+            polygonEditor.loadNearbyPlaces([]);
+            const template = document.getElementById('place-empty-template');
+            const root = document.getElementById('place-edit-root');
+            if (!root) return;
+            if (template) {
+                root.replaceWith(template.content.cloneNode(true));
+            } else {
+                window.location.assign(window.contextPath + '/settings/places/editor');
+                return;
+            }
+            window.currentPlaceData = null;
+            reloadNearbyPlaces();
+            window.history.replaceState({}, '', window.contextPath + '/settings/places/editor');
+        }
+
         function bindEditControls() {
             const saveBtn = document.getElementById('save-btn');
             if (!saveBtn) return;
             saveBtn.addEventListener('click', function() {
                 checkBeforeSave();
+            });
+
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                const returnUrl = currentReturnUrl();
+                if (returnUrl) {
+                    window.location.assign(returnUrl);
+                } else {
+                    deselectPlace();
+                }
             });
 
             document.getElementById('remove-polygon-btn').addEventListener('click', function() {

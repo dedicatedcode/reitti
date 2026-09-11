@@ -8,10 +8,10 @@ import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
 import com.dedicatedcode.reitti.model.geo.Visit;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
+import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.slf4j.Logger;
@@ -29,13 +29,16 @@ public class VisitSuppressionService {
 
     private final SuppressedVisitJdbcService suppressedVisitJdbcService;
     private final NoVisitZoneJdbcService noVisitZoneJdbcService;
+    private final PointReaderWriter pointReaderWriter;
     private final GeometryFactory geometryFactory;
 
     public VisitSuppressionService(SuppressedVisitJdbcService suppressedVisitJdbcService,
                                    NoVisitZoneJdbcService noVisitZoneJdbcService,
+                                   PointReaderWriter pointReaderWriter,
                                    GeometryFactory geometryFactory) {
         this.suppressedVisitJdbcService = suppressedVisitJdbcService;
         this.noVisitZoneJdbcService = noVisitZoneJdbcService;
+        this.pointReaderWriter = pointReaderWriter;
         this.geometryFactory = geometryFactory;
     }
 
@@ -49,7 +52,7 @@ public class VisitSuppressionService {
         }
 
         List<Polygon> polygons = zones.stream()
-                .map(zone -> toJtsPolygon(zone.polygon()))
+                .map(zone -> pointReaderWriter.toJtsPolygon(zone.polygon()))
                 .toList();
 
         List<Visit> kept = new ArrayList<>(visits.size());
@@ -101,19 +104,5 @@ public class VisitSuppressionService {
         return GeoUtils.distanceInMeters(
                 suppressedVisit.latitudeCentroid(), suppressedVisit.longitudeCentroid(),
                 visit.getPlace().getLatitudeCentroid(), visit.getPlace().getLongitudeCentroid()) <= placeRadiusMeters;
-    }
-
-    private Polygon toJtsPolygon(List<GeoPoint> polygon) {
-        List<Coordinate> coordinates = new ArrayList<>(polygon.size() + 1);
-        for (GeoPoint point : polygon) {
-            coordinates.add(new Coordinate(point.longitude(), point.latitude()));
-        }
-        GeoPoint first = polygon.getFirst();
-        GeoPoint last = polygon.getLast();
-        if (first.latitude() != last.latitude() || first.longitude() != last.longitude()) {
-            coordinates.add(new Coordinate(first.longitude(), first.latitude()));
-        }
-        LinearRing ring = geometryFactory.createLinearRing(coordinates.toArray(new Coordinate[0]));
-        return geometryFactory.createPolygon(ring);
     }
 }

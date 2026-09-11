@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -153,9 +152,8 @@ public class PlacesSettingsController {
     @GetMapping("/{placeId}/edit-form")
     public String getEditForm(@PathVariable Long placeId,
                               @RequestParam(required = false) String returnUrl,
-                              Authentication authentication,
+                              @AuthenticationPrincipal User user,
                               Model model) {
-        User user = (User) authentication.getPrincipal();
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -236,13 +234,15 @@ public class PlacesSettingsController {
                              @PathVariable Long id,
                              @RequestParam String polygonData,
                              Model model) {
+        NoVisitZone zone = noVisitZoneJdbcService.findById(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         List<GeoPoint> polygon;
         try {
             polygon = parsePolygonData(polygonData);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
-        noVisitZoneService.updateGeometry(user, id, polygon);
+        noVisitZoneService.updateGeometry(user, zone, polygon);
         model.addAttribute("zones", noVisitZoneJdbcService.findByUser(user));
         return "fragments/no-visit-zones :: zones-list";
     }
@@ -302,9 +302,7 @@ public class PlacesSettingsController {
     @ResponseBody
     public CheckUpdateResponse checkUpdate(@PathVariable Long placeId,
                                            @RequestParam(required = false) String polygonData,
-                                          Authentication authentication) {
-
-        User user = (User) authentication.getPrincipal();
+                                           @AuthenticationPrincipal User user) {
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -324,10 +322,8 @@ public class PlacesSettingsController {
                               @RequestParam(required = false) String type,
                               @RequestParam(required = false) String polygonData,
                               @RequestParam(required = false) String returnUrl,
-                              Authentication authentication,
+                              @AuthenticationPrincipal User user,
                               Model model) {
-
-        User user = (User) authentication.getPrincipal();
         if (this.placeJdbcService.exists(user, placeId)) {
             try {
                 SignificantPlace significantPlace = placeJdbcService.findById(placeId).orElseThrow();
@@ -351,7 +347,9 @@ public class PlacesSettingsController {
                         updatedPlace = updatedPlace.withType(placeType);
                     } catch (IllegalArgumentException e) {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid place type"));
-                        return editPolygon(placeId, returnUrl, authentication, model);
+                        return returnUrl != null && !returnUrl.isBlank()
+                                ? editPolygon(placeId, returnUrl, user, model)
+                                : getEditForm(placeId, null, user, model);
                     }
                 }
 
@@ -367,7 +365,9 @@ public class PlacesSettingsController {
                                                    .withLongitudeCentroid(centroid.longitude());
                     } catch (Exception e) {
                         model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", "Invalid polygon data: " + e.getMessage()));
-                        return editPolygon(placeId, returnUrl, authentication, model);
+                        return returnUrl != null && !returnUrl.isBlank()
+                                ? editPolygon(placeId, returnUrl, user, model)
+                                : getEditForm(placeId, null, user, model);
                     }
                 } else {
                     updatedPlace = updatedPlace.withPolygon(null);
@@ -388,10 +388,15 @@ public class PlacesSettingsController {
                 }
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
 
-                return "redirect:" + returnUrl;
+                if (returnUrl != null && !returnUrl.isBlank()) {
+                    return "redirect:" + returnUrl;
+                }
+                return getEditForm(placeId, returnUrl, user, model);
             } catch (Exception e) {
                 model.addAttribute("errorMessage", i18nService.translate("message.error.place.update", e.getMessage()));
-                return editPolygon(placeId, returnUrl, authentication, model);
+                return returnUrl != null && !returnUrl.isBlank()
+                        ? editPolygon(placeId, returnUrl, user, model)
+                        : getEditForm(placeId, null, user, model);
             }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
@@ -403,10 +408,9 @@ public class PlacesSettingsController {
                                @RequestParam(required = false) String returnUrl,
                                @RequestParam(defaultValue = "0") int page,
                                @RequestParam(defaultValue = "") String search,
-                               Authentication authentication,
+                               @AuthenticationPrincipal User user,
                                Model model) {
 
-        User user = (User) authentication.getPrincipal();
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -437,9 +441,8 @@ public class PlacesSettingsController {
                                      @RequestParam(required = false) String returnUrl,
                                      @RequestParam(defaultValue = "0") int page,
                                      @RequestParam(defaultValue = "") String search,
-                                     Authentication authentication,
+                                     @AuthenticationPrincipal User user,
                                      RedirectAttributes redirectAttributes) {
-        User user = (User) authentication.getPrincipal();
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -469,12 +472,11 @@ public class PlacesSettingsController {
                                            @RequestParam double lat,
                                            @RequestParam double lng,
                                            @RequestParam(defaultValue = "5000") double radius) {
-        double clampedRadius = Math.min(Math.max(radius, 500), 200_000);
+        double clampedRadius = Math.clamp(radius, 500, 200_000);
         Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
         return placeJdbcService.findNearbyPlaces(user.getId(), point, clampedRadius).stream()
                 .map(PlacesSettingsController::convertToPlaceInfo)
                 .sorted(Comparator.comparingDouble(p -> GeoUtils.distanceInMeters(lat, lng, p.lat(), p.lng())))
-                .limit(100)
                 .toList();
     }
 
@@ -483,10 +485,9 @@ public class PlacesSettingsController {
                                        @RequestParam(defaultValue = "0") int page,
                                        @RequestParam(defaultValue = "") String search,
                                        @RequestParam(defaultValue = "places") String context,
-                                       Authentication authentication,
+                                       @AuthenticationPrincipal User user,
                                        Model model) {
 
-        User user = (User) authentication.getPrincipal();
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -528,10 +529,9 @@ public class PlacesSettingsController {
     @GetMapping("/{placeId}/edit")
     public String editPolygon(@PathVariable Long placeId,
                               @RequestParam(required = false) String returnUrl,
-                              Authentication authentication,
+                              @AuthenticationPrincipal User user,
                               Model model) {
 
-        User user = (User) authentication.getPrincipal();
         if (!this.placeJdbcService.exists(user, placeId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -574,7 +574,7 @@ public class PlacesSettingsController {
         );
     }
 
-    private List<GeoPoint> parsePolygonData(String polygonData) throws Exception {
+    private List<GeoPoint> parsePolygonData(String polygonData) {
         JsonNode jsonNode = objectMapper.readTree(polygonData);
         List<GeoPoint> geoPoints = new ArrayList<>();
         

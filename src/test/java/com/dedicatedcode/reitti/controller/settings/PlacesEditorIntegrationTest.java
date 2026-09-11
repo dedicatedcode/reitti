@@ -80,6 +80,7 @@ class PlacesEditorIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("place-edit-root")))
                 .andExpect(content().string(containsString("polygon-form")))
+                .andExpect(content().string(containsString("place-empty-template")))
                 .andExpect(content().string(containsString("Test Place")));
     }
 
@@ -88,6 +89,28 @@ class PlacesEditorIntegrationTest {
         User other = testingService.randomUser();
         mockMvc.perform(get("/settings/places/{id}/edit-form", place.getId()).with(user(other)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldKeepEditorOpenWhenSavingWithoutReturnUrl() throws Exception {
+        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(user(user))
+                        .param("name", "Renamed Place")
+                        .param("polygonData", ""))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("place-edit-root")))
+                .andExpect(content().string(containsString("Renamed Place")));
+
+        mockMvc.perform(get("/settings/places/{id}/edit-form", place.getId()).with(user(user)))
+                .andExpect(content().string(containsString("Renamed Place")));
+    }
+
+    @Test
+    void shouldRedirectToReturnUrlWhenSavingWithReturnUrl() throws Exception {
+        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(user(user))
+                        .param("name", place.getName())
+                        .param("polygonData", "")
+                        .param("returnUrl", "/settings/places?page=0&search="))
+                .andExpect(status().is3xxRedirection());
     }
 
     @Test

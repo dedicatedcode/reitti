@@ -77,25 +77,22 @@ public class SuppressedVisitJdbcService {
         return jdbcTemplate.query(sql, rowMapper, user.getId(), Timestamp.from(end), Timestamp.from(start));
     }
 
+    private static final String INFO_SELECT = """
+            SELECT sv.id, sv.place_id, sp.name AS place_name, sv.latitude_centroid, sv.longitude_centroid, sv.start_time, sv.end_time
+            FROM suppressed_visits sv
+            LEFT JOIN significant_places sp ON sv.place_id = sp.id
+            WHERE sv.user_id = ?
+            """;
+
     public List<SuppressedVisitInfo> findAllInfosByUser(User user) {
-        return jdbcTemplate.query(
-                """
-                        SELECT sv.id, sv.place_id, sp.name AS place_name, sv.latitude_centroid, sv.longitude_centroid, sv.start_time, sv.end_time
-                        FROM suppressed_visits sv
-                        LEFT JOIN significant_places sp ON sv.place_id = sp.id
-                        """ + " WHERE sv.user_id = ? ORDER BY sv.start_time DESC",
-                infoRowMapper, user.getId());
+        return jdbcTemplate.query(INFO_SELECT + " ORDER BY sv.start_time DESC", infoRowMapper, user.getId());
     }
 
     public Page<SuppressedVisitInfo> findInfosByUser(User user, PageRequest pageable) {
         Integer total = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM suppressed_visits WHERE user_id = ?", Integer.class, user.getId());
         List<SuppressedVisitInfo> content = jdbcTemplate.query(
-                """
-                        SELECT sv.id, sv.place_id, sp.name AS place_name, sv.latitude_centroid, sv.longitude_centroid, sv.start_time, sv.end_time
-                        FROM suppressed_visits sv
-                        LEFT JOIN significant_places sp ON sv.place_id = sp.id
-                        """ + " WHERE sv.user_id = ? ORDER BY sv.start_time DESC LIMIT ? OFFSET ?",
+                INFO_SELECT + " ORDER BY sv.start_time DESC LIMIT ? OFFSET ?",
                 infoRowMapper, user.getId(), pageable.getPageSize(), pageable.getOffset());
         return new Page<>(content, pageable, total != null ? total : 0);
     }
