@@ -28,6 +28,7 @@ class SettingsMenu {
                                 <option value="LINEAR">${t('map.settings.dialog.appearance.view-mode.standard')}</option>
                                 <option value="RAW">${t('map.settings.dialog.appearance.view-mode.raw')}</option>
                                 <option value="BUNDLED">${t('map.settings.dialog.appearance.view-mode.edged_bundling')}</option>
+                                <option value="SMOOTHED">${t('map.settings.dialog.appearance.view-mode.smoothed')}</option>
                             </select>
                         </div>
                         <div class="form-group slide-reveal-container">
