@@ -7,8 +7,16 @@ function getUserTimezone() {
     }
 }
 
+/**
+ * Offset of the user-configured day boundary ("start of next day") from midnight.
+ * Timestamps before this time of day belong to the previous day.
+ */
+function getDayStartOffsetMs() {
+    return (window.userSettings.dayStartMinutes || 0) * 60000;
+}
+
 function getCurrentLocalDate() {
-    const date = new Date();
+    const date = new Date(Date.now() - getDayStartOffsetMs());
 
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -18,7 +26,7 @@ function getCurrentLocalDate() {
 }
 
 function getAsLocalDate(dateInUtc) {
-    const date = new Date(dateInUtc);
+    const date = new Date(new Date(dateInUtc).getTime() - getDayStartOffsetMs());
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -70,32 +78,6 @@ function lightenHexColor(col, amt) {
 
     // Return the new color with or without the original '#' prefix
     return (usePound ? "#" : "") + newColor;
-}
-
-function hexToRgb(hex) {
-    // Remove the # if it exists
-    hex = hex.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    return [r, g, b];
-}
-
-/**
- * Lightens an RGB color array.
- * @param {Array} rgb - [r, g, b] where each is 0-255
- * @param {number} percent - How much to lighten (0 to 100)
- * @returns {Array} - The lightened [r, g, b] array
- */
-function lightenColor(rgb, percent) {
-    const factor = percent / 100;
-
-    return rgb.map(channel => {
-        // Calculate the distance to white (255)
-        const lightened = channel + (255 - channel) * factor;
-        // Ensure we stay within 0-255 and round to integer
-        return Math.min(255, Math.round(lightened));
-    });
 }
 
 function getBrowserTimeFormat() {

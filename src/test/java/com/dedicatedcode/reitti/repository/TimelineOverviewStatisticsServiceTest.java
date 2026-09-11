@@ -71,7 +71,7 @@ class TimelineOverviewStatisticsServiceTest {
             );
         }
 
-        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz);
+        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT);
 
         assertNotNull(entries);
         assertFalse(entries.isEmpty());
@@ -147,7 +147,7 @@ class TimelineOverviewStatisticsServiceTest {
             );
         }
 
-        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz);
+        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT);
 
         assertNotNull(entries);
         assertFalse(entries.isEmpty());
@@ -184,7 +184,7 @@ class TimelineOverviewStatisticsServiceTest {
         ZoneId tz = ZoneId.systemDefault();
         Instant start = Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
         Instant end = Instant.now();
-        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz);
+        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, LocalTime.MIDNIGHT);
         assertNotNull(entries);
         assertTrue(entries.isEmpty());
     }
@@ -225,7 +225,7 @@ class TimelineOverviewStatisticsServiceTest {
                 )
         );
 
-        List<GroupedTimelineEntry> entries = service.load(user, dayStart, dayEnd.plus(1, java.time.temporal.ChronoUnit.SECONDS), tz);
+        List<GroupedTimelineEntry> entries = service.load(user, dayStart, dayEnd.plus(1, java.time.temporal.ChronoUnit.SECONDS), tz, LocalTime.MIDNIGHT);
 
         assertNotNull(entries);
         assertEquals(1, entries.size());
@@ -274,5 +274,40 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(Mood.ADVENTUROUS, vp.mood());
         assertEquals(3600L, vp.durationSeconds());
         assertEquals(0.166, vp.percent(), 0.001);
+    }
+
+    @Test
+    void testDayBoundaryShiftsVisitsToPreviousDay() {
+        ZoneId tz = ZoneId.of("Europe/Berlin");
+        LocalTime dayStart = LocalTime.of(4, 0);
+        LocalDate rangeStart = LocalDate.of(2025, 1, 6);
+        LocalDate rangeEnd = LocalDate.of(2025, 1, 19);
+        LocalDate monday = LocalDate.of(2025, 1, 13);
+
+        // Visit shortly after midnight on Monday belongs to Sunday with a 04:00 day boundary
+        testingService.createVisit(user, place, monday.atTime(1, 0).atZone(tz).toInstant(), monday.atTime(2, 0).atZone(tz).toInstant());
+        // Visit at noon belongs to Monday itself
+        testingService.createVisit(user, place, monday.atTime(12, 0).atZone(tz).toInstant(), monday.atTime(13, 0).atZone(tz).toInstant());
+
+        Instant start = com.dedicatedcode.reitti.service.TimeUtil.startOfDay(rangeStart, tz, dayStart);
+        Instant end = com.dedicatedcode.reitti.service.TimeUtil.endOfDay(rangeEnd, tz, dayStart);
+
+        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, dayStart);
+
+        assertNotNull(entries);
+        assertEquals(2, entries.size());
+
+        GroupedTimelineEntry firstWeek = entries.get(0);
+        GroupedTimelineEntry.OverviewEntry sunday = firstWeek.overview().stream()
+                .filter(o -> o.slot().equals(LocalDate.of(2025, 1, 12)))
+                .findFirst().orElseThrow();
+        assertEquals(1, sunday.visits());
+        assertEquals(0, sunday.trips());
+
+        GroupedTimelineEntry secondWeek = entries.get(1);
+        GroupedTimelineEntry.OverviewEntry mondayEntry = secondWeek.overview().stream()
+                .filter(o -> o.slot().equals(monday))
+                .findFirst().orElseThrow();
+        assertEquals(1, mondayEntry.visits());
     }
 }

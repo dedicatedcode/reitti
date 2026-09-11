@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -129,7 +130,7 @@ public class UserService {
                               TimeMode timeMode,
                               String color) {
         return createNewUser(username, displayName, password, role, unitSystem, preferredLanguage,
-                homeLatitude, homeLongitude, timezoneOverride, timeDisplayMode, timeMode, color, UserType.NORMAL);
+                homeLatitude, homeLongitude, timezoneOverride, timeDisplayMode, timeMode, "00:00", color, UserType.NORMAL);
     }
 
     public User createNewUser(String username,
@@ -143,6 +144,7 @@ public class UserService {
                               String timezoneOverride,
                               TimeDisplayMode timeDisplayMode,
                               TimeMode timeMode,
+                              String dayStartTime,
                               String color,
                               UserType userType) {
         User createdUser = userJdbcService.createUser(new User(username, displayName)
@@ -158,6 +160,7 @@ public class UserService {
                                                      StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
                                                      timeDisplayMode,
                                                      timeMode,
+                                                     parseDayStartTime(dayStartTime),
                                                      null,
                                                      null,
                                                      color,
@@ -174,6 +177,13 @@ public class UserService {
         createDefaultDeviceForUser(createdUser);
         userSettingsJdbcService.save(userSettings);
         return createdUser;
+    }
+
+    private LocalTime parseDayStartTime(String dayStartTime) {
+        if (StringUtils.hasText(dayStartTime)) {
+            return LocalTime.parse(dayStartTime);
+        }
+        return LocalTime.MIDNIGHT;
     }
 
     private UserSettings addRandomHomeLocation(UserSettings userSettings) {

@@ -85,6 +85,7 @@ class TransportationModesControllerTest {
                 current.getTimeZoneOverride(),
                 current.getTimeDisplayMode(),
                 current.getTimeMode(),
+                current.getDayStartTime(),
                 current.getCustomCss(),
                 current.getLatestData(),
                 current.getColor(),

@@ -29,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -91,7 +93,12 @@ public class TimelineController {
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         UserDeviceRequest userDeviceRequest = UserDeviceRequest.from(active);
 
-        LocalDate now = LocalDate.now(timezone);
+        User user = userJdbcService.findByUsername(principal.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        UserSettings viewerSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        LocalTime dayStartTime = viewerSettings.getDayStartTime();
+
+        LocalDate now = TimeUtil.effectiveToday(timezone, dayStartTime);
 
         if (!startDate.isEqual(now) || !endDate.isEqual(now)) {
             if (!authorities.contains("ROLE_USER") && !authorities.contains("ROLE_ADMIN") && !authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS")) {
@@ -100,16 +107,12 @@ public class TimelineController {
         }
         List<UserTimelineData> allUsersData = new ArrayList<>();
 
-        User user = userJdbcService.findByUsername(principal.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-
-        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, true, userDeviceRequest);
+        UserTimelineData userData = createUserTimeLineData(user, viewerSettings, authorities, startDate, endDate, timezone, true, userDeviceRequest);
         allUsersData.add(userData);
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getTimelineDataRange(user, startDate, endDate, timezone, userDeviceRequest));
-            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, true, userDeviceRequest));
+            allUsersData.addAll(handleSharedUserDataRange(user, viewerSettings, startDate, endDate, timezone, true, userDeviceRequest));
         }
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
@@ -118,21 +121,22 @@ public class TimelineController {
         model.addAttribute("endDate", endDate);
         model.addAttribute("timezone", timezone);
         model.addAttribute("isRange", true);
-        model.addAttribute("timeDisplayMode", userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getTimeDisplayMode());
+        model.addAttribute("timeDisplayMode", viewerSettings.getTimeDisplayMode());
         model.addAttribute("showUserSelection", timelineData.users().size() > 1 || timelineData.users().stream().anyMatch(data -> data.devices().size() > 1 ));
 
         return "fragments/timeline :: timeline-content";
     }
 
-    private UserTimelineData createUserTimeLineData(User user, List<String> authorities, LocalDate startDate, LocalDate endDate, ZoneId timezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
-        Instant startOfRange = startDate.atStartOfDay(timezone).toInstant();
-        Instant endOfRange = endDate.plusDays(1).atStartOfDay(timezone).toInstant().minusMillis(1);
+    private UserTimelineData createUserTimeLineData(User user, UserSettings viewerSettings, List<String> authorities, LocalDate startDate, LocalDate endDate, ZoneId timezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
+        LocalTime dayStartTime = viewerSettings.getDayStartTime();
+        Instant startOfRange = TimeUtil.startOfDay(startDate, timezone, dayStartTime);
+        Instant endOfRange = TimeUtil.endOfDay(endDate, timezone, dayStartTime);
         boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
 
         List<? extends TimelineEntry> currentUserEntries;
         if (loadTimeline && (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS"))) {
             if (shouldAggregate) {
-                currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone);
+                currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone, dayStartTime);
             } else {
                 currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
             }
@@ -140,13 +144,15 @@ public class TimelineController {
             currentUserEntries = Collections.emptyList();
         }
 
-        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
         boolean loadVisits = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS");
         boolean loadPaths = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS") || authorities.contains("ROLE_MAGIC_LINK_ONLY_LIVE");
-        String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
-        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId());
-        String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
-        String mapTripsUrl = loadPaths ? String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
+        LocalDateTime rangeStart = startOfRange.atZone(timezone).toLocalDateTime();
+        LocalDateTime rangeEndInclusive = endOfRange.atZone(timezone).toLocalDateTime();
+        LocalDateTime rangeEndExclusive = endOfRange.plusMillis(1).minusSeconds(1).atZone(timezone).toLocalDateTime();
+        String currentUserProcessedVisitsUrl = loadVisits ? String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), rangeStart, rangeEndInclusive, timezone.getId()) : null;
+        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), rangeStart, rangeEndExclusive, timezone.getId());
+        String mapStreamDataUrl = loadPaths ? String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), rangeStart, rangeEndExclusive, timezone.getId()) : null;
+        String mapTripsUrl = loadPaths ? String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), rangeStart, rangeEndInclusive, timezone.getId()) : null;
         String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
         String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", user.getId()));
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
@@ -162,8 +168,8 @@ public class TimelineController {
                                                          this.avatarService.generateInitials(d.name()),
                                                          d.enabled(),
                                                          d.color(),
-                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()),
-                                                         loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), startDate, endDate, timezone.getId()) : null,
+                                                         String.format("/api/v2/locations/metadata/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), rangeStart, rangeEndExclusive, timezone.getId()),
+                                                          loadPaths ? String.format("/api/v2/locations/stream/%d/device/%d?start=%s&end=%s&timezone=%s", user.getId(), d.id(), rangeStart, rangeEndExclusive, timezone.getId()) : null,
                                                          userDeviceRequest != null && Objects.equals(user.getId().toString(), userDeviceRequest.userId()) && Objects.equals(d.id(), userDeviceRequest.deviceId())))
                         .toList();
             }
@@ -172,7 +178,7 @@ public class TimelineController {
                                     user.getDisplayName(),
                                     currentUserInitials,
                                     currentUserAvatarUrl,
-                                    userSettings.getColor(),
+                                    viewerSettings.getColor(),
                                     currentUserEntries,
                                     null,
                                     currentUserProcessedVisitsUrl,
@@ -193,12 +199,13 @@ public class TimelineController {
         List<String> authorities = principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         List<UserTimelineData> allUsersData = new ArrayList<>();
         User user = userJdbcService.findByUsername(principal.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        UserTimelineData userData = createUserTimeLineData(user, authorities, startDate, endDate, timezone, false, null);
+        UserSettings viewerSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
+        UserTimelineData userData = createUserTimeLineData(user, viewerSettings, authorities, startDate, endDate, timezone, false, null);
         allUsersData.add(userData);
 
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN")) {
             allUsersData.addAll(this.reittiIntegrationService.getUserData(user, startDate, endDate, timezone));
-            allUsersData.addAll(handleSharedUserDataRange(user, startDate, endDate, timezone, false, null));
+            allUsersData.addAll(handleSharedUserDataRange(user, viewerSettings, startDate, endDate, timezone, false, null));
         }
 
         TimelineData timelineData = new TimelineData(allUsersData.stream().filter(Objects::nonNull).toList());
@@ -288,31 +295,36 @@ public class TimelineController {
                 .collect(Collectors.toList());
     }
 
-    private List<UserTimelineData> handleSharedUserDataRange(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
+    private List<UserTimelineData> handleSharedUserDataRange(User user, UserSettings viewerSettings, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, boolean loadTimeline, UserDeviceRequest userDeviceRequest) {
 
         return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
                 .map(u -> {
                     Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
                     return sharedWithUserOpt.map(sharedWithUser -> {
-                        Instant startOfRange = startDate.atStartOfDay(userTimezone).toInstant();
-                        Instant endOfRange = endDate.plusDays(1).atStartOfDay(userTimezone).toInstant().minusMillis(1);
+                        LocalTime dayStartTime = viewerSettings.getDayStartTime();
+                        Instant startOfRange = TimeUtil.startOfDay(startDate, userTimezone, dayStartTime);
+                        Instant endOfRange = TimeUtil.endOfDay(endDate, userTimezone, dayStartTime);
                         boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
                         List<? extends TimelineEntry> userTimelineEntries;
 
                         if (loadTimeline) {
                             if (shouldAggregate) {
-                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone);
+                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone, dayStartTime);
                             } else {
                                 userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false);
                             }
                         } else {
                             userTimelineEntries = Collections.emptyList();
                         }
-                        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String mapTripsUrl = String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
+                        LocalDateTime rangeStart = startOfRange.atZone(userTimezone).toLocalDateTime();
+                        LocalDateTime rangeEndInclusive = endOfRange.atZone(userTimezone).toLocalDateTime();
+                        LocalDateTime rangeEndExclusive = endOfRange.plusMillis(1).minusSeconds(1).atZone(userTimezone).toLocalDateTime();
+                        LocalDateTime rangeEndNextDay = endOfRange.plusMillis(1).atZone(userTimezone).toLocalDateTime();
+                        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndNextDay, userTimezone.getId());
+                        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
+                        String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
+                        String mapStreamDataUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
+                        String mapTripsUrl = String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
                         String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());

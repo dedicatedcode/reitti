@@ -5,13 +5,18 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,8 +39,8 @@ public class ImmichPhotoApiController {
 
     @GetMapping("/range")
     public ResponseEntity<List<PhotoResponse>> getPhotosForRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
             @RequestParam(required = false, defaultValue = "UTC") String timezone,
             @RequestParam(required = false) Long userId,
             @AuthenticationPrincipal User user) {
@@ -45,7 +50,8 @@ public class ImmichPhotoApiController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(photoOwner, startDate, endDate, timezone);
+        ZoneId timezoneId = ZoneId.of(timezone);
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(photoOwner, parseInstant(startDate, timezoneId, false), parseInstant(endDate, timezoneId, true));
         if (!photoOwner.getId().equals(user.getId())) {
             photos.forEach(photo -> photo.setShared(true));
         }
@@ -109,6 +115,16 @@ public class ImmichPhotoApiController {
         }
 
         return userJdbcService.findById(userId).orElse(null);
+    }
+
+    private Instant parseInstant(String input, ZoneId timezone, boolean end) {
+        try {
+            return LocalDateTime.parse(input).atZone(timezone).toInstant();
+        } catch (DateTimeParseException ignored) {
+        }
+        LocalDate date = LocalDate.parse(input);
+        return end ? TimeUtil.endOfDay(date, timezone, LocalTime.MIDNIGHT)
+                   : TimeUtil.startOfDay(date, timezone, LocalTime.MIDNIGHT);
     }
 
 }

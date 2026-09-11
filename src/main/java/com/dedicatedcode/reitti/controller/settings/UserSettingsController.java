@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -133,6 +134,7 @@ public class UserSettingsController {
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
             model.addAttribute("timeMode", userSettings.getTimeMode().name());
+            model.addAttribute("dayStartTime", userSettings.getDayStartTime());
             model.addAttribute("availableTimezones", ZoneId.getAvailableZoneIds());
             model.addAttribute("availableTimeDisplayModes", TimeDisplayMode.values());
             model.addAttribute("availableTimeModes", TimeMode.values());
@@ -197,6 +199,7 @@ public class UserSettingsController {
                              @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(name = "time_mode", defaultValue = "TWENTY_FOUR_HOUR") TimeMode timeMode,
+                             @RequestParam(name = "day_start_time", defaultValue = "00:00") String dayStartTime,
                              @RequestParam(required = false) MultipartFile avatar,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
@@ -227,6 +230,7 @@ public class UserSettingsController {
                         timezoneOverride,
                         timeDisplayMode,
                         timeMode,
+                        dayStartTime,
                         color,
                         userType);
                 // Handle avatar - prioritize custom upload over default
@@ -252,6 +256,7 @@ public class UserSettingsController {
                                 existingSettings.getTimeZoneOverride(),
                                 existingSettings.getTimeDisplayMode(),
                                 existingSettings.getTimeMode(),
+                                existingSettings.getDayStartTime(),
                                 cssContent,
                                 existingSettings.getLatestData(),
                                 color,
@@ -295,6 +300,7 @@ public class UserSettingsController {
                              @RequestParam(name = "timezone_override", required = false) String timezoneOverride,
                              @RequestParam(name = "time_display_mode", defaultValue = "DEFAULT") TimeDisplayMode timeDisplayMode,
                              @RequestParam(name = "time_mode", defaultValue = "TWENTY_FOUR_HOUR") TimeMode timeMode,
+                             @RequestParam(name = "day_start_time", defaultValue = "00:00") String dayStartTime,
                              @RequestParam(required = false) String defaultAvatar,
                              @RequestParam(required = false) String removeAvatar,
                              @RequestParam(required = false) MultipartFile customCss,
@@ -378,6 +384,7 @@ public class UserSettingsController {
                                                             StringUtils.hasText(timezoneOverride) ? ZoneId.of(timezoneOverride) : null,
                                                             timeDisplayMode,
                                                             timeMode,
+                                                            LocalTime.parse(StringUtils.hasText(dayStartTime) ? dayStartTime : "00:00"),
                                                             cssContent,
                                                             existingSettings.getLatestData(),
                                                             color,
@@ -472,6 +479,7 @@ public class UserSettingsController {
             model.addAttribute("timeZoneOverride", userSettings.getTimeZoneOverride());
             model.addAttribute("timeDisplayMode", userSettings.getTimeDisplayMode().name());
             model.addAttribute("timeMode", userSettings.getTimeMode().name());
+            model.addAttribute("dayStartTime", userSettings.getDayStartTime());
             model.addAttribute("selectedColor", userSettings.getColor());
         } else {
             // Default values for new users
@@ -485,6 +493,7 @@ public class UserSettingsController {
             model.addAttribute("externalProfile", null);
             model.addAttribute("timeDisplayMode", TimeDisplayMode.DEFAULT.name());
             model.addAttribute("timeMode", TimeMode.TWENTY_FOUR_HOUR.name());
+            model.addAttribute("dayStartTime", LocalTime.MIDNIGHT);
             model.addAttribute("localLoginDisabled", localLoginDisabled);
         }
 

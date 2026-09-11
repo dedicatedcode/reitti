@@ -2,6 +2,9 @@ package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.timeline.SingleTimelineEntry;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSettings;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
+import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.TimelineService;
 import com.dedicatedcode.reitti.service.VisitDetectionPreviewService;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +22,12 @@ import java.util.Map;
 public class PreviewApiController {
     private final TimelineService timelineService;
     private final VisitDetectionPreviewService visitDetectionPreviewService;
+    private final UserSettingsJdbcService userSettingsJdbcService;
 
-    public PreviewApiController(TimelineService timelineService, VisitDetectionPreviewService visitDetectionPreviewService) {
+    public PreviewApiController(TimelineService timelineService, VisitDetectionPreviewService visitDetectionPreviewService, UserSettingsJdbcService userSettingsJdbcService) {
         this.timelineService = timelineService;
         this.visitDetectionPreviewService = visitDetectionPreviewService;
+        this.userSettingsJdbcService = userSettingsJdbcService;
     }
 
     @GetMapping("/{previewId}/status")
@@ -42,9 +47,10 @@ public class PreviewApiController {
                                                         @RequestParam(required = false, defaultValue = "UTC") String timezone) {
         LocalDate selectedDate = LocalDate.parse(date);
         ZoneId userTimezone = ZoneId.of(timezone);
+        UserSettings userSettings = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
 
-        Instant startOfDay = selectedDate.atStartOfDay(userTimezone).toInstant();
-        Instant endOfDay = selectedDate.plusDays(1).atStartOfDay(userTimezone).toInstant();
+        Instant startOfDay = TimeUtil.startOfDay(selectedDate, userTimezone, userSettings.getDayStartTime());
+        Instant endOfDay = TimeUtil.startOfDay(selectedDate.plusDays(1), userTimezone, userSettings.getDayStartTime());
 
         return this.timelineService.buildTimelineEntries(user, previewId, userTimezone, selectedDate, startOfDay, endOfDay, false);
     }

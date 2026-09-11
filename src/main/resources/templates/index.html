@@ -714,13 +714,13 @@
     function getTimelineParams() {
         const timezone = getUserTimezone();
         if (currentDateRange && currentDateRange.startDate && currentDateRange.endDate) {
-            // Range mode - use actual range
+            // Range mode - use actual range, aligned to the user-configured day boundary
+            const shiftMs = getDayStartOffsetMs();
             const startDate = new Date(currentDateRange.startDate + 'T00:00:00');
-            startDate.setHours(0, 0, 0, 0);
-            const requestedStartUTCSeconds = Math.floor(startDate.getTime() / 1000);
-            const endDate = new Date(currentDateRange.endDate + 'T23:59:59');
-            endDate.setHours(23, 59, 59);
-            const requestedEndUTCSeconds = Math.floor(endDate.getTime() / 1000);
+            const nextDayStart = new Date(currentDateRange.endDate + 'T00:00:00');
+            nextDayStart.setDate(nextDayStart.getDate() + 1);
+            const requestedStartUTCSeconds = Math.floor((startDate.getTime() + shiftMs) / 1000);
+            const requestedEndUTCSeconds = Math.floor((nextDayStart.getTime() + shiftMs - 1000) / 1000);
             return {
                 startDate: currentDateRange.startDate,
                 startDateUtcSeconds: requestedStartUTCSeconds,
@@ -732,6 +732,11 @@
         } else {
             throw new Error('Invalid date range');
         }
+    }
+
+    function toLocalIsoSeconds(date) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     }
 
     function loadPhotos() {
@@ -747,7 +752,7 @@
         }
         try {
             const params = getTimelineParams();
-            fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${params.startDate}&endDate=${params.endDate}${userIdParam}`)
+            fetch(`${window.contextPath}/api/v1/photos/immich/range?timezone=${getUserTimezone()}&startDate=${toLocalIsoSeconds(new Date(params.startDateUtcSeconds * 1000))}&endDate=${toLocalIsoSeconds(new Date(params.endDateUtcSeconds * 1000))}${userIdParam}`)
                 .then(response => {
                         if (response.ok) {
                             return response.json()
