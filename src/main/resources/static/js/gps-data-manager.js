@@ -10,6 +10,7 @@ class GpsDataManager {
         //Memory Layout for buffer and cleaned buffer is [Lng, Lat, Alt, LinTs, Day, AggTs]
         this.buffer = new Float32Array(16000 * 6);
         this.cleanedBuffer = new Float32Array(16000 * 6);
+        this.smoothedBuffer = new Float32Array(16000 * 6);
         this.snappedBuffer = null;
         this.snappedVersion = 0;
         this.h3Cells = [];
@@ -17,6 +18,8 @@ class GpsDataManager {
         // 2. State
         this.cursor = 0;
         this.cleanedCursor = 0;
+        this.smoothedCursor = 0;
+        this.smoothingVersion = 0;
         this.minTimestamp = null;
         this.maxTimestamp = null;
         this.totalExpected = 0;
@@ -51,6 +54,7 @@ class GpsDataManager {
         this.abortController = null;
         this.buffer = null;
         this.cleanedBuffer = null;
+        this.smoothedBuffer = null;
         this.snappedBuffer = null;
         this.visits = null;
         this.lastLocation = null;
@@ -78,10 +82,13 @@ class GpsDataManager {
             this._dataCache = {};
             this._cachedSegmentPaths = null;
             this._cachedSegmentPathsCursor = 0;
+            this._cachedSegmentPathsSmoothed = null;
+            this._cachedSegmentPathsSmoothedCursor = 0;
             this.cursor = 0;
             this.cleanedCursor = 0;
             this.buffer = new Float32Array(16000 * 6);
             this.cleanedBuffer = new Float32Array(16000 * 6);
+            this.smoothedBuffer = new Float32Array(16000 * 6);
             this.snappedBuffer = null;
             this.bounds = null;
 
@@ -171,6 +178,7 @@ class GpsDataManager {
             // Clear old data to make room for the new range
             this.cursor = 0;
             this.cleanedCursor = 0;
+            this.smoothedCursor = 0;
             this.snappedBuffer = null;
 
             this.loadingState = 'streaming';
@@ -183,6 +191,7 @@ class GpsDataManager {
 
             this.loadingState = 'bundling';
             await this._generateBundledPath(onProgress);
+            await this._generateSmoothedPath();
             this._computeActivityWeights();
             this._computeTransitions();
             this.loadingState = 'complete';
@@ -207,14 +216,16 @@ class GpsDataManager {
 
     /**
      * Returns optimized binary attributes for deck.gl layers.
-     * @param {string} mode - 'raw', 'cleaned', or 'bundled'
+     * @param {string} mode - 'raw', 'cleaned', 'smoothed', or 'bundled'
      * @param {boolean} isAggregate - Whether to use 24h clock or linear time
      * @param {Object} rangeIndices - Optional {start, count} from binary search
      */
     getLayerData(mode, isAggregate = false, rangeIndices = null) {
         const rangeKey = rangeIndices ? `${rangeIndices.start}-${rangeIndices.count}` : 'full';
         const cacheKey = `${mode}-${isAggregate}-${rangeKey}`;
-        const currentPointCount = mode === 'raw' ? this.cursor : this.cleanedCursor;
+        const currentPointCount = mode === 'raw' ? this.cursor
+            : mode === 'smoothed' ? this.smoothedCursor + this.smoothingVersion * 1e9
+            : this.cleanedCursor;
 
         if (this._dataCache[cacheKey] && this._dataCache[cacheKey].version === currentPointCount) {
             return this._dataCache[cacheKey].payload;
@@ -251,6 +262,25 @@ class GpsDataManager {
 
             const { length, startIndices } = this._getBinaryIndices(
                 trimmed, this.cleanedCursor, strideFloats, timeIndex, thresholdSec
+            );
+
+            payload = {
+                length: length,
+                startIndices: startIndices,
+                attributes: {
+                    getPath: { value: trimmed, size: 3, stride: stride, offset: 0 },
+                    getTimestamps: { value: trimmed, size: 1, stride: stride, offset: isAggregate ? 20 : 12 }
+                }
+            };
+        } else if (mode === 'smoothed') {
+            const stride = 24;
+            const strideFloats = 6;
+            const timeIndex = isAggregate ? 5 : 3;
+            const usedLength = this.smoothedCursor * strideFloats;
+            const trimmed = this.smoothedBuffer.subarray(0, usedLength);
+
+            const { length, startIndices } = this._getBinaryIndices(
+                trimmed, this.smoothedCursor, strideFloats, timeIndex, thresholdSec
             );
 
             payload = {
@@ -419,10 +449,13 @@ class GpsDataManager {
             const newSize = this.buffer.length * 2;
             const nb = new Float32Array(newSize);
             const ncb = new Float32Array(newSize);
+            const nsb = new Float32Array(newSize);
             nb.set(this.buffer);
             ncb.set(this.cleanedBuffer);
+            if (this.smoothedBuffer) nsb.set(this.smoothedBuffer.subarray(0, this.smoothedCursor * 6));
             this.buffer = nb;
             this.cleanedBuffer = ncb;
+            this.smoothedBuffer = nsb;
         }
     }
 
@@ -510,6 +543,227 @@ class GpsDataManager {
 
         this.snappedVersion++;
         if (onProgress) onProgress(this.cleanedCursor, this.cleanedCursor, 'bundling');
+    }
+
+    /**
+     * Builds the smoothed buffer used by the SMOOTHED view mode.
+     *
+     * Pass 1 collapses stationary clusters: consecutive points that stay
+     * within `radiusMeters` of the run's first point (and with no data gap
+     * larger than 300s) are replaced by two coincident centroid points
+     * carrying the enter/exit timestamps. The centroid is computed from the
+     * middle 70% of the run so walk-in/walk-out movement at the cluster
+     * edges does not drag the collapsed position off the stay. The
+     * coincident pair keeps the path visually closed across the resulting
+     * time break while making the animated position linger at the stay
+     * instead of jittering.
+     *
+     * Pass 2 applies a constant-velocity Kalman filter per continuous
+     * segment (reset at data gaps > 300s and at collapsed stays) to
+     * smooth GPS jitter while actually moving. All timestamps are
+     * preserved, so activity weights and the 24h aggregate stay valid.
+     */
+    async _generateSmoothedPath() {
+        const cfg = this.config.smoothed || {};
+        const radiusMeters = cfg.radiusMeters || 25;
+        const minStaySeconds = cfg.minStaySeconds || 60;
+        const gapSeconds = 300; // must match _getBinaryIndices threshold
+        const gpsNoiseMeters = cfg.gpsNoiseMeters || 10;
+        const accelNoise = cfg.accelerationNoise || 4;
+        const adaptiveGate = cfg.adaptiveGate || 6.63;      // chi2 1-DOF, 99%
+        const adaptiveGain = cfg.adaptiveGain != null ? cfg.adaptiveGain : 15;
+        const adaptiveMaxBoost = cfg.adaptiveMaxBoost || 50;
+
+        this.smoothedCursor = 0;
+        this.smoothingVersion++;
+        if (this.cleanedCursor === 0) return;
+
+        const src = this.cleanedBuffer;
+        const dst = this.smoothedBuffer;
+        const radiusSq = radiusMeters * radiusMeters;
+
+        // ---- Pass 1: stationary collapse ----
+        let runStart = 0;
+        let anchorLng = src[0];
+        let anchorLat = src[1];
+        let prevTs = src[3];
+        const collapsedEnters = new Set();
+
+        const emitRun = (start, end) => {
+            const s = start * 6;
+            const e = (end - 1) * 6;
+            if (end - start >= 3 && src[e + 3] - src[s + 3] >= minStaySeconds) {
+                // Centroid from the middle 70% of the run: the cluster's
+                // leading/trailing points are usually walk-in/walk-out
+                // movement, which would otherwise drag the collapsed
+                // position off the actual stay.
+                const keep = Math.max(1, Math.floor((end - start) * 0.7));
+                const skip = Math.floor((end - start - keep) / 2);
+                let sumLng = 0, sumLat = 0;
+                for (let i = start + skip; i < start + skip + keep; i++) {
+                    sumLng += src[i * 6];
+                    sumLat += src[i * 6 + 1];
+                }
+                const lng = sumLng / keep;
+                const lat = sumLat / keep;
+                collapsedEnters.add(this.smoothedCursor);
+                this._writeSmoothedPoint(lng, lat, src[s + 3], src[s + 4], src[s + 5]);
+                this._writeSmoothedPoint(lng, lat, src[e + 3], src[e + 4], src[e + 5]);
+            } else {
+                for (let i = start; i < end; i++) {
+                    this._writeSmoothedPoint(src[i * 6], src[i * 6 + 1], src[i * 6 + 3], src[i * 6 + 4], src[i * 6 + 5]);
+                }
+            }
+        };
+
+        for (let i = 1; i < this.cleanedCursor; i++) {
+            const idx = i * 6;
+            const ts = src[idx + 3];
+            const dLng = (src[idx] - anchorLng) * Math.cos(anchorLat * Math.PI / 180) * 111320;
+            const dLat = (src[idx + 1] - anchorLat) * 110540;
+
+            if (ts - prevTs > gapSeconds || dLng * dLng + dLat * dLat > radiusSq) {
+                emitRun(runStart, i);
+                runStart = i;
+                anchorLng = src[idx];
+                anchorLat = src[idx + 1];
+            }
+            prevTs = ts;
+            if (i % 500000 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        emitRun(runStart, this.cleanedCursor);
+
+        // ---- Pass 2: constant-velocity Kalman smoothing ----
+        // Per-axis state [position(m), velocity(m/s)] with diagonal P.
+        // Work in meters relative to a per-segment equirectangular origin.
+        // Segments reset at data gaps > 300s and at collapsed stay enters,
+        // so the filtered path lands exactly on the stay centroid instead
+        // of lagging behind it.
+        //
+        // Adaptive Q (two mechanisms, both gated by the normalized innovation
+        // squared NIS = innov^2 / S of each update):
+        //  1. Strong tracking on the violation point itself: predicted P is
+        //     inflated proportionally to the violation so the filter reacts
+        //     immediately (mild for noise spikes, strong for course changes).
+        //  2. Delayed Q boost: the violation also inflates the process noise
+        //     of the NEXT step, keeping the filter tracking through the rest
+        //     of the turn. Normal jitter stays below the chi2 gate, so
+        //     nominal Q applies and straights stay glassy; after a turn the
+        //     boost decays back to 1 automatically.
+        const r = gpsNoiseMeters * gpsNoiseMeters;
+        const q = accelNoise;
+        let lng0 = 0, lat0 = 0, sx = 1, sy = 1;
+        let px = 0, vx = 0, pxx = 0, pxxv = 0, pvxv = 0;
+        let py = 0, vy = 0, pyy = 0, pyyv = 0, pvyv = 0;
+        let qxBoost = 1, qyBoost = 1;
+        let prevTsK = 0;
+        let inSegment = false;
+
+        for (let i = 0; i < this.smoothedCursor; i++) {
+            const idx = i * 6;
+            const ts = dst[idx + 3];
+
+            if (!inSegment || ts - prevTsK > gapSeconds || collapsedEnters.has(i)) {
+                lng0 = dst[idx];
+                lat0 = dst[idx + 1];
+                sx = 111320 * Math.cos(lat0 * Math.PI / 180);
+                sy = 110540;
+                px = 0; vx = 0; pxx = 1e6; pxxv = 0; pvxv = 1e4;
+                py = 0; vy = 0; pyy = 1e6; pyyv = 0; pvyv = 1e4;
+                qxBoost = 1; qyBoost = 1;
+                inSegment = true;
+                prevTsK = ts;
+                continue;
+            }
+
+            const dt = Math.max(0, ts - prevTsK);
+            prevTsK = ts;
+
+            // Predict
+            if (dt > 0) {
+                px += vx * dt;
+                py += vy * dt;
+                const dt2 = dt * dt;
+                const qx = q * qxBoost;
+                const qy = q * qyBoost;
+                pxx += 2 * dt * pxxv + dt2 * pvxv + qx * dt2 * dt2 / 4;
+                pxxv += dt * pvxv + qx * dt2 * dt / 2;
+                pvxv += qx * dt2;
+                pyy += 2 * dt * pyyv + dt2 * pvyv + qy * dt2 * dt2 / 4;
+                pyyv += dt * pvyv + qy * dt2 * dt / 2;
+                pvyv += qy * dt2;
+            }
+
+            // Update
+            const zx = (dst[idx] - lng0) * sx;
+            const zy = (dst[idx + 1] - lat0) * sy;
+
+            let innov = zx - px;
+            let sPre = pxx + r;
+            let nis = (innov * innov) / sPre;
+
+            // Strong tracking: on the violation point itself, inflate the
+            // predicted covariance proportionally to the violation so the
+            // filter reacts immediately (mild for noise spikes, strong for
+            // sustained course changes like corners).
+            if (nis > adaptiveGate) {
+                const scale = Math.min(adaptiveMaxBoost, Math.max(1, nis / adaptiveGate));
+                pxx *= scale;
+                pxxv *= scale;
+                pvxv *= scale;
+                sPre = pxx + r;
+            }
+
+            let k0 = pxx / sPre;
+            let k1 = pxxv / sPre;
+            px += k0 * innov;
+            vx += k1 * innov;
+            const oldPxxv = pxxv;
+            pxx *= (1 - k0);
+            pxxv *= (1 - k0);
+            pvxv -= k1 * oldPxxv;
+
+            qxBoost = Math.min(adaptiveMaxBoost, Math.max(1, 1 + adaptiveGain * Math.max(0, nis - adaptiveGate)));
+
+            innov = zy - py;
+            sPre = pyy + r;
+            nis = (innov * innov) / sPre;
+
+            if (nis > adaptiveGate) {
+                const scale = Math.min(adaptiveMaxBoost, Math.max(1, nis / adaptiveGate));
+                pyy *= scale;
+                pyyv *= scale;
+                pvyv *= scale;
+                sPre = pyy + r;
+            }
+
+            k0 = pyy / sPre;
+            k1 = pyyv / sPre;
+            py += k0 * innov;
+            vy += k1 * innov;
+            const oldPyyv = pyyv;
+            pyy *= (1 - k0);
+            pyyv *= (1 - k0);
+            pvyv -= k1 * oldPyyv;
+
+            qyBoost = Math.min(adaptiveMaxBoost, Math.max(1, 1 + adaptiveGain * Math.max(0, nis - adaptiveGate)));
+
+            dst[idx] = lng0 + px / sx;
+            dst[idx + 1] = lat0 + py / sy;
+
+            if (i % 500000 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+
+    _writeSmoothedPoint(lng, lat, tsLinear, dayOfWeek, tsAggregate) {
+        const i = this.smoothedCursor * 6;
+        this.smoothedBuffer[i] = lng;
+        this.smoothedBuffer[i + 1] = lat;
+        this.smoothedBuffer[i + 2] = 0;
+        this.smoothedBuffer[i + 3] = tsLinear;
+        this.smoothedBuffer[i + 4] = dayOfWeek;
+        this.smoothedBuffer[i + 5] = tsAggregate;
+        this.smoothedCursor++;
     }
 
     _computeActivityWeights() {
@@ -685,19 +939,20 @@ class GpsDataManager {
         const dLat = current.lat - past.lat;
         return Math.sqrt(dLng * dLng + dLat * dLat) / lookbackSeconds;
     }
-    getCurrentPosition(currentTime, isAggregate) {
-        if (this.cleanedCursor === 0) {
+    getCurrentPosition(currentTime, isAggregate, useSmoothed = false) {
+        const cursor = useSmoothed ? this.smoothedCursor : this.cleanedCursor;
+        if (cursor === 0) {
             return null;
         }
 
-        const buffer = this.cleanedBuffer;
+        const buffer = useSmoothed ? this.smoothedBuffer : this.cleanedBuffer;
         const stride = 6;
 
         if (isAggregate) {
             // Aggregate mode: currentTime is seconds-of-day (0–86400)
             let bestIdx = -1;
             let bestDiff = Infinity;
-            for (let i = 0; i < this.cleanedCursor; i++) {
+            for (let i = 0; i < cursor; i++) {
                 const aggTs = buffer[i * stride + 5];
                 const diff = Math.abs(aggTs - currentTime);
                 if (diff < bestDiff) {
@@ -715,7 +970,7 @@ class GpsDataManager {
             const targetTs = currentTime;  // ← FIX: don't add minTimestamp
 
             // Binary search by LinTs (index 3)
-            let lo = 0, hi = this.cleanedCursor - 1;
+            let lo = 0, hi = cursor - 1;
             while (lo < hi) {
                 const mid = (lo + hi) >> 1;
                 if (buffer[mid * stride + 3] < targetTs) {
@@ -732,7 +987,7 @@ class GpsDataManager {
                 if (diffPrev < diffLo) bestIdx = lo - 1;
             }
 
-            if (bestIdx >= this.cleanedCursor) bestIdx = this.cleanedCursor - 1;
+            if (bestIdx >= cursor) bestIdx = cursor - 1;
 
             return {
                 lng: buffer[bestIdx * stride],
@@ -857,14 +1112,16 @@ class GpsDataManager {
     }
 
     /**
-     * Builds per-mode path arrays from the cleaned buffer, colored by the
-     * transport mode of each segment. Every point is rendered: unsegmented
-     * or visit points receive default manager color, and adjacent segments
-     * share boundary vertices for a seamless, zero-gap line.
+     * Builds per-mode path arrays from the cleaned (or smoothed) buffer,
+     * colored by the transport mode of each segment. Every point is
+     * rendered: unsegmented or visit points receive default manager color,
+     * and adjacent segments share boundary vertices for a seamless,
+     * zero-gap line.
      */
-    getSegmentPaths() {
+    getSegmentPaths(useSmoothed = false) {
         const segments = this.modeSegments;
-        if (!segments || segments.length === 0 || this.cleanedCursor === 0) {
+        const cursor = useSmoothed ? this.smoothedCursor : this.cleanedCursor;
+        if (!segments || segments.length === 0 || cursor === 0) {
             return null;
         }
 
@@ -874,17 +1131,20 @@ class GpsDataManager {
             return null;
         }
 
-        if (this._cachedSegmentPaths && this._cachedSegmentPathsCursor === this.cleanedCursor) {
-            return this._cachedSegmentPaths;
+        const cacheHit = useSmoothed
+            ? (this._cachedSegmentPathsSmoothed && this._cachedSegmentPathsSmoothedCursor === cursor)
+            : (this._cachedSegmentPaths && this._cachedSegmentPathsCursor === this.cleanedCursor);
+        if (cacheHit) {
+            return useSmoothed ? this._cachedSegmentPathsSmoothed : this._cachedSegmentPaths;
         }
 
-        const buffer = this.cleanedBuffer;
+        const buffer = useSmoothed ? this.smoothedBuffer : this.cleanedBuffer;
         const stride = 6;
         const paths = [];
         let segIdx = 0;
         let current = null;
 
-        for (let i = 0; i < this.cleanedCursor; i++) {
+        for (let i = 0; i < cursor; i++) {
             const lng = buffer[i * stride];
             const lat = buffer[i * stride + 1];
             const ts = buffer[i * stride + 3];
@@ -917,8 +1177,13 @@ class GpsDataManager {
         }
 
         const result = paths.filter(p => p.path.length >= 2).map(p => ({ path: p.path, color: p.color }));
-        this._cachedSegmentPaths = result;
-        this._cachedSegmentPathsCursor = this.cleanedCursor;
+        if (useSmoothed) {
+            this._cachedSegmentPathsSmoothed = result;
+            this._cachedSegmentPathsSmoothedCursor = cursor;
+        } else {
+            this._cachedSegmentPaths = result;
+            this._cachedSegmentPathsCursor = this.cleanedCursor;
+        }
         return result;
     }
 }

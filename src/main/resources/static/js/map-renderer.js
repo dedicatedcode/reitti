@@ -564,13 +564,14 @@ class MapRenderer {
                 if (this.viewState.viewMode === 'BUNDLED') {
                     allLayers.push(...this._buildBundleLayers(layerKey, manager, extensions, terrainDrawMode, calculatedTrail));
                 } else {
-                    const buffer = this.viewState.viewMode === 'LINEAR' ? 'cleaned' : 'raw';
-                    const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : manager.cursor;
+                    const isSmoothed = this.viewState.viewMode === 'SMOOTHED';
+                    const buffer = this.viewState.viewMode === 'RAW' ? 'raw' : isSmoothed ? 'smoothed' : 'cleaned';
+                    const cursor = this.viewState.viewMode === 'LINEAR' ? manager.cleanedCursor : isSmoothed ? manager.smoothedCursor : manager.cursor;
                     const layerData = this._getCachedLayerData(manager, buffer, this.viewState.aggregated);
 
                     const strippedData = this._stripForPathLayer(layerData);
 
-                    const segmentPaths = this.showTransportModes ? manager.getSegmentPaths() : null;
+                    const segmentPaths = this.showTransportModes ? manager.getSegmentPaths(isSmoothed) : null;
                     if (segmentPaths && segmentPaths.length > 0) {
                         try {
                             allLayers.push(new deck.PathLayer({
@@ -2003,7 +2004,8 @@ class MapRenderer {
         if (this.viewState.aggregated) {
             return [];
         }
-        const single = manager.getCurrentPosition(this.viewState.currentTime, false);
+        const useSmoothed = this.viewState.viewMode === 'SMOOTHED';
+        const single = manager.getCurrentPosition(this.viewState.currentTime, false, useSmoothed);
         return single ? [single] : [];
     }
 
