@@ -1,0 +1,24 @@
+name: IRC Release Notification
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  notify-irc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Notification to #reitti
+        uses: Gottox/irc-message-action@v2
+        with:
+          server: 'irc.libera.chat'
+          port: 6697
+          tls: true
+          nickname: 'reitti-bot'
+          sasl_password: ${{ secrets.IRC_PASSWORD }}
+          channel: '#reitti'
+          message: |
+            🚀 New release: ${{ github.event.release.name || github.event.release.tag_name || 'Manual Test Run' }}
+            Release Notes: ${{ github.event.release.html_url || 'https://github.com' }}
+            Docs: https://www.dedicatedcode.com/projects/reitti/latest/
