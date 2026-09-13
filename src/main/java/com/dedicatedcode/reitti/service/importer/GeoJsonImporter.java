@@ -126,7 +126,7 @@ public class GeoJsonImporter {
                     .friendlyName("GeoJson Data Promotion")
                     .build();
             jobSchedulingService.scheduleTask(promotionTask,
-                                              new PromotionJobHandler.TaskData(user, device, partitionKey, true).withParentJobId(parentJobId),
+                                              new PromotionJobHandler.TaskData(user.getId(), device != null ? device.id() : null, partitionKey, true).withParentJobId(parentJobId),
                                               Instant.now().plusSeconds(graceTimeSeconds),
                                               metadata);
             if (processedCount.get() == 0) {

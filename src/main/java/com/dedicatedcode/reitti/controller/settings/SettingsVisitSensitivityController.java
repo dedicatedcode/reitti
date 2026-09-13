@@ -274,7 +274,7 @@ public class SettingsVisitSensitivityController {
 
         log.debug("Scheduling recalculation task");
         this.jobScheduler.enqueueTask(visitSensitivityRecalculationTask,
-                                      new VisitSensitivityConfigurationRecalculationTask.TaskData(user),
+                                      new VisitSensitivityConfigurationRecalculationTask.TaskData(user.getId()),
                                       JobSchedulingService.Metadata.builder()
                                               .user(user)
                                               .friendlyName("Recalculation for changed VisitSensitivity settings")

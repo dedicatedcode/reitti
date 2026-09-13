@@ -4,6 +4,8 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -60,7 +62,7 @@ public class H3RecalculationJob implements Job {
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.debug("Executing H3RecalculationJob");
-        TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
+        TaskData data = TaskData.fromJson((String) context.getMergedJobDataMap().get("data"));
         long missingSourcePoints = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_source_points WHERE h3_cell IS NULL", Long.class);
         long missingRawLocationPoints = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points WHERE h3_cell IS NULL AND source_point_id IS NULL", Long.class);
         long missingPointCount = missingSourcePoints + missingRawLocationPoints;
@@ -239,8 +241,13 @@ public class H3RecalculationJob implements Job {
     public static class TaskData extends JobContext<TaskData> {
         public TaskData() {}
 
-        private TaskData(UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        private TaskData(@JsonProperty("jobId") UUID jobId, @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override

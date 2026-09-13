@@ -3,13 +3,11 @@ package com.dedicatedcode.reitti.service.geocoding;
 import com.dedicatedcode.reitti.model.PlaceInformationOverride;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.JobMetadataRepository;
-import com.dedicatedcode.reitti.repository.PreviewSignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.UserNotificationService;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
@@ -19,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,8 +50,7 @@ public class ReverseGeocodingListener implements Job {
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) dataMap.get("data")));
     }
 
     public void execute(TaskData event) {
@@ -118,7 +114,7 @@ public class ReverseGeocodingListener implements Job {
         }
     }
 
-    public static final class TaskData extends JobContext<TaskData> implements Serializable {
+    public static final class TaskData extends JobContext<TaskData> {
         private final String username;
         private final String previewId;
         private final Long placeId;
@@ -126,14 +122,15 @@ public class ReverseGeocodingListener implements Job {
         private final Double longitude;
         private final String traceId;
 
-        public TaskData(String username,
-                        String previewId,
-                        Long placeId,
-                        Double latitude,
-                        Double longitude,
-                        String traceId,
-                        UUID jobId,
-                        UUID parentJobId) {
+        @JsonCreator
+        public TaskData(@JsonProperty("username") String username,
+                        @JsonProperty("previewId") String previewId,
+                        @JsonProperty("placeId") Long placeId,
+                        @JsonProperty("latitude") Double latitude,
+                        @JsonProperty("longitude") Double longitude,
+                        @JsonProperty("traceId") String traceId,
+                        @JsonProperty("jobId") UUID jobId,
+                        @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
             this.username = username;
             this.previewId = previewId;
@@ -150,6 +147,10 @@ public class ReverseGeocodingListener implements Job {
                         Double longitude,
                         String traceId) {
             this(username, previewId, placeId, latitude, longitude, traceId, null, null);
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override

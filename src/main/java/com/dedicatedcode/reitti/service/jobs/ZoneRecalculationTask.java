@@ -3,8 +3,11 @@ package com.dedicatedcode.reitti.service.jobs;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,15 +25,18 @@ public class ZoneRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(ZoneRecalculationTask.class);
 
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobScheduler;
     private final JobMetadataRepository jobMetadataRepository;
     private final JobDetail processingPipelineTask;
 
     public ZoneRecalculationTask(RawLocationPointJdbcService rawLocationPointJdbcService,
+                                 UserJdbcService userJdbcService,
                                  JobSchedulingService jobScheduler,
                                  JobMetadataRepository jobMetadataRepository,
                                  @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userJdbcService = userJdbcService;
         this.jobScheduler = jobScheduler;
         this.jobMetadataRepository = jobMetadataRepository;
         this.processingPipelineTask = processingPipelineTask;
@@ -38,12 +44,11 @@ public class ZoneRecalculationTask implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
     }
 
     public void execute(TaskData data) {
-        User user = data.user;
+        User user = userJdbcService.findById(data.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + data.userId + "] not found"));
         UUID jobId = data.getJobId();
 
         this.jobMetadataRepository.updateProgress(jobId, 0, 2, "Marking raw location points inside the zone as unprocessed ...");
@@ -64,33 +69,44 @@ public class ZoneRecalculationTask implements Job {
 
     public static class TaskData extends JobContext<TaskData> {
 
-        private final User user;
+        private final Long userId;
         private final double minLatitude;
         private final double maxLatitude;
         private final double minLongitude;
         private final double maxLongitude;
 
-        public TaskData(User user, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude) {
-            this(user, minLatitude, maxLatitude, minLongitude, maxLongitude, null, null);
+        public TaskData(Long userId, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude) {
+            this(userId, minLatitude, maxLatitude, minLongitude, maxLongitude, null, null);
         }
 
-        public TaskData(User user, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude, UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        public TaskData(@JsonProperty("userId") Long userId,
+                        @JsonProperty("minLatitude") double minLatitude,
+                        @JsonProperty("maxLatitude") double maxLatitude,
+                        @JsonProperty("minLongitude") double minLongitude,
+                        @JsonProperty("maxLongitude") double maxLongitude,
+                        @JsonProperty("jobId") UUID jobId,
+                        @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
-            this.user = user;
+            this.userId = userId;
             this.minLatitude = minLatitude;
             this.maxLatitude = maxLatitude;
             this.minLongitude = minLongitude;
             this.maxLongitude = maxLongitude;
         }
 
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
+        }
+
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, minLatitude, maxLatitude, minLongitude, maxLongitude, jobId, parentJobId);
+            return new TaskData(userId, minLatitude, maxLatitude, minLongitude, maxLongitude, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, minLatitude, maxLatitude, minLongitude, maxLongitude, jobId, parentJobId);
+            return new TaskData(userId, minLatitude, maxLatitude, minLongitude, maxLongitude, jobId, parentJobId);
         }
     }
 }

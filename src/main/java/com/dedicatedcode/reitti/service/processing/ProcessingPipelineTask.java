@@ -8,13 +8,14 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -56,8 +57,7 @@ public class ProcessingPipelineTask implements Job {
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) dataMap.get("data")));
     }
 
     public void execute(TaskData event) {
@@ -131,7 +131,7 @@ public class ProcessingPipelineTask implements Job {
         }
     }
 
-    public static class TaskData extends JobContext<TaskData> implements Serializable {
+    public static class TaskData extends JobContext<TaskData> {
         private final String username;
         private final String previewId;
         private final Instant receivedAt;
@@ -150,11 +150,25 @@ public class ProcessingPipelineTask implements Job {
                 String traceId,
                 UUID jobId,
                 UUID parentJobId) {
+            this(username, previewId, traceId, Instant.now(), jobId, parentJobId);
+        }
+
+        @JsonCreator
+        public TaskData(@JsonProperty("username") String username,
+                        @JsonProperty("previewId") String previewId,
+                        @JsonProperty("traceId") String traceId,
+                        @JsonProperty("receivedAt") Instant receivedAt,
+                        @JsonProperty("jobId") UUID jobId,
+                        @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
             this.username = username;
             this.previewId = previewId;
             this.traceId = traceId;
-            this.receivedAt = Instant.now();
+            this.receivedAt = receivedAt != null ? receivedAt : Instant.now();
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         public String getUsername() {
