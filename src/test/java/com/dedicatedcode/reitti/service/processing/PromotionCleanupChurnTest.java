@@ -102,7 +102,7 @@ class PromotionCleanupChurnTest {
     }
 
     private TimeRange runCleanupAndCaptureReseedRange(User user, Device device, Instant start, Instant end) {
-        locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user, device, start, end, JOB_ID, null));
+        locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user.getId(), device.id(), start, end, JOB_ID, null));
 
         ArgumentCaptor<UpdateCuratedTimelineTask.TaskData> captor = ArgumentCaptor.forClass(UpdateCuratedTimelineTask.TaskData.class);
         verify(jobSchedulingService).enqueueTask(any(), captor.capture(), any());

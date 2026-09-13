@@ -63,7 +63,7 @@ class DataGapProcessingTest {
         assertEquals(6, sourceLocationPointJdbcService.bulkInsert(user, device, points));
 
         // the resume flush [14:00, 14:08] is promoted and cleaned up
-        locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user, device, RESUME, LAST_POINT, UUID.randomUUID(), null));
+        locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user.getId(), device.id(), RESUME, LAST_POINT, UUID.randomUUID(), null));
 
         // real reseed + gap filling, exactly what UpdateCuratedTimelineTask does
         updateCuratedTimelineTask.execute(capturedEnqueueOf(UpdateCuratedTimelineTask.TaskData.class));

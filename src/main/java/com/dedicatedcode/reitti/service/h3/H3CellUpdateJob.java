@@ -5,7 +5,12 @@ import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PointReaderWriter;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import org.quartz.*;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,7 +46,7 @@ public class H3CellUpdateJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        TaskData data = (TaskData) context.getMergedJobDataMap().get("data");
+        TaskData data = TaskData.fromJson((String) context.getMergedJobDataMap().get("data"));
 
         if (!rocksDbService.isAvailable()) {
             log.debug("RocksDB is not available yet. Deferring job.");
@@ -374,12 +379,22 @@ public class H3CellUpdateJob implements Job {
             this.cellIncrements = cellIncrements;
         }
 
-        private TaskData(UUID jobId, UUID parentJobId, ChangeType changeType, List<Long> pointIds, List<MovedPoint> movedPoints, List<CellIncrement> cellIncrements) {
+        @JsonCreator
+        private TaskData(@JsonProperty("jobId") UUID jobId,
+                         @JsonProperty("parentJobId") UUID parentJobId,
+                         @JsonProperty("changeType") ChangeType changeType,
+                         @JsonProperty("pointIds") List<Long> pointIds,
+                         @JsonProperty("movedPoints") List<MovedPoint> movedPoints,
+                         @JsonProperty("cellIncrements") List<CellIncrement> cellIncrements) {
             super(jobId, parentJobId);
             this.changeType = changeType;
             this.pointIds = pointIds;
             this.movedPoints = movedPoints;
             this.cellIncrements = cellIncrements;
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         public static TaskData forPromotion(List<Long> newPromotedIds) {

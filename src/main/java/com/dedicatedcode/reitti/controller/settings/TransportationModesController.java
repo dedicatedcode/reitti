@@ -22,11 +22,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
@@ -244,7 +240,7 @@ public class TransportationModesController {
     public String reclassifyTrips(@AuthenticationPrincipal User user, Model model) {
         try {
             log.debug("Scheduling recalculation task");
-            this.jobSchedulingService.enqueueTask(recalculationJobTask, new TransportModeRecalculationTask.TaskData(user),
+            this.jobSchedulingService.enqueueTask(recalculationJobTask, new TransportModeRecalculationTask.TaskData(user.getId()),
                                           JobSchedulingService.Metadata.builder()
                                                   .user(user)
                                                   .friendlyName("Recalculation for changed Transportation Mode Settings")

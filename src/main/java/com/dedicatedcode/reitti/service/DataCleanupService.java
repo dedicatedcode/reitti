@@ -2,13 +2,11 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.JobMetadataRepository;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +28,7 @@ public class DataCleanupService implements Job {
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobScheduler;
     private final SignificantPlaceJdbcService placeJdbcService;
     private final JobDetail processingPipelineTask;
@@ -40,6 +39,7 @@ public class DataCleanupService implements Job {
                               ProcessedVisitJdbcService processedVisitJdbcService,
                               SignificantPlaceJdbcService significantPlaceJdbcService,
                               RawLocationPointJdbcService rawLocationPointJdbcService,
+                              UserJdbcService userJdbcService,
                               JobSchedulingService jobScheduler, SignificantPlaceJdbcService placeJdbcService,
                               @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
                               JobMetadataRepository jobMetadataRepository) {
@@ -47,6 +47,7 @@ public class DataCleanupService implements Job {
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userJdbcService = userJdbcService;
         this.jobScheduler = jobScheduler;
         this.placeJdbcService = placeJdbcService;
         this.processingPipelineTask = processingPipelineTask;
@@ -54,14 +55,12 @@ public class DataCleanupService implements Job {
     }
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
     }
 
     public void execute(TaskData taskData) {
-        User user = taskData.user;
-        SignificantPlace updatedPlace = taskData.place;
+        User user = userJdbcService.findById(taskData.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + taskData.userId + "] not found"));
+        SignificantPlace updatedPlace = placeJdbcService.findById(taskData.placeId).orElseThrow(() -> new IllegalArgumentException("SignificantPlace with id [" + taskData.placeId + "] not found"));
         Long placeId = updatedPlace.getId();
         UUID jobId = taskData.getJobId();
 
@@ -104,27 +103,35 @@ public class DataCleanupService implements Job {
 
     public static class TaskData extends JobContext<TaskData> {
 
-        private final User user;
-        private final SignificantPlace place;
+        private final Long userId;
+        private final Long placeId;
 
-        public TaskData(User user, SignificantPlace place) {
-            this(user, place, null, null);
+        public TaskData(Long userId, Long placeId) {
+            this(userId, placeId, null, null);
         }
 
-        public TaskData(User user, SignificantPlace place, UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        public TaskData(@JsonProperty("userId") Long userId,
+                        @JsonProperty("placeId") Long placeId,
+                        @JsonProperty("jobId") UUID jobId,
+                        @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
-            this.user = user;
-            this.place = place;
+            this.userId = userId;
+            this.placeId = placeId;
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, place, jobId, parentJobId);
+            return new TaskData(userId, placeId, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, place, jobId, parentJobId);
+            return new TaskData(userId, placeId, jobId, parentJobId);
         }
 
     }
