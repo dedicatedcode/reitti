@@ -6,10 +6,16 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.processing.TransportModeService;
 import com.dedicatedcode.reitti.service.processing.UserProcessingLock;
-import org.quartz.*;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.quartz.DisallowConcurrentExecution;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,13 +32,15 @@ public class TransportModeRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(TransportModeRecalculationTask.class);
     private final TripJdbcService tripJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final UserJdbcService userJdbcService;
     private final TransportModeService transportModeService;
     private final JobMetadataRepository metadataRepository;
     private final UserProcessingLock userProcessingLock;
 
-    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository, UserProcessingLock userProcessingLock) {
+    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, UserJdbcService userJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository, UserProcessingLock userProcessingLock) {
         this.tripJdbcService = tripJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.userJdbcService = userJdbcService;
         this.transportModeService = transportModeService;
         this.metadataRepository = metadataRepository;
         this.userProcessingLock = userProcessingLock;
@@ -40,14 +48,12 @@ public class TransportModeRecalculationTask implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
     }
 
     public void execute(TaskData taskData) {
-        User user = taskData.user;
-        long allTripsAmountForUser = this.tripJdbcService.count(taskData.user);
+        User user = userJdbcService.findById(taskData.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + taskData.userId + "] not found"));
+        long allTripsAmountForUser = this.tripJdbcService.count(user);
         metadataRepository.updateProgress(taskData.getJobId(), 0, allTripsAmountForUser, "Updating trips");
         AtomicLong currentTrip = new AtomicLong();
         userProcessingLock.locked(user, () ->
@@ -69,25 +75,32 @@ public class TransportModeRecalculationTask implements Job {
 
     public static class TaskData extends JobContext<TaskData> {
 
-        public final User user;
+        private final Long userId;
 
-        public TaskData(User user) {
-            this.user = user;
+        public TaskData(Long userId) {
+            this(userId, null, null);
         }
 
-        private TaskData(User user, UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        private TaskData(@JsonProperty("userId") Long userId,
+                         @JsonProperty("jobId") UUID jobId,
+                         @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
-            this.user = user;
+            this.userId = userId;
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, jobId, parentJobId);
+            return new TaskData(userId, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, jobId, parentJobId);
+            return new TaskData(userId, jobId, parentJobId);
         }
     }
 }

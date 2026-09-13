@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
-import com.dedicatedcode.reitti.service.h3.H3CellUpdateJob;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
@@ -80,7 +79,7 @@ public class WorkbenchService {
                             .jobType(JobType.TIMELINE_STITCHING)
                             .friendlyName(i18n.translate("jobs.timeline_stitching.friendly_name", device.name(), start, end)).build();
                     this.jobSchedulingService.enqueueTask(patchDeviceOntoTimelineTask,
-                                                          new PatchDeviceOntoTimelineTask.TaskData(user, device, start, end).withParentJobId(parentJob),
+                                                          new PatchDeviceOntoTimelineTask.TaskData(user.getId(), device.id(), start, end).withParentJobId(parentJob),
                                                           metadata);
                 });
     }
@@ -117,7 +116,7 @@ public class WorkbenchService {
                     .friendlyName("Location Data Cleanup")
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                  new LocationDataCleanupTask.TaskData(user, device, deviceTimeRange.timeRange().start(), deviceTimeRange.timeRange().end().plus(1, ChronoUnit.MILLIS))
+                                                  new LocationDataCleanupTask.TaskData(user.getId(), device.id(), deviceTimeRange.timeRange().start(), deviceTimeRange.timeRange().end().plus(1, ChronoUnit.MILLIS))
                                                           .withParentJobId(parentJob),
                                                   metadata);
         }

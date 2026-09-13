@@ -6,6 +6,8 @@ import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
 import com.dedicatedcode.reitti.service.processing.UserProcessingLock;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(VisitSensitivityConfigurationRecalculationTask.class);
     private final VisitDetectionParametersJdbcService configurationService;
+    private final UserJdbcService userJdbcService;
     private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository jobMetadataRepository;
     private final JobDetail processingPipelineTask;
@@ -29,6 +32,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private final UserProcessingLock userProcessingLock;
 
     public VisitSensitivityConfigurationRecalculationTask(VisitDetectionParametersJdbcService configurationService,
+                                                          UserJdbcService userJdbcService,
                                                           JobSchedulingService jobSchedulingService,
                                                           JobMetadataRepository jobMetadataRepository,
                                                           @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
@@ -37,6 +41,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
                                                           SignificantPlaceJdbcService significantPlaceJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService,
                                                           UserProcessingLock userProcessingLock) {
         this.configurationService = configurationService;
+        this.userJdbcService = userJdbcService;
         this.jobSchedulingService = jobSchedulingService;
         this.jobMetadataRepository = jobMetadataRepository;
         this.processingPipelineTask = processingPipelineTask;
@@ -49,13 +54,11 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
-        execute(data);
+        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
     }
 
     public void execute(TaskData taskData) {
-        User user = taskData.user;
+        User user = userJdbcService.findById(taskData.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + taskData.userId + "] not found"));
         log.debug("Executing DataRecalculationJob for [{}]", user);
         try {
             this.jobMetadataRepository.updateProgress(taskData.getJobId(), 0, 5, "Waiting for running processing to finish ...");
@@ -83,25 +86,32 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
     }
     public static class TaskData extends JobContext<TaskData> {
 
-        public final User user;
+        private final Long userId;
 
-        public TaskData(User user) {
-            this.user = user;
+        public TaskData(Long userId) {
+            this(userId, null, null);
         }
 
-        private TaskData(User user, UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        private TaskData(@JsonProperty("userId") Long userId,
+                         @JsonProperty("jobId") UUID jobId,
+                         @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
-            this.user = user;
+            this.userId = userId;
+        }
+
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, jobId, parentJobId);
+            return new TaskData(userId, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, jobId, parentJobId);
+            return new TaskData(userId, jobId, parentJobId);
         }
     }
 }

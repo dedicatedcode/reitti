@@ -15,12 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -120,7 +115,7 @@ public class JobSchedulingService implements JobListener {
 
         JobDataMap jobDataMap = new JobDataMap();
         jobDataMap.put("jobId", jobId.toString());
-        jobDataMap.put("data", data.withJobId(jobId));
+        jobDataMap.put("data", data.withJobId(jobId).toJson());
 
         // Use jobId as the trigger name so we can easily retrieve it in the listener
         Trigger trigger = TriggerBuilder.newTrigger()

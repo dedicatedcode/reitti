@@ -3,7 +3,9 @@ package com.dedicatedcode.reitti.service.importer;
 import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -14,6 +16,8 @@ import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService.PromotionResult;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +32,8 @@ import java.util.UUID;
 public class PromotionJobHandler implements Job {
     private static final Logger log = LoggerFactory.getLogger(PromotionJobHandler.class);
     private final LocationPointStagingService stagingService;
+    private final UserJdbcService userJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final JobSchedulingService jobSchedulingService;
     private final JobMetadataRepository metadataRepository;
     private final UserNotificationService userNotificationService;
@@ -37,6 +43,8 @@ public class PromotionJobHandler implements Job {
     private final JobDetail promotionTask;
 
     public PromotionJobHandler(LocationPointStagingService stagingService,
+                               UserJdbcService userJdbcService,
+                               DeviceJdbcService deviceJdbcService,
                                JobSchedulingService jobSchedulingService,
                                JobMetadataRepository metadataRepository,
                                UserNotificationService userNotificationService,
@@ -45,6 +53,8 @@ public class PromotionJobHandler implements Job {
                                @Qualifier("liveModeUserUpdateJob") JobDetail liveModeOnlyUpdateTask,
                                @Qualifier("promotionJob") JobDetail promotionTask) {
         this.stagingService = stagingService;
+        this.userJdbcService = userJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.jobSchedulingService = jobSchedulingService;
         this.metadataRepository = metadataRepository;
         this.userNotificationService = userNotificationService;
@@ -57,10 +67,9 @@ public class PromotionJobHandler implements Job {
     @Override
     @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        JobDataMap dataMap = context.getMergedJobDataMap();
-        TaskData data = (TaskData) dataMap.get("data");
+        TaskData data = TaskData.fromJson((String) context.getMergedJobDataMap().get("data"));
         UUID jobId = data.getJobId();
-        User user = data.getUser();
+        User user = userJdbcService.findById(data.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + data.userId + "] not found"));
         String partitionKey = data.getPartitionKey();
         try {
             metadataRepository.updateProgress(jobId, 0, 3, "Promoting points");
@@ -78,7 +87,7 @@ public class PromotionJobHandler implements Job {
                 if (promotionResult.hasPromoted()) {
                     TimeRange promotedRange = promotionResult.promotedRange();
                     this.jobSchedulingService.enqueueTask(liveModeOnlyUpdateTask,
-                                                          new LiveModeOnlyUpdateTask.TaskData(user, data.getDevice(), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
+                                                          new LiveModeOnlyUpdateTask.TaskData(user.getId(), resolveDeviceId(user, data), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
                                                           JobSchedulingService.Metadata.builder()
                                                                   .user(user)
                                                                   .jobType(JobType.LOCATION_PROCESSING)
@@ -90,9 +99,9 @@ public class PromotionJobHandler implements Job {
 
                 if (promotionResult.hasPromoted()) {
                     TimeRange promotedRange = promotionResult.promotedRange();
-                    this.userNotificationService.newLocationData(user, data.device, promotedRange);
+                    this.userNotificationService.newLocationData(user, resolveDevice(user, data), promotedRange);
                     this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
-                                                          new LocationDataCleanupTask.TaskData(user, data.getDevice(), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
+                                                          new LocationDataCleanupTask.TaskData(user.getId(), resolveDeviceId(user, data), promotedRange.start(), promotedRange.end()).withParentJobId(data.getParentJobId()),
                                                           JobSchedulingService.Metadata.builder()
                                                                   .user(user)
                                                                   .jobType(JobType.LOCATION_DATA_CLEANUP)
@@ -110,7 +119,7 @@ public class PromotionJobHandler implements Job {
         if (this.stagingService.hasUnpromotedPoints(partitionKey) && promotionInflightGuard.tryAcquire(partitionKey)) {
             try {
                 this.jobSchedulingService.enqueueTask(promotionTask,
-                                                      new TaskData(user, data.getDevice(), partitionKey, false),
+                                                      new TaskData(user.getId(), resolveDeviceId(user, data), partitionKey, false),
                                                       JobSchedulingService.Metadata.builder()
                                                               .user(user)
                                                               .jobType(JobType.GPS_INGESTION)
@@ -122,33 +131,40 @@ public class PromotionJobHandler implements Job {
         }
     }
 
+    private Device resolveDevice(User user, TaskData data) {
+        if (data.deviceId == null) {
+            return null;
+        }
+        return deviceJdbcService.find(user, data.deviceId).orElseThrow(() -> new IllegalArgumentException("Device with id [" + data.deviceId + "] not found for user [" + user.getUsername() + "]"));
+    }
+
+    private Long resolveDeviceId(User user, TaskData data) {
+        Device device = resolveDevice(user, data);
+        return device != null ? device.id() : null;
+    }
+
     public static final class TaskData extends JobContext<TaskData> {
-        private final User user;
-        private final Device device;
+        private final Long userId;
+        private final Long deviceId;
         private final String partitionKey;
         private final boolean isManual;
 
-        public TaskData(User user, Device device, String partitionKey, boolean isManual) {
-            this.user = user;
-            this.device = device;
-            this.partitionKey = partitionKey;
-            this.isManual = isManual;
+        public TaskData(Long userId, Long deviceId, String partitionKey, boolean isManual) {
+            this(userId, deviceId, partitionKey, isManual, null, null);
         }
 
-        public TaskData(User user, Device device, String partitionKey, boolean isManual, UUID jobId, UUID parentJobId) {
+        @JsonCreator
+        public TaskData(@JsonProperty("userId") Long userId,
+                        @JsonProperty("deviceId") Long deviceId,
+                        @JsonProperty("partitionKey") String partitionKey,
+                        @JsonProperty("isManual") boolean isManual,
+                        @JsonProperty("jobId") UUID jobId,
+                        @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
-            this.user = user;
-            this.device = device;
+            this.userId = userId;
+            this.deviceId = deviceId;
             this.partitionKey = partitionKey;
             this.isManual = isManual;
-        }
-
-        public User getUser() {
-            return user;
-        }
-
-        public Device getDevice() {
-            return device;
         }
 
         public String getPartitionKey() {
@@ -159,11 +175,15 @@ public class PromotionJobHandler implements Job {
             return isManual;
         }
 
+        public static TaskData fromJson(String json) {
+            return JobContext.fromJson(json, TaskData.class);
+        }
+
         @Override
         public String toString() {
             return "PromotionTaskData[" +
-                    "user=" + user + ", " +
-                    "device=" + device + ", " +
+                    "userId=" + userId + ", " +
+                    "deviceId=" + deviceId + ", " +
                     "partitionKey=" + partitionKey + ", " +
                     "isManual=" + isManual + ", " +
                     "parentJobId=" + parentJobId + ']';
@@ -171,12 +191,12 @@ public class PromotionJobHandler implements Job {
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(user, device, partitionKey, isManual, jobId, parentJobId);
+            return new TaskData(userId, deviceId, partitionKey, isManual, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(user, device, partitionKey, isManual, jobId, parentJobId);
+            return new TaskData(userId, deviceId, partitionKey, isManual, jobId, parentJobId);
         }
     }
 }

@@ -42,7 +42,7 @@ class JobChainParentPropagationTest {
         Device device = testingService.findDefaultDevice(user);
         UUID parentId = jobSchedulingService.createParentJob(user, JobType.MANUAL_MODIFICATION, "chain-test-patch-parent");
         try {
-            patchDeviceOntoTimelineTask.execute(new PatchDeviceOntoTimelineTask.TaskData(user, device,
+            patchDeviceOntoTimelineTask.execute(new PatchDeviceOntoTimelineTask.TaskData(user.getId(), device.id(),
                     Instant.now().minusSeconds(3600), Instant.now()).withParentJobId(parentId));
 
             // timeline stitching and the following visit detection must both become siblings
@@ -70,7 +70,7 @@ class JobChainParentPropagationTest {
         Device device = testingService.findDefaultDevice(user);
         UUID parentId = jobSchedulingService.createParentJob(user, JobType.LOCATION_DATA_CLEANUP, "chain-test-cleanup-parent");
         try {
-            locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user, device,
+            locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user.getId(), device.id(),
                     Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600)).withParentJobId(parentId));
 
             await().atMost(30, TimeUnit.SECONDS).until(() -> jobMetadataRepository.findByParentJobId(parentId).stream()

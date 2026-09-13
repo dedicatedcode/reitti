@@ -53,7 +53,7 @@ public class ManualRecalculationService {
             maxLng = Math.max(maxLng, point.longitude());
         }
         jobScheduler.enqueueTask(zoneRecalculationTask,
-                                 new ZoneRecalculationTask.TaskData(user, minLat, maxLat, minLng, maxLng),
+                                 new ZoneRecalculationTask.TaskData(user.getId(), minLat, maxLat, minLng, maxLng),
                                  JobSchedulingService.Metadata.builder()
                                          .user(user)
                                          .jobType(JobType.MANUAL_MODIFICATION)

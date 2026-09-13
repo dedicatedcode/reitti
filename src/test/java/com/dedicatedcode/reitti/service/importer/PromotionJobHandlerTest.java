@@ -4,7 +4,9 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.PromotionInflightGuard;
@@ -24,6 +26,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,6 +55,10 @@ class PromotionJobHandlerTest {
     @Mock
     private LocationPointStagingService stagingService;
     @Mock
+    private UserJdbcService userJdbcService;
+    @Mock
+    private DeviceJdbcService deviceJdbcService;
+    @Mock
     private JobSchedulingService jobSchedulingService;
     @Mock
     private JobMetadataRepository metadataRepository;
@@ -76,6 +83,8 @@ class PromotionJobHandlerTest {
     @BeforeEach
     void setUp() {
         this.handler = new PromotionJobHandler(stagingService,
+                userJdbcService,
+                deviceJdbcService,
                 jobSchedulingService,
                 metadataRepository,
                 userNotificationService,
@@ -139,8 +148,10 @@ class PromotionJobHandlerTest {
     }
 
     private void runHandler() throws JobExecutionException {
+        when(userJdbcService.findById(user.getId())).thenReturn(Optional.of(user));
+        lenient().when(deviceJdbcService.find(user, device.id())).thenReturn(Optional.of(device));
         JobDataMap dataMap = new JobDataMap();
-        dataMap.put("data", new PromotionJobHandler.TaskData(user, device, PARTITION_KEY, false, JOB_ID, null));
+        dataMap.put("data", new PromotionJobHandler.TaskData(user.getId(), device.id(), PARTITION_KEY, false, JOB_ID, null).toJson());
         when(context.getMergedJobDataMap()).thenReturn(dataMap);
         handler.execute(context);
     }

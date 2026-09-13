@@ -98,7 +98,7 @@ public class LocationBatchingService {
             if (promotionInflightGuard.tryAcquire(pKey)) {
                 try {
                     this.jobScheduler.enqueueTask(promotionTask,
-                                                  new PromotionJobHandler.TaskData(batch.user, batch.device, pKey, false),
+                                                  new PromotionJobHandler.TaskData(batch.user.getId(), batch.device.id(), pKey, false),
                                                   JobSchedulingService.Metadata.builder()
                                                           .user(batch.user)
                                                           .jobType(JobType.GPS_INGESTION)

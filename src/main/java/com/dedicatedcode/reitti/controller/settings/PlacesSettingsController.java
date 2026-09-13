@@ -3,26 +3,12 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.dto.SuppressedVisitInfo;
 import com.dedicatedcode.reitti.model.*;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.GeoUtils;
-import com.dedicatedcode.reitti.model.geo.NoVisitZone;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
-import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
+import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
-import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
-import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
-import com.dedicatedcode.reitti.service.DataCleanupService;
-import com.dedicatedcode.reitti.service.I18nService;
-import com.dedicatedcode.reitti.service.NoVisitZoneService;
-import com.dedicatedcode.reitti.service.PlaceChangeDetectionService;
-import com.dedicatedcode.reitti.service.PlaceService;
-import com.dedicatedcode.reitti.service.SuppressedVisitService;
-import com.dedicatedcode.reitti.service.TimeUtil;
+import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
@@ -376,7 +362,7 @@ public class PlacesSettingsController {
                 if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).canProceed()) {
                     placeJdbcService.update(updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
-                    this.jobSchedulingService.enqueueTask(locationDataCleanupTask, new DataCleanupService.TaskData(user, updatedPlace),
+                    this.jobSchedulingService.enqueueTask(locationDataCleanupTask, new DataCleanupService.TaskData(user.getId(), updatedPlace.getId()),
                                                           JobSchedulingService.Metadata.builder()
                                                                   .user(user)
                                                                   .friendlyName("Update Polygon of " + significantPlace.getName())
