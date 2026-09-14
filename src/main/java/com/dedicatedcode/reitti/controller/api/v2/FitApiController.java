@@ -49,7 +49,7 @@ public class FitApiController {
             }
 
             String filename = file.getOriginalFilename();
-            if (!filename.endsWith(".fit")) {
+            if (!filename.toLowerCase().endsWith(".fit")) {
                 response.put("success", false);
                 response.put("error", "Only Fit files (.fit) are supported");
                 return ResponseEntity.badRequest().body(response);

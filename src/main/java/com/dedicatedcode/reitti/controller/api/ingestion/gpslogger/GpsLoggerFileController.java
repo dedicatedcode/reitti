@@ -51,7 +51,7 @@ public class GpsLoggerFileController {
                 return ResponseEntity.ok().body(response);
             }
 
-            if (!file.getOriginalFilename().endsWith(".gpx")) {
+            if (!file.getOriginalFilename().toLowerCase().endsWith(".gpx")) {
                 response.put("success", false);
                 response.put("error", "Only GPX files are supported");
                 return ResponseEntity.badRequest().body(response);

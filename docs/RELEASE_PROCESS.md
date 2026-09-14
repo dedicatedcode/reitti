@@ -61,14 +61,9 @@ Note: Your GitHub account must be listed as a required reviewer for the `release
 
 ## What happens if I don't approve?
 - The workflow stays in a `Waiting` state.
-- **The tag is NOT deleted automatically.** Git tags are permanent references.
-- If you decide to abort the release, you must cancel the workflow run and delete the tag manually:
+- If you decide to abort the release, you must cancel the workflow run:
 
 ```bash
 # Cancel the pending workflow run via UI or CLI
 gh run cancel <run-id>
-
-# Delete the tag locally & remotely
-git tag -d v3.5.1
-git push origin --delete v3.5.1
 ```
