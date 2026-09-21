@@ -55,7 +55,7 @@ public class GoogleRecordsImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            logger.info("Importing Google Records file for user {}", user.getUsername());
+            logger.info("Importing Google Records file for user {} and device {}", user.getUsername(), device.name());
 
             JsonParser parser = objectMapper.createParser(inputStream);
             parentJobId = jobSchedulingService.createParentJob(

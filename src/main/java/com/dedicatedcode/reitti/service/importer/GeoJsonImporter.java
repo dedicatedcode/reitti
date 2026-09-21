@@ -53,7 +53,7 @@ public class GeoJsonImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            logger.info("Importing GeoJSON file for user {}", user.getUsername());
+            logger.info("Importing GeoJSON file for user {} and device {}", user.getUsername(), device.name());
             JsonNode rootNode = objectMapper.readTree(inputStream);
 
             // Check if it's a valid GeoJSON

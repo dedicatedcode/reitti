@@ -47,7 +47,7 @@ public class FitFileImporter {
     public Map<String, Object> importFile(InputStream inputStream, User user, Device device, String originalFilename) {
         AtomicInteger processedCount = new AtomicInteger(0);
         try {
-            logger.info("Importing Fit file for user {} with device {}", user.getUsername(), device.name());
+            logger.info("Importing Fit file for user {} and device {}", user.getUsername(), device.name());
             String partitionKey = UUID.randomUUID().toString();
             this.stagingService.ensurePartitionExists(partitionKey);
 
