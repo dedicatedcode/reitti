@@ -152,6 +152,18 @@ is created automatically for you, so you can jump straight into connecting your 
 
 ---
 
+## Add-ons & Companion Tools
+
+Tools that enhance or help with the usage of reitti live in the separate
+[reitti-addons](https://github.com/dedicatedcode/reitti-addons) repository. They are optional, work with any reitti
+version and currently include:
+
+- **reitti-device-sync**: auto-uploads new GPX/FIT recordings from USB-attached GPS devices (e.g. Garmin Edge,
+  Columbus P-1) to your instance whenever you plug them in.
+- **GPX Test Data Generator**: an interactive web tool to create, import, edit and randomize realistic GPX test data.
+
+---
+
 ## Configuration
 
 ### Docker Image Tags

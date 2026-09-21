@@ -1,9 +1,0 @@
-[Unit]
-Description=reitti device sync (upload GPX/FIT files from USB devices to reitti)
-
-[Service]
-Type=oneshot
-# FIT/GPX transfers over gvfs (MTP) can be slow; give it plenty of time.
-TimeoutStartSec=1h
-ExecStart=%h/.local/bin/reitti-device-sync
-SuccessExitStatus=1
