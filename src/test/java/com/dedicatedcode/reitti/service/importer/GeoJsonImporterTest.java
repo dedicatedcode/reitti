@@ -36,6 +36,8 @@ class GeoJsonImporterTest {
     @Mock
     private JobDetail task;
 
+    private final Device device = new Device(3L, "phone", true, true, true, "#ffffff", true, Instant.now(), Instant.now(), 0L);
+
     private GeoJsonImporter geoJsonImporter;
 
     @BeforeEach
@@ -84,7 +86,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
@@ -142,7 +144,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(2, result.get("pointsReceived"));
@@ -183,7 +185,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
@@ -211,7 +213,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
@@ -227,7 +229,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(invalidJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Invalid GeoJSON"));
@@ -244,7 +246,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertTrue(result.get("error").toString().contains("Unsupported GeoJSON type"));
@@ -273,7 +275,7 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertFalse((Boolean) result.get("success"));
         assertEquals(0, result.get("pointsReceived"));
@@ -297,13 +299,13 @@ class GeoJsonImporterTest {
             """;
 
         InputStream inputStream = new ByteArrayInputStream(geoJson.getBytes());
-        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, null, "test");
+        Map<String, Object> result = geoJsonImporter.importGeoJson(inputStream, user, device, "test");
 
         assertTrue((Boolean) result.get("success"));
         assertEquals(1, result.get("pointsReceived"));
 
         ArgumentCaptor<List<LocationPoint>> captor = ArgumentCaptor.forClass(List.class);
-        verify(stagingService).insertBatch(any(), eq(user), nullable(Device.class), captor.capture());
+        verify(stagingService).insertBatch(any(), eq(user), eq(device), captor.capture());
 
         List<LocationPoint> points = captor.getValue();
         LocationPoint point = points.get(0);

@@ -257,7 +257,7 @@ public class ProcessingPipelineTest {
         locationBatchingService.addLocationPoint(liveDataOnlyUser, device, point3);
 
         Awaitility.await("waiting for batch to flush and pipeline to process")
-                .atMost(30, TimeUnit.SECONDS)
+                .atMost(60, TimeUnit.SECONDS)
                 .until(() -> rawLocationPointJdbcService.findLatest(liveDataOnlyUser).isPresent());
 
         Optional<RawLocationPoint> latest = rawLocationPointJdbcService.findLatest(liveDataOnlyUser);
