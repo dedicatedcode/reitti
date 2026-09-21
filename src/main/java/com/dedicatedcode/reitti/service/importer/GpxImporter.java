@@ -53,7 +53,7 @@ public class GpxImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            logger.info("Importing GPX file for user {}", user.getUsername());
+            logger.info("Importing GPX file for user {} and device {}", user.getUsername(), device.name());
             parentJobId = jobSchedulingService.createParentJob(
                     user,
                     JobType.GPX_IMPORT,
