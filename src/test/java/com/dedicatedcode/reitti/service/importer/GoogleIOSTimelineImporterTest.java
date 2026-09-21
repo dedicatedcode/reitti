@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.importer;
 
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
@@ -25,7 +26,8 @@ class GoogleIOSTimelineImporterTest {
                                                                                 jobScheduler,
                                                                                 0);
         User user = new User("test", "Test User");
-        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user, null, "timeline_from_ios_randomized.json");
+        Device device = new Device(3L, "phone", true, true, true, "#ffffff", true, Instant.now(), Instant.now(), 0L);
+        Map<String, Object> result = importHandler.importTimeline(getClass().getResourceAsStream("/data/google/timeline_from_ios_randomized.json"), user, device, "timeline_from_ios_randomized.json");
 
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));

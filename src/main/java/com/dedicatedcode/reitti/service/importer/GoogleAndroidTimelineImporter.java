@@ -59,7 +59,7 @@ public class GoogleAndroidTimelineImporter extends BaseGoogleTimelineImporter {
                     JobType.GOOGLE_TIMELINE_IMPORT,
                     "Google Timeline Android Import - " + originalFilename
             );
-            logger.info("Importing Google Timeline Android file for user {}", user.getUsername());
+            logger.info("Importing Google Timeline Android file for user {} and device {}", user.getUsername(), device.name());
             JsonParser parser = objectMapper.createParser(inputStream);
 
             List<LocationPoint> batch = new ArrayList<>(stagingService.getBatchSize());

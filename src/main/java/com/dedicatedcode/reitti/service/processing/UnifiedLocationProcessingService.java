@@ -206,9 +206,9 @@ public class UnifiedLocationProcessingService {
 
             // Trips Table
             traceOutput.append("TRIPS (").append(tripResult.trips.size()).append(") - took [").append(tripResult.durationInMillis).append("]ms:\n");
-            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬─────────────────┐\n");
+            traceOutput.append("┌─────────────────────┬─────────────────────┬───────────┬───────────┬───────────┬──────────────────┐\n");
             traceOutput.append("│ Start Time          │ End Time            │ Duration  │ Distance  │ Traveled  │ Transport Modes  │\n");
-            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼─────────────────┤\n");
+            traceOutput.append("├─────────────────────┼─────────────────────┼───────────┼───────────┼───────────┼──────────────────┤\n");
             for (Trip trip : tripResult.trips) {
                 traceOutput.append(String.format("│ %-19s │ %-19s │ %8ds │ %8.0fm │ %8.0fm │ %-15s │\n",
                                                  trip.getStartTime().toString().substring(0, 19),
@@ -218,7 +218,7 @@ public class UnifiedLocationProcessingService {
                                                  trip.getTravelledDistanceMeters(),
                                                  trip.getSegments().stream().map(TransportModeSegment::mode).map(Objects::toString).collect(Collectors.joining(","))));
             }
-            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴─────────────────┘\n");
+            traceOutput.append("└─────────────────────┴─────────────────────┴───────────┴───────────┴───────────┴──────────────────┘\n");
 
             logger.trace(traceOutput.toString());
         }

@@ -50,7 +50,7 @@ public class GoogleIOSTimelineImporter extends BaseGoogleTimelineImporter {
         UUID parentJobId = null;
         String partitionKey = null;
         try {
-            logger.info("Importing Google Timeline IOS file for user {}", user.getUsername());
+            logger.info("Importing Google Timeline IOS file for user {} and device {}", user.getUsername(), device.name());
             partitionKey = UUID.randomUUID().toString();
             String finalPartitionKey = partitionKey;
             this.stagingService.ensurePartitionExists(partitionKey);
