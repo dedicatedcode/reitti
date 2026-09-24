@@ -90,6 +90,7 @@ public class JobStatusController {
         Map<JobType, AverageRuntime> averageRuntimes = calculateAverageRuntimes(pastParents);
         List<JobInfo> pendingJobs = pendingParents.stream()
                 .map(parent -> buildPendingJobInfo(timezone, parent, childrenByParent, averageRuntimes))
+                .sorted(Comparator.comparing(JobInfo::state).thenComparing(JobInfo::enqueuedAt))
                 .collect(Collectors.toList());
 
         // Build past job info (with duration)
