@@ -1,9 +1,9 @@
 package com.dedicatedcode.reitti.service.jobs;
 
 public enum JobState {
+    RUNNING,
     PREPARING,
     AWAITING,
-    RUNNING,
     COMPLETED,
     FAILED,
     CREATED, CANCELLED
