@@ -12,10 +12,17 @@ const DeviceSources = Object.fromEntries(
         return [String(key), {key, name: o.textContent.trim(), color: o.dataset.color}];
     })
 );
+const INITIAL_VIEW = {
+    padHours: 2       // hours shown before/after the center time
+};
+
+// Default span of the patch box on startup and after a date change
+const PATCH_SPAN_MS = 3600 * 1000;
+
 const MAIN_PAD_MS = 24 * 3600 * 1000;
 const DEVICE_PAD_MS = 2 * 3600 * 1000;
 const KEEP_WINDOW_DEVICE = 24 * 3600 * 1000;
-const KEEP_WINDOW_MAIN = 7 * 24 * 3600 * 1000;    // keep a week of main journey
+const KEEP_WINDOW_MAIN = 7 * 24 * 3600 * 1000;
 const GAP_CONFIG = {
     device: {
         interpolateBelow: 60 * 1000,       // don't synthesize; 60s is normal
@@ -51,22 +58,25 @@ function goToDate(date, opts = {}) {
         return;
     }
 
-    const centerHour = opts.hour ?? 9;
+    // Keep the current viewport center's time-of-day when switching dates
+    const currentCenter = new Date(viewportStartT + viewportDuration / 2);
+    const centerHour = opts.hour ?? currentCenter.getHours();
+    const centerMinute = currentCenter.getMinutes();
     const centerRealMs = dateTimeInUserTZ(
         d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
-        centerHour, 0
+        centerHour, centerMinute
     );
 
     if (opts.durationMs) {
         viewportDuration = Math.max(60 * 1000, opts.durationMs);
     } else if (!opts.keepDuration) {
-        viewportDuration = 45 * 60 * 1000;
+        viewportDuration = 2 * INITIAL_VIEW.padHours * 3600 * 1000;
     }
 
     viewportStartT = centerRealMs - viewportDuration / 2;
     clampViewport();
 
-    const patchSpan = Math.min(5 * 60000, viewportDuration * 0.15);
+    const patchSpan = PATCH_SPAN_MS;
     W.patch.tStart = centerRealMs - patchSpan / 2;
     W.patch.tEnd = centerRealMs + patchSpan / 2;
 
@@ -185,9 +195,10 @@ function getInitialCenterT() {
     if (dateParam) {
         const d = new Date(dateParam);
         if (!isNaN(d.getTime())) {
+            const now = new Date();
             return dateTimeInUserTZ(
                 d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
-                9, 0
+                now.getHours(), now.getMinutes()
             );
         }
     }
@@ -195,7 +206,7 @@ function getInitialCenterT() {
     return Date.now();
 }
 
-let viewportDuration = 45 * 60 * 1000;
+let viewportDuration = INITIAL_VIEW.padHours * 2 * 3600 * 1000;
 const _initialCenter = getInitialCenterT();
 let viewportStartT = _initialCenter - viewportDuration / 2;
 
@@ -205,8 +216,8 @@ const W = {
     selected: new Set(),
     selectionAnchorId: null,
     patch: {
-        tStart: _initialCenter - 2.5 * 60000,
-        tEnd: _initialCenter + 2.5 * 60000
+        tStart: _initialCenter - PATCH_SPAN_MS / 2,
+        tEnd: _initialCenter + PATCH_SPAN_MS / 2
     },
     hoverT: null,
     isLoading: false
@@ -656,7 +667,7 @@ map.on('load', () => {
             'line-opacity': [
                 'case',
                 ['get', 'inWindow'], 0.85,
-                0.35
+                0.12
             ]
         },
         layout: { 'line-cap': 'round', 'line-join': 'round' }
@@ -670,7 +681,7 @@ map.on('load', () => {
             'line-opacity': [
                 'case',
                 ['get', 'inWindow'], 0.75,
-                0.25
+                0.08
             ]
         },
         layout: {'line-cap': 'round', 'line-join': 'round'}
@@ -682,12 +693,12 @@ map.on('load', () => {
             'line-width': [
                 'case',
                 ['get', 'inWindow'], 2.5,
-                1.8
+                1.2
             ],
             'line-opacity': [
                 'case',
                 ['get', 'inWindow'], 0.98,
-                0.35
+                0.15
             ]
         },
         layout: {'line-cap': 'round', 'line-join': 'round'}
@@ -723,11 +734,12 @@ map.on('load', () => {
     map.addLayer({
         id: 'final-pts', type: 'circle', source: 'final-pts',
         paint: {
-            'circle-radius': ['case', ['get', 'selected'], 8, 5],
+            'circle-radius': ['case', ['get', 'selected'], 8, ['get', 'inWindow'], 5, 2.5],
             'circle-color': ['case', ['get', 'selected'], '#f2c470', ['get', 'color']],
-            'circle-stroke-width': 2,
+            'circle-stroke-width': ['case', ['get', 'inWindow'], 2, 0.5],
             'circle-stroke-color': ['case', ['get', 'selected'], '#fff5d6', '#0a1320'],
-            'circle-blur': ['case', ['get', 'selected'], 0.08, 0]
+            'circle-blur': ['case', ['get', 'selected'], 0.08, 0],
+            'circle-opacity': ['case', ['get', 'inWindow'], 1, 0.12]
         }
     });
 
@@ -900,8 +912,8 @@ function buildTimeLabelsFC() {
 
 function selectableRange() {
     return {
-        tStart: viewportStartT - MAIN_PAD_MS,
-        tEnd: viewportStartT + viewportDuration + MAIN_PAD_MS
+        tStart: viewportStartT,
+        tEnd: viewportStartT + viewportDuration
     };
 }
 
@@ -957,7 +969,12 @@ function buildFinalPointsFC() {
         if (p.sourceId == null) continue;
         features.push({
             type: 'Feature',
-            properties: {id: p.id, color: colorOf(p.streamId), selected: W.selected.has(p.id)},
+            properties: {
+                id: p.id,
+                color: colorOf(p.streamId),
+                selected: W.selected.has(p.id),
+                inWindow: p.t >= viewportStartT && p.t <= viewportStartT + viewportDuration
+            },
             geometry: {type: 'Point', coordinates: [p.lng, p.lat]}
         });
     }
@@ -1269,6 +1286,8 @@ function syncPatchBox() {
     connectorGuide.style.display = 'block';
     patchBox.style.left = x0 + 'px';
     patchBox.style.width = Math.max(2, (x1 - x0)) + 'px';
+    document.getElementById('patchStartLabel').textContent = fmtClock(W.patch.tStart);
+    document.getElementById('patchEndLabel').textContent = fmtClock(W.patch.tEnd);
     const center = (x0 + x1) / 2;
     const btnW = btnCopy.offsetWidth || 150;
     const clamped = Math.max(btnW / 2 + 4, Math.min(w - btnW / 2 - 4, center));
@@ -1349,6 +1368,7 @@ window.addEventListener('mousemove', (e) => {
     W.patch.tEnd = ne;
     syncPatchBox();
     map.getSource('cand-active')?.setData(buildCandidateActiveFC());
+    panMapToTime((ns + ne) / 2);
 });
 
 window.addEventListener('mouseup', () => {
@@ -1412,7 +1432,7 @@ window.addEventListener('mousemove', (e) => {
     playhead.style.display = 'none';
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('mouseup', (e) => {
     if (!timelinePan) return;
     const pan = timelinePan;
     timelinePan = null;
@@ -1422,6 +1442,26 @@ window.addEventListener('mouseup', () => {
     if (pan.moved) {
         triggerDebouncedDataLoad();
         return;
+    }
+
+    if (pan.cellId === 'mainLaneCell') {
+        // Click on the main timeline: select the nearest point at the clicked
+        // time and bring it into view on the map.
+        const point = nearestPointAtTime(pan.clickT);
+        if (point) {
+            const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+            if (!additive) clearSelection();
+            if (additive && W.selected.has(point.id)) {
+                W.selected.delete(point.id);
+            } else {
+                W.selected.add(point.id);
+                W.selectionAnchorId = point.id;
+            }
+            const target = FinalTimeline.find(p => p.id === point.id);
+            if (target) map.easeTo({center: [target.lng, target.lat], duration: 400});
+            renderSelectionInfo();
+            refreshAll();
+        }
     }
 
     if (pan.cellId === 'deviceLaneCell') {
@@ -1436,10 +1476,8 @@ window.addEventListener('mouseup', () => {
 });
 
 /* ============================================================
-   SCRUBBING + MAP FOLLOW
+   SCRUBBING
    ============================================================ */
-let lastScrubPanAt = 0;
-
 function onScrub(e) {
     if (timelinePan && timelinePan.moved) return;
     const cell = e.currentTarget;
@@ -1457,25 +1495,32 @@ function onScrub(e) {
             features: [{type: 'Feature', properties: {}, geometry: {type: 'Point', coordinates: [p.lng, p.lat]}}]
         });
         document.getElementById('drawerClock').textContent = fmtClock(t);
-
-        const now = performance.now();
-        if (now - lastScrubPanAt > 120) {
-            const b = map.getBounds();
-            const pad = 0.15;
-            const lngSpan = b.getEast() - b.getWest();
-            const latSpan = b.getNorth() - b.getSouth();
-            const outside =
-                p.lng < b.getWest() + lngSpan * pad ||
-                p.lng > b.getEast() - lngSpan * pad ||
-                p.lat < b.getSouth() + latSpan * pad ||
-                p.lat > b.getNorth() - latSpan * pad;
-            if (outside) {
-                map.easeTo({center: [p.lng, p.lat], duration: 400, essential: true});
-                lastScrubPanAt = now;
-            }
-        }
     }
     syncPickerToHover(t);
+}
+
+// Pan the map so that the interpolated position at time t is in view.
+// Only used for deliberate interactions (patch-drag, point click) — never on hover.
+let lastFollowPanAt = 0;
+
+function panMapToTime(t) {
+    const p = interpolateAtT(FinalTimeline, t);
+    if (!p) return;
+    const now = performance.now();
+    if (now - lastFollowPanAt < 120) return;
+    const b = map.getBounds();
+    const pad = 0.15;
+    const lngSpan = b.getEast() - b.getWest();
+    const latSpan = b.getNorth() - b.getSouth();
+    const outside =
+        p.lng < b.getWest() + lngSpan * pad ||
+        p.lng > b.getEast() - lngSpan * pad ||
+        p.lat < b.getSouth() + latSpan * pad ||
+        p.lat > b.getNorth() - latSpan * pad;
+    if (outside) {
+        map.easeTo({center: [p.lng, p.lat], duration: 400, essential: true});
+        lastFollowPanAt = now;
+    }
 }
 
 let _pickerSyncAt = 0;
@@ -1824,6 +1869,22 @@ function scrollTimelineToTime(t) {
     viewportStartT = t - viewportDuration / 2;
     clampViewport();
     triggerDebouncedDataLoad();
+}
+
+// Nearest selectable FinalTimeline point (by time) to the given timestamp.
+function nearestPointAtTime(t) {
+    const {tStart, tEnd} = selectableRange();
+    let best = null, bestDt = Infinity;
+    for (const p of FinalTimeline) {
+        if (p.t < tStart || p.t > tEnd) continue;
+        if (p.sourceId == null) continue;
+        const dt = Math.abs(p.t - t);
+        if (dt < bestDt) {
+            bestDt = dt;
+            best = p;
+        }
+    }
+    return best;
 }
 
 function nearestFinalPoint(screenPt, thresholdPx) {
