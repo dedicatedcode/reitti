@@ -41,6 +41,26 @@ if [ "$(id -u)" = '0' ]; then
     chown -R reitti:reitti "$APP_HOME"
   fi
 
+  # 1b. Add reitti to additional groups by GID (works independently of APP_UID/APP_GID)
+  if [ -n "$APP_EXTRA_GROUPS" ]; then
+    echo "Adding reitti to additional groups: $APP_EXTRA_GROUPS"
+    for g in $(echo "$APP_EXTRA_GROUPS" | tr ',' ' '); do
+      [ -n "$g" ] || continue
+      case "$g" in
+        *[!0-9]*) echo "ERROR: APP_EXTRA_GROUPS only accepts numeric GIDs, got '$g'"; exit 1 ;;
+      esac
+      # Skip if reitti is already a member (idempotent across restarts; also covers the primary APP_GID)
+      id -G reitti | tr ' ' '\n' | grep -qx "$g" && continue
+      if grep -q "^[^:]*:[^:]*:$g:" /etc/group; then
+        gname=$(grep "^[^:]*:[^:]*:$g:" /etc/group | cut -d: -f1)
+      else
+        gname="reitti-grp-$g"
+        addgroup -g "$g" "$gname" || { echo "ERROR: failed to create group for GID $g"; exit 1; }
+      fi
+      addgroup reitti "$gname" || { echo "ERROR: failed to add reitti to group '$gname'"; exit 1; }
+    done
+  fi
+
   # 2. Ensure DATA_DIR exists
   mkdir -p "$DATA_DIR"
   chmod 755 "$DATA_DIR"
@@ -58,7 +78,7 @@ if [ "$(id -u)" = '0' ]; then
   exec su-exec reitti java $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
 else
   echo "Warning: Container is running as UID $(id -u), not root."
-  echo "Environment variables APP_UID/APP_GID will be ignored."
+  echo "Environment variables APP_UID/APP_GID/APP_EXTRA_GROUPS will be ignored."
   echo "Ensure your volumes have the correct permissions on the host."
   exec java $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
 fi
