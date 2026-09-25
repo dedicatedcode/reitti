@@ -103,6 +103,40 @@ public class RawLocationPointJdbcService {
                                   user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
+    public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
+            User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored, int page, int pageSize) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.status = 0 ");
+        }
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ? ORDER BY rlp.timestamp")
+                .append(" OFFSET ").append(page * pageSize).append(" LIMIT ").append(pageSize);
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
+                                  user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
+    public long countByUserAndTimestampBetween(User user, Instant startTime, Instant endTime, boolean includeSynthetic, boolean includeIgnored) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT count(*) FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        if (!includeSynthetic) {
+            sql.append("AND rlp.synthetic = false ");
+        }
+        if (!includeIgnored) {
+            sql.append("AND rlp.status = 0 ");
+        }
+        sql.append("AND rlp.timestamp >= ? AND rlp.timestamp < ?");
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class,
+                user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
+        return count != null ? count : 0;
+    }
+
     /**
      * Streams all points of the user inside [startTime, endTime) in bounded
      * chunks ordered by (timestamp, id), without materializing the whole range.
