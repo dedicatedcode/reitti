@@ -56,8 +56,7 @@ public class GpxApiController {
                                                                  requestedDevice,
                                                                  ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
                                                                  ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
-                                                                 writer,
-                                                                 false);
+                                                                 writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }

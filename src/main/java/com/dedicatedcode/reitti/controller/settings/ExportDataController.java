@@ -3,9 +3,11 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GpxExportService;
 import com.dedicatedcode.reitti.service.TimeUtil;
@@ -37,17 +39,22 @@ import java.util.List;
 @Controller
 @RequestMapping("/settings/export-data")
 public class ExportDataController {
-    
+
+    static final String TIMELINE_DEVICE_ID = "timeline";
+
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
+    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final DeviceJdbcService deviceJdbcService;
     private final GpxExportService gpxExportService;
     private final boolean dataManagementEnabled;
 
     public ExportDataController(SourceLocationPointJdbcService sourceLocationPointJdbcService,
+                                RawLocationPointJdbcService rawLocationPointJdbcService,
                                 DeviceJdbcService deviceJdbcService,
                                 GpxExportService gpxExportService,
                                 @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
+        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
         this.gpxExportService = gpxExportService;
         this.dataManagementEnabled = dataManagementEnabled;
@@ -85,24 +92,34 @@ public class ExportDataController {
                                       @RequestParam(required = false, defaultValue = "0") int page,
                                       @RequestParam(required = false, defaultValue = "100") int size,
                                       Model model) {
-        Device device = findDevice(user, deviceId);
+        boolean timeline = TIMELINE_DEVICE_ID.equals(deviceId) && dataManagementEnabled;
+        Device device = timeline ? null : findDevice(user, deviceId);
         LocalDate start = StringUtils.hasText(startDate) ? LocalDate.parse(startDate) : LocalDate.now();
         LocalDate end = StringUtils.hasText(endDate) ? LocalDate.parse(endDate) : LocalDate.now();
         ZonedDateTime startDateTime = start.atStartOfDay(timezone);
         ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
         model.addAttribute("startDate", start);
         model.addAttribute("endDate", end);
-        
-        // Get raw location points for the date range
-        List<SourceLocationPoint> allPoints = sourceLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true, page, size);
-        
-        long totalElements = sourceLocationPointJdbcService.countByUserAndTimestampBetween(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true);
-        int totalPages = (int) Math.ceil((double) totalElements / size);
 
-        List<DataLine> paginatedData = allPoints.stream()
-                .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
-                                     p.getLatitude(), p.getLongitude(), p.getAccuracyMeters()))
-                .toList();
+        List<DataLine> paginatedData;
+        long totalElements;
+        if (TIMELINE_DEVICE_ID.equals(deviceId) && dataManagementEnabled) {
+            // The consolidated timeline (raw_location_points) with synthetic points, excluding ignored ones
+            List<RawLocationPoint> timelinePoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), true, false, page, size);
+            totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetween(user, startDateTime.toInstant(), endDateTime.toInstant(), true, false);
+            paginatedData = timelinePoints.stream()
+                    .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
+                            p.getLatitude(), p.getLongitude(), p.getAccuracyMeters()))
+                    .toList();
+        } else {
+            List<SourceLocationPoint> allPoints = sourceLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true, page, size);
+            totalElements = sourceLocationPointJdbcService.countByUserAndTimestampBetween(user, device, startDateTime.toInstant(), endDateTime.toInstant(), true, true);
+            paginatedData = allPoints.stream()
+                    .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
+                            p.getLatitude(), p.getLongitude(), p.getAccuracyMeters()))
+                    .toList();
+        }
+        int totalPages = (int) Math.ceil((double) totalElements / size);
         
         model.addAttribute("rawLocationPoints", paginatedData);
         model.addAttribute("currentPage", page);
@@ -128,22 +145,26 @@ public class ExportDataController {
                                                            @RequestParam(required = false) String deviceId,
                                                            @RequestParam String startDate,
                                                            @RequestParam String endDate,
-                                                           @RequestParam boolean relevantDataOnly,
                                                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
-            Device device = findDevice(user, deviceId);
+            boolean timeline = TIMELINE_DEVICE_ID.equals(deviceId) && dataManagementEnabled;
+            Device device = timeline ? null : findDevice(user, deviceId);
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
             ZonedDateTime startDateTime = start.atStartOfDay(timezone);
             ZonedDateTime endDateTime = end.plusDays(1).atStartOfDay(timezone);
 
-            String filename = String.format("location_data_%s_to_%s.gpx", 
+            String filename = String.format("location_data_%s_to_%s.gpx",
                 start.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 end.format(DateTimeFormatter.ISO_LOCAL_DATE));
-            
+
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    gpxExportService.generateGpxContentStreaming(user, device, startDateTime.toInstant(), endDateTime.toInstant(), writer, relevantDataOnly);
+                    if (timeline) {
+                        gpxExportService.generateTimelineGpxContentStreaming(user, startDateTime.toInstant(), endDateTime.toInstant(), writer);
+                    } else {
+                        gpxExportService.generateGpxContentStreaming(user, device, startDateTime.toInstant(), endDateTime.toInstant(), writer);
+                    }
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GPX file", e);
                 }

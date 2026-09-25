@@ -45,6 +45,7 @@
                                     hx-indicator="#loading-indicator"
                                     hx-vals='js:{"timezone": getUserTimezone()}'>
                                 <option th:each="device : ${devices}" th:data-color="${device.color()}" th:value="${device.id()}" value="garmin" th:text="${device.name()}">Garmin Fenix 7</option>
+                                <option th:if="${dataManagementEnabled}" value="timeline" th:text="#{export.device.timeline}">Timeline</option>
                                 <option value="gopro" th:remove="all">GoPro Hero 12</option>
                                 <option value="null" th:remove="all">Phone</option>
                             </select>
@@ -82,10 +83,6 @@
                         </div>
 
                         <div style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
-                            <div th:if="${dataManagementEnabled}" class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" id="relevantDataOnly" name="relevantDataOnly" style="margin: 0;">
-                                <label for="relevantDataOnly" style="margin: 0; font-size: 14px; color: var(--color-text-white);" th:text="#{export.gpx.relevant}">Export only data relevant for processing?</label>
-                            </div>
                             <button type="button" 
                                     class="btn"
                                     data-gpx-download
@@ -211,10 +208,8 @@
             const deviceId = document.getElementById('deviceId').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            const relevantDataCheckbox = document.getElementById('relevantDataOnly');
-            const relevantDataOnly = relevantDataCheckbox ? relevantDataCheckbox.checked : false;
 
-            gpxDownloader.downloadGpx(deviceId, startDate, endDate, buttonElement, relevantDataOnly);
+            gpxDownloader.downloadGpx(deviceId, startDate, endDate, buttonElement);
         }
     </script>
 </div>
