@@ -1,1 +1,1 @@
-UPDATE visit_detection_parameters SET density_max_interpolation_distance_meters = 250;
+UPDATE visit_detection_parameters SET density_max_interpolation_distance_meters = 150;

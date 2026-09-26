@@ -3,10 +3,10 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,9 +28,6 @@ class SyntheticPointInserterTest {
 
     @Autowired
     private TestingService testingService;
-
-    @Autowired
-    private VisitDetectionParametersService detectionParamsService;
 
     private User testUser;
 
@@ -81,12 +78,37 @@ class SyntheticPointInserterTest {
     }
 
     @Test
-    void shouldRespectMaxInterpolationTimeGap() {
+    void shouldFillLongDistanceGapsWithStationaryCluster() {
         Instant start = Instant.parse("2023-01-01T10:00:00Z");
-        Instant end = start.plus(3, ChronoUnit.HOURS); // 180 min > 120 min gap limit
+        Instant end = start.plus(3, ChronoUnit.HOURS);
+
+        // Two points ~660m apart: too far for the 250m interpolation threshold, but the 3h gap
+        // is long enough to assume a stationary stay -> cluster anchored at the first point
+        createAndSaveRawPoint(start, 50.0, 8.0);
+        createAndSaveRawPoint(end, 50.005, 8.005);
+
+        TimeRange range = new TimeRange(start, end.plusMillis(1));
+        syntheticPointInserter.fillGaps(testUser, range);
+
+        List<RawLocationPoint> all = rawLocationPointService
+                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser,
+                        start.minus(1, ChronoUnit.MINUTES), end.plus(1, ChronoUnit.MINUTES));
+        List<RawLocationPoint> synthetic = all.stream().filter(RawLocationPoint::isSynthetic).toList();
+        assertFalse(synthetic.isEmpty(), "Long gaps failing the distance check should be filled with a stationary cluster");
+
+        for (RawLocationPoint point : synthetic) {
+            double distance = GeoUtils.distanceInMeters(point.getGeom(), new GeoPoint(50.0, 8.0));
+            assertTrue(distance <= 50.0, "Stationary synthetic point must stay near the anchor point, was " + distance + "m");
+        }
+    }
+
+    @Test
+    void shouldNotFillShortTimeGapsWithStationaryCluster() {
+        Instant start = Instant.parse("2023-01-01T10:00:00Z");
+        Instant end = start.plus(14, ChronoUnit.MINUTES); // < 15 min stationary threshold
 
         createAndSaveRawPoint(start, 50.0, 8.0);
-        createAndSaveRawPoint(end, 50.001, 8.001);
+        createAndSaveRawPoint(end, 50.01, 8.01);
 
         TimeRange range = new TimeRange(start, end.plusMillis(1));
         syntheticPointInserter.fillGaps(testUser, range);
@@ -95,7 +117,7 @@ class SyntheticPointInserterTest {
                 .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser,
                         start.minus(1, ChronoUnit.MINUTES), end.plus(1, ChronoUnit.MINUTES));
         assertEquals(0, all.stream().filter(RawLocationPoint::isSynthetic).count(),
-                "No synthetic points for large time gaps");
+                "Short gaps failing the distance check stay unfilled");
     }
 
     @Test
@@ -112,11 +134,8 @@ class SyntheticPointInserterTest {
         assertDoesNotThrow(() -> syntheticPointInserter.fillGaps(testUser, range));
     }
 
-    // Optional composite test adapted from the original “shouldNotHaveIgnoredSyntheticPoints”
     @Test
     void shouldGenerateExpectedNumberOfSyntheticPointsForGivenRealPoints() {
-        Instant start = Instant.parse("2013-04-15T06:31:26.860000Z");
-        // original series of points with ~1 min gaps
         createAndSaveRawPoint(Instant.parse("2013-04-15T06:31:26.860000Z"), 50.0, 8.0);
         createAndSaveRawPoint(Instant.parse("2013-04-15T06:32:31.475000Z"), 50.0, 8.0);
         createAndSaveRawPoint(Instant.parse("2013-04-15T06:33:32.406000Z"), 50.0, 8.0);

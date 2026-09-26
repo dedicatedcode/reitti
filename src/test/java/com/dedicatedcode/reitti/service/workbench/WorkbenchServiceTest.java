@@ -46,14 +46,15 @@ class WorkbenchServiceTest {
         List<ProcessedVisit> processedVisits = this.processedVisitJdbcService.findByUser(this.user);
         assertEquals(5, processedVisits.size());
 
-        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09.154Z", "2025-06-17T05:39:50.330Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-17T05:44:08.763Z", "2025-06-17T05:49:18.965Z", ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-17T05:58:10.797Z", "2025-06-17T13:08:53.346Z", MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
-        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28.334Z", "2025-06-17T21:59:44.876Z", MOLTKESTR);
+        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:40:05Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-17T05:44:08Z", "2025-06-17T05:54:32Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-17T05:58:10Z", "2025-06-17T13:08:53Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-17T13:12:31Z", "2025-06-17T13:18:20Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28Z", "2025-06-17T21:59:44Z", MOLTKESTR);
 
         List<Long> pointsToDelete = this.testJdbcService.findPointsForVisit(this.user, processedVisits.get(1));
-        //Now delete every point in timerange "2025-06-17T05:44:08.763Z", "2025-06-17T05:49:18.965Z"
+        //Now delete every point in timerange "2025-06-17T05:44:08.763Z", "2025-06-17T05:54:32Z"
+        //The deleted points act as walls, so the gap between the surrounding visits must not be filled
         WorkbenchCommitRequest request = new WorkbenchCommitRequest();
         EditStoreDto editStore = new EditStoreDto();
         editStore.setDeletedPoints(pointsToDelete.stream().map(p -> {
@@ -71,10 +72,10 @@ class WorkbenchServiceTest {
         List<ProcessedVisit> processedVisitsAfterDeletion = this.processedVisitJdbcService.findByUser(this.user);
         assertEquals(4, processedVisitsAfterDeletion.size());
 
-        assertVisit(processedVisitsAfterDeletion.get(0), "2025-06-16T22:00:09.154Z", "2025-06-17T05:39:50.330Z", MOLTKESTR);
-        assertVisit(processedVisitsAfterDeletion.get(1), "2025-06-17T05:58:10.797Z", "2025-06-17T13:08:53.346Z", MOLTKESTR);
-        assertVisit(processedVisitsAfterDeletion.get(2), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
-        assertVisit(processedVisitsAfterDeletion.get(3), "2025-06-17T13:21:28.334Z", "2025-06-17T21:59:44.876Z", MOLTKESTR);
+        assertVisit(processedVisitsAfterDeletion.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:40:05Z", MOLTKESTR);
+        assertVisit(processedVisitsAfterDeletion.get(1), "2025-06-17T05:58:10Z", "2025-06-17T13:08:53Z", MOLTKESTR);
+        assertVisit(processedVisitsAfterDeletion.get(2), "2025-06-17T13:12:31Z", "2025-06-17T13:18:20Z", ST_THOMAS);
+        assertVisit(processedVisitsAfterDeletion.get(3), "2025-06-17T13:21:28Z", "2025-06-17T21:59:44Z", MOLTKESTR);
     }
 
     @Test
@@ -121,7 +122,7 @@ class WorkbenchServiceTest {
 
         List<ProcessedVisit> processedVisits = this.processedVisitJdbcService.findByUser(this.user);
         List<Long> pointsToDelete = this.testJdbcService.findPointsForVisit(this.user, processedVisits.get(1));
-        //Now delete every point in timerange "2025-06-17T05:44:08.763Z", "2025-06-17T05:49:18.965Z"
+        //Now delete every point of the second visit (2025-06-17T05:44:08Z .. 2025-06-17T05:54:32Z)
         WorkbenchCommitRequest request = new WorkbenchCommitRequest();
         EditStoreDto editStore = new EditStoreDto();
         editStore.setDeletedPoints(pointsToDelete.stream().map(p -> {
@@ -142,8 +143,8 @@ class WorkbenchServiceTest {
         PatchDto patch = new PatchDto();
         patch.setDeviceId(String.valueOf(device.id()));
         patch.setSeq(1);
-        patch.settStart(Instant.parse("2025-06-17T05:44:08.763Z").toEpochMilli());
-        patch.settEnd(Instant.parse("2025-06-17T05:49:18.965Z").toEpochMilli());
+        patch.settStart(Instant.parse("2025-06-17T05:44:08Z").toEpochMilli());
+        patch.settEnd(Instant.parse("2025-06-17T05:54:32Z").toEpochMilli());
         stitchStore.setPatches(Collections.singletonList(patch));
         stitchRequest.setEditStore(stitchStore);
 
@@ -155,11 +156,10 @@ class WorkbenchServiceTest {
         processedVisits = this.processedVisitJdbcService.findByUser(this.user);
         assertEquals(5, processedVisits.size());
 
-        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09.154Z", "2025-06-17T05:39:50.330Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-17T05:44:08.763Z", "2025-06-17T05:49:18.965Z", ST_THOMAS);
-        assertVisit(processedVisits.get(2), "2025-06-17T05:58:10.797Z", "2025-06-17T13:08:53.346Z", MOLTKESTR);
-        assertVisit(processedVisits.get(3), "2025-06-17T13:12:33.214Z", "2025-06-17T13:18:20.778Z", ST_THOMAS);
-        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28.334Z", "2025-06-17T21:59:44.876Z", MOLTKESTR);
-
+        assertVisit(processedVisits.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:40:05Z", MOLTKESTR);
+        assertVisit(processedVisits.get(1), "2025-06-17T05:44:39Z", "2025-06-17T05:54:32Z", ST_THOMAS);
+        assertVisit(processedVisits.get(2), "2025-06-17T05:58:10Z", "2025-06-17T13:08:53Z", MOLTKESTR);
+        assertVisit(processedVisits.get(3), "2025-06-17T13:12:31Z", "2025-06-17T13:18:20Z", ST_THOMAS);
+        assertVisit(processedVisits.get(4), "2025-06-17T13:21:28Z", "2025-06-17T21:59:44Z", MOLTKESTR);
     }
 }
