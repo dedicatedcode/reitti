@@ -117,7 +117,7 @@ public class SyntheticLocationPointGenerator {
         Instant startTime = startPoint.getTimestamp();
         Instant endTime = endPoint.getTimestamp();
 
-        double latOffset = GeoUtils.metersToDegreesAtPosition(jitterRadiusMeters, startPoint.getGeom().latitude());
+        double latOffset = jitterRadiusMeters / 111320.0;
         double lonOffset = GeoUtils.metersToDegreesAtPosition(jitterRadiusMeters, startPoint.getGeom().latitude());
 
         Instant currentTime = startTime.plusSeconds(intervalSeconds).truncatedTo(SECONDS);

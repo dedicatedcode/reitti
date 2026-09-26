@@ -61,6 +61,17 @@ public class RawLocationPointJdbcService {
     }
 
 
+    public List<Instant> findManuallyIgnoredTimestampsIn(User user, Instant start, Instant end) {
+        return jdbcTemplate.queryForList(
+                "SELECT rsp.timestamp FROM raw_source_points rsp " +
+                        "WHERE rsp.user_id = ? AND rsp.status = 1 AND rsp.timestamp >= ? AND rsp.timestamp <= ? " +
+                        "ORDER BY rsp.timestamp",
+                Instant.class,
+                user.getId(),
+                Timestamp.from(start),
+                Timestamp.from(end));
+    }
+
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
             User user, Instant startTime, Instant endTime) {
         String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +

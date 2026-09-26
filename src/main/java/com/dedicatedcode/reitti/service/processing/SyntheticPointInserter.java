@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,28 +118,47 @@ public class SyntheticPointInserter {
 
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
-                List<LocationPoint> syntheticPoints;
-                if (GeoUtils.distanceInMeters(current, next) <= maxInterpolationDistanceMeters) {
-                    syntheticPoints = syntheticGenerator.generateSyntheticPoints(
-                            current, next,
-                            config.getTargetPointsPerMinute(),
-                            maxInterpolationDistanceMeters
-                    );
-                } else if (gapSeconds >= MIN_STATIONARY_GAP.getSeconds()) {
-                    // Distance too large for interpolation but the gap is long enough to assume
-                    // the user stayed in place (e.g. device off during a longer stay): fill with a
-                    // stationary cluster anchored at the first point
-                    syntheticPoints = syntheticGenerator.generateStationaryPoints(
-                            current, next,
-                            config.getTargetPointsPerMinute(),
-                            STATIONARY_JITTER_RADIUS_METERS
-                    );
-                } else {
-                    syntheticPoints = List.of();
+                // Manually deleted points act as walls inside the gap: only sub-segments between
+                // two real points get filled, segments touching a deleted point stay empty
+                List<Instant> ignoredTimestamps = rawLocationPointService.findManuallyIgnoredTimestampsIn(
+                        user, current.getTimestamp(), next.getTimestamp());
+                List<RawLocationPoint> anchors = new ArrayList<>();
+                anchors.add(current);
+                for (Instant ignored : ignoredTimestamps) {
+                    // wall marker, never persisted; synthetic is true, so fill logic skips segments touching it
+                    anchors.add(new RawLocationPoint(null, null, ignored, current.getGeom(), null, null, true, true, 0L));
                 }
-                logger.trace("Gap of {}s between {} and {} -> {} synthetic points",
-                        gapSeconds, current.getTimestamp(), next.getTimestamp(), syntheticPoints.size());
-                allSyntheticPoints.addAll(syntheticPoints);
+                anchors.add(next);
+                for (int a = 0; a < anchors.size() - 1; a++) {
+                    RawLocationPoint from = anchors.get(a);
+                    RawLocationPoint to = anchors.get(a + 1);
+                    long segmentSeconds = Duration.between(from.getTimestamp(), to.getTimestamp()).getSeconds();
+                    List<LocationPoint> syntheticPoints;
+                    if (from.isSynthetic() || to.isSynthetic()) {
+                        // wall at a manually deleted point: this sub-segment stays unfilled
+                        syntheticPoints = List.of();
+                    } else if (GeoUtils.distanceInMeters(from, to) <= maxInterpolationDistanceMeters) {
+                        syntheticPoints = syntheticGenerator.generateSyntheticPoints(
+                                from, to,
+                                config.getTargetPointsPerMinute(),
+                                maxInterpolationDistanceMeters
+                        );
+                    } else if (segmentSeconds >= MIN_STATIONARY_GAP.getSeconds()) {
+                        // Distance too large for interpolation but the gap is long enough to assume
+                        // the user stayed in place (e.g. device off during a longer stay): fill with a
+                        // stationary cluster anchored at the first point
+                        syntheticPoints = syntheticGenerator.generateStationaryPoints(
+                                from, to,
+                                config.getTargetPointsPerMinute(),
+                                STATIONARY_JITTER_RADIUS_METERS
+                        );
+                    } else {
+                        syntheticPoints = List.of();
+                    }
+                    logger.trace("Gap of {}s between {} and {} -> {} synthetic points",
+                            segmentSeconds, from.getTimestamp(), to.getTimestamp(), syntheticPoints.size());
+                    allSyntheticPoints.addAll(syntheticPoints);
+                }
             }
         }
 
