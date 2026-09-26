@@ -96,6 +96,55 @@ public class SyntheticLocationPointGenerator {
         return syntheticPoints;
     }
     
+    /**
+     * Generates a stationary cluster of synthetic points anchored at the start point of a gap.
+     * Used when the distance between the two surrounding real points is too large for interpolation
+     * but the gap is long enough to assume the user stayed in place (e.g. device was turned off
+     * during a longer stay). Points are generated at the regular interval, with a small
+     * deterministic jitter around the start point so the cluster does not collapse into a single
+     * coordinate.
+     */
+    public List<LocationPoint> generateStationaryPoints(
+            RawLocationPoint startPoint,
+            RawLocationPoint endPoint,
+            int targetPointsPerMinute,
+            double jitterRadiusMeters) {
+
+        List<LocationPoint> syntheticPoints = new ArrayList<>();
+
+        int intervalSeconds = 60 / targetPointsPerMinute;
+
+        Instant startTime = startPoint.getTimestamp();
+        Instant endTime = endPoint.getTimestamp();
+
+        double latOffset = jitterRadiusMeters / 111320.0;
+        double lonOffset = GeoUtils.metersToDegreesAtPosition(jitterRadiusMeters, startPoint.getGeom().latitude());
+
+        Instant currentTime = startTime.plusSeconds(intervalSeconds).truncatedTo(SECONDS);
+        int index = 0;
+        while (currentTime.isBefore(endTime)) {
+            double jitterLat = Math.sin(index * 12.9898) * latOffset;
+            double jitterLon = Math.cos(index * 78.233) * lonOffset;
+
+            LocationPoint syntheticPoint = new LocationPoint();
+            syntheticPoint.setLatitude(startPoint.getGeom().latitude() + jitterLat);
+            syntheticPoint.setLongitude(startPoint.getGeom().longitude() + jitterLon);
+            syntheticPoint.setTimestamp(currentTime);
+            syntheticPoint.setAccuracyMeters(startPoint.getAccuracyMeters());
+            syntheticPoint.setElevationMeters(startPoint.getElevationMeters());
+
+            syntheticPoints.add(syntheticPoint);
+
+            currentTime = currentTime.plusSeconds(intervalSeconds);
+            index++;
+        }
+
+        logger.trace("Generated {} stationary synthetic points between {} and {}",
+                syntheticPoints.size(), startTime, endTime);
+
+        return syntheticPoints;
+    }
+
     private boolean shouldInterpolate(RawLocationPoint start, RawLocationPoint end, double maxDistance) {
         // Check if the distance between points is within an acceptable range
         double distance = GeoUtils.distanceInMeters(start, end);
