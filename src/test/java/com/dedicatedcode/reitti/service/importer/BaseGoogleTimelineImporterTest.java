@@ -39,6 +39,9 @@ class BaseGoogleTimelineImporterTest {
         testingService.awaitDataImport(30);
 
         List<ProcessedVisit> createdVisits = this.visitJdbcService.findByUser(user);
-        assertEquals(7, createdVisits.size());
+        // 9 (not 3) since the multi-hour device-off gaps in the fixture are now filled
+        // with synthetic points (interpolation below the 250m threshold, stationary
+        // clusters above it), which visit detection resolves into more visits
+        assertEquals(9, createdVisits.size());
     }
 }

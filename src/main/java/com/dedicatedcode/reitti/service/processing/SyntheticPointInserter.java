@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.processing;
 
 import com.dedicatedcode.reitti.config.LocationDensityConfig;
 import com.dedicatedcode.reitti.dto.LocationPoint;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
@@ -24,6 +25,18 @@ import java.util.List;
 public class SyntheticPointInserter {
 
     private static final Logger logger = LoggerFactory.getLogger(SyntheticPointInserter.class);
+
+    /**
+     * Gaps failing the interpolation distance check are treated as stationary (device off during
+     * a longer stay) and filled with a cluster anchored at the first point, if the gap is at
+     * least this long. Shorter gaps are plausibly real movement and stay unfilled.
+     */
+    static final Duration MIN_STATIONARY_GAP = Duration.ofMinutes(15);
+
+    /**
+     * Radius of the deterministic jitter around the anchor point for stationary fills.
+     */
+    private static final double STATIONARY_JITTER_RADIUS_METERS = 15.0;
 
     private final LocationDensityConfig config;
     private final RawLocationPointJdbcService rawLocationPointService;
@@ -53,6 +66,7 @@ public class SyntheticPointInserter {
         rawLocationPointService.deleteSyntheticPointsInRange(user, inputRange.start(), inputRange.end());
 
         Instant currentStart = inputRange.start();
+        RawLocationPoint lastPointOfPreviousBatch = null;
         while (currentStart.isBefore(inputRange.end())) {
             // 3. Fetch all real points in the range
             List<RawLocationPoint> realPoints = rawLocationPointService
@@ -72,10 +86,18 @@ public class SyntheticPointInserter {
                                     .thenComparing(p -> p.getGeom().longitude())
                                     .thenComparing(RawLocationPoint::isSynthetic));
 
-            // 5. Process gaps
-            processGaps(user, realPoints, densityConfig);
+            // 5. Process gaps, carrying over the last point of the previous batch so the
+            //    pair spanning the batch boundary is not lost
+            List<RawLocationPoint> batch = new ArrayList<>(realPoints.size() + 1);
+            if (lastPointOfPreviousBatch != null) {
+                batch.add(lastPointOfPreviousBatch);
+            }
+            batch.addAll(realPoints);
+            processGaps(user, batch, densityConfig);
+
             if (realPoints.isEmpty()) break;
-            currentStart = realPoints.getLast().getTimestamp().plus(1, ChronoUnit.MILLIS);
+            lastPointOfPreviousBatch = realPoints.getLast();
+            currentStart = lastPointOfPreviousBatch.getTimestamp().plus(1, ChronoUnit.MILLIS);
         }
 
     }
@@ -87,6 +109,7 @@ public class SyntheticPointInserter {
 
         int gapThresholdSeconds = config.getGapThresholdSeconds();
         long maxInterpolationSeconds = densityConfig.getMaxInterpolationGapMinutes() * 60L;
+        double maxInterpolationDistanceMeters = densityConfig.getMaxInterpolationDistanceMeters();
 
         List<LocationPoint> allSyntheticPoints = new ArrayList<>();
 
@@ -96,11 +119,25 @@ public class SyntheticPointInserter {
 
             long gapSeconds = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
             if (gapSeconds > gapThresholdSeconds && gapSeconds <= maxInterpolationSeconds) {
-                List<LocationPoint> syntheticPoints = syntheticGenerator.generateSyntheticPoints(
-                        current, next,
-                        config.getTargetPointsPerMinute(),
-                        densityConfig.getMaxInterpolationDistanceMeters()
-                );
+                List<LocationPoint> syntheticPoints;
+                if (GeoUtils.distanceInMeters(current, next) <= maxInterpolationDistanceMeters) {
+                    syntheticPoints = syntheticGenerator.generateSyntheticPoints(
+                            current, next,
+                            config.getTargetPointsPerMinute(),
+                            maxInterpolationDistanceMeters
+                    );
+                } else if (gapSeconds >= MIN_STATIONARY_GAP.getSeconds()) {
+                    // Distance too large for interpolation but the gap is long enough to assume
+                    // the user stayed in place (e.g. device off during a longer stay): fill with a
+                    // stationary cluster anchored at the first point
+                    syntheticPoints = syntheticGenerator.generateStationaryPoints(
+                            current, next,
+                            config.getTargetPointsPerMinute(),
+                            STATIONARY_JITTER_RADIUS_METERS
+                    );
+                } else {
+                    syntheticPoints = List.of();
+                }
                 logger.trace("Gap of {}s between {} and {} -> {} synthetic points",
                         gapSeconds, current.getTimestamp(), next.getTimestamp(), syntheticPoints.size());
                 allSyntheticPoints.addAll(syntheticPoints);
