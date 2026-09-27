@@ -68,7 +68,6 @@ public class TransportModeService {
         if (!overrides.isEmpty()) {
             log.trace("segmentTrip: loaded {} override(s) for trip [{}..{}]", overrides.size(), tripStart, tripEnd);
         }
-
         List<ChunkClass> chunks = chunkAndClassify(pointIterator, firstPointTimestamp, lastPointTimestamp, pointCount, configs);
         log.trace("segmentTrip: {} points, {} chunks, trip [{}-{}]", pointCount, chunks.size(), tripStart, tripEnd);
 
@@ -77,20 +76,7 @@ public class TransportModeService {
 
         for (ChunkClass chunk : chunks) {
             long chunkDuration = Math.max(1, chunk.durationSeconds());
-            TransportMode mode = chunk.mode();
-
-            // Check if any override midpoint falls within this chunk
-            Instant chunkStart = tripStart.plusSeconds(chunkStartOffset);
-            Instant chunkEnd = tripStart.plusSeconds(chunkStartOffset + chunkDuration);
-            for (TransportModeOverride override : overrides) {
-                if (!override.time().isBefore(chunkStart) && override.time().isBefore(chunkEnd)) {
-                    log.trace("segmentTrip: chunk at +{}s raw={}, override matches at {} → {}", chunkStartOffset, mode, override.time(), override.mode());
-                    mode = override.mode();
-                    break;
-                }
-            }
-
-            result.add(new TransportModeSegment(mode, chunkStartOffset, chunkDuration, chunk.distanceMeters()));
+            result.add(new TransportModeSegment(chunk.mode(), chunkStartOffset, chunkDuration, chunk.distanceMeters()));
             chunkStartOffset += chunkDuration;
         }
 
@@ -133,7 +119,36 @@ public class TransportModeService {
             result = List.of(new TransportModeSegment(fallbackMode, 0L, Math.max(1, duration), totalDistanceMeters));
         }
 
+        result = applyOverrides(result, tripStart, overrides);
         return result;
+    }
+
+    private List<TransportModeSegment> applyOverrides(List<TransportModeSegment> segments, Instant tripStart,
+                                                      List<TransportModeOverride> overrides) {
+        if (overrides.isEmpty()) {
+            return segments;
+        }
+        List<TransportModeSegment> result = new ArrayList<>();
+        for (TransportModeSegment segment : segments) {
+            Instant segmentStart = tripStart.plusSeconds(segment.offsetSeconds());
+            Instant segmentEnd = segmentStart.plusSeconds(segment.durationSeconds());
+
+            TransportMode overriddenMode = null;
+            for (TransportModeOverride override : overrides) {
+                if (!override.time().isBefore(segmentStart) && override.time().isBefore(segmentEnd)) {
+                    overriddenMode = override.mode();
+                }
+            }
+            if (overriddenMode != null) {
+                log.trace("applyOverrides: segment at +{}s+{}s overridden {} → {}",
+                        segment.offsetSeconds(), segment.durationSeconds(), segment.mode(), overriddenMode);
+                result.add(new TransportModeSegment(overriddenMode, segment.offsetSeconds(),
+                        segment.durationSeconds(), segment.distanceMeters()));
+            } else {
+                result.add(segment);
+            }
+        }
+        return mergeSameModeSegments(result);
     }
 
     private TransportMode slowestConfiguredMode(List<TransportModeConfig> configs) {
