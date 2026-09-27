@@ -153,7 +153,7 @@ class TransportModeServiceTest {
     }
 
     @Test
-    void appliesManualOverrideToMatchedChunk() {
+    void appliesManualOverrideToWholeMergedSegment() {
         List<RawLocationPoint> points = new ArrayList<>();
         for (int i = 0; i < 21; i++) {
             points.add(pt(i * 15L, (i + 1) * 15.0));
@@ -163,9 +163,64 @@ class TransportModeServiceTest {
 
         List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(300));
 
+        assertEquals(1, segments.size());
+        assertSegment(segments.get(0), TransportMode.CYCLING, 0, 300);
+    }
+
+    @Test
+    void overrideSurvivesCollapseOfShortSegment() {
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i <= 80; i++) {
+            points.add(pt(i * 15L, (i + 1) * 15.0));
+        }
+        when(transportModeOverrideJdbcService.getTransportModeOverrides(any(User.class), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.TRANSIT, T0.plusSeconds(600))));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(1200));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.get(0), TransportMode.TRANSIT, 0, 1200);
+    }
+
+    @Test
+    void overridesReplaceOnlyTheirOwnSegmentsAndAdjacentSameModeSegmentsMerge() {
+        // First half walking (slow), second half driving (fast) → two merged segments
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i <= 20; i++) {
+            points.add(pt(i * 15L, (i + 1) * 15.0));
+        }
+        for (int i = 21; i <= 40; i++) {
+            points.add(pt(i * 15L, 300.0 + (i - 20) * 250.0));
+        }
+        when(transportModeOverrideJdbcService.getTransportModeOverrides(any(User.class), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.CYCLING, T0.plusSeconds(100))));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(600));
+
         assertEquals(2, segments.size());
-        assertSegment(segments.get(0), TransportMode.WALKING, 0, 240);
-        assertSegment(segments.get(1), TransportMode.CYCLING, 240, 60);
+        assertSegment(segments.get(0), TransportMode.CYCLING, 0, 300);
+        assertSegment(segments.get(1), TransportMode.DRIVING, 300, 300);
+    }
+
+    @Test
+    void twoOverridesInDifferentSegmentsReplaceEachSegmentFully() {
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i <= 20; i++) {
+            points.add(pt(i * 15L, (i + 1) * 15.0));
+        }
+        for (int i = 21; i <= 40; i++) {
+            points.add(pt(i * 15L, 300.0 + (i - 20) * 250.0));
+        }
+        when(transportModeOverrideJdbcService.getTransportModeOverrides(any(User.class), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(
+                        new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.CYCLING, T0.plusSeconds(100)),
+                        new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.TRANSIT, T0.plusSeconds(400))));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(600));
+
+        assertEquals(2, segments.size());
+        assertSegment(segments.get(0), TransportMode.CYCLING, 0, 300);
+        assertSegment(segments.get(1), TransportMode.TRANSIT, 300, 300);
     }
 
     private RawLocationPoint pt(long offsetSeconds, double northMeters) {
