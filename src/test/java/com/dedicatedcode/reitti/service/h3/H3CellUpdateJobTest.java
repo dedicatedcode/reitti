@@ -87,6 +87,8 @@ class H3CellUpdateJobTest {
         assertTrue(sanktJuergen.isPresent());
         assertTrue(sanktGertrud.isPresent());
 
+        this.testingService.awaitExpected(t -> !this.testJdbcService.findSourcePointsAfter(user, "2025-06-18T05:45:00Z").isEmpty(), 60);
+
         //now we delete all points after 07:45 -> should remove the cell for sankt gertrud
         List<Long> pointsToDelete = this.testJdbcService.findSourcePointsAfter(user, "2025-06-18T05:45:00Z");
         WorkbenchCommitRequest request = new WorkbenchCommitRequest();
@@ -127,6 +129,8 @@ class H3CellUpdateJobTest {
         assertTrue(luebeck.isPresent());
         assertTrue(sanktJuergen.isPresent());
         assertTrue(sanktGertrud.isPresent());
+
+        this.testingService.awaitExpected(t -> !this.testJdbcService.findSourcePointsAfter(user, "2025-06-18T05:45:00Z").isEmpty(), 60);
 
         //now we move all points after 07:45 -> should remove the cell for sankt gertrud and add one for Bad Oldesloe
         List<Long> pointsToDelete = this.testJdbcService.findSourcePointsAfter(user, "2025-06-18T05:45:00Z");
