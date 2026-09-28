@@ -138,7 +138,7 @@ public class LocationPointStagingService {
             """;
 
         List<PromotedPoint> inserted = this.jdbcTemplate.query(sql, (rs, rowNum) -> new PromotedPoint(rs.getLong("id"), rs.getTimestamp("timestamp").toInstant()), partitionKey);
-        if (user.getUserType() == UserType.NORMAL) {
+        if (user.getUserType() == UserType.NORMAL && !inserted.isEmpty()) {
             spatialCoverageService.postPromotion(inserted.stream().map(PromotedPoint::id).toList());
         }
         if (inserted.isEmpty()) {
