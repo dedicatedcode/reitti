@@ -68,7 +68,7 @@
         <h3 th:text="#{places.edit.visit.stats.title}">Visit Statistics</h3>
         <div th:if="${visitStats != null && visitStats.totalVisits > 0}" class="visit-stats">
             <p th:if="${visitStats.firstVisit != null && visitStats.lastVisit != null}">
-                <span th:utext="#{places.edit.visit.complete(${place.name()}, ${visitStats.totalVisits}, 
+                <span th:utext="#{places.edit.visit.complete(${#strings.escapeXml(place.name())}, ${visitStats.totalVisits},
                     '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.firstVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;',
                     '&lt;a href=&quot;/?date=' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd')} + '&quot; target=&quot;_blank&quot;&gt;' + ${#temporals.format(visitStats.lastVisit, 'yyyy-MM-dd HH:mm')} + '&lt;/a&gt;')}">
                     Complete visit summary

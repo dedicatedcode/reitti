@@ -31,11 +31,12 @@
                placeholder="https://api.example.com/reverse?format=geocodejson&lat={lat}&lon={lng}&zoom=18&addressdetails=1">
     </div>
 
-    <div class="form-group" th:if="${type.name() == 'GEO_APIFY'}">
+    <!-- stored API keys are never sent back to the browser, leaving the field empty keeps the stored key -->
+    <div class="form-group" th:if="${type.name() == 'GEO_APIFY'}"
+         th:with="hasStoredKey=${service != null && service.additionalParameters != null && !#strings.isEmpty(service.additionalParameters['apiKey'])}">
         <label for="apiKey" th:text="#{geocoding.service.api_key}">API Key</label>
-        <input type="text" id="apiKey" name="apiKey" required
-               th:value="${service != null && service.additionalParameters != null ? service.additionalParameters['apiKey'] : ''}"
-               placeholder="Enter your Geoapify API Key">
+        <input type="password" id="apiKey" name="apiKey" th:required="${!hasStoredKey}" autocomplete="off"
+               th:placeholder="${hasStoredKey ? 'Leave empty to keep the stored key' : 'Enter your Geoapify API Key'}">
     </div>
 
     <div class="form-group" th:if="${type.name() == 'PAIKKA' || type.name() == 'GEO_APIFY' || type.name() == 'NOMINATIM'}">
