@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.controller.RequestValidation;
 import com.dedicatedcode.reitti.dto.UserDto;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
@@ -131,7 +132,7 @@ public class ShareAccessController {
                                   @AuthenticationPrincipal User user,
                                   Model model) {
         try {
-            magicLinkTokenService.deleteToken(id);
+            magicLinkTokenService.deleteToken(user, id);
             model.addAttribute("successMessage", i18n.translate("magic.links.deleted.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("magic.links.delete.error", e.getMessage()));
@@ -233,6 +234,10 @@ public class ShareAccessController {
     public String updateSharingColor(@PathVariable Long id,
                                    @RequestParam String color,
                                    @AuthenticationPrincipal User user) {
+        // the colour ends up in style attributes on the map of the user it is shared with
+        if (!RequestValidation.isHexColor(color)) {
+            return "error";
+        }
         try {
             userSharingJdbcService.updateSharingColor(id, user.getId(), color);
             return "success";

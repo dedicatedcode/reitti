@@ -169,6 +169,14 @@ public class MagicLinkJdbcService {
         jdbcTemplate.update(sql, id);
     }
 
+    @CacheEvict(value = "magic-links", allEntries = true)
+    public void delete(User user, long id) {
+        int deleted = jdbcTemplate.update("DELETE FROM magic_link_tokens WHERE id = ? AND user_id = ?", id, user.getId());
+        if (deleted == 0) {
+            throw new IllegalArgumentException("Magic link not found");
+        }
+    }
+
     private static class MagicLinkTokenRowMapper implements RowMapper<MagicLinkToken> {
         @Override
         public MagicLinkToken mapRow(ResultSet rs, int rowNum) throws SQLException {
