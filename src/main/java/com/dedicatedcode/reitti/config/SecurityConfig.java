@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
@@ -36,6 +37,9 @@ public class SecurityConfig {
 
     @Autowired
     private SetupFilter setupFilter;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     @Autowired
     private HtmxAuthenticationEntryPoint authenticationEntryPoint;
@@ -96,6 +100,7 @@ public class SecurityConfig {
                 .addFilterBefore(bearerTokenAuthFilter, MagicLinkAuthenticationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
                 .addFilterBefore(setupFilter, MagicLinkSessionValidationFilter.class)
+                .addFilterBefore(new LoginThrottleFilter(loginAttemptService), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form
                         .loginPage("/login")
