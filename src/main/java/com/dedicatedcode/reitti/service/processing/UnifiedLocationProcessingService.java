@@ -21,6 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,6 +48,12 @@ public class UnifiedLocationProcessingService {
 
     private static final int BUFFER_COMPACT_THRESHOLD = 10_000;
 
+    /**
+     * Visits further apart than this are not connected by a trip. Applies to every pair of consecutive visits alike,
+     * so the trips do not depend on how the data was split into processing runs.
+     */
+    static final Duration MAX_TRIP_DURATION = Duration.ofHours(24);
+
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
@@ -63,6 +74,7 @@ public class UnifiedLocationProcessingService {
     private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
+    private final TransactionTemplate postCommitTransaction;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -83,7 +95,8 @@ public class UnifiedLocationProcessingService {
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
-            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
+            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
+            PlatformTransactionManager transactionManager) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -104,11 +117,17 @@ public class UnifiedLocationProcessingService {
         this.visitSuppressionService = visitSuppressionService;
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
+        this.postCommitTransaction = new TransactionTemplate(transactionManager);
+        this.postCommitTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
      * Entry point for location processing events.
      * Enqueues the event for the user and ensures processing starts.
+     * <p>
+     * Visits and trips of the processed range are deleted and recreated, so callers should run this inside a
+     * transaction (see {@link ProcessingPipelineTask}); otherwise a failure halfway through leaves the range empty.
+     * Side effects outside the database (geocoding jobs, notifications) are deferred until that transaction commits.
      */
     public void processLocationEvent(LocationProcessEvent event) {
         long startTime = System.currentTimeMillis();
@@ -152,12 +171,14 @@ public class UnifiedLocationProcessingService {
 
         // STEP 4: Notifications
         // ---------------------
-        if (previewId == null) {
-            userNotificationService.newVisits(user, mergingResult.processedVisits);
-            userNotificationService.newTrips(user, tripResult.trips);
-        } else {
-            userNotificationService.newTrips(user, tripResult.trips, previewId);
-        }
+        afterCommit(() -> {
+            if (previewId == null) {
+                userNotificationService.newVisits(user, mergingResult.processedVisits);
+                userNotificationService.newTrips(user, tripResult.trips);
+            } else {
+                userNotificationService.newTrips(user, tripResult.trips, previewId);
+            }
+        });
 
         long duration = System.currentTimeMillis() - startTime;
 
@@ -342,8 +363,9 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        if (allVisits.isEmpty()) {
-            return new VisitMergingResult(new ArrayList<>(), new ArrayList<>(), searchStart, searchEnd, System.currentTimeMillis() - start);
+        if (allVisits.isEmpty() && !existingProcessedVisits.isEmpty()) {
+            logger.info("No visits detected for user [{}] between [{}] and [{}] anymore, removed [{}] existing visit(s)",
+                    user.getUsername(), searchStart, searchEnd, existingProcessedVisits.size());
         }
 
         // Merge visits chronologically
@@ -380,45 +402,24 @@ public class UnifiedLocationProcessingService {
             previewTripJdbcService.deleteAll(existingTrips);
         }
 
-        // Create trips between consecutive visits
-        List<Trip> trips = new ArrayList<>();
-        for (int i = 0; i < processedVisits.size() - 1; i++) {
-            ProcessedVisit startVisit = processedVisits.get(i);
-            ProcessedVisit endVisit = processedVisits.get(i + 1);
-
-            Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
-            if (trip != null) {
-                trips.add(trip);
-            }
+        // Create trips between consecutive visits. In live mode that includes the visits right before and after
+        // the range: their connecting trips were deleted together with the replaced visits (ON DELETE CASCADE), and
+        // rebuilding them under the same rules as the trips inside the range keeps the result independent of how
+        // the data was split into runs.
+        List<ProcessedVisit> chain = new ArrayList<>();
+        if (previewId == null) {
+            this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart).ifPresent(chain::add);
+        }
+        chain.addAll(processedVisits);
+        if (previewId == null) {
+            this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd).ifPresent(chain::add);
         }
 
-        if (previewId == null && !processedVisits.isEmpty()) {
-            //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripBefore = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst());
-                if (tripBefore != null) {
-                    trips.add(tripBefore);
-                }
-            }
-
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripAfter = createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get());
-                if (tripAfter != null) {
-                    trips.add(tripAfter);
-                }
-            }
-        } else if (previewId == null) {
-            //all visits in the search range were suppressed, stitch the surrounding visits back together
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (firstProcessedVisitBefore.isPresent() && processedVisitAfter.isPresent()
-                    && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip spanningTrip = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisitAfter.get());
-                if (spanningTrip != null) {
-                    trips.add(spanningTrip);
-                }
+        List<Trip> trips = new ArrayList<>();
+        for (int i = 0; i < chain.size() - 1; i++) {
+            Trip trip = createTripBetweenVisits(user, previewId, chain.get(i), chain.get(i + 1));
+            if (trip != null) {
+                trips.add(trip);
             }
         }
         trips.sort(Comparator.comparing(Trip::getStartTime));
@@ -795,6 +796,12 @@ public class UnifiedLocationProcessingService {
         // Trip ends when the second visit starts
         Instant tripEndTime = endVisit.getStartTime();
 
+        if (Duration.between(tripStartTime, tripEndTime).compareTo(MAX_TRIP_DURATION) > 0) {
+            logger.debug("Not connecting visits [{}] and [{}] of user [{}] by a trip: they are more than [{}] apart",
+                    startVisit.getId(), endVisit.getId(), user.getUsername(), MAX_TRIP_DURATION);
+            return null;
+        }
+
         if (previewId != null) {
             if (this.previewProcessedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.previewProcessedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
                 logger.debug("One of the following preview visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
@@ -930,13 +937,38 @@ public class UnifiedLocationProcessingService {
                 place.getLongitudeCentroid(),
                 traceId
         ).withParentJobId(parentJobId);
-        this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
-                                      JobSchedulingService.Metadata.builder()
-                                          .user(user)
-                                          .jobType(REVERSE_GEOCODE)
-                                          .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
-                                          .build());
-        logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
+        // the geocoding job must not run before the place is committed, nor for a place that is rolled back
+        afterCommit(() -> {
+            this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                          JobSchedulingService.Metadata.builder()
+                                              .user(user)
+                                              .jobType(REVERSE_GEOCODE)
+                                              .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
+                                              .build());
+            logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
+        });
+    }
+
+    /**
+     * Runs the action once the surrounding transaction has committed, or right away when there is none.
+     * Nothing happens when the transaction rolls back.
+     */
+    private void afterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    // the committed transaction is still bound to the thread here, so data access needs a new one
+                    postCommitTransaction.executeWithoutResult(_ -> action.run());
+                } catch (RuntimeException e) {
+                    logger.error("Post-commit action of the location processing failed", e);
+                }
+            }
+        });
     }
 
     // ==================== Result Classes ====================
