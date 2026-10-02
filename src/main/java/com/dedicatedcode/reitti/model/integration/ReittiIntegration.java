@@ -99,7 +99,7 @@ public class ReittiIntegration {
         return "ReittiIntegration{" +
                 "id=" + id +
                 ", url='" + url + '\'' +
-                ", token='" + token + '\'' +
+                ", token='[redacted]'" +
                 ", enabled=" + enabled +
                 ", status=" + status +
                 ", createdAt=" + createdAt +

@@ -61,8 +61,14 @@
                                 hx-swap="innerHTML"
                                 th:text="#{integrations.reitti.info}">Info
                         </button>
-                        <button class="btn"
-                                th:attr="onclick='editReittiIntegration(' + ${integration.id} + ', \'' + ${integration.url} + '\', \'' + ${integration.token} + '\', \'' + ${integration.color} + '\', ' + ${integration.enabled} + ', ' + ${integration.version} + ')'"
+                        <button class="btn" type="button"
+                                th:data-id="${integration.id}"
+                                th:data-url="${integration.url}"
+                                th:data-token="${integration.token}"
+                                th:data-color="${integration.color}"
+                                th:data-enabled="${integration.enabled}"
+                                th:data-version="${integration.version}"
+                                onclick="editReittiIntegrationFromButton(this)"
                                 th:text="#{form.edit}">Edit
                         </button>
                         <button class="btn"
@@ -159,6 +165,12 @@
     </div>
 
     <script>
+        // values are read from data attributes so they are never interpreted as code
+        function editReittiIntegrationFromButton(button) {
+            const data = button.dataset;
+            editReittiIntegration(data.id, data.url || '', data.token || '', data.color || '', data.enabled === 'true', data.version || '');
+        }
+
         function editReittiIntegration(id, url, token, color, enabled, version) {
             // Update form title
             document.getElementById('form-title').textContent = t('integrations.reitti.edit.title');
