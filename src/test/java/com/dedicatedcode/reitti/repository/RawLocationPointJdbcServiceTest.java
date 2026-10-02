@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -164,6 +165,26 @@ class RawLocationPointJdbcServiceTest {
         // Another user's points should not be affected
         assertTrue(findPointById(anotherUserDay1.getId()).isProcessed());
         assertTrue(findPointById(anotherUserDay2.getId()).isProcessed());
+    }
+
+    @Test
+    void markAllAsUnprocessedForUser_ShouldCoverWholeDaysInTheJvmTimeZone() {
+        ZoneId zone = ZoneId.systemDefault();
+        LocalDate day = LocalDate.of(2023, 12, 1);
+        RawLocationPoint beforeFirstDay = createProcessedPoint(testUser, day.atStartOfDay(zone).toInstant().minusMillis(1));
+        RawLocationPoint startOfFirstDay = createProcessedPoint(testUser, day.atStartOfDay(zone).toInstant());
+        RawLocationPoint endOfSecondDay = createProcessedPoint(testUser, day.plusDays(2).atStartOfDay(zone).toInstant().minusMillis(1));
+        RawLocationPoint startOfThirdDay = createProcessedPoint(testUser, day.plusDays(2).atStartOfDay(zone).toInstant());
+        RawLocationPoint separateDay = createProcessedPoint(testUser, day.plusDays(5).atStartOfDay(zone).toInstant().plus(12, ChronoUnit.HOURS));
+
+        // unordered and with duplicates, like the days collected from visit start and end times
+        rawLocationPointJdbcService.markAllAsUnprocessedForUser(testUser, List.of(day.plusDays(5), day.plusDays(1), day, day));
+
+        assertTrue(findPointById(beforeFirstDay.getId()).isProcessed());
+        assertFalse(findPointById(startOfFirstDay.getId()).isProcessed());
+        assertFalse(findPointById(endOfSecondDay.getId()).isProcessed());
+        assertTrue(findPointById(startOfThirdDay.getId()).isProcessed());
+        assertFalse(findPointById(separateDay.getId()).isProcessed());
     }
 
     private RawLocationPoint createProcessedPoint(User user, Instant timestamp) {
