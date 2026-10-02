@@ -37,6 +37,8 @@ public class ImmichIntegrationService {
 
     private static final Logger log = LoggerFactory.getLogger(ImmichIntegrationService.class);
     private static final Pattern ASSET_ID = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    // asset ids end up in request URLs and storage paths, so they must never contain path or query characters
+    private static final Pattern SAFE_ASSET_ID = Pattern.compile("^[A-Za-z0-9-]{1,64}$");
     private static final Set<String> IMAGE_SIZES = Set.of("thumbnail", "preview", "fullsize");
     private static final long MAX_IMAGE_BYTES = 50L * 1024 * 1024;
 
@@ -58,8 +60,15 @@ public class ImmichIntegrationService {
         this.outboundUrlValidator = outboundUrlValidator;
     }
 
+    /**
+     * Immich asset ids are UUIDs.
+     */
     public static boolean isValidAssetId(String assetId) {
         return assetId != null && ASSET_ID.matcher(assetId).matches();
+    }
+
+    private static boolean isSafeAssetId(String assetId) {
+        return assetId != null && SAFE_ASSET_ID.matcher(assetId).matches();
     }
     
     public Optional<ImmichIntegration> getIntegrationForUser(User user) {
@@ -280,7 +289,7 @@ public class ImmichIntegrationService {
     }
 
     public ResponseEntity<byte[]> proxyImageRequest(User user, String assetId, String size) {
-        if (!isValidAssetId(assetId) || !IMAGE_SIZES.contains(size)) {
+        if (!isSafeAssetId(assetId) || !IMAGE_SIZES.contains(size)) {
             return ResponseEntity.badRequest().build();
         }
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
@@ -358,7 +367,7 @@ public class ImmichIntegrationService {
     }
 
     public boolean updateAssetLocation(User user, String assetId, double latitude, double longitude) {
-        if (!isValidAssetId(assetId)) {
+        if (!isSafeAssetId(assetId)) {
             return false;
         }
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
