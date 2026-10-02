@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -47,7 +48,8 @@ class TileProxyControllerTest {
                 "",                        // panoramaxBaseUrl
                 objectMapper,
                 userMapStyleJdbcService,
-                mapLibreMapStylesService
+                mapLibreMapStylesService,
+                new OutboundUrlValidator(true, "", "", 6379, "")
         );
     }
 
