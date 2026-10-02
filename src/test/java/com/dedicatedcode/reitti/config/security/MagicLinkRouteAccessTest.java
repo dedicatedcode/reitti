@@ -101,6 +101,36 @@ class MagicLinkRouteAccessTest {
     }
 
     @Test
+    void liveLinkGetsTodaysTrackButNoHistory() throws Exception {
+        MockHttpSession session = open(magicLinkTokenService.createMapShareToken(owner, "live", MagicLinkAccessLevel.ONLY_LIVE, null), "/");
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+
+        mockMvc.perform(get("/api/v2/locations/stream/" + owner.getId()).session(session)
+                        .param("start", today + "T00:00").param("end", today + "T23:59:59").param("timezone", "UTC"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v2/locations/stream/" + owner.getId()).session(session)
+                        .param("start", "2020-01-01T00:00").param("end", "2020-01-01T23:59:59").param("timezone", "UTC"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void memoryLinkGetsTheTrackOfItsMemoryOnly() throws Exception {
+        Memory memory = memoryJdbcService.create(owner, new Memory("m", "d",
+                LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                LocalDate.of(2024, 1, 2).atStartOfDay().toInstant(ZoneOffset.UTC), HeaderType.MAP, null));
+        MockHttpSession session = open(magicLinkTokenService.createMemoryShareToken(owner, memory.getId(), MagicLinkAccessLevel.MEMORY_VIEW_ONLY, 1),
+                "/memories/" + memory.getId());
+
+        // memory pages load their tracks from the stream API (#813)
+        mockMvc.perform(get("/api/v2/locations/stream/" + owner.getId()).session(session)
+                        .param("start", "2024-01-01T00:00").param("end", "2024-01-01T23:59:59").param("timezone", "UTC"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v2/locations/stream/" + owner.getId()).session(session)
+                        .param("start", "2025-06-01T00:00").param("end", "2025-06-01T23:59:59").param("timezone", "UTC"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void memoryLinkOpenedViaAccessIsBoundToItsMemory() throws Exception {
         Memory memory = memoryJdbcService.create(owner, new Memory("m", "d",
                 LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC),
