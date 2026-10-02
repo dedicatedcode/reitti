@@ -1,10 +1,14 @@
 package com.dedicatedcode.reitti.controller.api.v2;
 
+import com.dedicatedcode.reitti.controller.api.DataAccessGuard;
+import com.dedicatedcode.reitti.controller.api.DataAccessGuard.TimeWindow;
 import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.security.TokenUser;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GeoJsonExportService;
 import com.dedicatedcode.reitti.service.StreamingRawLocationPointJdbcService;
 import org.springframework.http.HttpHeaders;
@@ -24,31 +28,28 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v2/locations")
 public class LocationApiController {
 
-    private final UserJdbcService userJdbcService;
+    private final DataAccessGuard dataAccessGuard;
     private final DeviceJdbcService deviceJdbcService;
-    private final UserSharingJdbcService userSharingJdbcService;
     private final RawLocationPointJdbcService jdbcService;
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final GeoJsonExportService geoJsonExportService;
     private final StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService;
 
-    public LocationApiController(UserJdbcService userJdbcService,
+    public LocationApiController(DataAccessGuard dataAccessGuard,
                                  DeviceJdbcService deviceJdbcService,
-                                 UserSharingJdbcService userSharingJdbcService,
                                  RawLocationPointJdbcService jdbcService,
                                  SourceLocationPointJdbcService sourceLocationPointJdbcService,
                                  GeoJsonExportService geoJsonExportService,
                                  StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService) {
-        this.userJdbcService = userJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
         this.deviceJdbcService = deviceJdbcService;
-        this.userSharingJdbcService = userSharingJdbcService;
         this.jdbcService = jdbcService;
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.geoJsonExportService = geoJsonExportService;
@@ -60,11 +61,21 @@ public class LocationApiController {
                            @PathVariable Long userId,
                            @RequestParam String start,
                            @RequestParam String end,
-                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
-        Instant startInstant = parseInstant(start, timezone, false);
-        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
-        return this.jdbcService.getMetadata(userToFetchDataFrom, startInstant, endInstant);
+                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeWindow range = readableRange(user, start, end, timezone,
+                MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS,
+                MagicLinkAccessLevel.ONLY_LAST_LOCATION, MagicLinkAccessLevel.MEMORY_VIEW_ONLY, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS);
+        MapMetadata metadata = this.jdbcService.getMetadata(userToFetchDataFrom, range.start(), range.end());
+        if (DataAccessGuard.hasAccessLevel(user, MagicLinkAccessLevel.ONLY_LAST_LOCATION)) {
+            return new MapMetadata(0, 0, 0, 0, 0, 0, 0, metadata.latestLocation());
+        }
+        if (DataAccessGuard.hasAccessLevel(user, MagicLinkAccessLevel.MEMORY_VIEW_ONLY) || DataAccessGuard.hasAccessLevel(user, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS)) {
+            // the current location of the owner is not part of the memory
+            return new MapMetadata(metadata.minTimestamp(), metadata.maxTimestamp(), metadata.totalPoints(),
+                                   metadata.minLat(), metadata.maxLat(), metadata.minLng(), metadata.maxLng(), Optional.empty());
+        }
+        return metadata;
     }
 
     @GetMapping("/metadata/{userId}/device/{deviceId}")
@@ -73,13 +84,11 @@ public class LocationApiController {
                            @PathVariable Long deviceId,
                            @RequestParam String start,
                            @RequestParam String end,
-                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeWindow range = readableRange(user, start, end, timezone, MagicLinkAccessLevel.FULL_ACCESS);
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
-
-        Instant startInstant = parseInstant(start, timezone, false);
-        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
-        return this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, startInstant, endInstant);
+        return this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, range.start(), range.end());
     }
 
     @GetMapping(value = "/stream/{userId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -88,13 +97,16 @@ public class LocationApiController {
             @PathVariable Long userId,
             @RequestParam String start,
             @RequestParam String end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeWindow range = readableRange(user, start, end, timezone,
+                MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS,
+                MagicLinkAccessLevel.MEMORY_VIEW_ONLY, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS);
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
         CompletableFuture.runAsync(() -> {
             try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, range.start(), range.end(), emitter);
             } catch (Exception e) {
                 if (e.getCause() instanceof java.io.IOException) {
                     try { emitter.complete(); } catch (Exception ignored) {}
@@ -117,15 +129,16 @@ public class LocationApiController {
             @PathVariable Long deviceId,
             @RequestParam String start,
             @RequestParam String end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeWindow range = readableRange(user, start, end, timezone, MagicLinkAccessLevel.FULL_ACCESS);
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
         CompletableFuture.runAsync(() -> {
             try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, device, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, device, range.start(), range.end(), emitter);
             } catch (Exception e) {
                 if (e.getCause() instanceof java.io.IOException) {
                     try { emitter.complete(); } catch (Exception ignored) {}
@@ -147,6 +160,7 @@ public class LocationApiController {
                                                                @RequestParam String start,
                                                                @RequestParam String end,
                                                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        dataAccessGuard.readableWindow(user, timezone, MagicLinkAccessLevel.FULL_ACCESS);
         try {
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
@@ -182,6 +196,7 @@ public class LocationApiController {
                                                                @RequestParam String start,
                                                                @RequestParam String end,
                                                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        dataAccessGuard.readableWindow(user, timezone, MagicLinkAccessLevel.FULL_ACCESS);
         try {
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
@@ -210,21 +225,15 @@ public class LocationApiController {
                     });
         }
     }
-    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
-        if (user.getId().equals(userId)) {
-            return user;
-        }
-        if (user instanceof TokenUser) {
-            if (!Objects.equals(user.getId(), userId)) {
-                throw new IllegalAccessException("User not allowed to fetch raw location points for other users");
-            }
-        }
-        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-            throw new IllegalAccessException("User not allowed to fetch raw location points for other user with id " + userId);
-        }
 
-        return userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    /**
+     * Parses the requested range (the end is inclusive) and restricts it to what the caller may read.
+     */
+    private TimeWindow readableRange(User user, String start, String end, ZoneId timezone, MagicLinkAccessLevel... allowedLinkLevels) {
+        Optional<TimeWindow> window = dataAccessGuard.readableWindow(user, timezone, allowedLinkLevels);
+        Instant startInstant = parseInstant(start, timezone, false);
+        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
+        return window.map(w -> w.restrict(startInstant, endInstant)).orElse(new TimeWindow(startInstant, endInstant));
     }
 
     private Instant parseInstant(String input, ZoneId timezone, boolean end) {

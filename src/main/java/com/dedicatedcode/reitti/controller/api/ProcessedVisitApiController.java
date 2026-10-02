@@ -5,11 +5,8 @@ import com.dedicatedcode.reitti.dto.ProcessedVisitResponse;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
-import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,16 +31,13 @@ public class ProcessedVisitApiController {
     private static final Logger logger = LoggerFactory.getLogger(ProcessedVisitApiController.class);
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final UserJdbcService userJdbcService;
-    private final UserSharingJdbcService userSharingJdbcService;
+    private final DataAccessGuard dataAccessGuard;
 
     @Autowired
     public ProcessedVisitApiController(ProcessedVisitJdbcService processedVisitJdbcService,
-                                       UserJdbcService userJdbcService,
-                                       UserSharingJdbcService userSharingJdbcService) {
+                                       DataAccessGuard dataAccessGuard) {
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.userJdbcService = userJdbcService;
-        this.userSharingJdbcService = userSharingJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
     }
 
     @GetMapping("/visits")
@@ -94,26 +89,14 @@ public class ProcessedVisitApiController {
                 ));
             }
 
-            // Check access permissions
-            boolean hasAccess = true;
-            if (user instanceof TokenUser) {
-                if (!Objects.equals(user.getId(), userId)) {
-                    throw new IllegalAccessException("User not allowed to fetch processed visits for other users");
-                }
-
-                hasAccess = user.getAuthorities().stream().anyMatch(a ->
-                        a.equals(MagicLinkAccessLevel.FULL_ACCESS.asAuthority()) ||
-                        a.equals(MagicLinkAccessLevel.ONLY_LIVE.asAuthority()) ||
-                        a.equals(MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS.asAuthority()));
+            User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+            Optional<DataAccessGuard.TimeWindow> window = dataAccessGuard.readableWindow(user, userTimezone,
+                    MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS);
+            if (window.isPresent()) {
+                DataAccessGuard.TimeWindow restricted = window.get().restrict(startOfRange, endOfRange);
+                startOfRange = restricted.start();
+                endOfRange = restricted.end();
             }
-
-            if (!hasAccess) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Insufficient permissions to access processed visits"));
-            }
-
-            // Get the user from the repository by userId
-            User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
 
             // Fetch processed visits in the time range
             List<ProcessedVisit> visits = processedVisitJdbcService.findByUserAndTimeOverlap(
@@ -170,6 +153,8 @@ public class ProcessedVisitApiController {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "Invalid date format. Expected format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS"
             ));
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Error fetching processed visits", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -198,21 +183,4 @@ public class ProcessedVisitApiController {
         return String.format("#%02x%02x%02x", r, g, b);
     }
 
-
-    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
-        if (user.getId().equals(userId)) {
-            return user;
-        }
-        if (user instanceof TokenUser) {
-            if (!Objects.equals(user.getId(), userId)) {
-                throw new IllegalAccessException("User not allowed to fetch data for other users");
-            }
-        }
-        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-            throw new IllegalAccessException("User not allowed to fetch data for other user with id " + userId);
-        }
-
-        return userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
 }
