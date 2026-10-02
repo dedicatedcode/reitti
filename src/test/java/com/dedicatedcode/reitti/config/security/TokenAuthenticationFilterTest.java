@@ -99,9 +99,9 @@ class TokenAuthenticationFilterTest {
     }
 
     @Test
-    void whenNoTokenProvided_thenReturns302Forbidden() throws Exception {
+    void whenNoTokenProvided_thenApiReturns401() throws Exception {
         mockMvc.perform(get("/api/test-endpoint"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isUnauthorized()); // API clients must not be redirected to the login page (#1261)
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }

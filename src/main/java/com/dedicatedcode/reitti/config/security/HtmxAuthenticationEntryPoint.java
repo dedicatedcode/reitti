@@ -26,6 +26,9 @@ public class HtmxAuthenticationEntryPoint implements AuthenticationEntryPoint {
             // Tell HTMX to redirect the whole window to the login page
             response.setHeader("HX-Redirect", contextPathHolder.getContextPath() + "/login");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        } else if (request.getRequestURI().startsWith(contextPathHolder.getContextPath() + "/api/")) {
+            // API clients (GPSLogger, OwnTracks, ...) follow redirects and would treat the login page as success (#1261)
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         } else {
             // Standard behavior for non-HTMX requests (regular 302 redirect)
             response.sendRedirect(contextPathHolder.getContextPath() + "/login");

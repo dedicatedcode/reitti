@@ -7,6 +7,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 public class TokenUser extends User {
     private final List<GrantedAuthority> authorities = new ArrayList<>();
@@ -63,6 +64,7 @@ public class TokenUser extends User {
     }
 
     public boolean grantsAccessTo(MagicLinkResourceType type, Long resourceId){
-        return this.type.equals(type) && (this.resourceId == null || this.resourceId.equals(resourceId));
+        // a link grants exactly the resource it was created for
+        return this.type.equals(type) && Objects.equals(this.resourceId, resourceId);
     }
 }
