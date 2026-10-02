@@ -16,6 +16,8 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.distance.DistanceOp;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +72,7 @@ public class UnifiedLocationProcessingService {
     private final UserNotificationService userNotificationService;
     private final GeoLocationTimezoneService timezoneService;
     private final GeometryFactory geometryFactory;
+    private final PointReaderWriter pointReaderWriter;
     private final MetadataOverrideService metadataOverrideService;
     private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
@@ -96,7 +99,8 @@ public class UnifiedLocationProcessingService {
             VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
             @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            PointReaderWriter pointReaderWriter) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -113,6 +117,7 @@ public class UnifiedLocationProcessingService {
         this.userNotificationService = userNotificationService;
         this.timezoneService = timezoneService;
         this.geometryFactory = geometryFactory;
+        this.pointReaderWriter = pointReaderWriter;
         this.metadataOverrideService = metadataOverrideService;
         this.visitSuppressionService = visitSuppressionService;
         this.jobScheduler = jobScheduler;
@@ -912,13 +917,27 @@ public class UnifiedLocationProcessingService {
     }
 
     private SignificantPlace findClosestPlace(double latitude, double longitude, List<SignificantPlace> places) {
-
-        Comparator<SignificantPlace> distanceComparator = Comparator.comparingDouble(place ->
-                GeoUtils.distanceInMeters(
-                        latitude, longitude,
-                        place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+        // a place whose polygon contains the point wins over a place whose centroid is merely closer; otherwise the
+        // distance counts to the polygon if the place has one, matching how findNearbyPlaces selects them
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+        record Candidate(SignificantPlace place, boolean containsPoint, double distanceInMeters) {
+        }
         return places.stream()
-                .min(distanceComparator.thenComparing(SignificantPlace::getId))
+                .map(place -> {
+                    if (place.getPolygon() == null || place.getPolygon().size() < 3) {
+                        return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+                    }
+                    Polygon polygon = pointReaderWriter.toJtsPolygon(place.getPolygon());
+                    if (polygon.covers(point)) {
+                        return new Candidate(place, true, 0);
+                    }
+                    Coordinate nearest = DistanceOp.nearestPoints(polygon, point)[0];
+                    return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, nearest.y, nearest.x));
+                })
+                .min(Comparator.comparing((Candidate candidate) -> !candidate.containsPoint())
+                        .thenComparingDouble(Candidate::distanceInMeters)
+                        .thenComparing(candidate -> candidate.place().getId()))
+                .map(Candidate::place)
                 .orElseThrow(() -> new IllegalStateException("No places found"));
     }
 

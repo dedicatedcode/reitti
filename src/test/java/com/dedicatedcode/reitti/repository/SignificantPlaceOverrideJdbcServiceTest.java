@@ -151,6 +151,29 @@ class SignificantPlaceOverrideJdbcServiceTest {
     }
 
     @Test
+    void findByUserAndPoint_MatchesAPlaceRecreatedSomeMetersOffButNotANeighbour() {
+        User user = testingService.randomUser();
+        SignificantPlace place = new SignificantPlace(1L, "Renamed", null, null, null, 40.7128, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
+
+        // ~17m north: GPS jitter of a recreated place
+        assertEquals("Renamed", significantPlaceOverrideJdbcService.findByUserAndPoint(user, new GeoPoint(40.71295, -74.0060)).map(PlaceInformationOverride::name).orElse(null));
+        // ~45m north: a different place
+        assertFalse(significantPlaceOverrideJdbcService.findByUserAndPoint(user, new GeoPoint(40.7132, -74.0060)).isPresent());
+    }
+
+    @Test
+    void clear_RemovesTheOverrideOfThePlaceEvenIfItWasRecreatedSomeMetersOff() {
+        User user = testingService.randomUser();
+        significantPlaceOverrideJdbcService.insertOverride(user, new SignificantPlace(1L, "Renamed", null, null, null, 40.7128, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L));
+
+        SignificantPlace recreated = new SignificantPlace(2L, "Renamed", null, null, null, 40.71289, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.clear(user, recreated);
+
+        assertFalse(significantPlaceOverrideJdbcService.findByUserAndPoint(user, recreated).isPresent());
+    }
+
+    @Test
     void testPolygonHandling() {
         // Create a test user
         User user = testingService.randomUser();
