@@ -54,6 +54,13 @@ public class UnifiedLocationProcessingService {
      */
     static final Duration MAX_TRIP_DURATION = Duration.ofHours(24);
 
+    /**
+     * Visits at the same place without any recorded points in between are merged across at most this gap. Without
+     * a limit a single data gap of months turned into one visit spanning all of it, which also stretched every later
+     * processing window over the whole period.
+     */
+    static final Duration MAX_UNTRACKED_MERGE_GAP = Duration.ofHours(24);
+
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
@@ -572,7 +579,8 @@ public class UnifiedLocationProcessingService {
             SignificantPlace nextPlace = findOrCreateSignificantPlace(user, previewId, nextVisit.getLatitude(), nextVisit.getLongitude(), mergeConfiguration, traceId, parentJobId);
 
             boolean samePlace = nextPlace.getId().equals(currentPlace.getId());
-            boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
+            Duration gap = Duration.between(currentEndTime, nextVisit.getStartTime());
+            boolean withinTimeThreshold = gap.getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
 
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
 
@@ -586,9 +594,11 @@ public class UnifiedLocationProcessingService {
                 if (pointsBetweenVisits.getCount() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
-                } else {
+                } else if (gap.compareTo(MAX_UNTRACKED_MERGE_GAP) <= 0) {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;
+                } else {
+                    logger.debug("There are no points tracked between {} and {}. Will not merge the visits at the same place across more than {} without data", currentEndTime, nextVisit.getStartTime(), MAX_UNTRACKED_MERGE_GAP);
                 }
             }
 
