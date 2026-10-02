@@ -50,7 +50,7 @@ class TokenAuthenticationFilterTest {
     @Test
     void whenValidXApiTokenProvided_thenRequestPassesAndContextIsSet() throws Exception {
 
-        mockMvc.perform(get("/test-endpoint")
+        mockMvc.perform(get("/api/test-endpoint")
                                 .header("X-API-Token", token.getToken()))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Success " + user.getId() + " " + device.id()));
@@ -59,7 +59,7 @@ class TokenAuthenticationFilterTest {
  @Test
     void whenValidXApiTokenProvided_In_Url() throws Exception {
 
-        mockMvc.perform(get("/test-endpoint").param("token", token.getToken()))
+        mockMvc.perform(get("/api/test-endpoint").param("token", token.getToken()))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Success " + user.getId() + " " + device.id()));
     }
@@ -67,7 +67,7 @@ class TokenAuthenticationFilterTest {
     @Test
     void whenValidBearerTokenProvided_thenRequestPassesAndContextIsSet() throws Exception {
 
-        mockMvc.perform(get("/test-endpoint")
+        mockMvc.perform(get("/api/test-endpoint")
                                 .header("Authorization", "Bearer " + token.getToken()))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Success " + user.getId() + " " + device.id()));
@@ -91,7 +91,7 @@ class TokenAuthenticationFilterTest {
     @Test
     void whenInvalidTokenProvided_thenReturns401Unauthorized() throws Exception {
         String invalidToken = "invalid-token";
-        mockMvc.perform(get("/test-endpoint")
+        mockMvc.perform(get("/api/test-endpoint")
                                 .header("X-API-Token", invalidToken))
                 .andExpect(status().isUnauthorized());
 
@@ -100,10 +100,27 @@ class TokenAuthenticationFilterTest {
 
     @Test
     void whenNoTokenProvided_thenReturns302Forbidden() throws Exception {
-        mockMvc.perform(get("/test-endpoint"))
+        mockMvc.perform(get("/api/test-endpoint"))
                 .andExpect(status().is3xxRedirection());
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void whenTokenUsedOutsideTheApi_thenItDoesNotAuthenticate() throws Exception {
+        // device tokens must not unlock the web UI (settings, token management, user management, data deletion)
+        mockMvc.perform(get("/settings/api-tokens").header("X-API-Token", token.getToken()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/settings/api-tokens").param("token", token.getToken()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/settings/user-management").header("Authorization", "Bearer " + token.getToken()))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void whenTokenUsedForGpsLoggerProperties_thenItIsAccepted() throws Exception {
+        mockMvc.perform(get("/settings/integrations/reitti.properties").param("token", token.getToken()))
+                .andExpect(status().isOk());
     }
 
     /**
@@ -115,7 +132,7 @@ class TokenAuthenticationFilterTest {
 
         @RestController
         static class DummyController {
-            @GetMapping("/test-endpoint")
+            @GetMapping("/api/test-endpoint")
             public String testEndpoint(@AuthenticationPrincipal DeviceTokenUser user) {
                 return "Success " + user.getId() + " " + user.getDevice().orElseThrow().id();
             }

@@ -18,6 +18,16 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
         this.apiTokenService = apiTokenService;
     }
 
+    /**
+     * API tokens are handed to devices and third-party apps (often embedded in URLs), so they only authenticate
+     * API calls. The web UI (settings, user management, token management, data deletion) requires a real login.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return !(path.startsWith("/api/") || path.equals("/settings/integrations/reitti.properties"));
+    }
+
     protected void trackApiTokenUsage(HttpServletRequest request, String token) {
         String requestPath = request.getRequestURI();
         String remoteIp = getClientIpAddress(request);
