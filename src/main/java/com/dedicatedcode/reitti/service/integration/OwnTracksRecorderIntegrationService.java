@@ -13,6 +13,8 @@ import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.LocationPointStagingService;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
@@ -48,6 +50,7 @@ public class OwnTracksRecorderIntegrationService {
     private final JobDetail promotionTask;
     private final JobSchedulingService jobSchedulingService;
     private final LocationBatchingService locationBatchingService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public OwnTracksRecorderIntegrationService(OwnTracksRecorderIntegrationJdbcService jdbcService,
                                                UserJdbcService userJdbcService,
@@ -55,7 +58,8 @@ public class OwnTracksRecorderIntegrationService {
                                                LocationPointStagingService stagingService,
                                                @Qualifier("promotionJob") JobDetail promotionTask,
                                                JobSchedulingService jobSchedulingService,
-                                               LocationBatchingService locationBatchingService) {
+                                               LocationBatchingService locationBatchingService,
+                                               OutboundUrlValidator outboundUrlValidator) {
         this.jdbcService = jdbcService;
         this.userJdbcService = userJdbcService;
         this.deviceJdbcService = deviceJdbcService;
@@ -63,7 +67,8 @@ public class OwnTracksRecorderIntegrationService {
         this.promotionTask = promotionTask;
         this.jobSchedulingService = jobSchedulingService;
         this.locationBatchingService = locationBatchingService;
-        this.restTemplate = new RestTemplate();
+        this.outboundUrlValidator = outboundUrlValidator;
+        this.restTemplate = new RestTemplate(OutboundHttp.noRedirectRequestFactory());
     }
 
     @Scheduled(cron = "${reitti.imports.owntracks-recorder.schedule}")
@@ -159,6 +164,7 @@ public class OwnTracksRecorderIntegrationService {
         if (normalizedBaseUrl.endsWith("/")) {
             normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
         }
+        outboundUrlValidator.validate(normalizedBaseUrl);
 
         Optional<OwnTracksRecorderIntegration> existingIntegration = jdbcService.findByUser(user);
         
@@ -195,6 +201,7 @@ public class OwnTracksRecorderIntegrationService {
         }
 
         String testUrl = normalizedBaseUrl + "/api/0/locations?user=%s&device=%s".formatted(username, deviceId);
+        outboundUrlValidator.validate(testUrl);
 
         logger.debug("Testing OwnTracks Recorder connection to: {}", testUrl);
 
@@ -358,6 +365,7 @@ public class OwnTracksRecorderIntegrationService {
 
     private List<OwntracksLocationRequest> fetchData(String apiUrl, OwnTracksRecorderIntegration integration) {
         logger.info("Fetching location data from: {}", apiUrl);
+        outboundUrlValidator.validate(apiUrl);
 
         HttpEntity<String> entity = createHttpEntityWithAuth(integration.getAuthUsername(), integration.getAuthPassword());
         ResponseEntity<OwntracksRecorderResponse> response = restTemplate.exchange(
@@ -384,6 +392,7 @@ public class OwnTracksRecorderIntegrationService {
                                          integration.getDeviceId());
             
             logger.debug("Fetching available recs from: {}", recsUrl);
+            outboundUrlValidator.validate(recsUrl);
             
             HttpEntity<String> entity = createHttpEntityWithAuth(integration.getAuthUsername(), integration.getAuthPassword());
             ResponseEntity<OwntracksRecsResponse> response = restTemplate.exchange(

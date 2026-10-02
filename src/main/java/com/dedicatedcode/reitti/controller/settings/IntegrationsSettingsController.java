@@ -21,6 +21,8 @@ import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
+import com.dedicatedcode.reitti.service.security.UnsafeUrlException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
@@ -46,6 +49,7 @@ public class IntegrationsSettingsController {
     private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public IntegrationsSettingsController(ContextPathHolder contextPathHolder,
                                           ApiTokenService apiTokenService,
@@ -55,7 +59,8 @@ public class IntegrationsSettingsController {
                                           DynamicMqttProvider mqttProvider,
                                           MqttIntegrationJdbcService mqttIntegrationJdbcService,
                                           I18nService i18nService,
-                                          @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled) {
+                                          @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
+                                          OutboundUrlValidator outboundUrlValidator) {
         this.contextPathHolder = contextPathHolder;
         this.apiTokenService = apiTokenService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
@@ -66,6 +71,7 @@ public class IntegrationsSettingsController {
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
         this.i18n = i18nService;
         this.dataManagementEnabled = dataManagementEnabled;
+        this.outboundUrlValidator = outboundUrlValidator;
     }
 
     @GetMapping
@@ -242,7 +248,7 @@ public class IntegrationsSettingsController {
             }
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", i18n.translate("integrations.immich.connection.failed", e.getMessage()));
+            response.put("message", i18n.translate("integrations.immich.connection.failed", connectionFailure(e)));
         }
 
         return response;
@@ -291,7 +297,7 @@ public class IntegrationsSettingsController {
             }
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", i18n.translate("integrations.owntracks.recorder.connection.failed", e.getMessage()));
+            response.put("message", i18n.translate("integrations.owntracks.recorder.connection.failed", connectionFailure(e)));
         }
 
         return response;
@@ -338,6 +344,13 @@ public class IntegrationsSettingsController {
 
             if (this.deviceJdbcService.find(user, deviceId).isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.unknown_device"));
+                return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
+            }
+
+            try {
+                outboundUrlValidator.validateHost(host, port);
+            } catch (UnsafeUrlException e) {
+                redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integration.mqtt.error.saving", e.getMessage()));
                 return "redirect:/settings/integrations/integrations-content?openSection=mqtt";
             }
 
@@ -412,6 +425,14 @@ public class IntegrationsSettingsController {
                 return ResponseEntity.ok(response);
             }
 
+            try {
+                outboundUrlValidator.validateHost(host, port);
+            } catch (UnsafeUrlException e) {
+                response.put("success", false);
+                response.put("message", i18n.translate("integration.mqtt.error.test_failed", e.getMessage()));
+                return ResponseEntity.ok(response);
+            }
+
             CompletableFuture<DynamicMqttProvider.MqttTestResult> testResult = this.mqttProvider.testConnection(new MqttIntegration(null,
                                                                                                                                     host,
                                                                                                                                     port,
@@ -434,16 +455,31 @@ public class IntegrationsSettingsController {
                 response.put("success", true);
                 response.put("message", i18n.translate("integration.mqtt.success.test"));
             } else {
+                // the low level reason (refused, timeout, ...) would reveal which ports are open
                 response.put("success", false);
-                response.put("message", i18n.translate("integration.mqtt.error.test_failed", result.message()));
+                response.put("message", i18n.translate("integration.mqtt.error.test_failed", "Connection failed"));
             }
 
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", i18n.translate("integration.mqtt.error.test_failed", e.getMessage()));
+            response.put("message", i18n.translate("integration.mqtt.error.test_failed", connectionFailure(e)));
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Messages of connection tests are shown to the user. Only pass on validation errors and HTTP status codes, low
+     * level connection errors would turn the test endpoints into a port scanner.
+     */
+    private static String connectionFailure(Exception e) {
+        if (e instanceof UnsafeUrlException) {
+            return e.getMessage();
+        }
+        if (e instanceof RestClientResponseException responseException) {
+            return "StatusCode: " + responseException.getStatusCode().value();
+        }
+        return "Connection failed";
     }
 
     @GetMapping("/data-quality-content")
