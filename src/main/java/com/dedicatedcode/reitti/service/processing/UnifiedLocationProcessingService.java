@@ -21,6 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -63,6 +68,7 @@ public class UnifiedLocationProcessingService {
     private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
+    private final TransactionTemplate postCommitTransaction;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -83,7 +89,8 @@ public class UnifiedLocationProcessingService {
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
-            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
+            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
+            PlatformTransactionManager transactionManager) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -104,11 +111,17 @@ public class UnifiedLocationProcessingService {
         this.visitSuppressionService = visitSuppressionService;
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
+        this.postCommitTransaction = new TransactionTemplate(transactionManager);
+        this.postCommitTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
      * Entry point for location processing events.
      * Enqueues the event for the user and ensures processing starts.
+     * <p>
+     * Visits and trips of the processed range are deleted and recreated, so callers should run this inside a
+     * transaction (see {@link ProcessingPipelineTask}); otherwise a failure halfway through leaves the range empty.
+     * Side effects outside the database (geocoding jobs, notifications) are deferred until that transaction commits.
      */
     public void processLocationEvent(LocationProcessEvent event) {
         long startTime = System.currentTimeMillis();
@@ -152,12 +165,14 @@ public class UnifiedLocationProcessingService {
 
         // STEP 4: Notifications
         // ---------------------
-        if (previewId == null) {
-            userNotificationService.newVisits(user, mergingResult.processedVisits);
-            userNotificationService.newTrips(user, tripResult.trips);
-        } else {
-            userNotificationService.newTrips(user, tripResult.trips, previewId);
-        }
+        afterCommit(() -> {
+            if (previewId == null) {
+                userNotificationService.newVisits(user, mergingResult.processedVisits);
+                userNotificationService.newTrips(user, tripResult.trips);
+            } else {
+                userNotificationService.newTrips(user, tripResult.trips, previewId);
+            }
+        });
 
         long duration = System.currentTimeMillis() - startTime;
 
@@ -342,8 +357,9 @@ public class UnifiedLocationProcessingService {
             }
         }
 
-        if (allVisits.isEmpty()) {
-            return new VisitMergingResult(new ArrayList<>(), new ArrayList<>(), searchStart, searchEnd, System.currentTimeMillis() - start);
+        if (allVisits.isEmpty() && !existingProcessedVisits.isEmpty()) {
+            logger.info("No visits detected for user [{}] between [{}] and [{}] anymore, removed [{}] existing visit(s)",
+                    user.getUsername(), searchStart, searchEnd, existingProcessedVisits.size());
         }
 
         // Merge visits chronologically
@@ -930,13 +946,38 @@ public class UnifiedLocationProcessingService {
                 place.getLongitudeCentroid(),
                 traceId
         ).withParentJobId(parentJobId);
-        this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
-                                      JobSchedulingService.Metadata.builder()
-                                          .user(user)
-                                          .jobType(REVERSE_GEOCODE)
-                                          .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
-                                          .build());
-        logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
+        // the geocoding job must not run before the place is committed, nor for a place that is rolled back
+        afterCommit(() -> {
+            this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
+                                          JobSchedulingService.Metadata.builder()
+                                              .user(user)
+                                              .jobType(REVERSE_GEOCODE)
+                                              .friendlyName(String.format("Reverse geocoding for %6f,%6f", place.getLatitudeCentroid(), place.getLongitudeCentroid()))
+                                              .build());
+            logger.info("Published SignificantPlaceCreatedEvent for place ID: {}", place.getId());
+        });
+    }
+
+    /**
+     * Runs the action once the surrounding transaction has committed, or right away when there is none.
+     * Nothing happens when the transaction rolls back.
+     */
+    private void afterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    // the committed transaction is still bound to the thread here, so data access needs a new one
+                    postCommitTransaction.executeWithoutResult(_ -> action.run());
+                } catch (RuntimeException e) {
+                    logger.error("Post-commit action of the location processing failed", e);
+                }
+            }
+        });
     }
 
     // ==================== Result Classes ====================

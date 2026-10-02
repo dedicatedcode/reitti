@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -34,6 +36,7 @@ public class ProcessingPipelineTask implements Job {
     private final JobMetadataRepository jobMetadataRepository;
     private final UserProcessingLock userProcessingLock;
     private final BatchFailureTracker batchFailureTracker;
+    private final TransactionTemplate transactionTemplate;
     private final int batchSize;
 
     public ProcessingPipelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
@@ -43,7 +46,8 @@ public class ProcessingPipelineTask implements Job {
                                   @Value("${reitti.import.batch-size:1000}") int batchSize,
                                   UnifiedLocationProcessingService locationProcessTask,
                                   UserProcessingLock userProcessingLock,
-                                  BatchFailureTracker batchFailureTracker) {
+                                  BatchFailureTracker batchFailureTracker,
+                                  PlatformTransactionManager transactionManager) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
@@ -52,6 +56,7 @@ public class ProcessingPipelineTask implements Job {
         this.locationProcessTask = locationProcessTask;
         this.userProcessingLock = userProcessingLock;
         this.batchFailureTracker = batchFailureTracker;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
@@ -95,8 +100,13 @@ public class ProcessingPipelineTask implements Job {
                     log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
                     LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
-                    locationProcessTask.processLocationEvent(data);
-                    markProcessed(currentBatch, previewId);
+                    List<RawLocationPoint> batch = currentBatch;
+                    // processing replaces the visits and trips of the range: either all of it lands together with
+                    // the processed flags, or nothing does and the batch is retried on the old timeline
+                    transactionTemplate.executeWithoutResult(_ -> {
+                        locationProcessTask.processLocationEvent(data);
+                        markProcessed(batch, previewId);
+                    });
                     batchFailureTracker.clear(user, earliest);
                     totalProcessed.addAndGet(currentBatch.size());
                     jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");

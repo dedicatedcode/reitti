@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,8 @@ class ProcessingPipelineTaskTest {
     private JobMetadataRepository jobMetadataRepository;
     @Mock
     private UnifiedLocationProcessingService locationProcessTask;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     private final UserProcessingLock userProcessingLock = new UserProcessingLock();
     private final BatchFailureTracker batchFailureTracker = new BatchFailureTracker();
@@ -58,7 +61,8 @@ class ProcessingPipelineTaskTest {
                 10,
                 locationProcessTask,
                 userProcessingLock,
-                batchFailureTracker);
+                batchFailureTracker,
+                transactionManager);
     }
 
     @Test
