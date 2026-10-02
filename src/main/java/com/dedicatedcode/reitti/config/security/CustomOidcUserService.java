@@ -144,15 +144,33 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
     private void downloadAndSaveAvatar(Long userId, String avatarUrl) {
         try {
             log.info("Downloading avatar from URL: {} for user ID: {}", avatarUrl, userId);
-            
-            byte[] avatarData = restTemplate.getForObject(URI.create(avatarUrl), byte[].class);
-            
-            if (avatarData != null && avatarData.length > 0) {
-                String contentType = determineContentType(avatarUrl);
-                avatarService.updateAvatar(userId, contentType, avatarData);
+
+            // The picture URL comes from the identity provider (and is often editable by its users): validate it and
+            // every redirect, cap the size and only store real images. This local validator enforces the always
+            // blocked targets (loopback, link-local/metadata, ...); the bean would also know the internal services.
+            com.dedicatedcode.reitti.service.security.OutboundUrlValidator validator =
+                    new com.dedicatedcode.reitti.service.security.OutboundUrlValidator(true, "", "", -1, "");
+            URI uri = validator.validate(avatarUrl);
+            org.springframework.http.ResponseEntity<byte[]> response = null;
+            for (int hop = 0; hop <= com.dedicatedcode.reitti.service.security.OutboundHttp.MAX_REDIRECTS; hop++) {
+                response = restTemplate.execute(uri, org.springframework.http.HttpMethod.GET, null,
+                        r -> org.springframework.http.ResponseEntity.status(r.getStatusCode())
+                                .headers(r.getHeaders())
+                                .body(com.dedicatedcode.reitti.service.security.OutboundHttp.readAtMost(r.getBody(),
+                                        com.dedicatedcode.reitti.service.security.OutboundHttp.MAX_AVATAR_BYTES)));
+                if (response == null || !response.getStatusCode().is3xxRedirection() || response.getHeaders().getLocation() == null) {
+                    break;
+                }
+                uri = validator.validate(uri.resolve(response.getHeaders().getLocation()));
+            }
+
+            byte[] avatarData = response != null && response.getStatusCode().is2xxSuccessful() ? response.getBody() : null;
+            Optional<String> contentType = com.dedicatedcode.reitti.service.security.ImageTypes.detect(avatarData);
+            if (contentType.isPresent()) {
+                avatarService.updateAvatar(userId, contentType.get(), avatarData);
                 log.info("Successfully saved avatar for user ID: {}", userId);
             } else {
-                log.warn("No avatar data received from URL: {}", avatarUrl);
+                log.warn("No avatar image received from URL: {}", avatarUrl);
             }
         } catch (Exception e) {
             log.warn("Failed to download avatar from URL: {} for user ID: {}. {}", avatarUrl, userId, e.getMessage());
