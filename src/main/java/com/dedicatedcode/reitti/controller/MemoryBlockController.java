@@ -17,13 +17,19 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.StorageService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import com.dedicatedcode.reitti.service.memory.ImageFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -31,10 +37,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
 public class MemoryBlockController {
+    private static final long MAX_IMAGE_UPLOAD_BYTES = 25L * 1024 * 1024;
+    private static final Pattern IMMICH_ASSET_ID = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private final MemoryService memoryService;
     private final ImmichIntegrationService immichIntegrationService;
@@ -396,16 +405,22 @@ public class MemoryBlockController {
             if (file.isEmpty()) {
                 continue;
             }
+            if (file.getSize() > MAX_IMAGE_UPLOAD_BYTES) {
+                throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds the maximum upload size");
+            }
 
-            try {
-                String originalFilename = file.getOriginalFilename();
-                String extension = "";
-                if (originalFilename != null && originalFilename.contains(".")) {
-                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                }
-                String filename = UUID.randomUUID() + extension;
+            try (InputStream content = file.getInputStream()) {
+                // Stored files are served from our origin: the type (and extension) comes from the content alone,
+                // never from the client-supplied file name or content type.
+                byte[] header = content.readNBytes(ImageFormat.HEADER_LENGTH);
+                ImageFormat format = ImageFormat.detect(header)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported image type"));
+                String filename = UUID.randomUUID() + "." + format.getExtension();
 
-                storageService.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+                storageService.store("memories/" + memoryId + "/" + filename,
+                        new SequenceInputStream(new ByteArrayInputStream(header), content),
+                        file.getSize(),
+                        format.getMediaType());
 
                 String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
                 urls.add(fileUrl);
@@ -427,6 +442,10 @@ public class MemoryBlockController {
             Model model) {
 
         requireEditableMemory(user, memoryId);
+        // the asset id ends up in a storage path, so only accept Immich's UUIDs
+        if (!IMMICH_ASSET_ID.matcher(assetId).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid asset id");
+        }
 
         String imageUrl;
         if (storageService.exists("memories/" + memoryId + "/" + assetId)) {

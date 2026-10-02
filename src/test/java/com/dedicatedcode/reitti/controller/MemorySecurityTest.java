@@ -17,6 +17,7 @@ import com.dedicatedcode.reitti.repository.MemoryBlockJdbcService;
 import com.dedicatedcode.reitti.repository.MemoryBlockTextJdbcService;
 import com.dedicatedcode.reitti.service.MagicLinkTokenService;
 import com.dedicatedcode.reitti.service.MemoryService;
+import com.dedicatedcode.reitti.service.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +31,13 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -43,7 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Access control of memories, their blocks and their data API.
+ * Access control of memories, their blocks, their data API and their stored images.
  */
 @IntegrationTest
 class MemorySecurityTest {
@@ -65,6 +69,8 @@ class MemorySecurityTest {
     private MagicLinkJdbcService magicLinkJdbcService;
     @Autowired
     private MagicLinkTokenService magicLinkTokenService;
+    @Autowired
+    private StorageService storageService;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -342,6 +348,62 @@ class MemorySecurityTest {
                 .andExpect(status().isNotFound());
     }
 
+    // --- images
+
+    @Test
+    void uploadsOnlyAcceptRealImagesAndIgnoreTheClientExtension() throws Exception {
+        mockMvc.perform(multipart("/memories/{id}/blocks/upload-image", ownerMemory.getId())
+                        .file(new MockMultipartFile("files", "x.html", "text/html", "<html><script>alert(1)</script></html>".getBytes(StandardCharsets.UTF_8)))
+                        .with(user(owner)))
+                .andExpect(status().isUnsupportedMediaType());
+        mockMvc.perform(multipart("/memories/{id}/blocks/upload-image", ownerMemory.getId())
+                        .file(new MockMultipartFile("files", "x.svg", "image/svg+xml", "<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"/>".getBytes(StandardCharsets.UTF_8)))
+                        .with(user(owner)))
+                .andExpect(status().isUnsupportedMediaType());
+
+        String url = uploadPng(owner, ownerMemory, "evil.html");
+        assertTrue(url.endsWith(".png"), url);
+    }
+
+    @Test
+    void memoryImagesAreOnlyServedToThoseWhoCanSeeTheMemory() throws Exception {
+        String url = uploadPng(owner, ownerMemory, "photo.png");
+
+        mockMvc.perform(get(url).with(user(owner)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"))
+                .andExpect(content().bytes(PNG))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("Content-Security-Policy", containsString("sandbox")));
+        mockMvc.perform(get(url).with(memoryLink(MagicLinkAccessLevel.MEMORY_VIEW_ONLY, ownerMemory.getId())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(url).with(user(attacker))).andExpect(status().isNotFound());
+        mockMvc.perform(get(url).with(memoryLink(MagicLinkAccessLevel.MEMORY_VIEW_ONLY, otherOwnerMemory.getId())))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get(url).with(mapLink(MagicLinkAccessLevel.FULL_ACCESS))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void storedNonImageFilesAreNeverServed() throws Exception {
+        String directory = "memories/" + ownerMemory.getId() + "/";
+        storageService.store(directory + "planted.html", new ByteArrayInputStream("<script>alert(1)</script>".getBytes(StandardCharsets.UTF_8)), 25, "text/html");
+        storageService.store(directory + "planted.svg", new ByteArrayInputStream("<svg onload=\"alert(1)\"/>".getBytes(StandardCharsets.UTF_8)), 24, "image/svg+xml");
+
+        mockMvc.perform(get("/api/v1/photos/reitti/memories/{id}/planted.html", ownerMemory.getId()).with(user(owner)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/photos/reitti/memories/{id}/planted.svg", ownerMemory.getId()).with(user(owner)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void immichAssetIdMustBeAUuid() throws Exception {
+        mockMvc.perform(post("/memories/{id}/blocks/fetch-immich-photo", ownerMemory.getId())
+                        .param("assetId", "../../../../tmp/pwned")
+                        .with(user(owner)))
+                .andExpect(status().isBadRequest());
+    }
+
     // --- helpers
 
     private Memory createMemory(User user, String title) {
@@ -364,6 +426,18 @@ class MemorySecurityTest {
     private int countCopiedRows(User user, String table, Long originalId) {
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE user_id = ? AND original_id = ?", Integer.class, user.getId(), originalId);
         return count != null ? count : 0;
+    }
+
+    private String uploadPng(User user, Memory memory, String clientFilename) throws Exception {
+        MvcResult result = mockMvc.perform(multipart("/memories/{id}/blocks/upload-image", memory.getId())
+                        .file(new MockMultipartFile("files", clientFilename, "text/html", PNG))
+                        .with(user(user)))
+                .andExpect(status().isOk())
+                .andReturn();
+        @SuppressWarnings("unchecked")
+        List<String> urls = (List<String>) result.getModelAndView().getModel().get("urls");
+        assertEquals(1, urls.size());
+        return urls.getFirst();
     }
 
     private MockHttpSession openMagicLink(String rawToken, Long memoryId) throws Exception {
