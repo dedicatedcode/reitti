@@ -10,10 +10,12 @@ import com.dedicatedcode.reitti.service.ApiTokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -95,11 +97,7 @@ public class ApiTokenSettingsController {
                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                               Model model) {
 
-        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, id);
-
-        if (tokenById.isEmpty()) {
-            throw new IllegalArgumentException("Token not found");
-        }
+        ApiToken token = findOwnToken(user, id);
 
         Optional<Device> deviceById = this.deviceJdbcService.find(user, deviceId);
         if (deviceById.isEmpty()) {
@@ -107,7 +105,7 @@ public class ApiTokenSettingsController {
         }
 
         try {
-            apiTokenJdbcService.save(tokenById.get().withDevice(null));
+            apiTokenJdbcService.save(token.withDevice(null));
             model.addAttribute("successMessage", getMessage("message.success.token.detached", deviceById.get().name()));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
@@ -124,11 +122,7 @@ public class ApiTokenSettingsController {
                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                               Model model) {
 
-        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, id);
-
-        if (tokenById.isEmpty()) {
-            throw new IllegalArgumentException("Token not found");
-        }
+        ApiToken token = findOwnToken(user, id);
 
         Optional<Device> deviceById = this.deviceJdbcService.find(user, deviceId);
         if (deviceById.isEmpty()) {
@@ -136,7 +130,7 @@ public class ApiTokenSettingsController {
         }
 
         try {
-            apiTokenJdbcService.save(tokenById.get().withDevice(deviceById.get()));
+            apiTokenJdbcService.save(token.withDevice(deviceById.get()));
             model.addAttribute("successMessage", getMessage("message.success.token.attach", deviceById.get().name()));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
@@ -150,14 +144,10 @@ public class ApiTokenSettingsController {
                            @PathVariable Long tokenId,
                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                            Model model) {
-        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, tokenId);
-        if (tokenById.isEmpty()) {
-            throw new IllegalArgumentException("Token not found");
-        } else {
-            model.addAttribute("devices", this.deviceJdbcService.getAll(user));
-            model.addAttribute("token", toDto(timezone, tokenById.get()));
-            return "settings/fragments/api-tokens :: link-form";
-        }
+        ApiToken token = findOwnToken(user, tokenId);
+        model.addAttribute("devices", this.deviceJdbcService.getAll(user));
+        model.addAttribute("token", toDto(timezone, token));
+        return "settings/fragments/api-tokens :: link-form";
     }
 
     @GetMapping("/{tokenId}/edit")
@@ -165,11 +155,7 @@ public class ApiTokenSettingsController {
                            @PathVariable Long tokenId,
                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                            Model model) {
-        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, tokenId);
-        if (tokenById.isEmpty()) {
-            throw new IllegalArgumentException("Token not found");
-        }
-        model.addAttribute("token", toDto(timezone, tokenById.get()));
+        model.addAttribute("token", toDto(timezone, findOwnToken(user, tokenId)));
         return "settings/fragments/api-tokens :: edit-form";
     }
 
@@ -179,12 +165,9 @@ public class ApiTokenSettingsController {
                               @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                               @AuthenticationPrincipal User user,
                               Model model) {
-        Optional<ApiToken> tokenById = this.apiTokenService.getTokenById(user, tokenId);
-        if (tokenById.isEmpty()) {
-            throw new IllegalArgumentException("Token not found");
-        }
+        ApiToken token = findOwnToken(user, tokenId);
         try {
-            apiTokenJdbcService.save(tokenById.get().withName(name));
+            apiTokenJdbcService.save(token.withName(name));
             model.addAttribute("successMessage", getMessage("message.success.token.renamed"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.generic", e.getMessage()));
@@ -208,7 +191,7 @@ public class ApiTokenSettingsController {
                               Model model) {
 
         try {
-            apiTokenService.deleteToken(tokenId);
+            apiTokenService.deleteToken(user, tokenId);
             model.addAttribute("successMessage", getMessage("message.success.token.deleted"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));
@@ -229,6 +212,11 @@ public class ApiTokenSettingsController {
     public record ApiTokenDto(Long id, Long deviceId, String deviceName, String token, String name, LocalDateTime createdAt, LocalDateTime lastUsedAt) {}
 
     public record ApiTokenUsageDTO(String token, String name, String device, LocalDateTime at, String endpoint, String ip) {
+    }
+
+    private ApiToken findOwnToken(User user, Long tokenId) {
+        return this.apiTokenService.getTokenById(user, tokenId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Token not found"));
     }
 
     private String getMessage(String key, Object... args) {
