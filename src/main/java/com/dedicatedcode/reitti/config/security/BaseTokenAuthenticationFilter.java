@@ -18,46 +18,22 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
         this.apiTokenService = apiTokenService;
     }
 
-    protected void trackApiTokenUsage(HttpServletRequest request, String token) {
-        String requestPath = request.getRequestURI();
-        String remoteIp = getClientIpAddress(request);
-        this.apiTokenService.trackUsage(token, requestPath, remoteIp);
+    /**
+     * API tokens are handed to devices and third-party apps (often embedded in URLs), so they only authenticate
+     * API calls. The web UI (settings, user management, token management, data deletion) requires a real login.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return !(path.startsWith("/api/") || path.equals("/settings/integrations/reitti.properties"));
     }
 
-    private String getClientIpAddress(HttpServletRequest request) {
-        // Check for X-Forwarded-For header (common in reverse proxy setups)
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
-            // X-Forwarded-For can contain multiple IPs, take the first one
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        // Check for X-Real-IP header (used by nginx)
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
-            return xRealIp;
-        }
-
-        // Check for X-Forwarded header
-        String xForwarded = request.getHeader("X-Forwarded");
-        if (xForwarded != null && !xForwarded.isEmpty() && !"unknown".equalsIgnoreCase(xForwarded)) {
-            return xForwarded;
-        }
-
-        // Check for Forwarded-For header
-        String forwardedFor = request.getHeader("Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(forwardedFor)) {
-            return forwardedFor;
-        }
-
-        // Check for Forwarded header
-        String forwarded = request.getHeader("Forwarded");
-        if (forwarded != null && !forwarded.isEmpty() && !"unknown".equalsIgnoreCase(forwarded)) {
-            return forwarded;
-        }
-
-        // Fall back to remote address
-        return request.getRemoteAddr();
+    protected void trackApiTokenUsage(HttpServletRequest request, String token) {
+        String requestPath = request.getRequestURI();
+        // the proxy headers are resolved by Tomcat's RemoteIpValve, which only trusts them from internal proxies;
+        // reading X-Forwarded-For here directly would let any client choose the logged address
+        String remoteIp = request.getRemoteAddr();
+        this.apiTokenService.trackUsage(token, requestPath, remoteIp);
     }
 
 
