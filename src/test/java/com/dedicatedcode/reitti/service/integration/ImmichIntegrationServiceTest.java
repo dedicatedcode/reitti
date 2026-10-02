@@ -64,7 +64,7 @@ class ImmichIntegrationServiceTest {
 
     private ClientHttpRequestFactory originalRequestFactory;
 
-    private static final String IMMICH_BASE_URL = "http://localhost:8089";
+    private static final String IMMICH_BASE_URL = "http://192.168.1.10:2283";
 
     @BeforeEach
     void setUp() {
@@ -223,7 +223,7 @@ class ImmichIntegrationServiceTest {
         assertNotNull(initial.getId());
 
         // When - Update the integration
-        String newServerUrl = "http://localhost:8090";
+        String newServerUrl = "http://192.168.1.11:2283";
         String newApiToken = "new-test-token";
         ImmichIntegration updated = immichIntegrationService.saveIntegration(user, newServerUrl, newApiToken, null, null, false, false);
         

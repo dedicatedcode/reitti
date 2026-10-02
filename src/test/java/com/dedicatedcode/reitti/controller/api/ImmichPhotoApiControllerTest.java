@@ -3,6 +3,8 @@ package com.dedicatedcode.reitti.controller.api;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.ImmichSearchResponse;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
@@ -18,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,6 +33,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
@@ -60,7 +64,8 @@ class ImmichPhotoApiControllerTest {
     private User owner;
     private User viewer;
 
-    private static final String IMMICH_BASE_URL = "http://localhost:8089";
+    private static final String IMMICH_BASE_URL = "http://192.168.1.10:2283";
+    private static final String ASSET_ID = "3f2b8c1e-6a4d-4e0b-9b7a-1c2d3e4f5a6b";
 
     @BeforeEach
     void setUp() {
@@ -120,7 +125,7 @@ class ImmichPhotoApiControllerTest {
         ImmichSearchResponse searchResponse = new ImmichSearchResponse();
         ImmichSearchResponse.AssetsResult assetsResult = new ImmichSearchResponse.AssetsResult();
         com.dedicatedcode.reitti.dto.ImmichAsset asset = new com.dedicatedcode.reitti.dto.ImmichAsset();
-        asset.setId("photo-1");
+        asset.setId(ASSET_ID);
         asset.setOriginalFileName("test.jpg");
         asset.setLocalDateTime("2024-01-01T12:00:00Z");
         com.dedicatedcode.reitti.dto.ImmichAsset.ExifInfo exifInfo = new com.dedicatedcode.reitti.dto.ImmichAsset.ExifInfo();
@@ -143,9 +148,9 @@ class ImmichPhotoApiControllerTest {
                         .param("timezone", "UTC")
                         .param("userId", owner.getId().toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("photo-1"))
+                .andExpect(jsonPath("$[0].id").value(ASSET_ID))
                 .andExpect(jsonPath("$[0].shared").value(true))
-                .andExpect(jsonPath("$[0].thumbnailUrl").value("/api/v1/photos/immich/proxy/photo-1/thumbnail?userId=" + owner.getId()));
+                .andExpect(jsonPath("$[0].thumbnailUrl").value("/api/v1/photos/immich/proxy/" + ASSET_ID + "/thumbnail?userId=" + owner.getId()));
 
         mockServer.verify();
     }
@@ -168,14 +173,82 @@ class ImmichPhotoApiControllerTest {
         authenticate(viewer);
 
         byte[] imageData = new byte[]{1, 2, 3, 4, 5};
-        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/assets/photo-1/thumbnail?size=thumbnail"))
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/assets/" + ASSET_ID + "/thumbnail?size=thumbnail"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header("x-api-key", "owner-token"))
                 .andRespond(withSuccess(imageData, MediaType.IMAGE_JPEG));
 
-        mockMvc.perform(get("/api/v1/photos/immich/proxy/photo-1/thumbnail")
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/" + ASSET_ID + "/thumbnail")
                         .param("userId", owner.getId().toString()))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_JPEG))
+                .andExpect(MockMvcResultMatchers.header().string("X-Content-Type-Options", "nosniff"));
+
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldNeverServeUpstreamHtmlFromOurOrigin() throws Exception {
+        shareWith(owner, viewer, true);
+        authenticate(viewer);
+
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/assets/" + ASSET_ID + "/thumbnail?size=fullsize"))
+                .andRespond(withSuccess("<html><script>alert(document.cookie)</script></html>", MediaType.TEXT_HTML));
+
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/" + ASSET_ID + "/original")
+                        .param("userId", owner.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
+                .andExpect(MockMvcResultMatchers.header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment")))
+                .andExpect(MockMvcResultMatchers.header().string("X-Content-Type-Options", "nosniff"));
+
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldNotServeUpstreamSvgAsImage() throws Exception {
+        authenticate(owner);
+
+        mockServer.expect(requestTo(IMMICH_BASE_URL + "/api/assets/" + ASSET_ID + "/thumbnail?size=thumbnail"))
+                .andRespond(withSuccess("<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"/>", MediaType.valueOf("image/svg+xml")));
+
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/" + ASSET_ID + "/thumbnail"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));
+
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldRejectAssetIdsThatAreNoUuid() throws Exception {
+        authenticate(owner);
+
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/photo-1/original"))
+                .andExpect(status().isBadRequest());
+
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldRejectSharedPhotosForMagicLinkUsers() throws Exception {
+        // owner shares photos with viewer, the magic link was created by viewer
+        shareWith(owner, viewer, true);
+        TokenUser tokenUser = new TokenUser(viewer, "token", MagicLinkResourceType.MAP, null, List.of("ROLE_MAGIC_LINK_FULL_ACCESS"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(tokenUser, null, tokenUser.getAuthorities()));
+
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/" + ASSET_ID + "/thumbnail")
+                        .param("userId", owner.getId().toString()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/photos/immich/range")
+                        .param("startDate", "2024-01-01")
+                        .param("endDate", "2024-01-02")
+                        .param("userId", owner.getId().toString()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/photos/immich/" + ASSET_ID + "/location")
+                        .param("latitude", "1.0")
+                        .param("longitude", "2.0"))
+                .andExpect(status().isForbidden());
 
         mockServer.verify();
     }
@@ -184,7 +257,7 @@ class ImmichPhotoApiControllerTest {
     void shouldRejectSharedPhotoProxyWithoutShare() throws Exception {
         authenticate(viewer);
 
-        mockMvc.perform(get("/api/v1/photos/immich/proxy/photo-1/thumbnail")
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/" + ASSET_ID + "/thumbnail")
                         .param("userId", owner.getId().toString()))
                 .andExpect(status().isForbidden());
     }

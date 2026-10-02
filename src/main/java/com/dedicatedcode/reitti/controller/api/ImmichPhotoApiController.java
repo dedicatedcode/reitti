@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.controller.api;
 
 import com.dedicatedcode.reitti.dto.PhotoResponse;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSharing;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
@@ -64,6 +65,9 @@ public class ImmichPhotoApiController {
             @RequestParam(required = false) Long userId,
             @AuthenticationPrincipal User user) {
 
+        if (!ImmichIntegrationService.isValidAssetId(assetId)) {
+            return ResponseEntity.badRequest().build();
+        }
         User photoOwner = resolvePhotoOwner(user, userId);
         if (photoOwner == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -78,6 +82,9 @@ public class ImmichPhotoApiController {
             @RequestParam(required = false) Long userId,
             @AuthenticationPrincipal User user) {
 
+        if (!ImmichIntegrationService.isValidAssetId(assetId)) {
+            return ResponseEntity.badRequest().build();
+        }
         User photoOwner = resolvePhotoOwner(user, userId);
         if (photoOwner == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -93,6 +100,12 @@ public class ImmichPhotoApiController {
             @RequestParam double longitude,
             @AuthenticationPrincipal User user) {
 
+        if (user instanceof TokenUser) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (!ImmichIntegrationService.isValidAssetId(assetId)) {
+            return ResponseEntity.badRequest().build();
+        }
         boolean success = immichIntegrationService.updateAssetLocation(user, assetId, latitude, longitude);
         if (success) {
             return ResponseEntity.ok(Map.of("status", "ok"));
@@ -104,6 +117,10 @@ public class ImmichPhotoApiController {
     private User resolvePhotoOwner(User currentUser, Long userId) {
         if (userId == null || userId.equals(currentUser.getId())) {
             return currentUser;
+        }
+        // A magic link only grants access to the data of the user who created it, not to what is shared with that user
+        if (currentUser instanceof TokenUser) {
+            return null;
         }
 
         Optional<UserSharing> sharing = userSharingJdbcService.findBySharedWithUser(currentUser.getId()).stream()
