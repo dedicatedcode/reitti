@@ -36,7 +36,7 @@ public class GPSLoggerIngestionApiController {
         }
         try {
             if (!request.isLocationUpdate()) {
-                logger.debug("Ignoring non-location GpsLogger message of type: {}", request.getType());
+                logger.warn("Ignoring non-location GpsLogger message of type: {} (is the body template missing \"_type\":\"location\"?)", request.getType());
                 // Return empty array for non-location messages
                 return ResponseEntity.ok().build();
             }

@@ -66,6 +66,15 @@ Authorization: <span th:text="${selectedToken}">123456</span>
                         </li>
                         <li th:text="#{integrations.gpslogger.step6}">Start logging!</li>
                     </ol>
+                    <h4 th:text="#{integrations.gpslogger.live.title}">Live tracking ("Log to custom URL")</h4>
+                    <p th:utext="#{integrations.gpslogger.live.description}">For live positions instead of periodic file uploads, enable <strong>Log to custom URL</strong> in GPSLogger with these settings:</p>
+<pre>
+URL:     <span th:text="${serverUrl + contextPath + '/api/v1/ingest/gpslogger'}">https://your-domain.com/api/v1/ingest/gpslogger</span>
+Method:  POST
+Headers: Authorization: Bearer <span th:text="${selectedToken}">123456</span>
+         Content-Type: application/json
+Body:    {"_type":"location","lat":"%LAT","lon":"%LON","tst":"%TIMESTAMP","acc":"%ACC","alt":"%ALT","vel":"%SPD","batt":"%BATT"}
+</pre>
                 </div>
                 <div th:if="${hasToken}">
                     <div><a id="gpslogger-config-link" class="btn" th:text="#{integrations.gpslogger.configure}">Configure GPSLogger</a></div>
