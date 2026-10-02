@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -79,11 +80,18 @@ public class OutboundUrlValidator {
         if (url == null || url.isBlank()) {
             throw new UnsafeUrlException("The URL must not be empty");
         }
+        URI uri;
         try {
-            return validate(new URI(url.trim()));
+            uri = new URI(url.trim());
         } catch (URISyntaxException e) {
-            throw new UnsafeUrlException("The URL is malformed");
+            // RestTemplate encodes String URLs before sending them, so parse them the same way
+            try {
+                uri = UriComponentsBuilder.fromUriString(url.trim()).encode().build().toUri();
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                throw new UnsafeUrlException("The URL is malformed");
+            }
         }
+        return validate(uri);
     }
 
     /**
