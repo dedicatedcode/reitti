@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
@@ -30,6 +32,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserProcessingLock userProcessingLock;
+    private final TransactionTemplate transactionTemplate;
 
     public VisitSensitivityConfigurationRecalculationTask(VisitDetectionParametersJdbcService configurationService,
                                                           UserJdbcService userJdbcService,
@@ -39,7 +42,8 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
                                                           TripJdbcService tripJdbcService,
                                                           ProcessedVisitJdbcService processedVisitJdbcService,
                                                           SignificantPlaceJdbcService significantPlaceJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService,
-                                                          UserProcessingLock userProcessingLock) {
+                                                          UserProcessingLock userProcessingLock,
+                                                          PlatformTransactionManager transactionManager) {
         this.configurationService = configurationService;
         this.userJdbcService = userJdbcService;
         this.jobSchedulingService = jobSchedulingService;
@@ -50,6 +54,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
         this.significantPlaceJdbcService = significantPlaceJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userProcessingLock = userProcessingLock;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
@@ -63,14 +68,15 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
         try {
             this.jobMetadataRepository.updateProgress(taskData.getJobId(), 0, 5, "Waiting for running processing to finish ...");
             userProcessingLock.locked(user, () -> {
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 1, 5, "Deleting Trips ...");
-                tripJdbcService.deleteAllForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 2, 5, "Deleting Visits ...");
-                processedVisitJdbcService.deleteAllForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 3, 5, "Deleting Places ...");
-                significantPlaceJdbcService.deleteForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 4, 5, "Flag points as unprocessed ...");
-                rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
+                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 1, 5, "Deleting Trips, Visits and Places ...");
+                // one transaction: a failure must not leave the user with deleted visits but points still flagged processed
+                transactionTemplate.executeWithoutResult(status -> {
+                    tripJdbcService.deleteAllForUser(user);
+                    processedVisitJdbcService.deleteAllForUser(user);
+                    significantPlaceJdbcService.deleteForUser(user);
+                    rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
+                });
+                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 4, 5, "Flagged points as unprocessed ...");
                 this.configurationService.findAllConfigurationsForUser(user)
                         .forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");

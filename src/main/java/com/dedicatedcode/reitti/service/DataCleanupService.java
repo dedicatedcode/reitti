@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ public class DataCleanupService implements Job {
     private final SignificantPlaceJdbcService placeJdbcService;
     private final JobDetail processingPipelineTask;
     private final JobMetadataRepository jobMetadataRepository;
+    private final TransactionTemplate transactionTemplate;
 
 
     public DataCleanupService(TripJdbcService tripJdbcService,
@@ -42,7 +45,8 @@ public class DataCleanupService implements Job {
                               UserJdbcService userJdbcService,
                               JobSchedulingService jobScheduler, SignificantPlaceJdbcService placeJdbcService,
                               @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
-                              JobMetadataRepository jobMetadataRepository) {
+                              JobMetadataRepository jobMetadataRepository,
+                              PlatformTransactionManager transactionManager) {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
@@ -52,6 +56,7 @@ public class DataCleanupService implements Job {
         this.placeJdbcService = placeJdbcService;
         this.processingPipelineTask = processingPipelineTask;
         this.jobMetadataRepository = jobMetadataRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -77,21 +82,24 @@ public class DataCleanupService implements Job {
     }
 
     void cleanupForGeometryChange(User user, List<SignificantPlace> placesToRemove, List<LocalDate> affectedDays, UUID parentJobId) {
-        long start = System.nanoTime();
-
         log.info("Cleanup for geometry change. Removing [{}] places and starting recalculation for days [{}]", placesToRemove.size(), affectedDays);
 
-        log.debug("Removing affected trips for places [{}]", placesToRemove);
-        this.tripJdbcService.deleteFor(user, placesToRemove);
-        log.debug("Removing affected visits for places [{}]", placesToRemove);
-        this.processedVisitJdbcService.deleteFor(user, placesToRemove);
-        log.debug("Removing places [{}]", placesToRemove);
-        this.significantPlaceJdbcService.deleteForUser(user, placesToRemove);
-        log.info("Cleanup for geometry change completed in {}ms", (System.nanoTime() - start) / 1000000);
+        // the removed visits only come back through reprocessing the points marked here, so either both happen or
+        // neither does; and the pipeline is only started once the marks are committed and visible to it
+        transactionTemplate.executeWithoutResult(_ -> {
+            long phaseStart = System.nanoTime();
+            log.debug("Removing affected trips for places [{}]", placesToRemove);
+            this.tripJdbcService.deleteFor(user, placesToRemove);
+            log.debug("Removing affected visits for places [{}]", placesToRemove);
+            this.processedVisitJdbcService.deleteFor(user, placesToRemove);
+            log.debug("Removing places [{}]", placesToRemove);
+            this.significantPlaceJdbcService.deleteForUser(user, placesToRemove);
+            log.info("Cleanup for geometry change completed in {}ms", (System.nanoTime() - phaseStart) / 1000000);
 
-        start = System.nanoTime();
-        this.rawLocationPointJdbcService.markAllAsUnprocessedForUser(user, affectedDays);
-        log.info("clearing processed points for days [{}] completed in {}ms", affectedDays, (System.nanoTime() - start) / 1000000);
+            phaseStart = System.nanoTime();
+            this.rawLocationPointJdbcService.markAllAsUnprocessedForUser(user, affectedDays);
+            log.info("clearing processed points for days [{}] completed in {}ms", affectedDays, (System.nanoTime() - phaseStart) / 1000000);
+        });
 
         jobScheduler.enqueueTask(processingPipelineTask,
                                  new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(parentJobId),

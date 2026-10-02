@@ -215,6 +215,15 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), limit, offset);
     }
 
+    public List<RawLocationPoint> findByUserAndProcessedIsFalseAndTimestampAfterOrderByTimestampWithLimit(User user, Instant after, int limit) {
+        String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.processed = false AND rlp.timestamp > ? " +
+                "ORDER BY rlp.timestamp " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), Timestamp.from(after), limit);
+    }
+
     public List<Integer> findDistinctYearsByUser(User user) {
         String sql = """
                 SELECT DISTINCT EXTRACT(YEAR FROM day)
@@ -537,10 +546,35 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId());
     }
 
+    /**
+     * Marks the points of the given days unprocessed. Days are taken in the JVM time zone, which is also the
+     * session time zone the affected days are computed in.
+     */
     public void markAllAsUnprocessedForUser(User user, List<LocalDate> affectedDays) {
-        this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND date_trunc('day', timestamp) = ANY(?)",
-                                 user.getId(),
-                                 affectedDays.stream().map(d -> Timestamp.valueOf(d.atStartOfDay())).toList().toArray(new Timestamp[0]));
+        // one timestamp range per run of consecutive days instead of date_trunc('day', timestamp) = ANY(days),
+        // which cannot use the (user_id, timestamp) index and scanned every point of the user
+        List<Object[]> ranges = new ArrayList<>();
+        LocalDate rangeStart = null;
+        LocalDate rangeEnd = null;
+        for (LocalDate day : affectedDays.stream().distinct().sorted().toList()) {
+            if (rangeEnd != null && day.equals(rangeEnd)) {
+                rangeEnd = day.plusDays(1);
+                continue;
+            }
+            if (rangeStart != null) {
+                ranges.add(new Object[]{user.getId(), Timestamp.valueOf(rangeStart.atStartOfDay()), Timestamp.valueOf(rangeEnd.atStartOfDay())});
+            }
+            rangeStart = day;
+            rangeEnd = day.plusDays(1);
+        }
+        if (rangeStart != null) {
+            ranges.add(new Object[]{user.getId(), Timestamp.valueOf(rangeStart.atStartOfDay()), Timestamp.valueOf(rangeEnd.atStartOfDay())});
+        }
+        if (ranges.isEmpty()) {
+            return;
+        }
+        this.jdbcTemplate.batchUpdate("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND processed = true",
+                                      ranges);
     }
 
     public void markUnprocessedForUserAndTimeRange(User user, Instant start, Instant end) {

@@ -11,6 +11,7 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,6 +21,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IntegrationTest
@@ -42,6 +44,9 @@ class DataCleanupServiceTest {
 
     @Autowired
     private TestingService testingService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private User testUser;
     private User anotherUser;
@@ -228,6 +233,39 @@ class DataCleanupServiceTest {
         assertTrue(placeJdbcService.findById(placeToRemove1.getId()).isEmpty());
         
         // Point should remain processed (no affected days)
+        assertTrue(findPointById(point.getId()).isProcessed());
+    }
+
+    @Test
+    void cleanupForGeometryChange_ShouldKeepVisitsTripsAndPlacesWhenMarkingPointsFails() {
+        Instant baseTime = Instant.now().minus(4, ChronoUnit.HOURS);
+        ProcessedVisit visitToRemove = createTestVisit(placeToRemove1, baseTime, baseTime.plus(1, ChronoUnit.HOURS));
+        ProcessedVisit visitToKeep = createTestVisit(placeToKeep, baseTime.plus(2, ChronoUnit.HOURS), baseTime.plus(3, ChronoUnit.HOURS));
+        Trip trip = createTestTrip(visitToRemove, visitToKeep);
+        RawLocationPoint point = createProcessedPoint(testUser, baseTime);
+
+        // the visits are deleted first; if the points cannot be marked for reprocessing afterwards, they would never come back
+        String trigger = "test_reject_point_update_" + testUser.getId();
+        jdbcTemplate.execute("""
+                CREATE OR REPLACE FUNCTION test_reject_point_update() RETURNS trigger AS $$
+                BEGIN
+                    RAISE EXCEPTION 'point update rejected by test';
+                END;
+                $$ LANGUAGE plpgsql
+                """);
+        jdbcTemplate.execute("CREATE TRIGGER " + trigger + " BEFORE UPDATE ON raw_location_points FOR EACH ROW WHEN (NEW.user_id = "
+                + testUser.getId() + ") EXECUTE FUNCTION test_reject_point_update()");
+        try {
+            List<LocalDate> affectedDays = List.of(LocalDate.ofInstant(baseTime, ZoneId.systemDefault()));
+            assertThrows(RuntimeException.class,
+                    () -> dataCleanupService.cleanupForGeometryChange(testUser, List.of(placeToRemove1), affectedDays, null));
+        } finally {
+            jdbcTemplate.execute("DROP TRIGGER IF EXISTS " + trigger + " ON raw_location_points");
+        }
+
+        assertTrue(processedVisitJdbcService.findById(visitToRemove.getId()).isPresent());
+        assertTrue(tripJdbcService.findById(trip.getId()).isPresent());
+        assertTrue(placeJdbcService.findById(placeToRemove1.getId()).isPresent());
         assertTrue(findPointById(point.getId()).isProcessed());
     }
 
