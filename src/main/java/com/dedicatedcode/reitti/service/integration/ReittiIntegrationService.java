@@ -171,11 +171,11 @@ public class ReittiIntegrationService {
     }
 
     /**
-     * Returns the avatar of the remote user of an integration without checking ownership; callers must only pass
-     * integrations of the current user. The content type is derived from the stored bytes, the one sent by the
+     * Loads the stored avatar of an integration without an ownership check; use {@link #getAvatar(User, Long)}.
+     * The content type is derived from the stored bytes, the one sent by the
      * remote server is not trusted.
      */
-    public Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
+    private Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
         Map<String, Object> result;
         try {
             result = jdbcTemplate.queryForMap(
