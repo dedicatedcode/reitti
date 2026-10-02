@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -121,4 +123,23 @@ class MetadataApiControllerTest {
         assertEquals(1, count);
     }
 
+
+    @Test
+    void metadataOfOtherUsersTripsAndVisitsIsNotAccessible() throws Exception {
+        User intruder = testingService.randomUser();
+
+        mockMvc.perform(get("/api/v2/metadata/trip/{id}", trip.getId()).with(user(intruder)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId())
+                                .param("reason", "hijacked")
+                                .with(user(intruder)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v2/metadata/visit/{id}", visit1.getId())
+                                .param("reason", "hijacked")
+                                .with(user(intruder)))
+                .andExpect(status().isNotFound());
+
+        assertNull(jdbcTemplate.queryForObject("SELECT metadata->>'reason' FROM trips WHERE id = ?", String.class, trip.getId()));
+        assertNull(jdbcTemplate.queryForObject("SELECT metadata->>'reason' FROM processed_visits WHERE id = ?", String.class, visit1.getId()));
+    }
 }

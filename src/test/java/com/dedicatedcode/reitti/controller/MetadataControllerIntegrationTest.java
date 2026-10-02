@@ -26,6 +26,8 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -114,6 +116,59 @@ class MetadataControllerIntegrationTest {
         String reason = jdbcTemplate.queryForObject(
                 "SELECT metadata->>'reason' FROM trips WHERE id = ?", String.class, tripId);
         assertEquals("commute", reason);
+    }
+
+    @Test
+    void metadataOfOtherUsersIsNotReadable() throws Exception {
+        User intruder = testingService.randomUser();
+
+        mockMvc.perform(get("/metadata/trip/{id}", tripId).with(user(intruder)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/metadata/visit/{id}", visitId).with(user(intruder)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void metadataOfOtherUsersIsNotWritable() throws Exception {
+        User intruder = testingService.randomUser();
+
+        mockMvc.perform(post("/metadata")
+                                .param("type", "trip")
+                                .param("id", tripId.toString())
+                                .param("reason", "hijacked")
+                                .with(user(intruder)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/metadata")
+                                .param("type", "visit")
+                                .param("id", visitId.toString())
+                                .param("reason", "hijacked")
+                                .with(user(intruder)))
+                .andExpect(status().isNotFound());
+
+        assertNull(jdbcTemplate.queryForObject("SELECT metadata->>'reason' FROM trips WHERE id = ?", String.class, tripId));
+        assertNull(jdbcTemplate.queryForObject("SELECT metadata->>'reason' FROM processed_visits WHERE id = ?", String.class, visitId));
+    }
+
+    @Test
+    void updateMetadataDoesNotRedirectToOtherSites() throws Exception {
+        for (String returnUrl : List.of("https://evil.example/phish", "//evil.example/phish", "/\\evil.example", "/\t/evil.example", "javascript:alert(1)")) {
+            mockMvc.perform(post("/metadata")
+                                    .param("type", "trip")
+                                    .param("id", tripId.toString())
+                                    .param("returnUrl", returnUrl))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+    }
+
+    @Test
+    void updateMetadataRedirectsBackToTheSameOrigin() throws Exception {
+        mockMvc.perform(post("/metadata")
+                                .param("type", "trip")
+                                .param("id", tripId.toString())
+                                .param("returnUrl", "http://localhost/?startDate=2025-01-01"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/?startDate=2025-01-01"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.controller.RequestValidation;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.dto.SuppressedVisitInfo;
 import com.dedicatedcode.reitti.model.*;
@@ -375,7 +376,7 @@ public class PlacesSettingsController {
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
 
                 if (returnUrl != null && !returnUrl.isBlank()) {
-                    return "redirect:" + returnUrl;
+                    return RequestValidation.safeRedirect(returnUrl, "/settings/places");
                 }
                 return getEditForm(placeId, returnUrl, user, model);
             } catch (Exception e) {
@@ -448,8 +449,8 @@ public class PlacesSettingsController {
             redirectAttributes.addFlashAttribute("errorMessage", i18nService.translate("places.geocode.error", e.getMessage()));
         }
 
-        String redirectUrl = returnUrl != null ? returnUrl : "/settings/places?page=" + page + "&search=" + search;
-        return "redirect:" + redirectUrl;
+        String placesUrl = "/settings/places?page=" + page + "&search=" + search;
+        return RequestValidation.safeRedirect(returnUrl != null ? returnUrl : placesUrl, placesUrl);
     }
 
     @GetMapping("/nearby")

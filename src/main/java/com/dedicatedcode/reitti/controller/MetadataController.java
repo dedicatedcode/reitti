@@ -11,11 +11,13 @@ import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.MetadataOverrideService;
 import com.dedicatedcode.reitti.service.TimeUtil;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -51,8 +53,8 @@ public class MetadataController {
                               @RequestParam(required = false) String returnUrl) {
 
         UserSettings userSettings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        Optional<ProcessedVisit> visit = type.equals("visit") ? this.processedVisitJdbcService.findById(id) : Optional.empty();
-        Optional<Trip> trip = type.equals("trip") ? this.tripJdbcService.findById(id) : Optional.empty();
+        Optional<ProcessedVisit> visit = type.equals("visit") ? Optional.of(findVisit(user, id)) : Optional.empty();
+        Optional<Trip> trip = type.equals("trip") ? Optional.of(findTrip(user, id)) : Optional.empty();
         Map<String, Object> properties = switch (type) {
             case ("trip") -> trip.map(Trip::getMetadata).orElse(Collections.emptyMap());
             case ("visit") -> visit.map(ProcessedVisit::getMetadata).orElse(Collections.emptyMap());
@@ -96,29 +98,21 @@ public class MetadataController {
         metadata.setDescription(notes);
         metadata.setMood(mood);
         switch (type) {
-            case "trip" -> {
-                Optional<Trip> trip = this.tripJdbcService.findById(id);
-                if (trip.isEmpty()) {
-                    throw new IllegalArgumentException("Trip not found");
-                } else {
-                    this.metadataService.saveTripMetadata(user, trip.get(), metadata);
-                }
-            }
-            case "visit" -> {
-                Optional<ProcessedVisit> visit = this.processedVisitJdbcService.findById(id);
-                if (visit.isEmpty()) {
-                    throw new IllegalArgumentException("Visit not found");
-                } else {
-                    this.metadataService.saveVisitMetadata(user, visit.get(), metadata);
-                }
-            }
+            case "trip" -> this.metadataService.saveTripMetadata(user, findTrip(user, id), metadata);
+            case "visit" -> this.metadataService.saveVisitMetadata(user, findVisit(user, id), metadata);
             default -> throw new IllegalStateException("Unexpected value: " + type);
         }
-        if (returnUrl != null) {
-            return "redirect:" + returnUrl;
-        } else {
-            return "redirect:/";
-        }
+        return RequestValidation.safeRedirect(returnUrl, "/");
+    }
+
+    private Trip findTrip(User user, Long id) {
+        return this.tripJdbcService.findByUserAndId(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found"));
+    }
+
+    private ProcessedVisit findVisit(User user, Long id) {
+        return this.processedVisitJdbcService.findByUserAndId(user, id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visit not found"));
     }
 
 }

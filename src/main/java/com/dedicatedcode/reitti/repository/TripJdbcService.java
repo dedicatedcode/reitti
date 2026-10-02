@@ -181,8 +181,19 @@ public class TripJdbcService {
     }
 
     public Trip update(Trip trip) {
+        return update(trip, null);
+    }
+
+    /**
+     * Updates the trip only if it belongs to the given user.
+     */
+    public Trip update(User user, Trip trip) {
+        return update(trip, user.getId());
+    }
+
+    private Trip update(Trip trip, Long userId) {
         String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, start_visit_id = ?, end_visit_id = ?, metadata = ?::jsonb, version = ? WHERE id = ?";
-        jdbcTemplate.update(sql,
+        List<Object> parameters = new ArrayList<>(Arrays.asList(
                 Timestamp.from(trip.getStartTime()),
                 Timestamp.from(trip.getEndTime()),
                 trip.getDurationSeconds(),
@@ -192,7 +203,15 @@ public class TripJdbcService {
                 asJson(trip.getMetadata()),
                 trip.getVersion() + 1,
                 trip.getId()
-        );
+        ));
+        if (userId != null) {
+            sql += " AND user_id = ?";
+            parameters.add(userId);
+        }
+        int updated = jdbcTemplate.update(sql, parameters.toArray());
+        if (userId != null && updated == 0) {
+            throw new IllegalArgumentException("Trip not found");
+        }
         tripTransportModeJdbcService.deleteByTripId(trip.getId());
         tripTransportModeJdbcService.bulkInsert(trip.getId(), trip.getSegments());
         return trip.withVersion(trip.getVersion() + 1);
@@ -203,6 +222,15 @@ public class TripJdbcService {
                 "FROM trips t " +
                 "WHERE t.id = ?";
         List<RawTripRow> results = jdbcTemplate.query(sql, this::mapRawTripRow, id);
+        List<Trip> trips = assembleTrips(results);
+        return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
+    }
+
+    public Optional<Trip> findByUserAndId(User user, Long id) {
+        String sql = "SELECT t.* " +
+                "FROM trips t " +
+                "WHERE t.user_id = ? AND t.id = ?";
+        List<RawTripRow> results = jdbcTemplate.query(sql, this::mapRawTripRow, user.getId(), id);
         List<Trip> trips = assembleTrips(results);
         return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
     }
