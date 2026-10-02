@@ -40,6 +40,7 @@ class MapStylesSettingsControllerTest {
         return post("/settings/map-styles")
                 .param("name", name)
                 .param("mapType", "raster")
+                .param("styleInputType", "json")
                 .param("rasterSourceInputType", "url-template")
                 .param("rasterTileTemplate", template)
                 .param("proxyTiles", "on")
