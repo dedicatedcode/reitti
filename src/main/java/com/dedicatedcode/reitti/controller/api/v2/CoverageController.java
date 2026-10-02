@@ -1,11 +1,12 @@
 package com.dedicatedcode.reitti.controller.api.v2;
 
+import com.dedicatedcode.reitti.controller.api.DataAccessGuard;
 import com.dedicatedcode.reitti.model.CoverageInformation;
 import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.h3.H3SpatialCoverageService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,13 +27,13 @@ public class CoverageController {
 
     private final DeviceJdbcService deviceJdbcService;
     private final H3SpatialCoverageService coverageService;
-    private final UserSharingJdbcService userSharingJdbcService;
+    private final DataAccessGuard dataAccessGuard;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
 
-    public CoverageController(DeviceJdbcService deviceJdbcService, H3SpatialCoverageService coverageService, UserSharingJdbcService userSharingJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService) {
+    public CoverageController(DeviceJdbcService deviceJdbcService, H3SpatialCoverageService coverageService, DataAccessGuard dataAccessGuard, RawLocationPointJdbcService rawLocationPointJdbcService) {
         this.deviceJdbcService = deviceJdbcService;
         this.coverageService = coverageService;
-        this.userSharingJdbcService = userSharingJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
     }
 
@@ -99,15 +100,18 @@ public class CoverageController {
             @PathVariable long userId,
             @RequestParam LocalDate start,
             @RequestParam LocalDate end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-
-        if (user.getId() != userId) {
-            if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-                throw new IllegalAccessException("User not allowed to fetch cells for other user with id " + userId);
-            }
-        }
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        // magic links only ever reach the owner's cells, live links only today's
+        dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        Optional<DataAccessGuard.TimeWindow> window = dataAccessGuard.readableWindow(user, timezone,
+                MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.ONLY_LIVE, MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS);
         Instant startOfRange = start.atStartOfDay(timezone).toInstant();
         Instant endOfRange = end.plusDays(1).atStartOfDay(timezone).toInstant();
+        if (window.isPresent()) {
+            DataAccessGuard.TimeWindow restricted = window.get().restrict(startOfRange, endOfRange);
+            startOfRange = restricted.start();
+            endOfRange = restricted.end();
+        }
         return rawLocationPointJdbcService.findVisitedH3CellsCounts(userId, startOfRange, endOfRange);
     }
 

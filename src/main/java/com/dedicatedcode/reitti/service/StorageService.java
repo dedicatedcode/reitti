@@ -13,9 +13,11 @@ import java.util.stream.Stream;
 @Service
 public class StorageService {
     private final String storagePath;
+    private final Path root;
 
     public StorageService(@Value("${reitti.storage.path}") String storagePath) {
         this.storagePath = storagePath;
+        this.root = Paths.get(storagePath).toAbsolutePath().normalize();
         Path path = Paths.get(storagePath);
         try {
             // Create directory if it doesn't exist
@@ -30,7 +32,7 @@ public class StorageService {
     }
 
     public void store(String itemName, InputStream content, long contentLength, String contentType) {
-        Path filePath = Paths.get(storagePath, itemName);
+        Path filePath = resolve(itemName);
         try {
             Files.createDirectories(filePath.getParent());
             Files.copy(content, filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -40,7 +42,7 @@ public class StorageService {
     }
 
     public StorageContent read(String itemName) {
-        Path filePath = Paths.get(storagePath, itemName);
+        Path filePath = resolve(itemName);
         try {
             InputStream inputStream = Files.newInputStream(filePath);
             String contentType = Files.probeContentType(filePath);
@@ -52,19 +54,11 @@ public class StorageService {
     }
 
     public boolean exists(String itemName) {
-        Path basePath = Paths.get(storagePath);
-        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + itemName);
-        try (Stream<Path> paths = Files.walk(basePath)) {
-            return paths
-                    .map(basePath::relativize)
-                    .anyMatch(matcher::matches);
-        } catch (IOException e) {
-            return false;
-        }
+        return Files.exists(resolve(itemName));
     }
 
     public List<String> getChildren(String path) {
-        Path basePath = Paths.get(storagePath, path);
+        Path basePath = resolve(path);
         if (!Files.isDirectory(basePath)) {
             return Collections.emptyList();
         }
@@ -80,7 +74,7 @@ public class StorageService {
     }
 
     public void remove(String itemName) {
-        Path filePath = Paths.get(storagePath, itemName);
+        Path filePath = resolve(itemName);
         try {
             if (Files.exists(filePath)) {
                 if (Files.isDirectory(filePath)) {
@@ -102,6 +96,20 @@ public class StorageService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to remove item '" + itemName + "': " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Item names are partly built from request data, so every access must stay strictly inside the storage root.
+     */
+    private Path resolve(String itemName) {
+        if (itemName == null || itemName.isBlank()) {
+            throw new IllegalArgumentException("Storage item name must not be empty");
+        }
+        Path resolved = Paths.get(storagePath, itemName).toAbsolutePath().normalize();
+        if (!resolved.startsWith(root) || resolved.equals(root)) {
+            throw new IllegalArgumentException("Storage item '" + itemName + "' is outside of the storage directory");
+        }
+        return resolved;
     }
 
     public static class StorageContent {

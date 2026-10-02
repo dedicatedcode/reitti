@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +83,14 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
         } else {
             log.info("Oidc User not found for oidc id: [{}]. Will try to find it by preferred username [{}]", oidcUserId, preferredUsername);
             Optional<User> byPreferredUserName = this.userJdbcService.findByUsername(preferredUsername);
-            if (byPreferredUserName.isPresent()) {
+            if (byPreferredUserName.isPresent() && byPreferredUserName.get().getExternalId() != null
+                    && !byPreferredUserName.get().getExternalId().isBlank()) {
+                // The account already belongs to a different OIDC identity. Re-linking it would let anyone who can
+                // pick a matching preferred_username/email at the identity provider take over the account.
+                log.warn("Refusing OIDC login for [{}]: user [{}] is already linked to a different identity", oidcUserId, preferredUsername);
+                throw new OAuth2AuthenticationException(new OAuth2Error("account_linked_to_other_identity"),
+                        "User " + preferredUsername + " is already linked to a different identity");
+            } else if (byPreferredUserName.isPresent()) {
                 log.info("found user by preferred username: [{}], will update username to [{}]", preferredUsername, oidcUserId);
                 existingUser = Optional.of(byPreferredUserName.get().withUsername(preferredUsername).withExternalId(oidcUserId));
             } else {

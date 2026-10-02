@@ -11,6 +11,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Component
@@ -66,23 +68,35 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
                 response.sendRedirect(contextPathHolder.getContextPath() + "/error/magic-link?error=expired");
                 return;
             }
-            Long resourceId = null;
             if (isMemoryRequest) {
+                Long requestedMemoryId = null;
                 try {
-                    resourceId = Long.parseLong(request.getRequestURI().substring((contextPathHolder.getContextPath() + "/memories/").length()));
+                    requestedMemoryId = Long.parseLong(request.getRequestURI().substring((contextPathHolder.getContextPath() + "/memories/").length()));
                 } catch (NumberFormatException e) {
                     //ignored
                 }
-                if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY || resourceId == null || resourceId.longValue() != linkToken.getResourceId()) {
+                if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY || requestedMemoryId == null || requestedMemoryId.longValue() != linkToken.getResourceId()) {
                     response.sendRedirect(contextPathHolder.getContextPath() + "/error/magic-link?error=invalid");
                     return;
                 }
             }
+            // The granted resource always comes from the stored link, never from the URL it was opened with
+            // (a memory link opened via /access used to get a null resource, which granted every memory).
+            Long resourceId = linkToken.getResourceType() == MagicLinkResourceType.MEMORY ? linkToken.getResourceId() : null;
+            String target = contextPathHolder.getContextPath() + (resourceId != null ? "/memories/" + resourceId : "/");
 
             Optional<User> user = magicLinkJdbcService.findUserIdByToken(linkToken.getId()).flatMap(userJdbcService::findById);
 
             if (user.isEmpty()) {
                 response.sendRedirect(contextPathHolder.getContextPath() + "/error/magic-link?error=user-not-found");
+                return;
+            }
+
+            // The owner opening their own link keeps the full session instead of being downgraded to the link (#813)
+            Authentication current = SecurityContextHolder.getContext().getAuthentication();
+            if (current != null && current.isAuthenticated() && current.getPrincipal() instanceof User currentUser
+                    && !(current.getPrincipal() instanceof TokenUser) && Objects.equals(currentUser.getId(), user.get().getId())) {
+                response.sendRedirect(target);
                 return;
             }
 
@@ -97,19 +111,15 @@ public class MagicLinkAuthenticationFilter extends OncePerRequestFilter {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            // new session id on privilege change (session fixation)
+            request.getSession();
+            request.changeSessionId();
             request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
-            if (linkToken.getResourceType() != MagicLinkResourceType.MEMORY) {
-                response.sendRedirect(contextPathHolder.getContextPath() + "/");
-            } else {
-                response.sendRedirect(contextPathHolder.getContextPath() + "/memories/" + linkToken.getResourceId());
-            }
-            return;
+            response.sendRedirect(target);
         } catch (Exception e) {
             response.sendRedirect(contextPathHolder.getContextPath() + "/error/magic-link?error=processing");
         }
-
-        filterChain.doFilter(request, response);
     }
 }
