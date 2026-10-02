@@ -344,8 +344,9 @@ class MemorySecurityTest {
         mockMvc.perform(get(tripsUrl, ownerMemory.getId(), cluster.getBlockId())
                         .with(memoryLink(MagicLinkAccessLevel.MEMORY_VIEW_ONLY, otherOwnerMemory.getId())))
                 .andExpect(status().isNotFound());
+        // map links are already refused by the route rules in SecurityConfig
         mockMvc.perform(get(tripsUrl, ownerMemory.getId(), cluster.getBlockId()).with(mapLink(MagicLinkAccessLevel.FULL_ACCESS)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     // --- images
