@@ -5,9 +5,14 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.UserService;
+import com.dedicatedcode.reitti.service.security.ImageTypes;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -32,17 +37,20 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
     private final boolean registrationEnabled;
     private final boolean localLoginDisabled;
     private final RestTemplate restTemplate;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public CustomOidcUserService(UserJdbcService userJdbcService,
                                  UserService userService,
                                  AvatarService avatarService,
                                  RestTemplate restTemplate,
+                                 OutboundUrlValidator outboundUrlValidator,
                                  @Value("${reitti.security.oidc.registration.enabled}") boolean registrationEnabled,
                                  @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userJdbcService = userJdbcService;
         this.userService = userService;
         this.avatarService = avatarService;
         this.restTemplate = restTemplate;
+        this.outboundUrlValidator = outboundUrlValidator;
         this.registrationEnabled = registrationEnabled;
         this.localLoginDisabled = localLoginDisabled;
     }
@@ -146,26 +154,23 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
             log.info("Downloading avatar from URL: {} for user ID: {}", avatarUrl, userId);
 
             // The picture URL comes from the identity provider (and is often editable by its users): validate it and
-            // every redirect, cap the size and only store real images. This local validator enforces the always
-            // blocked targets (loopback, link-local/metadata, ...); the bean would also know the internal services.
-            com.dedicatedcode.reitti.service.security.OutboundUrlValidator validator =
-                    new com.dedicatedcode.reitti.service.security.OutboundUrlValidator(true, "", "", -1, "");
-            URI uri = validator.validate(avatarUrl);
-            org.springframework.http.ResponseEntity<byte[]> response = null;
-            for (int hop = 0; hop <= com.dedicatedcode.reitti.service.security.OutboundHttp.MAX_REDIRECTS; hop++) {
-                response = restTemplate.execute(uri, org.springframework.http.HttpMethod.GET, null,
-                        r -> org.springframework.http.ResponseEntity.status(r.getStatusCode())
+            // every redirect, cap the size and only store real images.
+            URI uri = outboundUrlValidator.validate(avatarUrl);
+            ResponseEntity<byte[]> response = null;
+            for (int hop = 0; hop <= OutboundHttp.MAX_REDIRECTS; hop++) {
+                response = restTemplate.execute(uri, HttpMethod.GET, null,
+                        r -> ResponseEntity.status(r.getStatusCode())
                                 .headers(r.getHeaders())
-                                .body(com.dedicatedcode.reitti.service.security.OutboundHttp.readAtMost(r.getBody(),
-                                        com.dedicatedcode.reitti.service.security.OutboundHttp.MAX_AVATAR_BYTES)));
+                                .body(OutboundHttp.readAtMost(r.getBody(),
+                                        OutboundHttp.MAX_AVATAR_BYTES)));
                 if (response == null || !response.getStatusCode().is3xxRedirection() || response.getHeaders().getLocation() == null) {
                     break;
                 }
-                uri = validator.validate(uri.resolve(response.getHeaders().getLocation()));
+                uri = outboundUrlValidator.validate(uri.resolve(response.getHeaders().getLocation()));
             }
 
             byte[] avatarData = response != null && response.getStatusCode().is2xxSuccessful() ? response.getBody() : null;
-            Optional<String> contentType = com.dedicatedcode.reitti.service.security.ImageTypes.detect(avatarData);
+            Optional<String> contentType = ImageTypes.detect(avatarData);
             if (contentType.isPresent()) {
                 avatarService.updateAvatar(userId, contentType.get(), avatarData);
                 log.info("Successfully saved avatar for user ID: {}", userId);
@@ -174,19 +179,6 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
             }
         } catch (Exception e) {
             log.warn("Failed to download avatar from URL: {} for user ID: {}. {}", avatarUrl, userId, e.getMessage());
-        }
-    }
-    
-    private String determineContentType(String avatarUrl) {
-        String url = avatarUrl.toLowerCase();
-        if (url.contains(".png")) {
-            return "image/png";
-        } else if (url.contains(".gif")) {
-            return "image/gif";
-        } else if (url.contains(".webp")) {
-            return "image/webp";
-        } else {
-            return "image/jpeg"; // Default fallback
         }
     }
 }
