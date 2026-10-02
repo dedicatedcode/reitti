@@ -14,6 +14,7 @@ import com.dedicatedcode.reitti.service.security.UnsafeUrlException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -252,7 +253,7 @@ public class MapStylesSettingsController {
     @DeleteMapping
     public String deleteMapStyle(@AuthenticationPrincipal User user, @RequestParam Long id, Model model) {
         if (!this.userMapStyleJdbcService.delete(user, id, isAdmin(user))) {
-            throw new IllegalStateException("Not allowed to delete style with id [" + id + "]");
+            throw new AccessDeniedException("Not allowed to delete style with id [" + id + "]");
         }
         return getPage(user, model);
     }
