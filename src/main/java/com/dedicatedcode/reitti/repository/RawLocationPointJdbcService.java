@@ -215,6 +215,15 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), limit, offset);
     }
 
+    public List<RawLocationPoint> findByUserAndProcessedIsFalseAndTimestampAfterOrderByTimestampWithLimit(User user, Instant after, int limit) {
+        String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+                "FROM raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.processed = false AND rlp.timestamp > ? " +
+                "ORDER BY rlp.timestamp " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), Timestamp.from(after), limit);
+    }
+
     public List<Integer> findDistinctYearsByUser(User user) {
         String sql = """
                 SELECT DISTINCT EXTRACT(YEAR FROM day)
