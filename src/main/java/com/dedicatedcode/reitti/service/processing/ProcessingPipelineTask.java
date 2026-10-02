@@ -79,24 +79,34 @@ public class ProcessingPipelineTask implements Job {
 
         long maxPoints = this.rawLocationPointJdbcService.countUnprocessedByUser(user);
         userProcessingLock.locked(user, () -> {
+            // set while batches are skipped because they keep failing: processing continues with the points after them
+            Instant resumeAfter = null;
+            int deferredPoints = 0;
             while (true) {
                 List<RawLocationPoint> currentBatch = null;
                 Instant earliest = null;
                 Instant latest = null;
                 try {
-                    if (previewId == null) {
-                        currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
-                    } else {
-                        currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
-                    }
+                    currentBatch = loadBatch(user, previewId, resumeAfter);
 
                     if (currentBatch.isEmpty()) {
-                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Done");
+                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints,
+                                deferredPoints == 0 ? "Done" : "Done, " + deferredPoints + " point(s) deferred after repeated failures");
                         break;
                     }
 
                     earliest = currentBatch.getFirst().getTimestamp();
                     latest = currentBatch.getLast().getTimestamp();
+
+                    Optional<Instant> backingOff = previewId == null ? batchFailureTracker.backingOffUntilEndOf(user, earliest) : Optional.empty();
+                    if (backingOff.isPresent()) {
+                        log.warn("Skipping batch for user [{}] starting at [{}] which failed repeatedly; its points stay unprocessed until it is retried",
+                                user.getUsername(), earliest);
+                        deferredPoints += currentBatch.size();
+                        resumeAfter = backingOff.get().isAfter(latest) ? backingOff.get() : latest;
+                        continue;
+                    }
+
                     log.debug("Scheduling stay detection event for user [{}] and points between [{}] and [{}]", user.getId(), earliest, latest);
 
                     LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
@@ -111,16 +121,14 @@ public class ProcessingPipelineTask implements Job {
                     totalProcessed.addAndGet(currentBatch.size());
                     jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
                 } catch (Exception e) {
-                    if (earliest != null) {
-                        batchFailureTracker.recordFailure(user, earliest);
-                    }
-                    if (earliest != null && batchFailureTracker.exceedsLimit(user, earliest)) {
-                        log.error("Batch for user [{}] between [{}] and [{}] failed [{}] times in a row. Marking [{}] point(s) as processed anyway to keep the pipeline going. Data in this range may be incomplete.",
-                                user.getUsername(), earliest, latest, BatchFailureTracker.MAX_CONSECUTIVE_FAILURES, currentBatch.size(), e);
-                        markProcessed(currentBatch, previewId);
-                        batchFailureTracker.clear(user, earliest);
-                        totalProcessed.addAndGet(currentBatch.size());
-                        jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
+                    Optional<Instant> retryAt = earliest != null ? batchFailureTracker.recordFailure(user, earliest, latest) : Optional.empty();
+                    // a deterministic failure must not block all later data of the user, but its points are never
+                    // marked processed: that would turn a transient error into a permanent hole in the timeline
+                    if (retryAt.isPresent() && previewId == null) {
+                        log.error("Batch for user [{}] between [{}] and [{}] failed [{}] times in a row. Its [{}] point(s) stay unprocessed and are retried after [{}], continuing with the data after it.",
+                                user.getUsername(), earliest, latest, BatchFailureTracker.MAX_CONSECUTIVE_FAILURES, currentBatch.size(), retryAt.get(), e);
+                        deferredPoints += currentBatch.size();
+                        resumeAfter = latest;
                     } else {
                         log.error("Error processing batch for user [{}] between [{}] and [{}]. Leaving the batch unprocessed and stopping this run.",
                                 user.getUsername(), earliest, latest, e);
@@ -131,6 +139,16 @@ public class ProcessingPipelineTask implements Job {
             }
         });
         log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed.get(), user.getId());
+    }
+
+    private List<RawLocationPoint> loadBatch(User user, String previewId, Instant resumeAfter) {
+        if (previewId != null) {
+            return previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
+        }
+        if (resumeAfter != null) {
+            return rawLocationPointJdbcService.findByUserAndProcessedIsFalseAndTimestampAfterOrderByTimestampWithLimit(user, resumeAfter, batchSize);
+        }
+        return rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
     }
 
     private void markProcessed(List<RawLocationPoint> batch, String previewId) {
