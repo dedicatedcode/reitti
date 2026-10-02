@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
+import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.dto.TripDTO;
 import com.dedicatedcode.reitti.dto.VisitDTO;
@@ -7,11 +9,7 @@ import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
-import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
-import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
-import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.repository.MemoryTripJdbcService;
 import com.dedicatedcode.reitti.repository.MemoryVisitJdbcService;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
@@ -33,9 +31,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-
-import static com.dedicatedcode.reitti.model.Role.ADMIN;
-import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Controller
 @RequestMapping("/memories/{memoryId}/blocks")
@@ -65,12 +60,11 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        memoryService.deleteBlock(blockId);
-        
+
+        requireEditableMemory(user, memoryId);
+
+        memoryService.deleteBlock(user, memoryId, blockId);
+
         if (hxRequest != null) {
             return "memories/fragments :: empty";
         }
@@ -86,12 +80,9 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
+        MemoryBlock block = requireBlock(user, memoryId, blockId);
 
-        MemoryBlock block = memoryService.getBlockById(user, blockId)
-                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
-        
         model.addAttribute("memoryId", memoryId);
         model.addAttribute("block", block);
 
@@ -153,8 +144,8 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireMemory(user, memoryId);
+        requireBlock(user, memoryId, blockId);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
@@ -174,8 +165,8 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
+        requireBlock(user, memoryId, blockId);
 
         MemoryClusterBlock block = memoryService.getClusterBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
@@ -194,7 +185,7 @@ public class MemoryBlockController {
                         persistedTrips.remove(knownMemoryTrip);
                         break;
                     case "t":
-                        Trip trip = this.tripJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                        Trip trip = this.tripJdbcService.findByUserAndId(user, partId).orElseThrow(() -> new PageNotFoundException("Trip not found"));
                         MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getBlockId(), trip.getStartVisit().getId());
                         MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getBlockId(), trip.getEndVisit().getId());
                         MemoryTrip persistedMemoryTrip = this.memoryTripJdbcService.save(user, MemoryTrip.create(trip, startVisit, endVisit), block.getBlockId(), trip.getId());
@@ -217,7 +208,7 @@ public class MemoryBlockController {
                         persistedVisits.remove(knownMemoryVisit);
                         break;
                     case "v":
-                        ProcessedVisit visit = this.processedVisitJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("ProcessedVisit not found"));
+                        ProcessedVisit visit = this.processedVisitJdbcService.findByUserAndId(user, partId).orElseThrow(() -> new PageNotFoundException("ProcessedVisit not found"));
                         MemoryVisit persistedMemoryVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(visit), block.getBlockId(), visit.getId());
                         partIds.add(persistedMemoryVisit.getId());
                         break;
@@ -253,8 +244,7 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
 
         MemoryClusterBlock clusterBlock = memoryService.createClusterBlock(user,memory, title, position, type, selectedParts);
         model.addAttribute("memory", memory);
@@ -270,10 +260,9 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestParam List<Long> blockIds) {
-        
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
+        requireEditableMemory(user, memoryId);
+
         memoryService.reorderBlocks(user, memoryId, blockIds);
         return "redirect:/memories/" + memoryId;
     }
@@ -288,8 +277,7 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
 
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.TEXT);
         memoryService.addTextBlock(block.getId(), headline, content);
@@ -310,11 +298,11 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC" ) ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
+        requireBlock(user, memoryId, blockId);
 
         MemoryBlockText textBlock = memoryService.getTextBlock(blockId)
-                .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
+                .orElseThrow(() -> new PageNotFoundException("Text block not found"));
 
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
         memoryService.updateTextBlock(user, updated);
@@ -335,8 +323,8 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+        Memory memory = requireEditableMemory(user, memoryId);
+
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.IMAGE_GALLERY);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
@@ -368,8 +356,8 @@ public class MemoryBlockController {
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, memoryId);
+        requireBlock(user, memoryId, blockId);
 
         MemoryBlockImageGallery imageBlock = memoryService.getImagesForBlock(blockId);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
@@ -400,8 +388,7 @@ public class MemoryBlockController {
             @RequestParam("files") List<MultipartFile> files,
             Model model) {
 
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        requireEditableMemory(user, memoryId);
 
         List<String> urls = new ArrayList<>();
 
@@ -439,8 +426,7 @@ public class MemoryBlockController {
             @RequestParam String assetId,
             Model model) {
 
-        memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        requireEditableMemory(user, memoryId);
 
         String imageUrl;
         if (storageService.exists("memories/" + memoryId + "/" + assetId)) {
@@ -462,10 +448,9 @@ public class MemoryBlockController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "UTC") String timezone,
             Model model) {
-        
-        Memory memory = memoryService.getMemoryById(user, memoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
+        Memory memory = requireEditableMemory(user, memoryId);
+
         ZoneId zoneId = ZoneId.of(timezone);
         LocalDate startDate = memory.getStartDate().atZone(zoneId).toLocalDate();
         LocalDate endDate = memory.getEndDate() != null ? memory.getEndDate().atZone(zoneId).toLocalDate() : Instant.now().atZone(zoneId).toLocalDate();
@@ -488,21 +473,30 @@ public class MemoryBlockController {
     }
 
 
-    private boolean isOwner(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            return false;
+    private Memory requireMemory(User user, Long memoryId) {
+        return memoryService.getMemoryById(user, memoryId)
+                .orElseThrow(() -> new PageNotFoundException("Memory not found"));
+    }
+
+    private Memory requireEditableMemory(User user, Long memoryId) {
+        Memory memory = requireMemory(user, memoryId);
+        if (!canEdit(memory, user)) {
+            throw new ForbiddenException("You are not allowed to edit this memory");
         }
+        return memory;
+    }
+
+    // block ids are global, so every block access has to be tied back to the memory that was authorized
+    private MemoryBlock requireBlock(User user, Long memoryId, Long blockId) {
+        return memoryService.getBlockOfMemory(user, memoryId, blockId)
+                .orElseThrow(() -> new PageNotFoundException("Block not found"));
+    }
+
+    private boolean isOwner(Memory memory, User user) {
+        return memoryService.isOwner(memory, user);
     }
 
     private boolean canEdit(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            //assume the user is of type TokenUser
-            TokenUser tokenUser = (TokenUser) user;
-            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
-        }
+        return memoryService.canEdit(memory, user);
     }
 }

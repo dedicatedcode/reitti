@@ -2,7 +2,12 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
+import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
+import com.dedicatedcode.reitti.model.geo.Trip;
 import com.dedicatedcode.reitti.model.memory.*;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
 import com.dedicatedcode.reitti.repository.*;
@@ -16,6 +21,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+
+import static com.dedicatedcode.reitti.model.Role.ADMIN;
+import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Service
 public class MemoryService {
@@ -73,8 +81,44 @@ public class MemoryService {
         memoryJdbcService.delete(user, memoryId);
     }
 
+    /**
+     * Returns the memory if the caller may view it. Users are limited to their own memories by the repository; a magic
+     * link (whose principal carries the owner's id) is additionally limited to the single memory it was created for.
+     */
     public Optional<Memory> getMemoryById(User user, Long id) {
+        if (user == null || (user instanceof TokenUser tokenUser && !isMemoryLinkFor(tokenUser, id))) {
+            return Optional.empty();
+        }
         return memoryJdbcService.findById(user, id);
+    }
+
+    public boolean isOwner(Memory memory, User user) {
+        if (user == null || user instanceof TokenUser) {
+            return false;
+        }
+        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
+            return getOwnerId(memory) == user.getId();
+        }
+        return false;
+    }
+
+    public boolean canEdit(Memory memory, User user) {
+        if (user instanceof TokenUser tokenUser) {
+            return tokenUser.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority())
+                    && isMemoryLinkFor(tokenUser, memory.getId());
+        }
+        return isOwner(memory, user);
+    }
+
+    private static boolean isMemoryLinkFor(TokenUser tokenUser, Long memoryId) {
+        boolean memoryLink = tokenUser.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_VIEW_ONLY.asAuthority())
+                || tokenUser.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority());
+        // grantsAccessTo() treats a missing resource id as "any memory"; a memory link must always be bound to exactly
+        // one memory, so the probe with null only succeeds for such unbound links.
+        return memoryLink
+                && memoryId != null
+                && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memoryId)
+                && !tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, null);
     }
 
     public List<Memory> getMemoriesForUser(User user, String sortBy, String sortOrder) {
@@ -102,8 +146,10 @@ public class MemoryService {
     }
 
     @Transactional
-    public void deleteBlock(Long blockId) {
-        memoryBlockJdbcService.delete(blockId);
+    public void deleteBlock(User user, Long memoryId, Long blockId) {
+        MemoryBlock block = getBlockOfMemory(user, memoryId, blockId)
+                .orElseThrow(() -> new PageNotFoundException("Block not found"));
+        memoryBlockJdbcService.delete(block.getId());
     }
 
     public List<MemoryBlockPart> getBlockPartsForMemory(User user, Long memoryId, ZoneId timezone) {
@@ -144,6 +190,14 @@ public class MemoryService {
         return memoryBlockJdbcService.findById(user, blockId);
     }
 
+    /**
+     * Loads a block of one of the user's memories, but only if it belongs to the given memory.
+     */
+    public Optional<MemoryBlock> getBlockOfMemory(User user, Long memoryId, Long blockId) {
+        return memoryBlockJdbcService.findById(user, blockId)
+                .filter(block -> block.getMemoryId().equals(memoryId));
+    }
+
     public Optional<MemoryClusterBlock> getClusterBlock(User user, Long blockId) {
         return memoryClusterBlockRepository.findByBlockId(user, blockId);
     }
@@ -171,22 +225,19 @@ public class MemoryService {
         switch (type) {
             case CLUSTER_TRIP:
                 for (Long partId : selectedParts) {
-                    this.tripJdbcService.findById(partId)
-                            .map(trip -> {
-                                MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getId(), trip.getStartVisit().getId());
-                                MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getId(), trip.getEndVisit().getId());
-                                MemoryTrip memoryTrip = MemoryTrip.create(trip, startVisit, endVisit);
-                                return this.memoryTripJdbcService.save(user, memoryTrip, block.getId(), trip.getId());
-                            }).map(MemoryTrip::getId).ifPresent(selectedPartIds::add);
+                    Trip trip = this.tripJdbcService.findByUserAndId(user, partId)
+                            .orElseThrow(() -> new PageNotFoundException("Trip [" + partId + "] not found"));
+                    MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getId(), trip.getStartVisit().getId());
+                    MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getId(), trip.getEndVisit().getId());
+                    MemoryTrip memoryTrip = MemoryTrip.create(trip, startVisit, endVisit);
+                    selectedPartIds.add(this.memoryTripJdbcService.save(user, memoryTrip, block.getId(), trip.getId()).getId());
                 }
                 break;
             case CLUSTER_VISIT:
                 for (Long partId : selectedParts) {
-                    this.processedVisitJdbcService.findById(partId)
-                            .map(visit -> {
-                                MemoryVisit memoryVisit = MemoryVisit.create(visit);
-                                return this.memoryVisitJdbcService.save(user, memoryVisit, block.getId(), visit.getId());
-                            }).map(MemoryVisit::getId).ifPresent(selectedPartIds::add);
+                    ProcessedVisit visit = this.processedVisitJdbcService.findByUserAndId(user, partId)
+                            .orElseThrow(() -> new PageNotFoundException("Visit [" + partId + "] not found"));
+                    selectedPartIds.add(this.memoryVisitJdbcService.save(user, MemoryVisit.create(visit), block.getId(), visit.getId()).getId());
                 }
                 break;
             default:
