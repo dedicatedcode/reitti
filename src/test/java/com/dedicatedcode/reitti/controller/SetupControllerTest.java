@@ -152,6 +152,36 @@ public class SetupControllerTest {
     }
 
     @Test
+    void postSetup_ForOidcLinkedAdminWithEmptyPassword_ShouldNotSetPassword() throws Exception {
+        adminWithRawPassword("original-password");
+        User oidcUser = userService.createNewUser("oidc_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8),
+                "OIDC User", "external-" + UUID.randomUUID(), null);
+        User oidcAdmin = userJdbcService.updateUser(oidcUser.withRole(Role.ADMIN));
+        try {
+            mockMvc.perform(get("/login"))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/setup"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login"));
+
+            mockMvc.perform(post("/setup")
+                            .param("username", oidcAdmin.getUsername())
+                            .param("password", "attacker-password")
+                            .param("displayName", "Hacked"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login"));
+
+            User unchanged = userJdbcService.findById(oidcAdmin.getId()).orElseThrow();
+            assertThat(unchanged.getPassword()).isEmpty();
+            assertThat(unchanged.getDisplayName()).isEqualTo("OIDC User");
+        } finally {
+            userJdbcService.findById(oidcAdmin.getId())
+                    .ifPresent(u -> userJdbcService.updateUser(u.withRole(Role.USER)));
+        }
+    }
+
+    @Test
     void getSetup_AfterSetupCompleted_ShouldRedirectToLogin() throws Exception {
         adminWithRawPassword("original-password");
 
