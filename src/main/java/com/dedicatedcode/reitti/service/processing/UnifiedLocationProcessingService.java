@@ -48,6 +48,12 @@ public class UnifiedLocationProcessingService {
 
     private static final int BUFFER_COMPACT_THRESHOLD = 10_000;
 
+    /**
+     * Visits further apart than this are not connected by a trip. Applies to every pair of consecutive visits alike,
+     * so the trips do not depend on how the data was split into processing runs.
+     */
+    static final Duration MAX_TRIP_DURATION = Duration.ofHours(24);
+
     private final UserJdbcService userJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
@@ -396,45 +402,24 @@ public class UnifiedLocationProcessingService {
             previewTripJdbcService.deleteAll(existingTrips);
         }
 
-        // Create trips between consecutive visits
-        List<Trip> trips = new ArrayList<>();
-        for (int i = 0; i < processedVisits.size() - 1; i++) {
-            ProcessedVisit startVisit = processedVisits.get(i);
-            ProcessedVisit endVisit = processedVisits.get(i + 1);
-
-            Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
-            if (trip != null) {
-                trips.add(trip);
-            }
+        // Create trips between consecutive visits. In live mode that includes the visits right before and after
+        // the range: their connecting trips were deleted together with the replaced visits (ON DELETE CASCADE), and
+        // rebuilding them under the same rules as the trips inside the range keeps the result independent of how
+        // the data was split into runs.
+        List<ProcessedVisit> chain = new ArrayList<>();
+        if (previewId == null) {
+            this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart).ifPresent(chain::add);
+        }
+        chain.addAll(processedVisits);
+        if (previewId == null) {
+            this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd).ifPresent(chain::add);
         }
 
-        if (previewId == null && !processedVisits.isEmpty()) {
-            //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripBefore = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst());
-                if (tripBefore != null) {
-                    trips.add(tripBefore);
-                }
-            }
-
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripAfter = createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get());
-                if (tripAfter != null) {
-                    trips.add(tripAfter);
-                }
-            }
-        } else if (previewId == null) {
-            //all visits in the search range were suppressed, stitch the surrounding visits back together
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (firstProcessedVisitBefore.isPresent() && processedVisitAfter.isPresent()
-                    && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip spanningTrip = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisitAfter.get());
-                if (spanningTrip != null) {
-                    trips.add(spanningTrip);
-                }
+        List<Trip> trips = new ArrayList<>();
+        for (int i = 0; i < chain.size() - 1; i++) {
+            Trip trip = createTripBetweenVisits(user, previewId, chain.get(i), chain.get(i + 1));
+            if (trip != null) {
+                trips.add(trip);
             }
         }
         trips.sort(Comparator.comparing(Trip::getStartTime));
@@ -810,6 +795,12 @@ public class UnifiedLocationProcessingService {
 
         // Trip ends when the second visit starts
         Instant tripEndTime = endVisit.getStartTime();
+
+        if (Duration.between(tripStartTime, tripEndTime).compareTo(MAX_TRIP_DURATION) > 0) {
+            logger.debug("Not connecting visits [{}] and [{}] of user [{}] by a trip: they are more than [{}] apart",
+                    startVisit.getId(), endVisit.getId(), user.getUsername(), MAX_TRIP_DURATION);
+            return null;
+        }
 
         if (previewId != null) {
             if (this.previewProcessedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.previewProcessedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
