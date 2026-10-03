@@ -6,15 +6,20 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.MapStyleVectorOptions;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
+import com.dedicatedcode.reitti.service.security.UnsafeUrlException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
@@ -28,15 +33,21 @@ public class MapStylesSettingsController {
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final I18nService i18n;
     private final ObjectMapper objectMapper;
+    private final UserJdbcService userJdbcService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            I18nService i18n, ObjectMapper objectMapper) {
+            I18nService i18n, ObjectMapper objectMapper,
+            UserJdbcService userJdbcService,
+            OutboundUrlValidator outboundUrlValidator) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.i18n = i18n;
         this.objectMapper = objectMapper;
+        this.userJdbcService = userJdbcService;
+        this.outboundUrlValidator = outboundUrlValidator;
     }
 
     @GetMapping
@@ -104,6 +115,8 @@ public class MapStylesSettingsController {
                 String url = params.get("vectorStyleUrl");
                 if (url == null || url.isBlank()) {
                     errors.add(i18n.translate("map.settings.dialog.map-styles.error-style-url-required"));
+                } else {
+                    validateUrl(url, false, errors);
                 }
             } else if ("json".equals(styleInputType)) {
                 String json = params.get("vectorStyleJson");
@@ -122,11 +135,15 @@ public class MapStylesSettingsController {
                 String template = params.get("rasterTileTemplate");
                 if (template == null || template.isBlank()) {
                     errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tile-template-required"));
+                } else {
+                    validateUrl(template, true, errors);
                 }
             } else if ("json-url".equals(rasterSourceInputType)) {
                 String tileJsonUrl = params.get("rasterTileJsonUrl");
                 if (tileJsonUrl == null || tileJsonUrl.isBlank()) {
                     errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tilejson-required"));
+                } else {
+                    validateUrl(tileJsonUrl, false, errors);
                 }
             }
         }
@@ -137,13 +154,32 @@ public class MapStylesSettingsController {
             return "settings/fragments/map-styles :: errors";
         }
 
-        UserMapStyle mapStyle = buildFromParams(user, params);
+        UserMapStyle mapStyle = buildFromParams(user, params, isAdmin(user));
         userMapStyleJdbcService.save(user, mapStyle);
 
         return getPage(user, model);
     }
 
-    private UserMapStyle buildFromParams(User user, Map<String, String> params) {
+    private void validateUrl(String url, boolean template, List<String> errors) {
+        try {
+            if (template) {
+                outboundUrlValidator.validateTemplate(url);
+            } else {
+                outboundUrlValidator.validate(url);
+            }
+        } catch (UnsafeUrlException e) {
+            errors.add(HtmlUtils.htmlEscape(e.getMessage()));
+        }
+    }
+
+    /**
+     * Uses the stored role instead of the one cached in the session.
+     */
+    private boolean isAdmin(User user) {
+        return userJdbcService.findById(user.getId()).map(u -> u.getRole() == Role.ADMIN).orElse(false);
+    }
+
+    private UserMapStyle buildFromParams(User user, Map<String, String> params, boolean admin) {
         String id = params.get("id");
         String name = params.get("name");
         String mapType = params.get("mapType");
@@ -160,8 +196,10 @@ public class MapStylesSettingsController {
         String maxzoom = params.get("maxzoom");
         String tileSize = params.get("tileSize");
         String scheme = params.get("scheme");
-        boolean proxyTiles = "on".equals(params.get("proxyTiles"));
-        boolean shared = "on".equals(params.get("shared"));
+        // Proxying tiles makes the server fetch the upstream URLs and sharing exposes the style to every user,
+        // so both are reserved for admins.
+        boolean proxyTiles = admin && "on".equals(params.get("proxyTiles"));
+        boolean shared = admin && "on".equals(params.get("shared"));
 
         // Build the data source
         MapStyleDataSource dataSource = new MapStyleDataSource(
@@ -214,11 +252,9 @@ public class MapStylesSettingsController {
 
     @DeleteMapping
     public String deleteMapStyle(@AuthenticationPrincipal User user, @RequestParam Long id, Model model) {
-        if (this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
-            throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
+        if (!this.userMapStyleJdbcService.delete(user, id, isAdmin(user))) {
+            throw new AccessDeniedException("Not allowed to delete style with id [" + id + "]");
         }
-
-        this.userMapStyleJdbcService.delete(id);
         return getPage(user, model);
     }
 

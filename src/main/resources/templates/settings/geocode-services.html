@@ -57,11 +57,11 @@
                             <th th:text="#{geocoding.table.name}">Name</th>
                             <th th:text="#{geocoding.table.type}">Type</th>
                             <th th:text="#{geocoding.table.priority}">Priority</th>
-                            <th th:text="#{geocoding.table.url}">URL Template</th>
+                            <th th:if="${isAdmin}" th:text="#{geocoding.table.url}">URL Template</th>
                             <th th:text="#{geocoding.table.status}">Status</th>
                             <th th:text="#{geocoding.table.errors}">Errors</th>
                             <th th:text="#{geocoding.table.last.used}">Last Used</th>
-                            <th th:text="#{geocoding.table.actions}">Actions</th>
+                            <th th:if="${isAdmin}" th:text="#{geocoding.table.actions}">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -69,8 +69,9 @@
                             <td th:text="${service.name}"></td>
                             <td th:text="#{'geocoding.service.type.' + ${service.type} + '.name'}"></td>
                             <td th:text="#{'priority.' + ${service.priority} + '.label'}"></td>
-                            <td style="max-width: 300px; word-break: break-all; font-family: monospace;"
-                                th:text="${service.urlTemplate}"></td>
+                            <td th:if="${isAdmin}" style="max-width: 300px; word-break: break-all; font-family: monospace;"
+                                th:with="apiKey=${service.additionalParameters != null ? service.additionalParameters['apiKey'] : null}"
+                                th:text="${#strings.isEmpty(apiKey) ? service.urlTemplate : #strings.replace(service.urlTemplate, apiKey, '***')}"></td>
                             <td>
                                 <span th:if="${service.enabled}">
                                     <i class="lni lni-check"></i>
@@ -86,7 +87,7 @@
                                 <span th:if="${service.errorCount >= maxErrors}" th:text="#{geocoding.auto.disabled}"> (Auto-disabled)</span>
                             </td>
                             <td th:text="${service.lastUsed != null ? #temporals.format(service.lastUsed, 'yyyy-MM-dd HH:mm') : #messages.msg('geocoding.never.used')}"></td>
-                            <td>
+                            <td th:if="${isAdmin}">
                                 <button class="btn"
                                         th:attr="hx-get=@{/settings/geocode-services/edit/{id}(id=${service.id})}"
                                         hx-target="#geocoding-form-container"
@@ -122,7 +123,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="settings-card" id="geocoding-form-container">
+                <div class="settings-card" id="geocoding-form-container" th:if="${isAdmin}">
                     <form th:hx-post="@{/settings/geocode-services}" hx-target="#geocode-services" hx-swap="innerHTML"
                           class="geocode-service-form" style="margin-bottom: 20px;">
                         <h3 th:text="#{geocoding.add.title}">Add New Geocoding Service</h3>

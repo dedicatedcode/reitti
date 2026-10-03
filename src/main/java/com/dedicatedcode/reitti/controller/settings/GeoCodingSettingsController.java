@@ -15,9 +15,11 @@ import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.quartz.JobDetail;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -46,6 +48,7 @@ public class GeoCodingSettingsController {
     private final int maxErrors;
     private final boolean photonConfigured;
     private final String photonBaseUrl;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public GeoCodingSettingsController(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                        GeocodeServiceManager geocodeServiceManager,
@@ -57,7 +60,8 @@ public class GeoCodingSettingsController {
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
-                                       @Value("${reitti.geocoding.max-errors}") int maxErrors) {
+                                       @Value("${reitti.geocoding.max-errors}") int maxErrors,
+                                       OutboundUrlValidator outboundUrlValidator) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodeServiceManager = geocodeServiceManager;
         this.placeJdbcService = placeJdbcService;
@@ -70,6 +74,21 @@ public class GeoCodingSettingsController {
         this.maxErrors = maxErrors;
         this.photonConfigured = StringUtils.hasText(photonBaseUrl);
         this.photonBaseUrl = photonBaseUrl;
+        this.outboundUrlValidator = outboundUrlValidator;
+    }
+
+    /**
+     * Geocoding services are used for the places of all users, so only admins may manage them. The stored role is
+     * used instead of the one cached in the session.
+     */
+    private boolean isAdmin(User user) {
+        return user != null && userJdbcService.findById(user.getId()).map(u -> u.getRole() == Role.ADMIN).orElse(false);
+    }
+
+    private void requireAdmin(User user) {
+        if (!isAdmin(user)) {
+            throw new AccessDeniedException("Only admins can manage geocoding services");
+        }
     }
 
     @GetMapping
@@ -81,7 +100,7 @@ public class GeoCodingSettingsController {
             return "settings/unavailable";
         }
         model.addAttribute("activeSection", "geocode-services");
-        model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
+        model.addAttribute("isAdmin", isAdmin(user));
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);
@@ -92,19 +111,17 @@ public class GeoCodingSettingsController {
     }
 
     @GetMapping("/geocode-services-content")
-    public String getGeocodeServicesContent(Model model) {
-        model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
-        model.addAttribute("photonConfigured", photonConfigured);
-        model.addAttribute("photonBaseUrl", photonBaseUrl);
-        model.addAttribute("geocodeServiceTypes", Arrays.stream(GeocoderType.values()).sorted(Comparator.comparing(Enum::name)));
-        model.addAttribute("maxErrors", maxErrors);
+    public String getGeocodeServicesContent(@AuthenticationPrincipal User user, Model model) {
+        addDefaultModeAttributes(user, model);
         return "settings/geocode-services :: geocode-services-content";
     }
 
     @GetMapping("/type-fields")
-    public String getTypeFields(@RequestParam GeocoderType type,
+    public String getTypeFields(@AuthenticationPrincipal User user,
+                                @RequestParam GeocoderType type,
                                 @RequestParam(required = false) Long id,
                                 Model model) {
+        requireAdmin(user);
         model.addAttribute("type", type);
         if (id != null) {
             geocodeServiceJdbcService.findById(id).ifPresent(service -> model.addAttribute("service", service));
@@ -113,7 +130,8 @@ public class GeoCodingSettingsController {
     }
 
     @GetMapping("/edit/{id}")
-    public String editService(@PathVariable Long id, Model model) {
+    public String editService(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        requireAdmin(user);
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         model.addAttribute("service", service);
         model.addAttribute("type", service.getType());
@@ -122,17 +140,21 @@ public class GeoCodingSettingsController {
     }
 
     @PostMapping("/test-config")
-    public String testConfiguration(@RequestParam GeocoderType type,
+    public String testConfiguration(@AuthenticationPrincipal User user,
+                                    @RequestParam GeocoderType type,
+                                    @RequestParam(required = false) Long id,
                                     @RequestParam(required = false) String url,
                                     @RequestParam(required = false) String apiKey,
                                     @RequestParam(required = false) String lang,
                                     @RequestParam(required = false) Integer limit,
                                     @RequestParam(required = false) Double radius,
                                     Model model) {
+        requireAdmin(user);
         double testLat = 48.8584;
         double testLng = 2.2945;
         try {
-            GeocodeService tmpService = verifySelection(type, url, apiKey, lang, limit, radius);
+            GeocodeService tmpService = verifySelection(type, url, storedApiKeyIfBlank(id, apiKey), lang, limit, radius);
+            outboundUrlValidator.validateTemplate(tmpService.getUrlTemplate());
             Map<String, Object> result = geocodeServiceManager.test(tmpService, testLat, testLng);
             model.addAttribute("testResult", result);
 
@@ -171,8 +193,22 @@ public class GeoCodingSettingsController {
         return new GeocodeService("TMP", url, false, 0, null, null, type, 0, params);
     }
 
+    /**
+     * Stored API keys are never rendered back into the form, so an empty key field means "keep the stored key".
+     */
+    private String storedApiKeyIfBlank(Long id, String apiKey) {
+        if (StringUtils.hasText(apiKey) || id == null) {
+            return apiKey;
+        }
+        return geocodeServiceJdbcService.findById(id)
+                .map(GeocodeService::getAdditionalParameters)
+                .map(params -> params.get("apiKey"))
+                .orElse(apiKey);
+    }
+
     @PostMapping
-    public String saveGeocodeService(@RequestParam(required = false) Long id,
+    public String saveGeocodeService(@AuthenticationPrincipal User user,
+                                     @RequestParam(required = false) Long id,
                                      @RequestParam String name,
                                      @RequestParam(required = false) String url,
                                      @RequestParam GeocoderType type,
@@ -182,7 +218,9 @@ public class GeoCodingSettingsController {
                                      @RequestParam(required = false) Double radius,
                                      @RequestParam int priority,
                                      Model model) {
+        requireAdmin(user);
         try {
+            apiKey = storedApiKeyIfBlank(id, apiKey);
             Map<String, String> params = new HashMap<>();
             if (language != null && !language.isEmpty()) {
                 params.put("language", language);
@@ -204,51 +242,57 @@ public class GeoCodingSettingsController {
             }
 
             GeocodeService service;
+            String successMessage;
             if (id != null) {
                 GeocodeService existing = geocodeServiceJdbcService.findById(id).orElseThrow();
                 service = new GeocodeService(id, name, url, existing.isEnabled(), existing.getErrorCount(), existing.getLastUsed(), existing.getLastError(), type, params, priority, existing.getVersion());
-                model.addAttribute("successMessage", i18n.translate("message.success.geocode.updated"));
+                successMessage = i18n.translate("message.success.geocode.updated");
             } else {
                 service = new GeocodeService(name, url, true, 0, null, null, type, priority, params);
-                model.addAttribute("successMessage", i18n.translate("message.success.geocode.created"));
+                successMessage = i18n.translate("message.success.geocode.created");
             }
+            outboundUrlValidator.validateTemplate(service.getUrlTemplate());
 
             geocodeServiceJdbcService.save(service);
+            model.addAttribute("successMessage", successMessage);
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("message.error.geocode.creation", e.getMessage()));
         }
 
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(user, model);
         return "settings/geocode-services :: geocode-services-content";
     }
 
     @PostMapping("/{id}/toggle")
-    public String toggleGeocodeService(@PathVariable Long id, Model model) {
+    public String toggleGeocodeService(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        requireAdmin(user);
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         service = service.withEnabled(!service.isEnabled());
         if (service.isEnabled()) {
             service = service.resetErrorCount();
         }
         geocodeServiceJdbcService.save(service);
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(user, model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
 
     @PostMapping("/{id}/delete")
-    public String deleteGeocodeService(@PathVariable Long id, Model model) {
+    public String deleteGeocodeService(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        requireAdmin(user);
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.delete(service);
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(user, model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
 
     @PostMapping("/{id}/reset-errors")
-    public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
+    public String resetGeocodeServiceErrors(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
+        requireAdmin(user);
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(user, model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -287,7 +331,7 @@ public class GeoCodingSettingsController {
             model.addAttribute("errorMessage", i18n.translate("geocoding.run.error", e.getMessage()));
         }
 
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(currentUser(authentication), model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
@@ -332,12 +376,17 @@ public class GeoCodingSettingsController {
             model.addAttribute("errorMessage", i18n.translate("geocoding.clear.error", e.getMessage()));
         }
 
-        addDefaultModeAttributes(model);
+        addDefaultModeAttributes(currentUser(authentication), model);
 
         return "settings/geocode-services :: geocode-services-content";
     }
 
-    private void addDefaultModeAttributes(Model model) {
+    private User currentUser(Authentication authentication) {
+        return authentication != null && authentication.getPrincipal() instanceof User user ? user : null;
+    }
+
+    private void addDefaultModeAttributes(User user, Model model) {
+        model.addAttribute("isAdmin", isAdmin(user));
         model.addAttribute("geocodeServices", geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc());
         model.addAttribute("photonConfigured", photonConfigured);
         model.addAttribute("photonBaseUrl", photonBaseUrl);

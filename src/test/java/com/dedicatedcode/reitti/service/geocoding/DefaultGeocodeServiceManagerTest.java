@@ -7,6 +7,7 @@ import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.PaikkaResultHandler;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,9 @@ class DefaultGeocodeServiceManagerTest {
     @Mock
     private NominatimRateLimiter nominatimRateLimiter;
 
+    @Mock
+    private OutboundUrlValidator outboundUrlValidator;
+
     private DefaultGeocodeServiceManager geocodeServiceManager;
 
     @BeforeEach
@@ -61,7 +65,8 @@ class DefaultGeocodeServiceManagerTest {
                 objectMapper,
                 Collections.singletonList(new PaikkaResultHandler()),
                 i18nService,
-                3
+                3,
+                outboundUrlValidator
         );
     }
 

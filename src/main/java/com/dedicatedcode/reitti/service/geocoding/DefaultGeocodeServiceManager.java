@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.ResultHandler;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
     private final List<ResultHandler> resultHandlers;
     private final I18nService i18nService;
     private final int maxErrors;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public DefaultGeocodeServiceManager(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                         GeocodingResponseJdbcService geocodingResponseJdbcService,
@@ -44,7 +46,8 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                                         ObjectMapper objectMapper,
                                         List<ResultHandler> resultHandlers,
                                         I18nService i18nService,
-                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
+                                        @Value("${reitti.geocoding.max-errors}") int maxErrors,
+                                        OutboundUrlValidator outboundUrlValidator) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodingResponseJdbcService = geocodingResponseJdbcService;
         this.nominatimRateLimiter = nominatimRateLimiter;
@@ -53,6 +56,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
         this.resultHandlers = resultHandlers;
         this.i18nService = i18nService;
         this.maxErrors = maxErrors;
+        this.outboundUrlValidator = outboundUrlValidator;
     }
 
     @Transactional
@@ -218,6 +222,7 @@ public class DefaultGeocodeServiceManager implements GeocodeServiceManager {
                 .replace("{lng}", String.valueOf(longitude));
 
         logger.info("Geocoding with service [{} ({})] using URL: [{}]", service.getName(), service.getType(), url);
+        outboundUrlValidator.validate(url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.USER_AGENT, "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
