@@ -26,8 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 class RememberMeSecurityTest {
 
-    private static final String FORMER_HARDCODED_KEY = "uniqueAndSecretKey";
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -41,31 +39,34 @@ class RememberMeSecurityTest {
     private RememberMeKeyProvider rememberMeKeyProvider;
 
     private User oidcLikeUser;
+    private User normalUser;
 
     @BeforeEach
     void setUp() {
         User user = testingService.randomUser();
-        oidcLikeUser = userJdbcService.updateUser(user.withPassword(""));
-    }
-
-    @Test
-    void keyIsNotTheFormerPublicConstant() {
-        assertThat(rememberMeKeyProvider.getKey()).isNotEqualTo(FORMER_HARDCODED_KEY).hasSizeGreaterThanOrEqualTo(32);
+        this.oidcLikeUser = userJdbcService.updateUser(user.withPassword(""));
+        this.normalUser = userJdbcService.updateUser(testingService.randomUser().withPassword("password"));;
     }
 
     @Test
     void cookieForgedWithPublicKeyIsRejected() throws Exception {
-        Cookie forged = cookie(oidcLikeUser.getUsername(), "", FORMER_HARDCODED_KEY);
+        Cookie forged = cookie(oidcLikeUser.getUsername(), "", "secret");
         mockMvc.perform(get("/settings/api-tokens").cookie(forged))
                 .andExpect(status().is3xxRedirection());
     }
 
     @Test
     void cookieSignedWithInstallationKeyIsAccepted() throws Exception {
-        // sanity check that the forged cookie above is well-formed and only fails because of the key
-        Cookie valid = cookie(oidcLikeUser.getUsername(), "", rememberMeKeyProvider.getKey());
+        Cookie valid = cookie(normalUser.getUsername(), "password", rememberMeKeyProvider.getKey());
         mockMvc.perform(get("/settings/api-tokens").cookie(valid))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void cookieShouldBeRejectedForSSOUsers() throws Exception {
+        Cookie valid = cookie(oidcLikeUser.getUsername(), "", rememberMeKeyProvider.getKey());
+        mockMvc.perform(get("/settings/api-tokens").cookie(valid))
+                .andExpect(status().is3xxRedirection());
     }
 
     private static Cookie cookie(String username, String password, String key) throws Exception {

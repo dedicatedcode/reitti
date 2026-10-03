@@ -13,10 +13,7 @@ import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.MqttIntegrationJdbcService;
 import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.service.ApiTokenService;
-import com.dedicatedcode.reitti.service.ContextPathHolder;
-import com.dedicatedcode.reitti.service.DynamicMqttProvider;
-import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
@@ -130,7 +127,7 @@ public class IntegrationsSettingsController {
         model.addAttribute("immichAlbums", List.of());
 
         model.addAttribute("openSection", openSection);
-        model.addAttribute("serverUrl", calculateServerUrl(request));
+        model.addAttribute("serverUrl", RequestHelper.getBaseUrl(request));
         model.addAttribute("contextPath", contextPathHolder.getContextPath());
 
 
@@ -139,44 +136,6 @@ public class IntegrationsSettingsController {
 
     private List<ApiToken> getUsableTokens(User currentUser) {
         return apiTokenService.getTokensForUser(currentUser).stream().filter(t -> t.getDevice() != null).toList();
-    }
-
-    private String calculateServerUrl(HttpServletRequest request) {
-        // Build the server URL
-        String scheme = request.getScheme();
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-
-        StringBuilder serverUrl = new StringBuilder();
-        serverUrl.append(scheme).append("://").append(serverName);
-
-        // Only add port if it's not the default port for the scheme
-        if ((scheme.equals("http") && serverPort != 80) ||
-                (scheme.equals("https") && serverPort != 443)) {
-            serverUrl.append(":").append(serverPort);
-        }
-        return serverUrl.toString();
-    }
-
-    @GetMapping("/reitti.properties")
-    public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
-        String serverUrl = calculateServerUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v2/gpslogger/file";
-        String properties = "httpfileupload_url=" + url + "\n" +
-                "httpfileupload_method=POST\n" +
-                "autosend_sendzip=false\n" +
-                "autohttpfileupload_enabled=true\n" +
-                "httpfileupload_basicauth_password=\n" +
-                "httpfileupload_body_type=form-data\n" +
-                "httpfileupload_basicauth_username=\n" +
-                "httpfileupload_headers=Authorization: " + token + "\n" +
-                "autosend_frequency_minutes=60\n" +
-                "accuracy_before_logging=25\n" +
-                "time_before_logging=15\n" +
-                "autosend_enabled=true\n";
-        return ResponseEntity.ok()
-                .header("Content-Type", "text/plain")
-                .body(properties);
     }
 
     @PostMapping("/immich-integration")
