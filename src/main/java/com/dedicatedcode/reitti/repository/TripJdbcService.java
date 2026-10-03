@@ -207,6 +207,15 @@ public class TripJdbcService {
         return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
     }
 
+    public Optional<Trip> findByUserAndId(User user, Long id) {
+        String sql = "SELECT t.* " +
+                "FROM trips t " +
+                "WHERE t.user_id = ? AND t.id = ?";
+        List<RawTripRow> results = jdbcTemplate.query(sql, this::mapRawTripRow, user.getId(), id);
+        List<Trip> trips = assembleTrips(results);
+        return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
+    }
+
     public List<Trip> bulkInsert(User user, List<Trip> tripsToInsert) {
         if (tripsToInsert.isEmpty()) {
             return tripsToInsert;

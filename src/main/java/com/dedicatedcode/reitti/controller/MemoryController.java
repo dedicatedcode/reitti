@@ -7,7 +7,6 @@ import com.dedicatedcode.reitti.dto.VisitDTO;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
-import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.UserType;
@@ -19,22 +18,23 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
-import static com.dedicatedcode.reitti.model.Role.ADMIN;
-import static com.dedicatedcode.reitti.model.Role.USER;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/memories")
 public class MemoryController {
     private static final Logger log = LoggerFactory.getLogger(MemoryController.class);
+    private static final Set<MagicLinkAccessLevel> MEMORY_SHARE_LEVELS = Set.of(MagicLinkAccessLevel.MEMORY_VIEW_ONLY, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS);
 
     private final MemoryService memoryService;
     private final TripJdbcService tripJdbcService;
@@ -61,6 +61,9 @@ public class MemoryController {
 
     @GetMapping
     public String get(@AuthenticationPrincipal User user) {
+        if (user instanceof TokenUser) {
+            throw new ForbiddenException("Not allowed");
+        }
         if (user != null && user.getUserType() == UserType.LIVE_DATA_ONLY) {
             return "redirect:/";
         }
@@ -69,6 +72,7 @@ public class MemoryController {
 
     @GetMapping("/years-navigation")
     public String listMemories(@AuthenticationPrincipal User user, Model model) {
+        requireAccountUser(user);
         model.addAttribute("years", memoryService.getAvailableYears(user));
         return "memories/fragments :: years-navigation";
     }
@@ -79,6 +83,7 @@ public class MemoryController {
                          @RequestParam(defaultValue = "startDate") String sortBy,
                          @RequestParam(defaultValue = "desc") String sortOrder,
                          Model model) {
+        requireAccountUser(user);
         model.addAttribute("memories", this.memoryService.getMemoriesForUser(user, sortBy, sortOrder).stream().map(m -> {
             String endDateLocal = m.getEndDate() != null ? m.getEndDate().toString() : Instant.now().toString();
 
@@ -98,6 +103,7 @@ public class MemoryController {
                           @RequestParam(defaultValue = "startDate") String sortBy,
                           @RequestParam(defaultValue = "desc") String sortOrder,
                           Model model) {
+        requireAccountUser(user);
         model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year, sortBy, sortOrder)
                 .stream().map(m -> {
                     String startDateLocal = m.getStartDate().toString();
@@ -146,6 +152,7 @@ public class MemoryController {
             @RequestParam(required = false) String endTime,
             @RequestParam(required = false) String year,
             Model model) {
+        requireAccountUser(user);
         model.addAttribute("startDate", startDate);
         model.addAttribute("startTime", startTime);
         model.addAttribute("endDate", endDate);
@@ -238,11 +245,7 @@ public class MemoryController {
                                  @PathVariable Long id,
                                  @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                  Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        if (!canEdit(memory, user)) {
-            throw new ForbiddenException("You are not allowed to edit this memory");
-        }
+        Memory memory = requireEditableMemory(user, id);
         model.addAttribute("memory", new MemoryDTO(memory, timezone));
         model.addAttribute("startDate", memory.getStartDate().atZone(timezone).toLocalDate());
         model.addAttribute("startTime", memory.getStartDate().atZone(timezone).toLocalTime().truncatedTo(ChronoUnit.SECONDS));
@@ -270,11 +273,7 @@ public class MemoryController {
             @RequestParam(required = false) String headerImageUrl,
             Model model) {
         
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        if (!canEdit(memory, user)) {
-            throw new ForbiddenException("You are not allowed to edit this memory");
-        }
+        Memory memory = requireEditableMemory(user, id);
 
         model.addAttribute("isOwner", isOwner(memory, user));
         model.addAttribute("canEdit", canEdit(memory, user));
@@ -334,7 +333,7 @@ public class MemoryController {
 
     @DeleteMapping("/{id}")
     public String deleteMemory(@AuthenticationPrincipal User user, @PathVariable Long id, HttpServletResponse response) {
-        Memory memory = this.memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireMemory(user, id);
 
         if (!isOwner(memory, user)) {
             throw new ForbiddenException("You are not allowed to delete this memory");
@@ -346,6 +345,7 @@ public class MemoryController {
 
     @GetMapping("/{id}/blocks/select-type")
     public String selectBlockType(@AuthenticationPrincipal User user, @PathVariable Long id, @RequestParam(defaultValue = "-1") int position, Model model) {
+        requireEditableMemory(user, id);
         model.addAttribute("memoryId", id);
         model.addAttribute("position", position);
         return "memories/fragments :: block-type-selection";
@@ -361,7 +361,7 @@ public class MemoryController {
     public String recalculateMemory(@AuthenticationPrincipal User user, @PathVariable Long id,
                                     @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                     HttpServletResponse httpResponse) {
-        Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireMemory(user, id);
         if (!isOwner(memory, user)) {
             throw new ForbiddenException("You are not allowed execute this action. Only the owner of the memory can do this.");
         }
@@ -378,7 +378,7 @@ public class MemoryController {
                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                Model model) {
 
-        Memory memory = memoryService.getMemoryById(user, id).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireEditableMemory(user, id);
 
         model.addAttribute("memoryId", id);
         model.addAttribute("position", position);
@@ -416,8 +416,7 @@ public class MemoryController {
 
     @GetMapping("/{id}/share")
     public String shareMemoryOverlay(@AuthenticationPrincipal User user, @PathVariable Long id, Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireOwnedMemory(user, id);
         
         model.addAttribute("memory", memory);
         return "memories/fragments :: share-overlay";
@@ -426,8 +425,8 @@ public class MemoryController {
     @GetMapping("/{id}/share/form")
     public String shareMemoryForm(@AuthenticationPrincipal User user, @PathVariable Long id, 
                                   @RequestParam MagicLinkAccessLevel accessLevel, Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireOwnedMemory(user, id);
+        requireMemoryShareLevel(accessLevel);
         
         model.addAttribute("memory", memory);
         model.addAttribute("accessLevel", accessLevel);
@@ -441,8 +440,11 @@ public class MemoryController {
                                   @RequestParam(defaultValue = "30") int validDays,
                                   HttpServletRequest request,
                                   Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = requireOwnedMemory(user, id);
+        requireMemoryShareLevel(accessLevel);
+        if (validDays < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "validDays must not be negative");
+        }
         
         String token = magicLinkTokenService.createMemoryShareToken(user, id, accessLevel, validDays);
         String baseUrl = RequestHelper.getBaseUrl(request);
@@ -454,21 +456,45 @@ public class MemoryController {
         return "memories/fragments :: share-result";
     }
 
-    private boolean isOwner(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            return false;
+    private Memory requireMemory(User user, Long id) {
+        return memoryService.getMemoryById(user, id)
+                .orElseThrow(() -> new PageNotFoundException("Memory not found"));
+    }
+
+    private Memory requireEditableMemory(User user, Long id) {
+        Memory memory = requireMemory(user, id);
+        if (!canEdit(memory, user)) {
+            throw new ForbiddenException("You are not allowed to edit this memory");
+        }
+        return memory;
+    }
+
+    private Memory requireOwnedMemory(User user, Long id) {
+        Memory memory = requireMemory(user, id);
+        if (!isOwner(memory, user)) {
+            throw new ForbiddenException("Only the owner of the memory can share it");
+        }
+        return memory;
+    }
+
+    private static void requireMemoryShareLevel(MagicLinkAccessLevel accessLevel) {
+        if (!MEMORY_SHARE_LEVELS.contains(accessLevel)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported access level for a memory share");
         }
     }
 
-    private boolean canEdit(Memory memory, User user) {
-        if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
-            return this.memoryService.getOwnerId(memory) == user.getId();
-        } else {
-            //assume the user is of type TokenUser
-            TokenUser tokenUser = (TokenUser) user;
-            return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
+    // A magic link only ever grants access to its single memory, never to the owner's memory overview.
+    private static void requireAccountUser(User user) {
+        if (user == null || user instanceof TokenUser) {
+            throw new ForbiddenException("Not allowed");
         }
+    }
+
+    private boolean isOwner(Memory memory, User user) {
+        return memoryService.isOwner(memory, user);
+    }
+
+    private boolean canEdit(Memory memory, User user) {
+        return memoryService.canEdit(memory, user);
     }
 }
