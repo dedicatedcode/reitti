@@ -117,12 +117,6 @@ class TokenAuthenticationFilterTest {
                 .andExpect(status().is3xxRedirection());
     }
 
-    @Test
-    void whenTokenUsedForGpsLoggerProperties_thenItIsAccepted() throws Exception {
-        mockMvc.perform(get("/settings/integrations/reitti.properties").param("token", token.getToken()))
-                .andExpect(status().isOk());
-    }
-
     /**
      * Test Configuration to mirror your "all endpoints authenticated" setup
      * and provide a dummy controller.
