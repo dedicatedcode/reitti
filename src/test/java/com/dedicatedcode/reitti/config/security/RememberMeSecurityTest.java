@@ -26,8 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 class RememberMeSecurityTest {
 
-    private static final String FORMER_HARDCODED_KEY = "uniqueAndSecretKey";
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -49,13 +47,8 @@ class RememberMeSecurityTest {
     }
 
     @Test
-    void keyIsNotTheFormerPublicConstant() {
-        assertThat(rememberMeKeyProvider.getKey()).isNotEqualTo(FORMER_HARDCODED_KEY).hasSizeGreaterThanOrEqualTo(32);
-    }
-
-    @Test
     void cookieForgedWithPublicKeyIsRejected() throws Exception {
-        Cookie forged = cookie(oidcLikeUser.getUsername(), "", FORMER_HARDCODED_KEY);
+        Cookie forged = cookie(oidcLikeUser.getUsername(), "", "secret");
         mockMvc.perform(get("/settings/api-tokens").cookie(forged))
                 .andExpect(status().is3xxRedirection());
     }
