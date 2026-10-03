@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -18,7 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        // Used for user supplied URLs (integrations, geocoders, avatars). Redirects are not followed, otherwise a
+        // validated URL could bounce the request to an internal address.
+        return new RestTemplate(OutboundHttp.noRedirectRequestFactory());
     }
     
     @Bean

@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +42,8 @@ class MapLibreMapStylesServiceTest {
                 userMapStyleJdbcService,
                 contextPathHolder,
                 objectMapper,
-                "" // tile cache disabled
+                "", // tile cache disabled
+                new OutboundUrlValidator(true, "", "", 6379, "")
         );
     }
 

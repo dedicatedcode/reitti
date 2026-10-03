@@ -78,6 +78,15 @@ http {
     server_tokens off;
     resolver ${RESOLVER_IP} valid=300s;
 
+    # The upstream URL is taken from a request header set by Reitti, which validates user supplied URLs before.
+    # As defense in depth (the cache is reachable by everything on the docker network) only allow http(s)
+    # upstreams and refuse loopback, unspecified, link-local (cloud metadata) and IPv6 literal hosts.
+    map $http_x_reitti_upstream_url $reitti_upstream_forbidden {
+        default 1;
+        "~*^https?://([^/@]*@)?(localhost\.?|127(\.\d+){3}|0(\.\d+){3}|169\.254(\.\d+){2}|\[[^\]]*\])(:\d*)?(/|$)" 1;
+        "~*^https?://[^/]" 0;
+    }
+
     server {
         listen 80;
 
@@ -87,6 +96,9 @@ http {
             set $custom_upstream $http_x_reitti_upstream_url;
             if ($custom_upstream = "") {
                 return 400;
+            }
+            if ($reitti_upstream_forbidden) {
+                return 403;
             }
 
             # Strip the /custom/ prefix so the upstream receives the correct path
@@ -113,6 +125,9 @@ http {
             if ($panoramax_upstream = "") {
                 return 400;
             }
+            if ($reitti_upstream_forbidden) {
+                return 403;
+            }
 
             # Strip the /panoramax/tiles/ prefix so the upstream receives the correct path
             rewrite ^/panoramax/tiles/(.*) /$1 break;
@@ -137,6 +152,9 @@ http {
             set $panoramax_upstream $http_x_reitti_upstream_url;
             if ($panoramax_upstream = "") {
                 return 400;
+            }
+            if ($reitti_upstream_forbidden) {
+                return 403;
             }
 
             # Strip the /panoramax/search/ prefix so the upstream receives the correct path

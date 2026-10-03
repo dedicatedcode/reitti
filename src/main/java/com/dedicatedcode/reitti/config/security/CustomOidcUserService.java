@@ -5,9 +5,14 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.UserService;
+import com.dedicatedcode.reitti.service.security.ImageTypes;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -33,17 +38,20 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
     private final boolean registrationEnabled;
     private final boolean localLoginDisabled;
     private final RestTemplate restTemplate;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public CustomOidcUserService(UserJdbcService userJdbcService,
                                  UserService userService,
                                  AvatarService avatarService,
                                  RestTemplate restTemplate,
+                                 OutboundUrlValidator outboundUrlValidator,
                                  @Value("${reitti.security.oidc.registration.enabled}") boolean registrationEnabled,
                                  @Value("${reitti.security.local-login.disable:false}") boolean localLoginDisabled) {
         this.userJdbcService = userJdbcService;
         this.userService = userService;
         this.avatarService = avatarService;
         this.restTemplate = restTemplate;
+        this.outboundUrlValidator = outboundUrlValidator;
         this.registrationEnabled = registrationEnabled;
         this.localLoginDisabled = localLoginDisabled;
     }
@@ -152,31 +160,33 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
     private void downloadAndSaveAvatar(Long userId, String avatarUrl) {
         try {
             log.info("Downloading avatar from URL: {} for user ID: {}", avatarUrl, userId);
-            
-            byte[] avatarData = restTemplate.getForObject(URI.create(avatarUrl), byte[].class);
-            
-            if (avatarData != null && avatarData.length > 0) {
-                String contentType = determineContentType(avatarUrl);
-                avatarService.updateAvatar(userId, contentType, avatarData);
+
+            // The picture URL comes from the identity provider (and is often editable by its users): validate it and
+            // every redirect, cap the size and only store real images.
+            URI uri = outboundUrlValidator.validate(avatarUrl);
+            ResponseEntity<byte[]> response = null;
+            for (int hop = 0; hop <= OutboundHttp.MAX_REDIRECTS; hop++) {
+                response = restTemplate.execute(uri, HttpMethod.GET, null,
+                        r -> ResponseEntity.status(r.getStatusCode())
+                                .headers(r.getHeaders())
+                                .body(OutboundHttp.readAtMost(r.getBody(),
+                                        OutboundHttp.MAX_AVATAR_BYTES)));
+                if (response == null || !response.getStatusCode().is3xxRedirection() || response.getHeaders().getLocation() == null) {
+                    break;
+                }
+                uri = outboundUrlValidator.validate(uri.resolve(response.getHeaders().getLocation()));
+            }
+
+            byte[] avatarData = response != null && response.getStatusCode().is2xxSuccessful() ? response.getBody() : null;
+            Optional<String> contentType = ImageTypes.detect(avatarData);
+            if (contentType.isPresent()) {
+                avatarService.updateAvatar(userId, contentType.get(), avatarData);
                 log.info("Successfully saved avatar for user ID: {}", userId);
             } else {
-                log.warn("No avatar data received from URL: {}", avatarUrl);
+                log.warn("No avatar image received from URL: {}", avatarUrl);
             }
         } catch (Exception e) {
             log.warn("Failed to download avatar from URL: {} for user ID: {}. {}", avatarUrl, userId, e.getMessage());
-        }
-    }
-    
-    private String determineContentType(String avatarUrl) {
-        String url = avatarUrl.toLowerCase();
-        if (url.contains(".png")) {
-            return "image/png";
-        } else if (url.contains(".gif")) {
-            return "image/gif";
-        } else if (url.contains(".webp")) {
-            return "image/webp";
-        } else {
-            return "image/jpeg"; // Default fallback
         }
     }
 }

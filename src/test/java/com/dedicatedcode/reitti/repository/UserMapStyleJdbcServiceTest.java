@@ -69,10 +69,35 @@ class UserMapStyleJdbcServiceTest {
         UserMapStyle style = createTestStyle(user, false);
         UserMapStyle saved = service.save(user, style);
 
-        service.delete(saved.id());
+        assertTrue(service.delete(user, saved.id(), false));
 
         Optional<UserMapStyle> found = service.findById(user, saved.id());
         assertFalse(found.isPresent());
+    }
+
+    @Test
+    void shouldNotDeleteSharedStyleOfOtherUser() {
+        User admin = testingService.admin();
+        User user = testingService.randomUser();
+        UserMapStyle sharedStyle = createTestStyle(admin, true);
+
+        assertFalse(service.delete(user, sharedStyle.id(), false));
+        assertTrue(service.findById(user, sharedStyle.id()).isPresent());
+
+        assertTrue(service.delete(admin, sharedStyle.id(), true));
+        assertFalse(service.findById(user, sharedStyle.id()).isPresent());
+    }
+
+    @Test
+    void shouldNotDeleteDefaultStyle() {
+        User admin = testingService.admin();
+        UserMapStyle defaultStyle = service.findAll(admin).stream()
+                .filter(UserMapStyle::defaultStyle)
+                .findFirst()
+                .orElseThrow();
+
+        assertFalse(service.delete(admin, defaultStyle.id(), true));
+        assertTrue(service.findById(admin, defaultStyle.id()).isPresent());
     }
 
     @Test
@@ -140,18 +165,19 @@ class UserMapStyleJdbcServiceTest {
         service.setActiveStyleId(user, userStyle.id());
         assertThat(service.getActiveStyleId(user)).isEqualTo(userStyle.id());
 
-        this.service.delete(userStyle.id());
+        this.service.delete(user, userStyle.id(), false);
         assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
 
         this.service.setActiveStyleId(user, adminStyle.id());
-        this.service.delete(adminStyle.id());
+        this.service.delete(testingService.admin(), adminStyle.id(), true);
         assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
 
     }
 
     @Test
     void deletingNonExistentStyleDoesNotThrow() {
-        assertDoesNotThrow(() -> service.delete(9999L));
+        User user = testingService.randomUser();
+        assertDoesNotThrow(() -> service.delete(user, 9999L, false));
     }
 
     // ------------------------------------------------------------------------

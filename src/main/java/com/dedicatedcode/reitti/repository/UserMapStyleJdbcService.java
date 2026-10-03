@@ -181,10 +181,23 @@ public class UserMapStyleJdbcService {
         return findOwnedById(user, id).orElseThrow();
     }
 
+    /**
+     * Deletes a style owned by the user. Admins may additionally delete shared styles. Default styles are never deleted.
+     *
+     * @return whether the style was deleted
+     */
     @Transactional
     @CacheEvict(cacheNames = {"mapStyleJson", "mapStyles"}, allEntries = true)
-    public void delete(long id) {
+    public boolean delete(User user, long id, boolean admin) {
+        Integer deletable = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM user_map_styles
+                WHERE id = ? AND COALESCE(default_style, FALSE) = FALSE AND (user_id = ? OR (? AND shared = TRUE))
+                """, Integer.class, id, user.getId(), admin);
+        if (deletable == null || deletable == 0) {
+            return false;
+        }
         jdbcTemplate.update("UPDATE user_map_style_settings SET active_style_id = (SELECT id FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?", id);
         jdbcTemplate.update("DELETE FROM user_map_styles WHERE id = ?", id);
+        return true;
     }
 }
