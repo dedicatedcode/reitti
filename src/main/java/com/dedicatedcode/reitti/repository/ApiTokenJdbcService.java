@@ -76,6 +76,19 @@ public class ApiTokenJdbcService {
         }
     }
 
+    public Optional<ApiToken> findByUserAndId(User user, Long id) {
+        String sql = """
+            SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
+                   u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.user_type, u.version as user_version,
+                   d.id as device_id, d.name as device_name, d.default_device as default_device, d.enabled as device_enabled, d.color as device_color, d.show_on_map as device_show_on_map, d.show_avatar_on_map as device_show_avatar_on_map, d.version as device_version, d.created_at as device_created_at, d.updated_at as device_updated_at, d.version as device_version
+            FROM api_tokens at
+            JOIN users u ON at.user_id = u.id
+            LEFT JOIN devices d ON at.device_id = d.id
+            WHERE at.id = ? AND at.user_id = ?
+            """;
+        return jdbcTemplate.query(sql, this::mapRowToApiToken, id, user.getId()).stream().findFirst();
+    }
+
     public ApiToken save(ApiToken apiToken) {
         if (apiToken.getId() == null) {
             return insert(apiToken);
@@ -128,6 +141,13 @@ public class ApiTokenJdbcService {
 
     public void delete(ApiToken apiToken) {
         deleteById(apiToken.getId());
+    }
+
+    public void deleteByUserAndId(User user, Long id) {
+        int rowsAffected = jdbcTemplate.update("DELETE FROM api_tokens WHERE id = ? AND user_id = ?", id, user.getId());
+        if (rowsAffected == 0) {
+            throw new EmptyResultDataAccessException("No ApiToken found with id: " + id, 1);
+        }
     }
 
     @Transactional(readOnly = true)

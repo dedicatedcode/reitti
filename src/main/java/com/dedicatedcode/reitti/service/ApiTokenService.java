@@ -39,8 +39,8 @@ public class ApiTokenService {
         return apiTokenJdbcService.save(token);
     }
 
-    public void deleteToken(Long tokenId) {
-        apiTokenJdbcService.deleteById(tokenId);
+    public void deleteToken(User user, Long tokenId) {
+        apiTokenJdbcService.deleteByUserAndId(user, tokenId);
     }
 
     private ApiToken updateLastUsed(ApiToken token) {
@@ -60,7 +60,7 @@ public class ApiTokenService {
     }
 
     public Optional<ApiToken> getTokenById(User user, Long id) {
-        return this.apiTokenJdbcService.findById(id);
+        return this.apiTokenJdbcService.findByUserAndId(user, id);
     }
 
 }

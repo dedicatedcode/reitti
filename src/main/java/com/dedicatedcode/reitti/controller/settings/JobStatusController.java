@@ -45,7 +45,9 @@ public class JobStatusController {
     }
 
     @GetMapping("/queue-stats-content")
-    public String getQueueStatsContent(@RequestParam(defaultValue = "UTC") ZoneId timezone, Model model) {
+    public String getQueueStatsContent(@AuthenticationPrincipal User user,
+                                       @RequestParam(defaultValue = "UTC") ZoneId timezone,
+                                       Model model) {
         List<JobMetadataRepository.JobMetadata> activeJobs =
                 jobMetadataRepository.findByStates(
                         List.of(JobState.PREPARING, JobState.CREATED, JobState.AWAITING, JobState.RUNNING)
@@ -63,7 +65,10 @@ public class JobStatusController {
         // Separate parent and child jobs
         Map<Boolean, List<JobMetadataRepository.JobMetadata>> partitioned = allJobs.stream()
                 .collect(Collectors.partitioningBy(job -> job.getParentJobId() == null));
-        List<JobMetadataRepository.JobMetadata> parentJobs = partitioned.get(true);
+        // non-admins only see their own jobs, children are only shown below their (visible) parent
+        List<JobMetadataRepository.JobMetadata> parentJobs = partitioned.get(true).stream()
+                .filter(job -> isAdmin(user) || Objects.equals(job.getUserId(), user.getId()))
+                .toList();
         List<JobMetadataRepository.JobMetadata> childJobs = partitioned.get(false);
 
         // Group children by parent ID
@@ -106,12 +111,28 @@ public class JobStatusController {
     }
 
     @DeleteMapping("/job/{id}")
-    public String cancelJob(@PathVariable UUID id,
+    public String cancelJob(@AuthenticationPrincipal User user,
+                            @PathVariable UUID id,
                             @RequestParam(defaultValue = "UTC") ZoneId timezone,
                             Model model) {
-        jobSchedulingService.cancel(id);
+        if (isAdmin(user) || isOwnJob(user, id)) {
+            jobSchedulingService.cancel(id);
+        }
         // Re-fetch and render the current status
-        return getQueueStatsContent(timezone, model);
+        return getQueueStatsContent(user, timezone, model);
+    }
+
+    private static boolean isAdmin(User user) {
+        return user.getRole() == Role.ADMIN;
+    }
+
+    private boolean isOwnJob(User user, UUID jobId) {
+        Optional<JobMetadataRepository.JobMetadata> job = jobMetadataRepository.findById(jobId);
+        if (job.isPresent() && job.get().getParentJobId() != null && !Objects.equals(job.get().getUserId(), user.getId())) {
+            // child jobs are not always tagged with the user, they belong to whoever owns the parent
+            job = jobMetadataRepository.findById(job.get().getParentJobId());
+        }
+        return job.isPresent() && Objects.equals(job.get().getUserId(), user.getId());
     }
 
     private boolean isTerminal(JobState state) {

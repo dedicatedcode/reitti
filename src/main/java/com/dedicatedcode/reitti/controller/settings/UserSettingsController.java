@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.controller.RequestValidation;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
@@ -151,6 +152,10 @@ public class UserSettingsController {
         return "fragments/user-management :: users-list";
     }
 
+    private long countAdmins() {
+        return userJdbcService.getAllUsers().stream().filter(u -> u.getRole() == ADMIN).count();
+    }
+
     @PostMapping("/users/{userId}/delete")
     public String deleteUser(@PathVariable Long userId, Authentication authentication, Model model) {
         String currentUsername = authentication.getName();
@@ -216,6 +221,9 @@ public class UserSettingsController {
         if (ADMIN != currentUser.getRole()) {
             model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
+        }
+        if (!RequestValidation.isHexColor(color)) {
+            color = UserSettings.defaultSettings(null).getColor();
         }
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
@@ -327,6 +335,11 @@ public class UserSettingsController {
             User existingUser = userJdbcService.findById(userId).orElseThrow();
 
             boolean isAdminEdit = ADMIN == authenticatedUser.getRole();
+            // only admins may change roles, otherwise any user could promote themselves
+            Role effectiveRole = isAdminEdit ? role : existingUser.getRole();
+            if (existingUser.getRole() == ADMIN && effectiveRole != ADMIN && countAdmins() <= 1) {
+                throw new IllegalStateException("At least one administrator is required");
+            }
             boolean confirmedSwitchToLiveDataOnly = isAdminEdit && StringUtils.hasText(_confirmLiveDataOnly) && userType == UserType.LIVE_DATA_ONLY;
             boolean switchingToNormal = isAdminEdit && existingUser.getUserType() == UserType.LIVE_DATA_ONLY && userType == UserType.NORMAL;
             UserType effectiveUserType;
@@ -358,12 +371,15 @@ public class UserSettingsController {
                 displayName = existingUser.getDisplayName();
             }
 
-            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), role, effectiveUserType, existingUser.getVersion());
+            User updatedUser = new User(existingUser.getId(), username, encodedPassword, displayName, existingUser.getProfileUrl(), existingUser.getExternalId(), effectiveRole, effectiveUserType, existingUser.getVersion());
             userJdbcService.updateUser(updatedUser);
-            
+
             UserSettings existingSettings = userSettingsJdbcService.findByUserId(userId)
                 .orElse(UserSettings.defaultSettings(userId));
-            
+            if (!RequestValidation.isHexColor(color)) {
+                color = existingSettings.getColor();
+            }
+
             // Handle custom CSS operations
             String cssContent = existingSettings.getCustomCss();
             if ("true".equals(removeCss)) {

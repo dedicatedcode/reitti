@@ -4,6 +4,7 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.model.*;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,9 @@ public class UserSettingsControllerTest {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserSettingsJdbcService userSettingsJdbcService;
 
     private MockMvc mockMvc;
 
@@ -479,5 +484,96 @@ public class UserSettingsControllerTest {
                 .andExpect(model().attribute("selectedUnitSystem", "METRIC"))
                 .andExpect(model().attribute("selectedRole", "USER"))
                 .andExpect(model().attribute("isAdmin", true));
+    }
+
+    @Test
+    void updateUser_AsRegularUser_ShouldNotBeAbleToPromoteThemselves() throws Exception {
+        String username = randomUsername();
+        User currentUser = createTestUser(username, "Test User", "password");
+
+        mockMvc.perform(post("/settings/users/update")
+                                .param("userId", currentUser.getId().toString())
+                                .param("username", username)
+                                .param("displayName", "Test User")
+                                .param("role", "ADMIN")
+                                .param("preferred_language", "EN")
+                                .param("unit_system", "METRIC")
+                                .param("color", "#dcae4a")
+                                .with(csrf())
+                                .with(user(currentUser)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("fragments/user-management :: user-form-page"));
+
+        assertThat(userJdbcService.findById(currentUser.getId()).orElseThrow().getRole()).isEqualTo(Role.USER);
+    }
+
+    @Test
+    void updateUser_AsAdmin_ShouldNotDemoteTheLastAdmin() throws Exception {
+        User adminUser = userJdbcService.updateUser(createTestUser(randomUsername(), "Admin User", "password").withRole(Role.ADMIN));
+        // temporarily make this the only admin
+        List<User> otherAdmins = userJdbcService.getAllUsers().stream()
+                .filter(u -> u.getRole() == Role.ADMIN && !u.getId().equals(adminUser.getId()))
+                .toList();
+        otherAdmins.forEach(a -> userJdbcService.updateUser(a.withRole(Role.USER)));
+        try {
+            mockMvc.perform(post("/settings/users/update")
+                                    .param("userId", adminUser.getId().toString())
+                                    .param("username", adminUser.getUsername())
+                                    .param("displayName", "Admin User")
+                                    .param("role", "USER")
+                                    .param("preferred_language", "EN")
+                                    .param("unit_system", "METRIC")
+                                    .param("color", "#dcae4a")
+                                    .with(csrf())
+                                    .with(user(adminUser)))
+                    .andExpect(status().isOk())
+                    .andExpect(model().attributeExists("errorMessage"));
+
+            assertThat(userJdbcService.findById(adminUser.getId()).orElseThrow().getRole()).isEqualTo(Role.ADMIN);
+        } finally {
+            otherAdmins.forEach(a -> userJdbcService.findById(a.getId())
+                    .ifPresent(current -> userJdbcService.updateUser(current.withRole(Role.ADMIN))));
+        }
+    }
+
+    @Test
+    void updateUser_AsAdmin_ShouldDemoteAnotherAdminWhileAnAdminRemains() throws Exception {
+        User adminUser = userJdbcService.updateUser(createTestUser(randomUsername(), "Admin User", "password").withRole(Role.ADMIN));
+        User otherAdmin = userJdbcService.updateUser(createTestUser(randomUsername(), "Other Admin", "password").withRole(Role.ADMIN));
+
+        mockMvc.perform(post("/settings/users/update")
+                                .param("userId", otherAdmin.getId().toString())
+                                .param("username", otherAdmin.getUsername())
+                                .param("displayName", "Other Admin")
+                                .param("role", "USER")
+                                .param("preferred_language", "EN")
+                                .param("unit_system", "METRIC")
+                                .param("color", "#dcae4a")
+                                .with(csrf())
+                                .with(user(adminUser)))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("successMessage"));
+
+        assertThat(userJdbcService.findById(otherAdmin.getId()).orElseThrow().getRole()).isEqualTo(Role.USER);
+    }
+
+    @Test
+    void updateUser_WithInvalidColor_ShouldKeepExistingColor() throws Exception {
+        String username = randomUsername();
+        User currentUser = createTestUser(username, "Test User", "password");
+
+        mockMvc.perform(post("/settings/users/update")
+                                .param("userId", currentUser.getId().toString())
+                                .param("username", username)
+                                .param("displayName", "Test User")
+                                .param("preferred_language", "EN")
+                                .param("unit_system", "METRIC")
+                                .param("color", "red\" onmouseover=\"alert(1)")
+                                .with(csrf())
+                                .with(user(currentUser)))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("successMessage"));
+
+        assertThat(userSettingsJdbcService.findByUserId(currentUser.getId()).orElseThrow().getColor()).isEqualTo("#e2e2e2");
     }
 }

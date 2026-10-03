@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -111,6 +112,50 @@ class JobStatusControllerTest {
     void shouldHandleCancelOfUnknownJob() throws Exception {
         mockMvc.perform(delete("/settings/job/{id}", UUID.randomUUID()).with(user(admin)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void regularUserOnlySeesOwnJobs() throws Exception {
+        User regularUser = testingService.randomUser();
+        UUID adminJob = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-admin-job");
+        UUID userJob = jobSchedulingService.createParentJob(regularUser, JobType.GPX_IMPORT, "controller-test-user-job");
+        try {
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(regularUser)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-user-job")))
+                    .andExpect(content().string(not(containsString("controller-test-admin-job"))));
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-user-job")))
+                    .andExpect(content().string(containsString("controller-test-admin-job")));
+        } finally {
+            jobSchedulingService.cancel(adminJob);
+            jobSchedulingService.cancel(userJob);
+        }
+    }
+
+    @Test
+    void regularUserCanOnlyCancelOwnJobs() throws Exception {
+        User regularUser = testingService.randomUser();
+        UUID adminJob = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-foreign-cancel");
+        UUID adminChild = scheduleChild(adminJob);
+        UUID userJob = jobSchedulingService.createParentJob(regularUser, JobType.GPX_IMPORT, "controller-test-own-cancel");
+        try {
+            mockMvc.perform(delete("/settings/job/{id}", adminJob).with(user(regularUser)))
+                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/settings/job/{id}", adminChild).with(user(regularUser)))
+                    .andExpect(status().isOk());
+            assertTrue(jobMetadataRepository.findById(adminJob).isPresent());
+            assertTrue(jobMetadataRepository.findById(adminChild).isPresent());
+
+            mockMvc.perform(delete("/settings/job/{id}", userJob).with(user(regularUser)))
+                    .andExpect(status().isOk());
+            assertFalse(jobMetadataRepository.findById(userJob).isPresent());
+        } finally {
+            jobSchedulingService.cancel(adminJob);
+            jobSchedulingService.cancel(userJob);
+        }
     }
 
     private UUID scheduleChild(UUID parentId) {
