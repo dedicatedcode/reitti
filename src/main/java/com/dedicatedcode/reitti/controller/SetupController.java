@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.config.SetupFilter;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,11 +70,7 @@ public class SetupController {
 
     private User getAdminUserWithEmptyPassword() {
         return userService.getAllUsers().stream()
-                .filter(user -> user.getRole() == Role.ADMIN)
-                .filter(admin -> {
-                    String password = admin.getPassword();
-                    return password == null || password.isEmpty();
-                })
+                .filter(SetupFilter::isUnconfiguredLocalAdmin)
                 .findFirst()
                 .orElse(null);
     }
