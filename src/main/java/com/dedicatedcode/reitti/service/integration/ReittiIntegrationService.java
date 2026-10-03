@@ -14,6 +14,10 @@ import com.dedicatedcode.reitti.repository.ReittiIntegrationJdbcService;
 import com.dedicatedcode.reitti.service.AvatarService;
 import com.dedicatedcode.reitti.service.RequestFailedException;
 import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
+import com.dedicatedcode.reitti.service.security.ImageTypes;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
+import com.dedicatedcode.reitti.service.security.UnsafeUrlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +36,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +54,7 @@ public class ReittiIntegrationService {
     private final JdbcTemplate jdbcTemplate;
     private final RestTemplate restTemplate;
     private final AvatarService avatarService;
+    private final OutboundUrlValidator outboundUrlValidator;
     private final Map<Long, String> integrationSubscriptions = new ConcurrentHashMap<>();
     private final Map<String, Long> userForSubscriptions = new ConcurrentHashMap<>();
 
@@ -56,12 +62,22 @@ public class ReittiIntegrationService {
                                     ReittiIntegrationJdbcService jdbcService,
                                     JdbcTemplate jdbcTemplate,
                                     RestTemplate restTemplate,
-                                    AvatarService avatarService) {
+                                    AvatarService avatarService,
+                                    OutboundUrlValidator outboundUrlValidator) {
         this.advertiseUri = advertiseUri;
         this.jdbcService = jdbcService;
         this.jdbcTemplate = jdbcTemplate;
         this.restTemplate = restTemplate;
         this.avatarService = avatarService;
+        this.outboundUrlValidator = outboundUrlValidator;
+    }
+
+    private void validateUrl(String url) throws RequestFailedException {
+        try {
+            outboundUrlValidator.validate(url);
+        } catch (UnsafeUrlException e) {
+            throw new RequestFailedException(url, HttpStatusCode.valueOf(400), e.getMessage());
+        }
     }
 
     public List<UserTimelineData> getUserData(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone) {
@@ -120,6 +136,7 @@ public class ReittiIntegrationService {
         String infoUrl = url.endsWith("/") ?
                 url + "api/v1/reitti-integration/info" :
                 url + "/api/v1/reitti-integration/info";
+        validateUrl(infoUrl);
 
         try {
             ResponseEntity<ReittiRemoteInfo> remoteResponse = restTemplate.exchange(
@@ -143,7 +160,22 @@ public class ReittiIntegrationService {
         }
     }
 
-    public Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
+    /**
+     * Returns the avatar of the remote user of an integration owned by the given user.
+     */
+    public Optional<AvatarService.AvatarData> getAvatar(User user, Long integrationId) {
+        if (this.jdbcService.findByIdAndUser(integrationId, user).isEmpty()) {
+            return Optional.empty();
+        }
+        return getAvatar(integrationId);
+    }
+
+    /**
+     * Loads the stored avatar of an integration without an ownership check; use {@link #getAvatar(User, Long)}.
+     * The content type is derived from the stored bytes, the one sent by the
+     * remote server is not trusted.
+     */
+    private Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
         Map<String, Object> result;
         try {
             result = jdbcTemplate.queryForMap(
@@ -154,11 +186,9 @@ public class ReittiIntegrationService {
             return Optional.empty();
         }
 
-        String contentType = (String) result.get("mime_type");
         byte[] imageData = (byte[]) result.get("binary_data");
-
-        return Optional.of(new AvatarService.AvatarData(contentType,imageData, -1));
-
+        return ImageTypes.detect(imageData)
+                .map(contentType -> new AvatarService.AvatarData(contentType, imageData, -1));
     }
 
     public ProcessedVisitResponse getVisits(User user, Long integrationId, String startDate, String endDate, Integer zoom, String timezone) {
@@ -169,6 +199,7 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching visit data for [{}]", integration);
                     try {
+                        validateUrl(integration.getUrl());
                         HttpHeaders headers = new HttpHeaders();
                         headers.set("X-API-TOKEN", integration.getToken());
                         HttpEntity<String> entity = new HttpEntity<>(headers);
@@ -216,6 +247,7 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching latest location for [{}]", integration);
                     try {
+                        validateUrl(integration.getUrl());
                         HttpHeaders headers = new HttpHeaders();
                         headers.set("X-API-TOKEN", integration.getToken());
                         HttpEntity<String> entity = new HttpEntity<>(headers);
@@ -408,21 +440,19 @@ public class ReittiIntegrationService {
                     integration.getUrl() + "avatars/" + info.userInfo().id() :
                     integration.getUrl() + "/avatars/" + info.userInfo().id();
 
-            try (HttpClient httpClient = HttpClient.newHttpClient()) {
-                HttpRequest avatarRequest = HttpRequest.newBuilder()
-                        .uri(new URI(avatarUrl))
-                        .header("X-API-TOKEN", integration.getToken())
-                        .GET()
-                        .build();
-                HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
+            try (HttpClient httpClient = OutboundHttp.newHttpClient()) {
+                // no redirects: the request carries the integration token
+                OutboundHttp.Response avatarResponse = OutboundHttp.get(httpClient, outboundUrlValidator.validate(avatarUrl),
+                        Map.of("X-API-TOKEN", integration.getToken()), Duration.ofSeconds(30),
+                        OutboundHttp.MAX_AVATAR_BYTES, 0, null);
 
                 RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
-                if (avatarResponse.statusCode() == 200) {
-                    byte[] avatarData = avatarResponse.body();
-                    String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
-
-                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
-                    this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
+                Optional<String> mimeType = ImageTypes.detect(avatarResponse.body());
+                if (avatarResponse.statusCode() == 200 && mimeType.isPresent()) {
+                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType.get());
+                    this.jdbcService.store(integration, remoteUser, avatarResponse.body(), mimeType.get());
+                } else if (avatarResponse.statusCode() == 200) {
+                    log.warn("Ignoring avatar of remote user [{}] because it is not a supported image", info.userInfo().id());
                 }
 
                 persisted = Optional.of(remoteUser);
@@ -483,6 +513,7 @@ public class ReittiIntegrationService {
         String subscribeUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/subscribe" :
                 integration.getUrl() + "/api/v1/reitti-integration/subscribe";
+        validateUrl(subscribeUrl);
 
         try {
             ResponseEntity<SubscriptionResponse> response = restTemplate.exchange(
@@ -539,6 +570,7 @@ public class ReittiIntegrationService {
         String unsubscribeUrl = integration.getUrl().endsWith("/") ?
                 integration.getUrl() + "api/v1/reitti-integration/subscribe/" + subscriptionId :
                 integration.getUrl() + "/api/v1/reitti-integration/subscribe/" + subscriptionId;
+        validateUrl(unsubscribeUrl);
 
         try {
             ResponseEntity<Void> response = restTemplate.exchange(

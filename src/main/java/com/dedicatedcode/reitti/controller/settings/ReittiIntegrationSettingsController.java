@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.repository.ReittiIntegrationJdbcService;
 import com.dedicatedcode.reitti.service.RequestFailedException;
 import com.dedicatedcode.reitti.service.RequestTemporaryFailedException;
 import com.dedicatedcode.reitti.service.integration.ReittiIntegrationService;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -17,17 +18,23 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Controller
 @RequestMapping("/settings/integrations")
 public class ReittiIntegrationSettingsController {
+    private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{3,8}$");
+
     private final ReittiIntegrationJdbcService jdbcService;
     private final ReittiIntegrationService reittiIntegrationService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
     public ReittiIntegrationSettingsController(ReittiIntegrationJdbcService jdbcService,
-                                               ReittiIntegrationService reittiIntegrationService) {
+                                               ReittiIntegrationService reittiIntegrationService,
+                                               OutboundUrlValidator outboundUrlValidator) {
         this.jdbcService = jdbcService;
         this.reittiIntegrationService = reittiIntegrationService;
+        this.outboundUrlValidator = outboundUrlValidator;
     }
 
     @GetMapping("/shared-instances-content")
@@ -47,7 +54,9 @@ public class ReittiIntegrationSettingsController {
             Model model) {
         
         try {
-            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, color));
+            // validated on every request as well; rejecting it here gives the user immediate feedback
+            outboundUrlValidator.validate(url);
+            this.jdbcService.create(user, ReittiIntegration.create(url, token, enabled, safeColor(color)));
             model.addAttribute("successMessage", "Reitti integration saved successfully");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Error saving configuration: " + e.getMessage());
@@ -68,6 +77,8 @@ public class ReittiIntegrationSettingsController {
             Model model) {
         
         try {
+            outboundUrlValidator.validate(url);
+            String validColor = safeColor(color);
             this.jdbcService.findByIdAndUser(id, user).ifPresentOrElse(integration -> {
                 try {
                     ReittiIntegration updatedIntegration = new ReittiIntegration(
@@ -81,7 +92,7 @@ public class ReittiIntegrationSettingsController {
                         integration.getLastUsed().orElse(null),
                         version,
                         integration.getLastMessage().orElse(null),
-                        color
+                        validColor
                     );
                     this.jdbcService.update(updatedIntegration);
                     model.addAttribute("successMessage", "Reitti integration updated successfully");
@@ -183,5 +194,9 @@ public class ReittiIntegrationSettingsController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    private static String safeColor(String color) {
+        return color != null && HEX_COLOR.matcher(color).matches() ? color : "#3498db";
     }
 }

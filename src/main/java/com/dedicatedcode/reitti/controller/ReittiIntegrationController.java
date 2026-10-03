@@ -22,12 +22,13 @@ public class ReittiIntegrationController {
     }
 
     @GetMapping("/avatar/{integrationId}")
-    public ResponseEntity<byte[]> getAvatar(@PathVariable Long integrationId) {
-        return this.reittiIntegrationService.getAvatar(integrationId).map(avatarData -> {
+    public ResponseEntity<byte[]> getAvatar(@AuthenticationPrincipal User user, @PathVariable Long integrationId) {
+        return this.reittiIntegrationService.getAvatar(user, integrationId).map(avatarData -> {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(avatarData.mimeType()));
             headers.setContentLength(avatarData.imageData().length);
-            headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
+            headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePrivate());
+            headers.set("X-Content-Type-Options", "nosniff");
             return new ResponseEntity<>(avatarData.imageData(), headers, HttpStatus.OK);
         }).orElse(ResponseEntity.notFound().cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS)).build());
     }
