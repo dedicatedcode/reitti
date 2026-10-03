@@ -772,7 +772,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             }
 
             function generateGpsLoggerPropertiesUrl(token, serverUrl) {
-                return serverUrl + window.contextPath +  '/settings/integrations/reitti.properties?token=' + token;
+                return serverUrl + window.contextPath +  '/api/v2/gpslogger/reitti.properties?token=' + token;
             }
 
             function generateOverlandUrl(token, serverUrl) {

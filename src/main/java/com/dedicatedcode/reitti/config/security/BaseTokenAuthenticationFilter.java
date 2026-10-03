@@ -18,6 +18,12 @@ public abstract class BaseTokenAuthenticationFilter extends OncePerRequestFilter
         this.apiTokenService = apiTokenService;
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return !path.startsWith("/api/");
+    }
+
     protected void trackApiTokenUsage(HttpServletRequest request, String token) {
         String requestPath = request.getRequestURI();
         String remoteIp = getClientIpAddress(request);

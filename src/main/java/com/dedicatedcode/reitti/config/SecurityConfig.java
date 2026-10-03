@@ -9,7 +9,9 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
@@ -41,12 +43,26 @@ public class SecurityConfig {
     @Autowired(required = false)
     private LogoutSuccessHandler oidcLogoutSuccessHandler;
 
+    @Autowired
+    private RememberMeKeyProvider rememberMeKeyProvider;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Bean
+    public TokenBasedRememberMeServices rememberMeServices() {
+        TokenBasedRememberMeServices services = new SsoSafeTokenBasedRememberMeServices(userDetailsService, rememberMeKeyProvider);
+        services.setTokenValiditySeconds(2592000); // 30 days
+        services.setParameter("remember-me");
+        services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
+        return services;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
-                        .requestMatchers("/settings/integrations/reitti.properties").hasAnyRole(Role.ADMIN.name(), Role.API_ACCESS.name(), Role.USER.name())
                         .requestMatchers("/settings/logging", "/settings/logging/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                         .requestMatchers("/api/v1/photos/**").hasAnyRole(Role.ADMIN.name(),
@@ -83,10 +99,8 @@ public class SecurityConfig {
                         .successHandler(customAuthenticationSuccessHandler)
                 )
                 .rememberMe(rememberMe -> rememberMe
-                        .key("uniqueAndSecretKey")
-                        .tokenValiditySeconds(2592000) // 30 days
-                        .rememberMeParameter("remember-me")
-                        .useSecureCookie(false)
+                        .key(rememberMeKeyProvider.getKey())
+                        .rememberMeServices(rememberMeServices())
                 )
                 .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(authenticationEntryPoint))
                 .logout(logout -> {

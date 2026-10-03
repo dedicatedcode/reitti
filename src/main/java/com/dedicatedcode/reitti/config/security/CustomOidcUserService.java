@@ -13,9 +13,11 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -83,6 +85,11 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
             log.info("Oidc User not found for oidc id: [{}]. Will try to find it by preferred username [{}]", oidcUserId, preferredUsername);
             Optional<User> byPreferredUserName = this.userJdbcService.findByUsername(preferredUsername);
             if (byPreferredUserName.isPresent()) {
+                if (StringUtils.hasText(byPreferredUserName.get().getExternalId())) {
+                    log.warn("Refusing OIDC login for [{}]: user [{}] is already linked to a different identity", oidcUserId, preferredUsername);
+                    throw new OAuth2AuthenticationException(new OAuth2Error("account_linked_to_other_identity"),
+                                                            "User " + preferredUsername + " is already linked to a different identity");
+                }
                 log.info("found user by preferred username: [{}], will update username to [{}]", preferredUsername, oidcUserId);
                 existingUser = Optional.of(byPreferredUserName.get().withUsername(preferredUsername).withExternalId(oidcUserId));
             } else {
