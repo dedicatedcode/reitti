@@ -218,8 +218,9 @@ public class TimelineController {
     public String getTransportModeDialog(@PathVariable Long id,
                                          @RequestParam(required = false) String returnUrl,
                                          @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
+                                         @AuthenticationPrincipal User user,
                                          Model model) {
-        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Trip trip = tripJdbcService.findByUserAndId(user, id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("tripId", id);
         model.addAttribute("tripStartTime", TimeUtil.adjustInstant(trip.getStartTime(), timezone));
         model.addAttribute("transportModeSegments", trip.getSegments());
@@ -236,7 +237,7 @@ public class TimelineController {
         User user = userJdbcService.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        Trip trip = tripJdbcService.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Trip trip = tripJdbcService.findByUserAndId(user, id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         Map<Long, TransportMode> segmentUpdates = new HashMap<>();
         for (TransportModeSegmentUpdate update : request.getSegments()) {
@@ -258,13 +259,9 @@ public class TimelineController {
         }
 
         updated = transportModeService.mergeSameModeSegments(updated);
-        tripJdbcService.update(trip.withSegments(updated));
+        tripJdbcService.update(user, trip.withSegments(updated));
 
-        String returnUrl = request.getReturnUrl();
-        if (returnUrl != null && !returnUrl.isBlank()) {
-            return "redirect:" + returnUrl;
-        }
-        return "redirect:/";
+        return RequestValidation.safeRedirect(request.getReturnUrl(), "/");
     }
 
     @GetMapping("/visits/{id}/delete-dialog")

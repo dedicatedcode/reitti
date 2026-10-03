@@ -159,15 +159,34 @@ public class ProcessedVisitJdbcService {
     }
 
     public ProcessedVisit update(ProcessedVisit visit) {
+        return update(visit, null);
+    }
+
+    /**
+     * Updates the visit only if it belongs to the given user.
+     */
+    public ProcessedVisit update(User user, ProcessedVisit visit) {
+        return update(visit, user.getId());
+    }
+
+    private ProcessedVisit update(ProcessedVisit visit, Long userId) {
         String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ?, metadata = ?::jsonb WHERE id = ?";
-        jdbcTemplate.update(sql,
+        List<Object> parameters = new ArrayList<>(Arrays.asList(
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace().getId(),
                 asJson(visit.getMetadata()),
                 visit.getId()
-        );
+        ));
+        if (userId != null) {
+            sql += " AND user_id = ?";
+            parameters.add(userId);
+        }
+        int updated = jdbcTemplate.update(sql, parameters.toArray());
+        if (userId != null && updated == 0) {
+            throw new IllegalArgumentException("Visit not found");
+        }
         return visit;
     }
 
