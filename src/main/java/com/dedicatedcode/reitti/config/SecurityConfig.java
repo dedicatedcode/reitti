@@ -51,11 +51,9 @@ public class SecurityConfig {
 
     @Bean
     public TokenBasedRememberMeServices rememberMeServices() {
-        // The key must be a per-installation secret, see RememberMeKeyProvider.
-        TokenBasedRememberMeServices services = new TokenBasedRememberMeServices(rememberMeKeyProvider.getKey(), userDetailsService);
+        TokenBasedRememberMeServices services = new SsoSafeTokenBasedRememberMeServices(userDetailsService, rememberMeKeyProvider);
         services.setTokenValiditySeconds(2592000); // 30 days
         services.setParameter("remember-me");
-        // Secure flag follows the request (X-Forwarded-Proto behind a proxy); SameSite=Lax blocks cross-site form posts
         services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
         return services;
     }
