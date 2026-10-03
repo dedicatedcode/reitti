@@ -1,7 +1,6 @@
 package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.model.Role;
-import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import jakarta.servlet.*;
@@ -61,18 +60,12 @@ public class SetupFilter implements Filter {
     }
 
     private boolean hasAdminWithEmptyPassword() {
-        return userService.getAllUsers().stream().anyMatch(SetupFilter::isUnconfiguredLocalAdmin);
+        return userService.getAllUsers().stream().anyMatch(user -> {
+            String password = user.getPassword();
+            return user.getRole() == Role.ADMIN
+                    && (password == null || password.isEmpty())
+                    && (user.getExternalId() == null || user.getExternalId().isEmpty());
+        });
     }
 
-    /**
-     * The bootstrap admin created by the migrations has an empty password until the setup page sets one.
-     * Users created via OIDC also have an empty password, so they must never be treated as such an admin,
-     * otherwise anyone could set a password for them through the unauthenticated setup page.
-     */
-    public static boolean isUnconfiguredLocalAdmin(User user) {
-        String password = user.getPassword();
-        return user.getRole() == Role.ADMIN
-                && (password == null || password.isEmpty())
-                && (user.getExternalId() == null || user.getExternalId().isEmpty());
-    }
 }

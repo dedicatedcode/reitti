@@ -1,6 +1,6 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.config.SetupFilter;
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +29,7 @@ public class SetupController {
 
     @GetMapping("/setup")
     public String setupPage(Model model) {
-        User adminUser = getAdminUserWithEmptyPassword();
+        User adminUser = getLocalAdminUserWithoutPassword();
         if (adminUser == null) {
             return "redirect:/login";
         }
@@ -40,7 +40,7 @@ public class SetupController {
 
     @PostMapping("/setup")
     public String updateAdminPassword(@RequestParam String username, @RequestParam String password, @RequestParam String displayName, RedirectAttributes redirectAttributes) {
-        User emptyPasswordAdmin = getAdminUserWithEmptyPassword();
+        User emptyPasswordAdmin = getLocalAdminUserWithoutPassword();
         if (localLoginDisabled || emptyPasswordAdmin == null || !emptyPasswordAdmin.getUsername().equals(username)) {
             return "redirect:/login";
         }
@@ -68,9 +68,14 @@ public class SetupController {
         }
     }
 
-    private User getAdminUserWithEmptyPassword() {
+    private User getLocalAdminUserWithoutPassword() {
         return userService.getAllUsers().stream()
-                .filter(SetupFilter::isUnconfiguredLocalAdmin)
+                .filter(user -> {
+                    String password = user.getPassword();
+                    return user.getRole() == Role.ADMIN
+                            && (password == null || password.isEmpty())
+                            && (user.getExternalId() == null || user.getExternalId().isEmpty());
+                })
                 .findFirst()
                 .orElse(null);
     }
