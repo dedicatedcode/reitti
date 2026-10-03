@@ -60,7 +60,7 @@ class IntegrationsSettingsControllerTest {
         User user = testingService.randomUser();
         authenticate(user);
 
-        immichIntegrationService.saveIntegration(user, "http://localhost:8089", "token", "album-1", "My Album", false, true);
+        immichIntegrationService.saveIntegration(user, "http://192.168.1.10:2283", "token", "album-1", "My Album", false, true);
 
         mockMvc.perform(get("/settings/integrations/integrations-content"))
                 .andExpect(status().isOk())
@@ -74,7 +74,7 @@ class IntegrationsSettingsControllerTest {
         authenticate(user);
 
         mockMvc.perform(post("/settings/integrations/immich-integration")
-                        .param("serverUrl", "http://localhost:8089")
+                        .param("serverUrl", "http://192.168.1.10:2283")
                         .param("apiToken", "token")
                         .param("albumId", "album-1")
                         .param("albumName", "My Album")
@@ -93,7 +93,7 @@ class IntegrationsSettingsControllerTest {
         authenticate(user);
 
         mockMvc.perform(post("/settings/integrations/immich-integration/albums")
-                        .param("serverUrl", "http://localhost:8089")
+                        .param("serverUrl", "http://192.168.1.10:2283")
                         .param("apiToken", "token")
                         .with(csrf()))
                 .andExpect(status().isOk())

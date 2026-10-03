@@ -24,10 +24,24 @@ public class MapStyleControllerAdvice {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * The JSON is inlined unescaped into a script block of several templates. Style names are user supplied (and
+     * shared styles are shown to everyone), so characters that could terminate the script element are escaped.
+     * The escapes are only valid inside JSON strings, which is the only place these characters can occur.
+     */
     @ModelAttribute("mapStylesJson")
     public String getMapStylesConfiguration(@AuthenticationPrincipal User user) throws JacksonException {
         if (user == null) { return null; }
-        return this.objectMapper.writeValueAsString(this.mapLibreMapStylesService.getConfig(user));
+        return escapeForScript(this.objectMapper.writeValueAsString(this.mapLibreMapStylesService.getConfig(user)));
+    }
+
+    static String escapeForScript(String json) {
+        return json
+                .replace("<", "\\u003c")
+                .replace(">", "\\u003e")
+                .replace("&", "\\u0026")
+                .replace("\u2028", "\\u2028")
+                .replace("\u2029", "\\u2029");
     }
 
     @ModelAttribute("activeMapStyleId")

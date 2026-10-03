@@ -7,6 +7,9 @@ import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
 import com.dedicatedcode.reitti.service.RequestHelper;
 import com.dedicatedcode.reitti.service.TileUrlUtils;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
+import com.dedicatedcode.reitti.service.security.UnsafeUrlException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +33,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,8 +58,9 @@ public class TileProxyController {
     private final ObjectMapper objectMapper;
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final MapLibreMapStylesService mapLibreMapStylesService;
+    private final OutboundUrlValidator outboundUrlValidator;
 
-    private record TileSource(String tileJsonUrl, List<String> tileUrlTemplates, boolean proxyTiles) {}
+    private record TileSource(String tileJsonUrl, List<String> tileUrlTemplates) {}
 
     public TileProxyController(
             @Value("${reitti.ui.tiles.cache.url:}") String tileCacheUrl,
@@ -66,7 +69,8 @@ public class TileProxyController {
             @Value("${reitti.panoramax.base-url:}") String panoramaxBaseUrl,
             ObjectMapper objectMapper,
             UserMapStyleJdbcService userMapStyleJdbcService,
-            MapLibreMapStylesService mapLibreMapStylesService) {
+            MapLibreMapStylesService mapLibreMapStylesService,
+            OutboundUrlValidator outboundUrlValidator) {
         this.tileCacheUrl = tileCacheUrl;
         this.tileCacheEnabled = StringUtils.hasText(tileCacheUrl);
         this.defaultTileService = defaultTileService;
@@ -75,10 +79,8 @@ public class TileProxyController {
         this.objectMapper = objectMapper;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.mapLibreMapStylesService = mapLibreMapStylesService;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+        this.outboundUrlValidator = outboundUrlValidator;
+        this.httpClient = OutboundHttp.newHttpClient();
     }
 
     @GetMapping("/{z}/{x}/{y}.png")
@@ -100,9 +102,9 @@ public class TileProxyController {
 
         if (this.tileCacheEnabled) {
             String tileUrl = tileCacheUrl + "/custom/";
-            return fetchTile(tileUrl, MediaType.IMAGE_PNG_VALUE, "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+            return fetchTile(tileUrl, MediaType.IMAGE_PNG_VALUE, "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl), null);
         } else {
-            return fetchTile(upstreamTileUrl, MediaType.IMAGE_PNG_VALUE, "custom");
+            return fetchTile(upstreamTileUrl, MediaType.IMAGE_PNG_VALUE, "custom", Map.of(), null);
         }
     }
 
@@ -120,9 +122,9 @@ public class TileProxyController {
         if (this.tileCacheEnabled) {
             String cachePath = URI.create(upstreamTileUrl).getRawPath();
             String tileUrl = tileCacheUrl + "/panoramax/tiles" + cachePath;
-            return fetchTile(tileUrl, "application/x-protobuf", "panoramax", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+            return fetchTile(tileUrl, "application/x-protobuf", "panoramax", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl), null);
         } else {
-            return fetchTile(upstreamTileUrl, "application/x-protobuf", "panoramax");
+            return fetchTile(upstreamTileUrl, "application/x-protobuf", "panoramax", Map.of(), null);
         }
     }
 
@@ -153,8 +155,10 @@ public class TileProxyController {
             HttpServletRequest request) {
 
         try {
-            boolean proxyTiles = isProxyTilesEnabled(user, styleId);
-            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId, proxyTiles);
+            if (!isProxyTilesEnabled(user, styleId)) {
+                return ResponseEntity.notFound().build();
+            }
+            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId);
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
@@ -162,13 +166,9 @@ public class TileProxyController {
 
             // Case 1: We have a TileJSON URL – fetch it and rewrite the tiles array
             if (tileSource.tileJsonUrl() != null && !tileSource.tileJsonUrl().isBlank()) {
-                String tileJsonUrl = tileSource.tileJsonUrl();
-                if (!tileSource.proxyTiles()) {
-                    return ResponseEntity.notFound().build();
-                }
-                URI tileJsonUri = URI.create(tileJsonUrl);
+                URI tileJsonUri = outboundUrlValidator.validate(tileSource.tileJsonUrl());
 
-                HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
+                OutboundHttp.Response response = fetchRaw(tileJsonUri, Map.of(), OutboundHttp.MAX_JSON_BYTES, outboundUrlValidator);
                 if (response.statusCode() != 200) {
                     log.debug("Failed to fetch custom TileJSON [{}]: HTTP {}", tileJsonUri, response.statusCode());
                     return ResponseEntity.notFound().build();
@@ -212,6 +212,9 @@ public class TileProxyController {
 
             // No valid source configuration found
             return ResponseEntity.notFound().build();
+        } catch (UnsafeUrlException e) {
+            log.warn("Refusing to fetch custom TileJSON [{}/{}]: {}", styleId, sourceId, e.getMessage());
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.warn("Failed to fetch custom TileJSON [{}/{}]: {}", styleId, sourceId, e.getMessage());
             return ResponseEntity.notFound().build();
@@ -229,16 +232,15 @@ public class TileProxyController {
             @PathVariable String ext) {
 
         try {
-            boolean proxyTiles = isProxyTilesEnabled(user, styleId);
-            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId, proxyTiles);
+            if (!isProxyTilesEnabled(user, styleId)) {
+                return ResponseEntity.notFound().build();
+            }
+            Optional<TileSource> source = resolveTileSource(user, styleId, sourceId);
             if (source.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
             String template = tileTemplate(source.get());
             if (!StringUtils.hasText(template)) {
-                return ResponseEntity.notFound().build();
-            }
-            if (!source.get().proxyTiles()) {
                 return ResponseEntity.notFound().build();
             }
             String upstreamTileUrl = template
@@ -247,15 +249,18 @@ public class TileProxyController {
                     .replace("{y}", String.valueOf(y))
                     .replace("{r}", "");
 
-            URI upstreamTileUri = URI.create(upstreamTileUrl);
+            URI upstreamTileUri = outboundUrlValidator.validate(upstreamTileUrl);
             log.trace("Fetching custom tile [{}/{}]: {}", styleId, sourceId, upstreamTileUri);
 
             if (this.tileCacheEnabled) {
                 String tileUrl = tileCacheUrl + "/custom/";
-                return fetchTile(tileUrl, contentTypeForExtension(ext), "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUrl));
+                return fetchTile(tileUrl, contentTypeForExtension(ext), "custom", Map.of(CUSTOM_UPSTREAM_HEADER, upstreamTileUri.toString()), outboundUrlValidator);
             } else {
-                return fetchTile(upstreamTileUrl, contentTypeForExtension(ext), "custom");
+                return fetchTile(upstreamTileUri.toString(), contentTypeForExtension(ext), "custom", Map.of(), outboundUrlValidator);
             }
+        } catch (UnsafeUrlException e) {
+            log.warn("Refusing to fetch custom tile [{}/{}]: {}", styleId, sourceId, e.getMessage());
+            return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             log.warn("Failed to resolve custom tile [{}/{}]: {}", styleId, sourceId, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -266,32 +271,33 @@ public class TileProxyController {
     }
 
 
+    /**
+     * Only styles the user may access (own or shared) with tile proxying enabled are proxied. Fails closed if the
+     * style does not exist.
+     */
     private boolean isProxyTilesEnabled(User user, Long styleId) {
-        try {
-            Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, styleId);
-            if (style.isPresent()) {
-                MapStyleDataSource source = style.get().dataSource();
-                if (source != null) {
-                    return source.proxyTiles();
-                }
-            }
-        } catch (NumberFormatException ignored) {}
-        return true;
+        if (user == null || styleId == null) {
+            return false;
+        }
+        Optional<UserMapStyle> style = userMapStyleJdbcService.findById(user, styleId);
+        MapStyleDataSource source = style.map(UserMapStyle::dataSource).orElse(null);
+        return source != null && source.proxyTiles();
     }
 
-    private ResponseEntity<byte[]> fetchTile(String tileUrl, String contentType, String source) {
-        return fetchTile(tileUrl, contentType, source, Map.of());
-    }
-
-    private ResponseEntity<byte[]> fetchTile(String tileUrl, String contentType, String source, Map<String, String> requestHeaders) {
+    /**
+     * @param redirectValidator validates redirect targets of user supplied upstreams, {@code null} for upstreams
+     *                          configured by the administrator
+     */
+    private ResponseEntity<byte[]> fetchTile(String tileUrl, String contentType, String source, Map<String, String> requestHeaders, OutboundUrlValidator redirectValidator) {
         try {
-            HttpResponse<byte[]> response = fetchRaw(tileUrl, requestHeaders);
+            OutboundHttp.Response response = fetchRaw(URI.create(tileUrl), requestHeaders, OutboundHttp.MAX_TILE_BYTES, redirectValidator);
 
             if (response.statusCode() == 200) {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.parseMediaType(contentType));
                 headers.setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
                 headers.add("Access-Control-Allow-Origin", "*");
+                headers.add("X-Content-Type-Options", "nosniff");
                 response.headers()
                         .firstValue(HttpHeaders.CONTENT_ENCODING)
                         .ifPresent(contentEncoding -> headers.add(HttpHeaders.CONTENT_ENCODING, contentEncoding));
@@ -309,44 +315,40 @@ public class TileProxyController {
         }
     }
 
-    private HttpResponse<byte[]> fetchRaw(String url, Map<String, String> extraHeaders) throws Exception {
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .header("User-Agent", "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)")
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(30))
-                .header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate")
-                .GET();
-        extraHeaders.forEach(requestBuilder::header);
-        return httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
+    private OutboundHttp.Response fetchRaw(URI uri, Map<String, String> extraHeaders, long maxBytes, OutboundUrlValidator redirectValidator) throws Exception {
+        Map<String, String> headers = new HashMap<>(extraHeaders);
+        headers.put("User-Agent", "Reitti/1.0 (+https://github.com/dedicatedcode/reitti; contact: reitti@dedicatedcode.com)");
+        headers.put(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
+        return OutboundHttp.get(httpClient, uri, headers, Duration.ofSeconds(30), maxBytes, OutboundHttp.MAX_REDIRECTS, redirectValidator);
     }
 
-    private byte[] responseBody(HttpResponse<byte[]> response) throws IOException {
+    private byte[] responseBody(OutboundHttp.Response response) throws IOException {
         String contentEncoding = response.headers().firstValue(HttpHeaders.CONTENT_ENCODING).orElse("");
         if (contentEncoding.equalsIgnoreCase("gzip")) {
             try (GZIPInputStream gzipInputStream = new GZIPInputStream(new ByteArrayInputStream(response.body()))) {
-                return gzipInputStream.readAllBytes();
+                return OutboundHttp.readAtMost(gzipInputStream, OutboundHttp.MAX_JSON_BYTES);
             }
         }
         if (contentEncoding.equalsIgnoreCase("deflate")) {
             try (InflaterInputStream inflaterInputStream = new InflaterInputStream(new ByteArrayInputStream(response.body()))) {
-                return inflaterInputStream.readAllBytes();
+                return OutboundHttp.readAtMost(inflaterInputStream, OutboundHttp.MAX_JSON_BYTES);
             }
         }
         return response.body();
     }
 
-    private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId, boolean proxyTiles) {
+    private Optional<TileSource> resolveTileSource(User user, Long styleId, String sourceId) {
         // First, try to get original TileJSON URL (upstream tilejson)
         String tileJsonUrl = mapLibreMapStylesService.getOriginalTileJsonUrl(styleId, sourceId, user);
         if (tileJsonUrl != null && !tileJsonUrl.isBlank()) {
-            return Optional.of(new TileSource(tileJsonUrl, List.of(), proxyTiles));
+            return Optional.of(new TileSource(tileJsonUrl, List.of()));
         }
         // Fallback to tile URL template
         String originalTileUrl = mapLibreMapStylesService.getOriginalTileUrl(styleId, sourceId, user);
         if (originalTileUrl != null) {
             List<String> templates = new ArrayList<>();
             templates.add(normalizeTileTemplateForProxy(originalTileUrl));
-            return Optional.of(new TileSource(null, templates, proxyTiles));
+            return Optional.of(new TileSource(null, templates));
         }
         throw new IllegalArgumentException("No original tile URL found for style " + styleId + " and source " + sourceId);
     }
@@ -360,10 +362,9 @@ public class TileProxyController {
             return null;
         }
 
-        String tileJsonUrl = source.tileJsonUrl();
-        URI tileJsonUri = URI.create(tileJsonUrl);
+        URI tileJsonUri = outboundUrlValidator.validate(source.tileJsonUrl());
 
-        HttpResponse<byte[]> response = fetchRaw(tileJsonUrl, Map.of());
+        OutboundHttp.Response response = fetchRaw(tileJsonUri, Map.of(), OutboundHttp.MAX_JSON_BYTES, outboundUrlValidator);
         if (response.statusCode() != 200) {
             throw new IOException("Failed to fetch TileJSON: " + response.statusCode());
         }
