@@ -39,11 +39,13 @@ class RememberMeSecurityTest {
     private RememberMeKeyProvider rememberMeKeyProvider;
 
     private User oidcLikeUser;
+    private User normalUser;
 
     @BeforeEach
     void setUp() {
         User user = testingService.randomUser();
-        oidcLikeUser = userJdbcService.updateUser(user.withPassword(""));
+        this.oidcLikeUser = userJdbcService.updateUser(user.withPassword(""));
+        this.normalUser = userJdbcService.updateUser(testingService.randomUser().withPassword("password"));;
     }
 
     @Test
@@ -55,10 +57,16 @@ class RememberMeSecurityTest {
 
     @Test
     void cookieSignedWithInstallationKeyIsAccepted() throws Exception {
-        // sanity check that the forged cookie above is well-formed and only fails because of the key
-        Cookie valid = cookie(oidcLikeUser.getUsername(), "", rememberMeKeyProvider.getKey());
+        Cookie valid = cookie(normalUser.getUsername(), "password", rememberMeKeyProvider.getKey());
         mockMvc.perform(get("/settings/api-tokens").cookie(valid))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void cookieShouldBeRejectedForSSOUsers() throws Exception {
+        Cookie valid = cookie(oidcLikeUser.getUsername(), "", rememberMeKeyProvider.getKey());
+        mockMvc.perform(get("/settings/api-tokens").cookie(valid))
+                .andExpect(status().is3xxRedirection());
     }
 
     private static Cookie cookie(String username, String password, String key) throws Exception {
