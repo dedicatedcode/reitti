@@ -51,11 +51,9 @@ public class SecurityConfig {
 
     @Bean
     public TokenBasedRememberMeServices rememberMeServices() {
-        // The key must be a per-installation secret, see RememberMeKeyProvider.
-        TokenBasedRememberMeServices services = new TokenBasedRememberMeServices(rememberMeKeyProvider.getKey(), userDetailsService);
+        TokenBasedRememberMeServices services = new SsoSafeTokenBasedRememberMeServices(userDetailsService, rememberMeKeyProvider);
         services.setTokenValiditySeconds(2592000); // 30 days
         services.setParameter("remember-me");
-        // Secure flag follows the request (X-Forwarded-Proto behind a proxy); SameSite=Lax blocks cross-site form posts
         services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
         return services;
     }
@@ -65,7 +63,6 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
-                        .requestMatchers("/settings/integrations/reitti.properties").hasAnyRole(Role.ADMIN.name(), Role.API_ACCESS.name(), Role.USER.name())
                         .requestMatchers("/settings/logging", "/settings/logging/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                         .requestMatchers("/api/v1/photos/**").hasAnyRole(Role.ADMIN.name(),
