@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.MapLibreMapStylesService;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -20,7 +21,10 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TileProxyControllerTest {
@@ -47,7 +51,8 @@ class TileProxyControllerTest {
                 "",                        // panoramaxBaseUrl
                 objectMapper,
                 userMapStyleJdbcService,
-                mapLibreMapStylesService
+                mapLibreMapStylesService,
+                new OutboundUrlValidator(true, "", "", 6379, "")
         );
     }
 
@@ -104,5 +109,46 @@ class TileProxyControllerTest {
         assertTrue(proxiedUrl.contains("{z}"));
         assertTrue(proxiedUrl.contains("{x}"));
         assertTrue(proxiedUrl.contains("{y}"));
+    }
+
+    @Test
+    void styleEndpointsFailClosedForInaccessibleStyles() {
+        User user = mock(User.class);
+        when(userMapStyleJdbcService.findById(eq(user), eq(42L))).thenReturn(Optional.empty());
+
+        assertEquals(404, controller.getStyleSourceTileJson(user, 42L, "source", new MockHttpServletRequest()).getStatusCode().value());
+        assertEquals(404, controller.getStyleSourceTile(user, 42L, "source", 1, 2, 3, "png").getStatusCode().value());
+        verify(mapLibreMapStylesService, never()).getOriginalTileUrl(any(), any(), any());
+        verify(mapLibreMapStylesService, never()).getOriginalTileJsonUrl(any(), any(), any());
+    }
+
+    @Test
+    void stylesWithoutTileProxyingAreNotProxied() {
+        User user = mock(User.class);
+        MapStyleDataSource dataSource = mock(MapStyleDataSource.class);
+        when(dataSource.proxyTiles()).thenReturn(false);
+        UserMapStyle style = mock(UserMapStyle.class);
+        when(style.dataSource()).thenReturn(dataSource);
+        when(userMapStyleJdbcService.findById(eq(user), eq(7L))).thenReturn(Optional.of(style));
+
+        assertEquals(404, controller.getStyleSourceTile(user, 7L, "source", 1, 2, 3, "png").getStatusCode().value());
+        verify(mapLibreMapStylesService, never()).getOriginalTileUrl(any(), any(), any());
+    }
+
+    @Test
+    void tilesFromInternalUpstreamsAreNotFetched() {
+        User user = mock(User.class);
+        MapStyleDataSource dataSource = mock(MapStyleDataSource.class);
+        when(dataSource.proxyTiles()).thenReturn(true);
+        UserMapStyle style = mock(UserMapStyle.class);
+        when(style.dataSource()).thenReturn(dataSource);
+        when(userMapStyleJdbcService.findById(eq(user), eq(8L))).thenReturn(Optional.of(style));
+        when(mapLibreMapStylesService.getOriginalTileUrl(8L, "source", user))
+                .thenReturn("http://169.254.169.254/latest/meta-data/{z}/{x}/{y}");
+
+        ResponseEntity<byte[]> response = controller.getStyleSourceTile(user, 8L, "source", 1, 2, 3, "png");
+
+        assertEquals(404, response.getStatusCode().value());
+        assertNull(response.getBody());
     }
 }

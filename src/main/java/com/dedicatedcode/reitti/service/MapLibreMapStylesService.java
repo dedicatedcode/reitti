@@ -5,6 +5,8 @@ import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
 import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.UserMapStyleJdbcService;
+import com.dedicatedcode.reitti.service.security.OutboundHttp;
+import com.dedicatedcode.reitti.service.security.OutboundUrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,9 +23,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,24 +36,24 @@ public class MapLibreMapStylesService {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final boolean tileCachingEnabled;
+    private final OutboundUrlValidator outboundUrlValidator;
 
-    // Cache for original tile URLs: key = styleId + ":" + sourceId, value = original tile URL template
+    // Cache for original tile URLs: key = styleId + ":" + version + ":" + sourceId, value = original tile URL template
     private final ConcurrentHashMap<String, String> originalTileUrlCache = new ConcurrentHashMap<>();
-    // Cache for original TileJSON URLs: key = styleId + ":" + sourceId + ":tilejson", value = original TileJSON URL
+    // Cache for original TileJSON URLs: key = styleId + ":" + version + ":" + sourceId + ":tilejson", value = original TileJSON URL
     private final ConcurrentHashMap<String, String> originalTileJsonUrlCache = new ConcurrentHashMap<>();
 
     public MapLibreMapStylesService(
             UserMapStyleJdbcService userMapStyleJdbcService,
             ContextPathHolder contextPathHolder,
             ObjectMapper objectMapper,
-            @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl) {
+            @Value("${reitti.ui.tiles.cache.url:}") String cacheUrl,
+            OutboundUrlValidator outboundUrlValidator) {
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.contextPathHolder = contextPathHolder;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+        this.outboundUrlValidator = outboundUrlValidator;
+        this.httpClient = OutboundHttp.newHttpClient();
         this.tileCachingEnabled = StringUtils.hasText(cacheUrl);
     }
 
@@ -87,7 +86,13 @@ public class MapLibreMapStylesService {
     }
 
     public String getOriginalTileUrl(Long styleId, String sourceId, User user) {
-        String cacheKey = styleId + ":" + sourceId;
+        // The caches are shared between users, so access to the style has to be checked first
+        Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, styleId);
+        if (styleOpt.isEmpty()) {
+            return null;
+        }
+        UserMapStyle style = styleOpt.get();
+        String cacheKey = cacheKey(style, sourceId);
         // 1. Check tile URL cache
         String cachedTileUrl = originalTileUrlCache.get(cacheKey);
         if (cachedTileUrl != null) {
@@ -109,11 +114,6 @@ public class MapLibreMapStylesService {
         }
         // 3. Fallback: parse the style JSON (without proxying) to get the original URL
         try {
-            Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, styleId);
-            if (styleOpt.isEmpty()) {
-                return null;
-            }
-            UserMapStyle style = styleOpt.get();
             JsonNode originalStyle = buildCustomStyleJsonInternal(style, false);
             if (originalStyle == null) {
                 return null;
@@ -155,7 +155,11 @@ public class MapLibreMapStylesService {
      * This method populates the internal caches if necessary.
      */
     public String getOriginalTileJsonUrl(Long styleId, String sourceId, User user) {
-        String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
+        Optional<UserMapStyle> styleOpt = userMapStyleJdbcService.findById(user, styleId);
+        if (styleOpt.isEmpty()) {
+            return null;
+        }
+        String tileJsonCacheKey = cacheKey(styleOpt.get(), sourceId) + ":tilejson";
         // Check cache
         String cached = originalTileJsonUrlCache.get(tileJsonCacheKey);
         if (cached != null) {
@@ -173,13 +177,7 @@ public class MapLibreMapStylesService {
     }
 
     private String fetchTileUrlFromTileJson(String tileJsonUrl) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(tileJsonUrl))
-                .timeout(Duration.ofSeconds(20))
-                .header("Accept", "application/json")
-                .GET()
-                .build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        OutboundHttp.Response response = fetchJson(tileJsonUrl, OutboundHttp.MAX_JSON_BYTES);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("Failed to fetch TileJSON: HTTP " + response.statusCode());
         }
@@ -203,24 +201,23 @@ public class MapLibreMapStylesService {
     }
 
     private JsonNode buildCustomStyleJsonInternal(UserMapStyle style, boolean shouldProxy) throws IOException {
-        Long styleId = style.id();
-
         JsonNode styleJson;
         if ("raster".equals(style.mapType())) {
-            styleJson = buildRasterStyleJson(style, shouldProxy, styleId);
+            styleJson = buildRasterStyleJson(style, shouldProxy);
         } else if ("vector".equals(style.mapType())) {
-            styleJson = buildVectorStyleJson(style, shouldProxy, styleId);
+            styleJson = buildVectorStyleJson(style, shouldProxy);
         } else {
             return null;
         }
 
-        if (styleJson == null) {
+        if (!(styleJson instanceof ObjectNode styleObject)) {
             return null;
         }
-        return finalizeStyle((ObjectNode) styleJson, styleId, shouldProxy);
+        return finalizeStyle(styleObject, style, shouldProxy);
     }
 
-    private JsonNode buildRasterStyleJson(UserMapStyle style, boolean shouldProxy, Long styleId) {
+    private JsonNode buildRasterStyleJson(UserMapStyle style, boolean shouldProxy) {
+        Long styleId = style.id();
         MapStyleDataSource dataSource = style.dataSource();
         if (dataSource == null) {
             return null;
@@ -248,7 +245,7 @@ public class MapLibreMapStylesService {
             String originalTileJsonUrl = dataSource.tileJsonUrl();
             if (shouldProxy) {
                 // Store original TileJSON URL in cache
-                String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
+                String tileJsonCacheKey = cacheKey(style, sourceId) + ":tilejson";
                 originalTileJsonUrlCache.put(tileJsonCacheKey, originalTileJsonUrl);
                 source.put("url", proxyTileJsonUrl(styleId, sourceId));
             } else {
@@ -258,8 +255,7 @@ public class MapLibreMapStylesService {
             String originalTileUrl = dataSource.tileUrlTemplate();
             if (shouldProxy) {
                 // Store original tile URL in cache
-                String cacheKey = styleId + ":" + sourceId;
-                originalTileUrlCache.put(cacheKey, originalTileUrl);
+                originalTileUrlCache.put(cacheKey(style, sourceId), originalTileUrl);
                 String proxiedUrl = proxyTileUrl(styleId, sourceId, originalTileUrl);
                 ArrayNode tiles = objectMapper.createArrayNode();
                 tiles.add(proxiedUrl);
@@ -289,7 +285,7 @@ public class MapLibreMapStylesService {
         return rasterStyle;
     }
 
-    private JsonNode buildVectorStyleJson(UserMapStyle style, boolean shouldProxy, Long styleId) throws IOException {
+    private JsonNode buildVectorStyleJson(UserMapStyle style, boolean shouldProxy) throws IOException {
         JsonNode styleNode;
 
         if (StringUtils.hasText(style.styleJson())) {
@@ -301,20 +297,20 @@ public class MapLibreMapStylesService {
         }
 
         if (shouldProxy && styleNode instanceof ObjectNode) {
-            rewriteTileUrlsInStyle((ObjectNode) styleNode, styleId);
+            rewriteTileUrlsInStyle((ObjectNode) styleNode, style);
         }
 
         return styleNode;
     }
 
-    private JsonNode finalizeStyle(ObjectNode style, Long styleId, boolean proxyEnabled) {
+    private JsonNode finalizeStyle(ObjectNode styleJson, UserMapStyle style, boolean proxyEnabled) {
 
         if (proxyEnabled) {
-            rewriteResourceUrls(style);
-            rewriteTileUrlsInStyle(style, styleId);
+            rewriteResourceUrls(styleJson);
+            rewriteTileUrlsInStyle(styleJson, style);
         }
 
-        return style;
+        return styleJson;
     }
 
     private void rewriteResourceUrls(ObjectNode style) {
@@ -323,8 +319,9 @@ public class MapLibreMapStylesService {
         }
     }
 
-    private void rewriteTileUrlsInStyle(ObjectNode style, Long styleId) {
-        JsonNode sources = style.path("sources");
+    private void rewriteTileUrlsInStyle(ObjectNode styleJson, UserMapStyle style) {
+        Long styleId = style.id();
+        JsonNode sources = styleJson.path("sources");
         if (!(sources instanceof ObjectNode sourcesObject)) {
             return;
         }
@@ -341,7 +338,7 @@ public class MapLibreMapStylesService {
                 String originalUrl = sourceNode.get("url").asText("");
                 if (originalUrl.startsWith("http://") || originalUrl.startsWith("https://")) {
                     // Store original TileJSON URL in cache
-                    String tileJsonCacheKey = styleId + ":" + sourceId + ":tilejson";
+                    String tileJsonCacheKey = cacheKey(style, sourceId) + ":tilejson";
                     originalTileJsonUrlCache.put(tileJsonCacheKey, originalUrl);
                     sourceNode.put("url", proxyTileJsonUrl(styleId, sourceId));
                 }
@@ -354,8 +351,7 @@ public class MapLibreMapStylesService {
                     String tileUrl = tile.asText("");
                     if (tileUrl.startsWith("http://") || tileUrl.startsWith("https://")) {
                         // Store original tile URL in cache
-                        String cacheKey = styleId + ":" + sourceId;
-                        originalTileUrlCache.put(cacheKey, tileUrl);
+                        originalTileUrlCache.put(cacheKey(style, sourceId), tileUrl);
                         rewrittenTiles.add(proxyTileUrl(styleId, sourceId, tileUrl));
                     } else {
                         rewrittenTiles.add(tileUrl);
@@ -364,6 +360,10 @@ public class MapLibreMapStylesService {
                 sourceNode.set("tiles", rewrittenTiles);
             }
         }
+    }
+
+    private static String cacheKey(UserMapStyle style, String sourceId) {
+        return style.id() + ":" + style.version() + ":" + sourceId;
     }
 
     private String proxyTileUrl(Long styleId, String sourceId, String originalUrl) {
@@ -378,21 +378,29 @@ public class MapLibreMapStylesService {
 
     private JsonNode fetchStyleJson(String styleUrl) throws IOException {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(styleUrl))
-                    .timeout(Duration.ofSeconds(20))
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            OutboundHttp.Response response = fetchJson(styleUrl, OutboundHttp.MAX_STYLE_JSON_BYTES);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IOException("Failed to fetch style JSON: HTTP " + response.statusCode());
             }
-            return objectMapper.readTree(response.body());
+            JsonNode styleJson = objectMapper.readTree(response.body());
+            if (!(styleJson instanceof ObjectNode)) {
+                throw new IOException("Style JSON is not an object");
+            }
+            return styleJson;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while fetching style JSON", e);
         }
+    }
+
+    /**
+     * Style and TileJSON URLs are user supplied: they are validated (including every redirect hop) and the response
+     * size is capped.
+     */
+    private OutboundHttp.Response fetchJson(String url, long maxBytes) throws IOException, InterruptedException {
+        URI uri = outboundUrlValidator.validate(url);
+        return OutboundHttp.get(httpClient, uri, Map.of("Accept", "application/json"), Duration.ofSeconds(20),
+                maxBytes, OutboundHttp.MAX_REDIRECTS, outboundUrlValidator);
     }
 
     private MapLibreStyleDefinition buildStyleDefinition(UserMapStyle style) {
