@@ -1535,8 +1535,8 @@ class MapRenderer {
 
     _iconHtml(mode) {
         const icon = mode && mode.icon ? mode.icon : this._getDefaultIcon(mode?.mode);
-        const color = mode && mode.color ? mode.color : '#f1ba63';
-        return `<i class="lni ${icon}" style="color:${color}"></i>`;
+        const color = this._safeColor(mode?.color, '#f1ba63');
+        return `<i class="lni ${this._escapeHtml(icon)}" style="color:${color}"></i>`;
     }
 
     _transitionPopupHtml(transition) {
@@ -2297,7 +2297,7 @@ class MapRenderer {
             tooltip.innerHTML = `
             <div class="map-popup">
                 <div class="sel-info-head">
-                    <div class="sel-info-title">${object.name == null ? t('place.unknown.label') : object.name}</div>
+                    <div class="sel-info-title">${object.name == null ? t('place.unknown.label') : this._escapeHtml(object.name)}</div>
                 </div>
                 <div class="sel-info-row">
                     <span class="k">${t('map.popup.labels.total_duration')}</span>
@@ -2784,7 +2784,7 @@ class MapRenderer {
             <div class="sel-info-row">
                 <span class="k">${t('common.user')}:</span>
                 <span class="v sel-info-tag">
-                    <span class="swatch" style="background:${userData.color}"></span>${userData.displayName}
+                    <span class="swatch" style="background:${this._safeColor(userData.color, '#3388ff')}"></span>${this._escapeHtml(userData.displayName)}
                 </span>
             </div>
             <div class="sel-info-row">
@@ -2830,6 +2830,24 @@ class MapRenderer {
             return 1.0 - (0.9 * progress);
         }
         return 0.1;
+    }
+
+    /**
+     * Names and colors can come from other users or federated instances, so they are escaped or validated before
+     * being inserted into HTML.
+     */
+    _escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[character]));
+    }
+
+    _safeColor(value, fallback) {
+        return typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : fallback;
     }
 
     _formatTimeAgo(timestamp) {

@@ -1,3 +1,14 @@
+// place names are user supplied and end up in popup HTML
+function escapePopupHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[character]));
+}
+
 class TripDataProvider {
     constructor(dataUrl) {
         this.dataUrl = dataUrl;
@@ -83,7 +94,7 @@ class TripDataProvider {
             const popupHTML = `
         <div class="map-popup-card">
             <div class="map-popup-card-header">
-                <strong>${visit.name.split(',')[0]}</strong>
+                <strong>${escapePopupHtml(visit.name.split(',')[0])}</strong>
             </div>
             <div class="popup-body">
                 ${bodyContent}
@@ -134,7 +145,7 @@ class VisitDataProvider {
             const popupContent = `
             <div class="map-popup-card">
                 <div class="map-popup-card-header">
-                    <strong>${name || 'Unknown Visit'}</strong>
+                    <strong>${escapePopupHtml(name || 'Unknown Visit')}</strong>
                 </div>
                 <div class="popup-body">
                     <p><span>Time:</span> ${new Date(startTime).toLocaleTimeString([], {
