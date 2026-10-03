@@ -30,7 +30,7 @@ public class SetupController {
     @GetMapping("/setup")
     public String setupPage(Model model) {
         User adminUser = getLocalAdminUserWithoutPassword();
-        if (adminUser == null) {
+        if (adminUser == null || localLoginDisabled) {
             return "redirect:/login";
         }
 
