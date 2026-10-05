@@ -146,11 +146,4 @@ public class CustomErrorController implements ErrorController {
         return sb.toString();
     }
 
-    @ExceptionHandler(PageNotFoundException.class)
-    public String handlePageNotFound(Model model) {
-        model.addAttribute("status", 404);
-        model.addAttribute("error", "Not Found");
-        model.addAttribute("message", "The page you are looking for could not be found.");
-        return "error";
-    }
 }
