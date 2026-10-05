@@ -1,6 +1,5 @@
-package com.dedicatedcode.reitti;
+package com.dedicatedcode.reitti.controller.error;
 
-import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -20,7 +19,7 @@ public class ErrorHandlingControllerAdvice {
         return "error";
     }
 
-    @ExceptionHandler({IllegalAccessException.class})
+    @ExceptionHandler({IllegalAccessException.class, ForbiddenException.class})
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public String handleIllegalAccessException(Model model) {
         model.addAttribute("status", 403);

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.dto.ProcessedVisitResponse;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
@@ -8,8 +9,7 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
+import com.dedicatedcode.reitti.service.security.DataAccessGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,16 +34,13 @@ public class ProcessedVisitApiController {
     private static final Logger logger = LoggerFactory.getLogger(ProcessedVisitApiController.class);
     
     private final ProcessedVisitJdbcService processedVisitJdbcService;
-    private final UserJdbcService userJdbcService;
-    private final UserSharingJdbcService userSharingJdbcService;
+    private final DataAccessGuard dataAccessGuard;
 
     @Autowired
     public ProcessedVisitApiController(ProcessedVisitJdbcService processedVisitJdbcService,
-                                       UserJdbcService userJdbcService,
-                                       UserSharingJdbcService userSharingJdbcService) {
+                                       DataAccessGuard dataAccessGuard) {
         this.processedVisitJdbcService = processedVisitJdbcService;
-        this.userJdbcService = userJdbcService;
-        this.userSharingJdbcService = userSharingJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
     }
 
     @GetMapping("/visits")
@@ -95,25 +93,14 @@ public class ProcessedVisitApiController {
             }
 
             // Check access permissions
-            boolean hasAccess = true;
             if (user instanceof TokenUser) {
-                if (!Objects.equals(user.getId(), userId)) {
-                    throw new IllegalAccessException("User not allowed to fetch processed visits for other users");
-                }
-
-                hasAccess = user.getAuthorities().stream().anyMatch(a ->
-                        a.equals(MagicLinkAccessLevel.FULL_ACCESS.asAuthority()) ||
-                        a.equals(MagicLinkAccessLevel.ONLY_LIVE.asAuthority()) ||
-                        a.equals(MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS.asAuthority()));
+                this.dataAccessGuard.hasAccessLevel(user,
+                                                    MagicLinkAccessLevel.FULL_ACCESS,
+                                                    MagicLinkAccessLevel.ONLY_LIVE,
+                                                    MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS);
             }
 
-            if (!hasAccess) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Insufficient permissions to access processed visits"));
-            }
-
-            // Get the user from the repository by userId
-            User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+            User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
 
             // Fetch processed visits in the time range
             List<ProcessedVisit> visits = processedVisitJdbcService.findByUserAndTimeOverlap(
@@ -155,7 +142,6 @@ public class ProcessedVisitApiController {
                         .mapToLong(ProcessedVisit::getDurationSeconds)
                         .sum() * 1000; // Convert to milliseconds
                     
-                    // Generate a color for the place (you might want to implement a proper color generation strategy)
                     String color = generateColorForPlace(place);
                     
                     return new ProcessedVisitResponse.PlaceVisitSummary(
@@ -170,6 +156,8 @@ public class ProcessedVisitApiController {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "Invalid date format. Expected format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS"
             ));
+        } catch (ForbiddenException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Error fetching processed visits", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -178,8 +166,6 @@ public class ProcessedVisitApiController {
     }
 
     private String generateColorForPlace(SignificantPlace place) {
-        // Simple color generation based on place ID
-        // You can implement a more sophisticated color generation strategy
         if (place.getId() == null) {
             return "#3388ff";
         }
@@ -196,23 +182,5 @@ public class ProcessedVisitApiController {
         b = Math.max(b, 100);
         
         return String.format("#%02x%02x%02x", r, g, b);
-    }
-
-
-    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
-        if (user.getId().equals(userId)) {
-            return user;
-        }
-        if (user instanceof TokenUser) {
-            if (!Objects.equals(user.getId(), userId)) {
-                throw new IllegalAccessException("User not allowed to fetch data for other users");
-            }
-        }
-        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-            throw new IllegalAccessException("User not allowed to fetch data for other user with id " + userId);
-        }
-
-        return userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

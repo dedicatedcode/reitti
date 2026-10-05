@@ -5,8 +5,8 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.h3.H3SpatialCoverageService;
+import com.dedicatedcode.reitti.service.security.DataAccessGuard;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v2/coverage")
@@ -26,14 +29,17 @@ public class CoverageController {
 
     private final DeviceJdbcService deviceJdbcService;
     private final H3SpatialCoverageService coverageService;
-    private final UserSharingJdbcService userSharingJdbcService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final DataAccessGuard dataAccessGuard;
 
-    public CoverageController(DeviceJdbcService deviceJdbcService, H3SpatialCoverageService coverageService, UserSharingJdbcService userSharingJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService) {
+    public CoverageController(DeviceJdbcService deviceJdbcService,
+                              H3SpatialCoverageService coverageService,
+                              RawLocationPointJdbcService rawLocationPointJdbcService,
+                              DataAccessGuard dataAccessGuard) {
         this.deviceJdbcService = deviceJdbcService;
         this.coverageService = coverageService;
-        this.userSharingJdbcService = userSharingJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
     }
 
     /**
@@ -99,16 +105,11 @@ public class CoverageController {
             @PathVariable long userId,
             @RequestParam LocalDate start,
             @RequestParam LocalDate end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-
-        if (user.getId() != userId) {
-            if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-                throw new IllegalAccessException("User not allowed to fetch cells for other user with id " + userId);
-            }
-        }
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchData = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
         Instant startOfRange = start.atStartOfDay(timezone).toInstant();
         Instant endOfRange = end.plusDays(1).atStartOfDay(timezone).toInstant();
-        return rawLocationPointJdbcService.findVisitedH3CellsCounts(userId, startOfRange, endOfRange);
+        return rawLocationPointJdbcService.findVisitedH3CellsCounts(userToFetchData, startOfRange, endOfRange);
     }
 
     @GetMapping("/boundary/{osmId}")

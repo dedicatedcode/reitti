@@ -702,12 +702,12 @@ public class RawLocationPointJdbcService {
                ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
     }
 
-    public List<CoverageController.H3CellCount> findVisitedH3CellsCounts(Long userId, Instant startOfRange, Instant endOfRange) {
+    public List<CoverageController.H3CellCount> findVisitedH3CellsCounts(User user, Instant startOfRange, Instant endOfRange) {
         return this.jdbcTemplate.query("""
                                            SELECT h3_cell, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
                                            FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_cell IS NOT NULL GROUP BY h3_cell, time_bucket;
                                            """, (rs, _) -> new CoverageController.H3CellCount(rs.getString("h3_cell"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
-                                userId,
+                                user.getId(),
                                 Timestamp.from(startOfRange),
                                 Timestamp.from(endOfRange));
     }
