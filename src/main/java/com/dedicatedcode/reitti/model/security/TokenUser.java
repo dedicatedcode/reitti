@@ -63,6 +63,6 @@ public class TokenUser extends User {
     }
 
     public boolean grantsAccessTo(MagicLinkResourceType type, Long resourceId){
-        return this.type.equals(type) && (this.resourceId == null || this.resourceId.equals(resourceId));
-    }
+        return this.type.equals(type) && (this.resourceId != null && this.resourceId.equals(resourceId));
+}
 }

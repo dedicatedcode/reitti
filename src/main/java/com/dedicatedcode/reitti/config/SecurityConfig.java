@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,6 +15,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+
+import java.util.Locale;
 
 @Configuration
 @EnableWebSecurity
@@ -71,11 +74,34 @@ public class SecurityConfig {
                                 "MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS",
                                 "MAGIC_LINK_MEMORY_VIEW_ONLY",
                                 "MAGIC_LINK_MEMORY_EDIT_ACCESS")
-                        .requestMatchers("/memories/*/**").hasAnyRole(Role.ADMIN.name(),
-                                Role.USER.name(),
-                                "MAGIC_LINK_MEMORY_VIEW_ONLY",
-                                "MAGIC_LINK_MEMORY_EDIT_ACCESS")
-                        .requestMatchers("/memories").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+
+                        .requestMatchers("/memories/all",
+                                         "/memories/year/**",
+                                         "/memories/years-navigation",
+                                         "/memories/new",
+                                         "/memories/*/edit",
+                                         "/memories/*/share",
+                                         "/memories/*/share/**",
+                                         "/memories/*/recalculate")
+                                        .hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers(HttpMethod.POST,
+                                         "/memories",
+                                         "/memories/*")
+                                        .hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers(HttpMethod.DELETE,
+                                         "/memories/*")
+                                        .hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers("/memories/{id}",
+                                         "/memories/fragments/empty")
+                                        .hasAnyRole(Role.ADMIN.name(),
+                                                    Role.USER.name(),
+                                                    "MAGIC_LINK_MEMORY_VIEW_ONLY",
+                                                    "MAGIC_LINK_MEMORY_EDIT_ACCESS")
+                        .requestMatchers("/memories/*/blocks/**")
+                                        .hasAnyRole(Role.ADMIN.name(),
+                                                    Role.USER.name(),
+                                                    "MAGIC_LINK_MEMORY_EDIT_ACCESS")
+
                         .requestMatchers("/api/v2/locations/stream/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
                                                                                    "MAGIC_LINK_FULL_ACCESS",
                                                                                    "MAGIC_LINK_MEMORY_VIEW_ONLY",
@@ -96,7 +122,8 @@ public class SecurityConfig {
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**", "/img/**", "/error/magic-link/**", "/setup/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/reitti-integration/notify/**").permitAll()
-                        .anyRequest()                            .hasAnyRole(Role.ADMIN.name(), Role.USER.name())
+                        .requestMatchers("/api/v1/tiles/**").authenticated()
+                        .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                 )
                 .addFilterBefore(magicLinkSessionValidationFilter, AuthorizationFilter.class)
                 .addFilterBefore(magicLinkAuthenticationFilter, MagicLinkSessionValidationFilter.class)

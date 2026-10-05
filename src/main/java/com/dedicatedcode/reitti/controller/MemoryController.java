@@ -4,13 +4,13 @@ import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.dto.TripDTO;
 import com.dedicatedcode.reitti.dto.VisitDTO;
+import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
 import com.dedicatedcode.reitti.model.memory.*;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.service.*;
@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
 import static com.dedicatedcode.reitti.model.Role.USER;
@@ -43,6 +45,7 @@ public class MemoryController {
     private final MagicLinkTokenService magicLinkTokenService;
     private final I18nService i18n;
     private final ContextPathHolder contextPathHolder;
+
     public MemoryController(MemoryService memoryService,
                             TripJdbcService tripJdbcService,
                             ProcessedVisitJdbcService processedVisitJdbcService,
@@ -60,6 +63,7 @@ public class MemoryController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public String get(@AuthenticationPrincipal User user) {
         if (user != null && user.getUserType() == UserType.LIVE_DATA_ONLY) {
             return "redirect:/";
@@ -118,8 +122,7 @@ public class MemoryController {
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
             Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new PageNotFoundException("Memory not found"));
+        Memory memory = verifyUserHasAccessToMemory(user, id);
 
         model.addAttribute("memory", new MemoryDTO(memory, timezone));
 
@@ -238,8 +241,7 @@ public class MemoryController {
                                  @PathVariable Long id,
                                  @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                  Model model) {
-        Memory memory = memoryService.getMemoryById(user, id)
-                .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        Memory memory = verifyUserHasAccessToMemory(user, id);
         if (!canEdit(memory, user)) {
             throw new ForbiddenException("You are not allowed to edit this memory");
         }
@@ -470,5 +472,15 @@ public class MemoryController {
             TokenUser tokenUser = (TokenUser) user;
             return user.getAuthorities().contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority()) && tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId());
         }
+    }
+
+    private Memory verifyUserHasAccessToMemory(User user, Long id) {
+        if (user instanceof TokenUser tokenUser) {
+            if (!tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, id)) {
+                throw new PageNotFoundException("Memory not found");
+            }
+        }
+        Optional<Memory> memoryById = this.memoryService.getMemoryById(user, id);
+        return memoryById.orElseThrow(() -> new PageNotFoundException("Memory not found"));
     }
 }
