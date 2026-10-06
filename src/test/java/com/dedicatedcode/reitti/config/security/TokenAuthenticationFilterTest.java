@@ -101,7 +101,7 @@ class TokenAuthenticationFilterTest {
     @Test
     void whenNoTokenProvided_thenReturns302Forbidden() throws Exception {
         mockMvc.perform(get("/api/test-endpoint"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isUnauthorized());
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
