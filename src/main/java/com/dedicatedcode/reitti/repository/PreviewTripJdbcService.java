@@ -98,13 +98,6 @@ public class PreviewTripJdbcService {
         }).toList();
     }
 
-    public Optional<Trip> findById(Long id) {
-        String sql = "SELECT t.* FROM preview_trips t WHERE t.id = ?";
-        List<RawTripRow> results = jdbcTemplate.query(sql, RAW_TRIP_ROW_MAPPER, id);
-        List<Trip> trips = assembleTrips(results);
-        return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
-    }
-
     public List<Trip> findByUserAndTimeOverlap(User user, String previewId, Instant startTime, Instant endTime) {
         String sql = "SELECT t.* " +
                 "FROM preview_trips t " +

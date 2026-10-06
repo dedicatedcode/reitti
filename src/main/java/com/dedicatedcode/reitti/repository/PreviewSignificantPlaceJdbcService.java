@@ -143,8 +143,4 @@ public class PreviewSignificantPlaceJdbcService {
     public void deleteForUser(User user) {
         this.jdbcTemplate.update("DELETE FROM preview_significant_places WHERE user_id = ?", user.getId());
     }
-
-    public void deleteForPreviewId(String previewId) {
-        this.jdbcTemplate.update("DELETE FROM preview_significant_places WHERE preview_id = ?", previewId);
-    }
 }

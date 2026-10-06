@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 
 @IntegrationTest
@@ -99,7 +100,7 @@ class MetadataControllerIntegrationTest {
 
     @Test
     void updateMetadataForTripAndRedirect() throws Exception {
-        mockMvc.perform(post("/metadata")
+        mockMvc.perform(post("/metadata").with(csrf())
                         .param("type", "trip")
                         .param("id", tripId.toString())
                         .param("mood", "HAPPY")

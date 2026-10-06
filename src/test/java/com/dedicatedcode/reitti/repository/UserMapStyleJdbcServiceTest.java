@@ -69,10 +69,34 @@ class UserMapStyleJdbcServiceTest {
         UserMapStyle style = createTestStyle(user, false);
         UserMapStyle saved = service.save(user, style);
 
-        service.delete(saved.id());
+        service.delete(user, saved.id());
 
         Optional<UserMapStyle> found = service.findById(user, saved.id());
         assertFalse(found.isPresent());
+    }
+
+    @Test
+    void shouldNotDeleteStyleOwnedByAnotherUser() {
+        User user = testingService.randomUser();
+        User otherUser = testingService.randomUser();
+        UserMapStyle saved = service.save(user, createTestStyle(user, false));
+
+        service.delete(otherUser, saved.id());
+
+        Optional<UserMapStyle> found = service.findById(user, saved.id());
+        assertTrue(found.isPresent());
+    }
+
+    @Test
+    void shouldNotDeleteSharedStyleOfAnotherUser() {
+        User user = testingService.randomUser();
+        User otherUser = testingService.randomUser();
+        UserMapStyle adminStyle = service.save(user, createTestStyle(user, true));
+
+        service.delete(otherUser, adminStyle.id());
+
+        Optional<UserMapStyle> found = service.findById(user, adminStyle.id());
+        assertTrue(found.isPresent());
     }
 
     @Test
@@ -140,18 +164,20 @@ class UserMapStyleJdbcServiceTest {
         service.setActiveStyleId(user, userStyle.id());
         assertThat(service.getActiveStyleId(user)).isEqualTo(userStyle.id());
 
-        this.service.delete(userStyle.id());
+        this.service.delete(user, userStyle.id());
         assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
 
+        // A foreign (admin-owned, shared) style must not be deletable by the user
         this.service.setActiveStyleId(user, adminStyle.id());
-        this.service.delete(adminStyle.id());
-        assertThat(service.getActiveStyleId(user)).isEqualTo(defaultStyleId);
+        this.service.delete(user, adminStyle.id());
+        assertThat(service.getActiveStyleId(user)).isEqualTo(adminStyle.id());
 
     }
 
     @Test
     void deletingNonExistentStyleDoesNotThrow() {
-        assertDoesNotThrow(() -> service.delete(9999L));
+        User user = testingService.randomUser();
+        assertDoesNotThrow(() -> service.delete(user, 9999L));
     }
 
     // ------------------------------------------------------------------------

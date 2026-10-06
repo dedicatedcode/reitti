@@ -801,7 +801,7 @@ public class UnifiedLocationProcessingService {
                 return null;
             }
         } else {
-            if (this.processedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
+            if (this.processedVisitJdbcService.findById(user, startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(user, endVisit.getId()).isEmpty()) {
                 logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
                 return null;
             }

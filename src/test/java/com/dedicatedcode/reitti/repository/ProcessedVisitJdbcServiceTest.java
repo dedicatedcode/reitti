@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,7 +67,7 @@ class ProcessedVisitJdbcServiceTest {
         ProcessedVisit visit = createTestVisit(testPlace, Instant.now().minus(1, ChronoUnit.HOURS), Instant.now(), 3600L);
 
         // When
-        Optional<ProcessedVisit> found = processedVisitJdbcService.findById(visit.getId());
+        Optional<ProcessedVisit> found = processedVisitJdbcService.findById(testUser, visit.getId());
 
         // Then
         assertTrue(found.isPresent());
@@ -77,7 +78,7 @@ class ProcessedVisitJdbcServiceTest {
     @Test
     void findById_WithNonExistingId_ShouldReturnEmpty() {
         // When
-        Optional<ProcessedVisit> found = processedVisitJdbcService.findById(999L);
+        Optional<ProcessedVisit> found = processedVisitJdbcService.findById(testUser, 999L);
 
         // Then
         assertTrue(found.isEmpty());
@@ -224,7 +225,7 @@ class ProcessedVisitJdbcServiceTest {
         );
 
         // When
-        ProcessedVisit result = processedVisitJdbcService.update(updatedVisit);
+        ProcessedVisit result = processedVisitJdbcService.update(testUser, updatedVisit);
 
         // Then
         assertEquals(anotherPlace.getId(), result.getPlace().getId());
@@ -244,9 +245,9 @@ class ProcessedVisitJdbcServiceTest {
         processedVisitJdbcService.deleteAll(List.of(visit1, visit2));
 
         // Then
-        assertTrue(processedVisitJdbcService.findById(visit1.getId()).isEmpty());
-        assertTrue(processedVisitJdbcService.findById(visit2.getId()).isEmpty());
-        assertTrue(processedVisitJdbcService.findById(visit3.getId()).isPresent());
+        assertTrue(processedVisitJdbcService.findById(testUser, visit1.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visit2.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visit3.getId()).isPresent());
     }
 
     @Test
@@ -330,6 +331,41 @@ class ProcessedVisitJdbcServiceTest {
 
         // Then
         assertTrue(affectedDays.isEmpty());
+    }
+
+    @Test
+    void findById_WithForeignUser_ShouldReturnEmpty() {
+        SignificantPlace place = createTestPlace("place", 53.86, 10.70);
+        ProcessedVisit visit = createTestVisit(place, Instant.now(), Instant.now().plusSeconds(3600), 3600L);
+        User otherUser = testingService.randomUser();
+
+        Optional<ProcessedVisit> found = processedVisitJdbcService.findById(otherUser, visit.getId());
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void findByIds_WithForeignUser_ShouldNotReturnForeignVisits() {
+        SignificantPlace place = createTestPlace("place", 53.86, 10.70);
+        ProcessedVisit visit = createTestVisit(place, Instant.now(), Instant.now().plusSeconds(3600), 3600L);
+        User otherUser = testingService.randomUser();
+
+        Map<Long, ProcessedVisit> found = processedVisitJdbcService.findByIds(otherUser, List.of(visit.getId()));
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModifyVisit() {
+        SignificantPlace place = createTestPlace("place", 53.86, 10.70);
+        Instant start = Instant.now();
+        ProcessedVisit visit = createTestVisit(place, start, start.plusSeconds(3600), 3600L);
+        User otherUser = testingService.randomUser();
+
+        processedVisitJdbcService.update(otherUser, visit.withMetadata(Map.of("mood", "HAPPY")));
+
+        ProcessedVisit reloaded = processedVisitJdbcService.findById(testUser, visit.getId()).orElseThrow();
+        assertTrue(reloaded.getMetadata() == null || reloaded.getMetadata().isEmpty());
     }
 
     private ProcessedVisit createTestVisit(SignificantPlace place, Instant startTime, Instant endTime, Long duration) {

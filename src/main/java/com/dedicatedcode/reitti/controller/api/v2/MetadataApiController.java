@@ -30,7 +30,7 @@ public class MetadataApiController {
 
     @GetMapping("/{type}/{id}")
     public MemoryMetadata getMetadata(@AuthenticationPrincipal User user, @PathVariable String type, @PathVariable Long id) {
-        TimeRange timeRange = findTimeRange(type, id);
+        TimeRange timeRange = findTimeRange(user, type, id);
         return this.metadataOverrideService.findOverlappingMetadata(user, timeRange.start(), timeRange.end()).orElse(null);
     }
 
@@ -45,7 +45,7 @@ public class MetadataApiController {
                                        @PathVariable Long id) {
 
         return switch (type) {
-            case "trip" -> this.tripJdbcService.findById(id).map(t -> {
+            case "trip" -> this.tripJdbcService.findById(user, id).map(t -> {
                 MemoryMetadata memoryMetadata = new MemoryMetadata(t.getStartTime(), t.getEndTime());
                 memoryMetadata.setMood(mood != null ? Mood.valueOf(mood) : null);
                 memoryMetadata.setReason(reason);
@@ -54,7 +54,7 @@ public class MetadataApiController {
                 this.metadataOverrideService.saveTripMetadata(user, t, memoryMetadata);
                 return memoryMetadata;
             }).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-            case "visit" -> this.processedVisitJdbcService.findById(id).map(p -> {
+            case "visit" -> this.processedVisitJdbcService.findById(user, id).map(p -> {
                 MemoryMetadata memoryMetadata = new MemoryMetadata(p.getStartTime(), p.getEndTime());
                 memoryMetadata.setMood(mood != null ? Mood.valueOf(mood) : null);
                 memoryMetadata.setReason(reason);
@@ -67,12 +67,12 @@ public class MetadataApiController {
         };
     }
 
-    private TimeRange findTimeRange(String type, Long id) {
+    private TimeRange findTimeRange(User user, String type, Long id) {
         return switch (type) {
             case ("trip") ->
-                    this.tripJdbcService.findById(id).map(t -> TimeRange.of(t.getStartTime(), t.getEndTime())).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                    this.tripJdbcService.findById(user, id).map(t -> TimeRange.of(t.getStartTime(), t.getEndTime())).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
             case ("visit") ->
-                    this.processedVisitJdbcService.findById(id).map(p -> TimeRange.of(p.getStartTime(), p.getEndTime())).orElseThrow(() -> new IllegalArgumentException("Visit not found"));
+                    this.processedVisitJdbcService.findById(user, id).map(p -> TimeRange.of(p.getStartTime(), p.getEndTime())).orElseThrow(() -> new IllegalArgumentException("Visit not found"));
             default -> throw new IllegalStateException("Unexpected value: " + type);
         };
     }

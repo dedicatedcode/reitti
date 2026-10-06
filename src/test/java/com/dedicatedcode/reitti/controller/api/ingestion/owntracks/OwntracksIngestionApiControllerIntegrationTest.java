@@ -30,6 +30,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 @AutoConfigureWebMvc
@@ -82,7 +83,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                             .with(user(new DeviceTokenUser(testUser, device)))
                             .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
@@ -101,7 +102,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                         .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
@@ -125,7 +126,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
         // Mock the location batching service to avoid actual processing
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class), any(Device.class), any(LocationPoint.class));
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                         .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
@@ -160,7 +161,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
         // Mock the location batching service
         doNothing().when(locationBatchingService).addLocationPoint(any(User.class),any(Device.class),  any(LocationPoint.class));
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                         .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(owntracksPayload))
@@ -185,7 +186,7 @@ class OwntracksIngestionApiControllerIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                         .with(user(new DeviceTokenUser(testUser, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidPayload))

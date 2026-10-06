@@ -9,12 +9,17 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+
 
 @Configuration
 @EnableWebSecurity
@@ -57,6 +62,17 @@ public class SecurityConfig {
         services.setParameter("remember-me");
         services.setCookieCustomizer(cookie -> cookie.setAttribute("SameSite", "Lax"));
         return services;
+    }
+
+    private static RequestMatcher tokenAuthenticatedRequest() {
+        return request -> {
+            String apiToken = request.getHeader("X-API-Token");
+            if (apiToken != null && !apiToken.isBlank()) {
+                return true;
+            }
+            String authHeader = request.getHeader("Authorization");
+            return authHeader != null && !authHeader.isBlank();
+        };
     }
 
     @Bean
@@ -128,7 +144,11 @@ public class SecurityConfig {
                 .addFilterBefore(bearerTokenAuthFilter, MagicLinkAuthenticationFilter.class)
                 .addFilterBefore(urlTokenAuthenticationFilter, TokenAuthenticationFilter.class)
                 .addFilterBefore(setupFilter, MagicLinkSessionValidationFilter.class)
-                .csrf(AbstractHttpConfigurer::disable)
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers(tokenAuthenticatedRequest(), PathPatternRequestMatcher.withDefaults().matcher("/api/v1/reitti-integration/notify/**")))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler(customAuthenticationSuccessHandler)
@@ -142,7 +162,7 @@ public class SecurityConfig {
                     if (oidcLogoutSuccessHandler != null) {
                         logout.logoutSuccessHandler(oidcLogoutSuccessHandler);
                     }
-                    logout.deleteCookies("JSESSIONID", "remember-me")
+                    logout.deleteCookies("JSESSIONID", "remember-me", "XSRF-TOKEN")
                           .permitAll();
                 });
 

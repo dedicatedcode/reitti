@@ -69,7 +69,7 @@ public class TripJdbcService {
         }
     }
 
-    private List<Trip> assembleTrips(List<RawTripRow> rawRows) {
+    private List<Trip> assembleTrips(User user, List<RawTripRow> rawRows) {
         if (rawRows.isEmpty()) {
             return Collections.emptyList();
         }
@@ -81,8 +81,8 @@ public class TripJdbcService {
                 .distinct()
                 .toList();
 
-        Map<Long, ProcessedVisit> visitsById = processedVisitJdbcService.findByIds(visitIds);
-        Map<Long, List<TransportModeSegment>> segmentsByTripId = tripTransportModeJdbcService.findByTripIds(tripIds);
+        Map<Long, ProcessedVisit> visitsById = processedVisitJdbcService.findByIds(user, visitIds);
+        Map<Long, List<TransportModeSegment>> segmentsByTripId = tripTransportModeJdbcService.findByTripIds(user, tripIds);
 
         return rawRows.stream().map(r -> {
             ProcessedVisit startVisit = visitsById.get(r.startVisitId());
@@ -107,7 +107,7 @@ public class TripJdbcService {
     public List<Trip> findByUser(User user) {
         String sql = "SELECT t.* FROM trips t WHERE t.user_id = ? ORDER BY start_time";
         List<RawTripRow> rawRows = jdbcTemplate.query(sql, this::mapRawTripRow, user.getId());
-        return assembleTrips(rawRows);
+        return assembleTrips(user, rawRows);
     }
 
     public List<Trip> findByUserAndTimeOverlap(User user, Instant startTime, Instant endTime) {
@@ -122,7 +122,7 @@ public class TripJdbcService {
                 Timestamp.from(endTime), Timestamp.from(startTime),
                 Timestamp.from(startTime), Timestamp.from(endTime),
                 Timestamp.from(startTime), Timestamp.from(endTime));
-        return assembleTrips(rawRows);
+        return assembleTrips(user, rawRows);
     }
 
     public boolean existsByUserAndStartTimeAndEndTime(User user, Instant startTime, Instant endTime) {
@@ -176,12 +176,12 @@ public class TripJdbcService {
                 asJson(trip.getMetadata())
         );
         Trip persisted = trip.withId(id);
-        tripTransportModeJdbcService.bulkInsert(id, persisted.getSegments());
+        tripTransportModeJdbcService.bulkInsert(user, id, persisted.getSegments());
         return persisted;
     }
 
-    public Trip update(Trip trip) {
-        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, start_visit_id = ?, end_visit_id = ?, metadata = ?::jsonb, version = ? WHERE id = ?";
+    public Trip update(User user, Trip trip) {
+        String sql = "UPDATE trips SET start_time = ?, end_time = ?, duration_seconds = ?, travelled_distance_meters = ?, start_visit_id = ?, end_visit_id = ?, metadata = ?::jsonb, version = ? WHERE id = ? AND user_id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(trip.getStartTime()),
                 Timestamp.from(trip.getEndTime()),
@@ -191,19 +191,20 @@ public class TripJdbcService {
                 trip.getEndVisit() != null ? trip.getEndVisit().getId() : null,
                 asJson(trip.getMetadata()),
                 trip.getVersion() + 1,
-                trip.getId()
+                trip.getId(),
+                user.getId()
         );
-        tripTransportModeJdbcService.deleteByTripId(trip.getId());
-        tripTransportModeJdbcService.bulkInsert(trip.getId(), trip.getSegments());
+        tripTransportModeJdbcService.deleteByTripId(user, trip.getId());
+        tripTransportModeJdbcService.bulkInsert(user, trip.getId(), trip.getSegments());
         return trip.withVersion(trip.getVersion() + 1);
     }
 
-    public Optional<Trip> findById(Long id) {
+    public Optional<Trip> findById(User user, Long id) {
         String sql = "SELECT t.* " +
                 "FROM trips t " +
-                "WHERE t.id = ?";
-        List<RawTripRow> results = jdbcTemplate.query(sql, this::mapRawTripRow, id);
-        List<Trip> trips = assembleTrips(results);
+                "WHERE t.id = ? AND t.user_id = ?";
+        List<RawTripRow> results = jdbcTemplate.query(sql, this::mapRawTripRow, id, user.getId());
+        List<Trip> trips = assembleTrips(user, results);
         return trips.isEmpty() ? Optional.empty() : Optional.of(trips.getFirst());
     }
 
@@ -240,16 +241,11 @@ public class TripJdbcService {
             if (updated > 0 && keyHolder.getKey() != null) {
                 Long id = keyHolder.getKey().longValue();
                 persisted = trip.withId(id);
-                tripTransportModeJdbcService.bulkInsert(id, persisted.getSegments());
+                tripTransportModeJdbcService.bulkInsert(user, id, persisted.getSegments());
             }
             result.add(persisted);
         }
         return result;
-    }
-
-    public void deleteAll() {
-        String sql = "DELETE FROM trips";
-        jdbcTemplate.update(sql);
     }
 
     public void deleteAllForUser(User user) {
@@ -259,11 +255,6 @@ public class TripJdbcService {
 
     public List<Long> findIdsByUser(User user) {
         return jdbcTemplate.queryForList("SELECT id FROM trips WHERE user_id = ?", Long.class, user.getId());
-    }
-
-    @SuppressWarnings("DataFlowIssue")
-    public long count() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips", Long.class);
     }
 
     @SuppressWarnings("DataFlowIssue")

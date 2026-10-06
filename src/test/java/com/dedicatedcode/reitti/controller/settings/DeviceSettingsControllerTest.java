@@ -19,6 +19,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class DeviceSettingsControllerTest {
@@ -54,7 +55,7 @@ class DeviceSettingsControllerTest {
         String color = "#4ecdc4";
 
         // When
-        mockMvc.perform(post("/settings/devices")
+        mockMvc.perform(post("/settings/devices").with(csrf())
                                 .param("name", deviceName)
                                 .param("color", color)
                                 .param("enabled", "true")
@@ -81,7 +82,7 @@ class DeviceSettingsControllerTest {
         Device device = createDevice("UpdateTest", "#ff6b6b");
 
         // When
-        mockMvc.perform(post("/settings/devices/{deviceId}", device.id())
+        mockMvc.perform(post("/settings/devices/{deviceId}", device.id()).with(csrf())
                                 .param("name", "UpdatedName")
                                 .param("color", "#45b7d1")
                                 .param("enabled", "false")
@@ -110,7 +111,7 @@ class DeviceSettingsControllerTest {
         boolean originalEnabled = device.enabled();
 
         // When
-        mockMvc.perform(post("/settings/devices/{deviceId}/toggle", device.id()).with(user(admin)))
+        mockMvc.perform(post("/settings/devices/{deviceId}/toggle", device.id()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("successMessage"));
 
@@ -133,7 +134,7 @@ class DeviceSettingsControllerTest {
         Device previousDefault = testingService.findDefaultDevice(admin);
 
         // When: set the new device as default
-        mockMvc.perform(post("/settings/devices/{deviceId}/set-default", newDevice.id()).with(user(admin)))
+        mockMvc.perform(post("/settings/devices/{deviceId}/set-default", newDevice.id()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("successMessage"));
 
@@ -160,7 +161,7 @@ class DeviceSettingsControllerTest {
         assertThat(device.defaultDevice()).isFalse();
 
         // When
-        mockMvc.perform(post("/settings/devices/{deviceId}/delete", device.id()).with(user(admin)))
+        mockMvc.perform(post("/settings/devices/{deviceId}/delete", device.id()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("successMessage"));
 
@@ -178,7 +179,7 @@ class DeviceSettingsControllerTest {
                 .orElseThrow();
 
         // When
-        mockMvc.perform(post("/settings/devices/{deviceId}/delete", defaultDevice.id()).with(user(admin)))
+        mockMvc.perform(post("/settings/devices/{deviceId}/delete", defaultDevice.id()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("errorMessage"))
                 .andExpect(model().attributeDoesNotExist("successMessage"));

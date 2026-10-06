@@ -44,7 +44,7 @@ public class MetadataOverrideService {
             });
             override.setProperties(dto.getProperties());
             this.overrideJdbcService.updateOverridePayload(user, override);
-            this.tripJdbcService.update(currentTrip.withMetadata(override.getProperties()));
+            this.tripJdbcService.update(user, currentTrip.withMetadata(override.getProperties()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize and save metadata", e);
         }
@@ -61,7 +61,7 @@ public class MetadataOverrideService {
                     });
             override.setProperties(dto.getProperties());
             this.overrideJdbcService.updateOverridePayload(user, override);
-            this.processedVisitJdbcService.update(currentVisit.withMetadata(override.getProperties()));
+            this.processedVisitJdbcService.update(user, currentVisit.withMetadata(override.getProperties()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize and save metadata", e);
         }

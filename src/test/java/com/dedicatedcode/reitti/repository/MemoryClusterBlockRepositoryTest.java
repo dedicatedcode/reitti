@@ -56,7 +56,7 @@ public class MemoryClusterBlockRepositoryTest {
                         Instant.parse("2007-12-03T11:15:30.00Z"),
                         HeaderType.MAP,
                         null));
-        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
+        MemoryBlock memoryBlock = memoryBlockJdbcService.create(user, new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
         MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Journey to Airport", "A trip from home to the airport", BlockType.CLUSTER_TRIP);
 
         // When
@@ -82,7 +82,7 @@ public class MemoryClusterBlockRepositoryTest {
                         Instant.parse("2007-12-03T11:15:30.00Z"),
                         HeaderType.MAP,
                         null));
-        MemoryBlock memoryBlock = memoryBlockJdbcService.create(new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
+        MemoryBlock memoryBlock = memoryBlockJdbcService.create(user, new MemoryBlock(memory.getId(), BlockType.CLUSTER_TRIP, 0));
         List<Long> tripIds = List.of(4L, 5L);
         MemoryClusterBlock cluster = new MemoryClusterBlock(memoryBlock.getId(), tripIds, "Another Journey", "Description", BlockType.CLUSTER_TRIP);
         repository.save(user, cluster);

@@ -72,7 +72,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
                 this.jobMetadataRepository.updateProgress(taskData.getJobId(), 4, 5, "Flag points as unprocessed ...");
                 rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 this.configurationService.findAllConfigurationsForUser(user)
-                        .forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
+                        .forEach(config -> this.configurationService.updateConfiguration(user, config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
                 this.jobMetadataRepository.updateProgress(taskData.getJobId(), 5, 5, "Starting recalculation ... ");
                 jobSchedulingService.enqueueTask(processingPipelineTask,

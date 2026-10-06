@@ -307,7 +307,7 @@ public class GeoCodingSettingsController {
                 for (SignificantPlace place : allPlaces) {
                     SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
                     this.significantPlaceOverrideJdbcService.clear(currentUser, clearedPlace);
-                    placeJdbcService.update(clearedPlace);
+                    placeJdbcService.update(currentUser, clearedPlace);
                 }
 
                 for (SignificantPlace place : allPlaces) {

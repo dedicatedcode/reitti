@@ -20,6 +20,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class GeoCodingSettingsControllerTest {
@@ -52,7 +53,7 @@ class GeoCodingSettingsControllerTest {
         long countBefore = geocodeServiceJdbcService.count();
 
         // When switching the type and submitting the update with the id
-        mockMvc.perform(post("/settings/geocode-services")
+        mockMvc.perform(post("/settings/geocode-services").with(csrf())
                         .param("id", existing.getId().toString())
                         .param("name", existing.getName())
                         .param("url", "https://nominatim.openstreetmap.org")

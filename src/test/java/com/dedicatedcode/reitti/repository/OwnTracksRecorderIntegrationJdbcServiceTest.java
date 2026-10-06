@@ -25,6 +25,9 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
     @Autowired
     private TestingService testingService;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     private User admin;
     private Device device;
 
@@ -43,7 +46,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
 
     @AfterEach
     void tearDown() {
-        this.service.findByUser(this.testingService.admin()).ifPresent(ownTracksRecorderIntegration -> this.service.delete(ownTracksRecorderIntegration));
+        jdbcTemplate.update("DELETE FROM owntracks_recorder_integration WHERE user_id = ?", this.testingService.admin().getId());
     }
 
     @Test
@@ -136,7 +139,7 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 device.id(),
                 false, Instant.now(), saved.getVersion());
 
-        OwnTracksRecorderIntegration result = service.update(updated);
+        OwnTracksRecorderIntegration result = service.update(this.testingService.admin(), updated);
 
         assertThat(result.getId()).isEqualTo(saved.getId());
         assertThat(result.getBaseUrl()).isEqualTo("http://localhost:8084");
@@ -173,32 +176,11 @@ class OwnTracksRecorderIntegrationJdbcServiceTest {
                 // Wrong version
                 false, null, 999L);
 
-        assertThatThrownBy(() -> service.update(updated))
+        assertThatThrownBy(() -> service.update(this.testingService.admin(), updated))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Optimistic locking failure");
     }
 
-    @Test
-    void delete_WhenIntegrationExists_DeletesSuccessfully() {
-        // First save an integration
-        OwnTracksRecorderIntegration integration = new OwnTracksRecorderIntegration(
-                "http://localhost:8083",
-                "testuser",
-                "device123",
-                true,
-                null,
-                null,
-                device.id()
-        );
-        OwnTracksRecorderIntegration saved = service.save(this.testingService.admin(), integration);
-
-        // Delete it
-        service.delete(saved);
-
-        // Verify it's gone
-        Optional<OwnTracksRecorderIntegration> result = service.findByUser(this.testingService.admin());
-        assertThat(result).isEmpty();
-    }
 
     @Test
     void findByUser_WithDifferentUser_ReturnsEmpty() {

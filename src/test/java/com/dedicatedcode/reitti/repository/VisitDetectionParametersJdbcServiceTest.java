@@ -132,7 +132,7 @@ class VisitDetectionParametersJdbcServiceTest {
         DetectionParameter updatedConfig = new DetectionParameter(
                 savedConfig.getId(), updatedVisitDetection, updatedVisitMerging, updatedLocationDensity, newValidSince, RecalculationState.DONE
         );
-        visitDetectionParametersJdbcService.updateConfiguration(updatedConfig);
+        visitDetectionParametersJdbcService.updateConfiguration(testUser, updatedConfig);
 
         // Then
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
@@ -171,7 +171,7 @@ class VisitDetectionParametersJdbcServiceTest {
         Long configId = savedConfigs.getFirst().getId();
 
         // When
-        visitDetectionParametersJdbcService.delete(configId);
+        visitDetectionParametersJdbcService.delete(testUser, configId);
 
         // Then
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);
@@ -184,7 +184,7 @@ class VisitDetectionParametersJdbcServiceTest {
         Long configId = savedConfigs.getFirst().getId();
 
         // When
-        visitDetectionParametersJdbcService.delete(configId);
+        visitDetectionParametersJdbcService.delete(testUser, configId);
 
         // Then - configuration should still exist because validSince is null
         List<DetectionParameter> detectionParameters = visitDetectionParametersJdbcService.findAllConfigurationsForUser(testUser);

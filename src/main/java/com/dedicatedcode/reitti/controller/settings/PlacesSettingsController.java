@@ -360,7 +360,7 @@ public class PlacesSettingsController {
                 }
 
                 if (!this.placeChangeDetectionService.analyzeChanges(user, placeId, polygonData).canProceed()) {
-                    placeJdbcService.update(updatedPlace);
+                    placeJdbcService.update(user, updatedPlace);
                     log.info("Significant change detected for place [{}]. Will issue a recalculation of all affected dates", significantPlace);
                     this.jobSchedulingService.enqueueTask(locationDataCleanupTask, new DataCleanupService.TaskData(user.getId(), updatedPlace.getId()),
                                                           JobSchedulingService.Metadata.builder()
@@ -370,7 +370,7 @@ public class PlacesSettingsController {
                                                                   .build());
 
                 } else {
-                    placeJdbcService.update(updatedPlace);
+                    placeJdbcService.update(user, updatedPlace);
                 }
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
 
@@ -441,7 +441,7 @@ public class PlacesSettingsController {
                     .withCountryCode(countryCode)
                     .withGeocoded(true);
 
-            placeJdbcService.update(updated);
+            placeJdbcService.update(user, updated);
             significantPlaceOverrideJdbcService.clear(user, updated);
             redirectAttributes.addFlashAttribute("successMessage", i18nService.translate("places.geocode.success", new Object[]{}));
         } catch (Exception e) {
@@ -484,7 +484,7 @@ public class PlacesSettingsController {
             PlaceInfo placeInfo = convertToPlaceInfo(place);
 
             // Get all geocoding responses for this place
-            List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findBySignificantPlace(place);
+            List<GeocodingResponse> geocodingResponses = geocodingResponseJdbcService.findBySignificantPlace(user, place);
 
             model.addAttribute("place", placeInfo);
             model.addAttribute("currentPage", page);

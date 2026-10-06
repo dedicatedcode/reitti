@@ -23,16 +23,6 @@ public class PreviewTripTransportModeJdbcService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<TransportModeSegment> findByTripId(Long tripId) {
-        String sql = "SELECT offset_seconds, duration_in_seconds, transportation_mode, distance_meters FROM preview_trip_transport_modes WHERE trip_id = ? ORDER BY offset_seconds";
-        return jdbcTemplate.query(sql, (rs, _) -> new TransportModeSegment(
-                TransportMode.valueOf(rs.getString("transportation_mode")),
-                rs.getLong("offset_seconds"),
-                rs.getLong("duration_in_seconds"),
-                rs.getDouble("distance_meters")
-        ), tripId);
-    }
-
     public Map<Long, List<TransportModeSegment>> findByTripIds(List<Long> tripIds) {
         if (tripIds == null || tripIds.isEmpty()) {
             return Collections.emptyMap();
@@ -65,17 +55,5 @@ public class PreviewTripTransportModeJdbcService {
                 .map(s -> new Object[]{tripId, s.offsetSeconds(), s.durationSeconds(), s.mode().name(), s.distanceMeters()})
                 .collect(Collectors.toList());
         jdbcTemplate.batchUpdate(sql, batchArgs);
-    }
-
-    public void deleteByTripIds(List<Long> tripIds) {
-        if (tripIds == null || tripIds.isEmpty()) {
-            return;
-        }
-        String placeholders = String.join(",", tripIds.stream().map(id -> "?").toList());
-        jdbcTemplate.update("DELETE FROM preview_trip_transport_modes WHERE trip_id IN (" + placeholders + ")", tripIds.toArray());
-    }
-
-    public void deleteByTripId(Long tripId) {
-        jdbcTemplate.update("DELETE FROM preview_trip_transport_modes WHERE trip_id = ?", tripId);
     }
 }

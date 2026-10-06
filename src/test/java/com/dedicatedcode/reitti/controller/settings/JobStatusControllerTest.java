@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class JobStatusControllerTest {
@@ -99,7 +100,7 @@ class JobStatusControllerTest {
         assertTrue(jobMetadataRepository.findById(child1).isPresent());
         assertTrue(jobMetadataRepository.findById(child2).isPresent());
 
-        mockMvc.perform(delete("/settings/job/{id}", parentId).with(user(admin)))
+        mockMvc.perform(delete("/settings/job/{id}", parentId).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk());
 
         assertFalse(jobMetadataRepository.findById(parentId).isPresent());
@@ -109,7 +110,7 @@ class JobStatusControllerTest {
 
     @Test
     void shouldHandleCancelOfUnknownJob() throws Exception {
-        mockMvc.perform(delete("/settings/job/{id}", UUID.randomUUID()).with(user(admin)))
+        mockMvc.perform(delete("/settings/job/{id}", UUID.randomUUID()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk());
     }
 

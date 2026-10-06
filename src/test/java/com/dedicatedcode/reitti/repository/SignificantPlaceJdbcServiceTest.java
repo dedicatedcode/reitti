@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @IntegrationTest
 class SignificantPlaceJdbcServiceTest {
@@ -140,7 +141,7 @@ class SignificantPlaceJdbcServiceTest {
         );
 
         // When
-        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+        SignificantPlace result = significantPlaceJdbcService.update(testUser, updatedPlace);
 
         // Then
         assertThat(result.getName()).isEqualTo("Updated Name");
@@ -149,6 +150,31 @@ class SignificantPlaceJdbcServiceTest {
         assertThat(result.getType()).isEqualTo(SignificantPlace.PlaceType.RESTAURANT);
         assertThat(result.getTimezone()).isEqualTo(ZoneId.systemDefault());
         assertThat(result.isGeocoded()).isTrue();
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModifyPlace() {
+        // Given
+        SignificantPlace originalPlace = createTestPlace("Original", 53.863149, 10.700927);
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, originalPlace);
+
+        // When
+        assertThatThrownBy(() -> significantPlaceJdbcService.update(otherUser, created.withName("Hijacked")));
+
+        // Then
+        assertThat(significantPlaceJdbcService.findById(created.getId()).orElseThrow().getName()).isEqualTo("Original");
+    }
+
+    @Test
+    void deleteForUser_WithForeignUser_ShouldNotDeletePlaces() {
+        // Given
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, createTestPlace("Keep", 53.863149, 10.700927));
+
+        // When
+        significantPlaceJdbcService.deleteForUser(otherUser, List.of(created));
+
+        // Then
+        assertThat(significantPlaceJdbcService.findById(created.getId())).isPresent();
     }
 
     @Test
@@ -224,7 +250,7 @@ class SignificantPlaceJdbcServiceTest {
                 true, // geocoded = true
                 created1.getVersion()
         );
-        significantPlaceJdbcService.update(updated);
+        significantPlaceJdbcService.update(testUser, updated);
 
         // When
         List<SignificantPlace> nonGeocoded = significantPlaceJdbcService.findNonGeocodedByUser(testUser);
@@ -351,7 +377,7 @@ class SignificantPlaceJdbcServiceTest {
         );
 
         // When
-        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+        SignificantPlace result = significantPlaceJdbcService.update(testUser, updatedPlace);
 
         // Then
         assertThat(result.getPolygon()).isNotNull();
@@ -406,7 +432,7 @@ class SignificantPlaceJdbcServiceTest {
         );
 
         // When
-        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+        SignificantPlace result = significantPlaceJdbcService.update(testUser, updatedPlace);
 
         // Then
         assertThat(result.getPolygon()).isNull();
@@ -466,7 +492,7 @@ class SignificantPlaceJdbcServiceTest {
         );
 
         // When
-        SignificantPlace result = significantPlaceJdbcService.update(updatedPlace);
+        SignificantPlace result = significantPlaceJdbcService.update(testUser, updatedPlace);
 
         // Then
         assertThat(result.getPolygon()).isNotNull();
