@@ -1,0 +1,67 @@
+name: Set up Maven
+description: >-
+  Sets up JDK 25 and restores the repository-wide shared ~/.m2 cache.
+
+  This action deliberately does NOT save the cache. GitHub cache entries are
+  immutable, so only the run that creates an entry defines its contents. If a
+  build that skips tests (mvn verify -DskipTests) created the entry, surefire's
+  provider - which is only ever downloaded by a run that actually executes the
+  test goal - could never be added to it afterwards. Only a test-executing run
+  may write; every other job restores and lets it persist for them.
+
+  Use ./save-maven-cache as the final step of the job that runs the tests.
+
+inputs:
+  java-version:
+    description: JDK version to install.
+    required: false
+    default: '25'
+  distribution:
+    description: JDK distribution to install.
+    required: false
+    default: temurin
+  seed:
+    description: >-
+      On a cache miss, resolve everything the workflows in this repository
+      actually build, so the cache entry is created as complete as possible.
+      Only enable this in the job that saves the cache - seeding in a job that
+      does not save is wasted work.
+    required: false
+    default: 'true'
+
+outputs:
+  cache-key:
+    description: Cache key for ~/.m2/repository, for use by ./save-maven-cache.
+    value: ${{ steps.restore.outputs.cache-key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK ${{ inputs.java-version }}
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.distribution }}
+        cache-jdk: true
+
+    - name: Limit Maven download concurrency
+      shell: bash
+      run: echo "MAVEN_ARGS=-Dmaven.artifact.threads=2" >> "$GITHUB_ENV"
+
+    - name: Restore shared Maven cache
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.m2/repository
+        key: maven-v2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          maven-v2-${{ runner.os }}-
+
+    # Seeded with the heaviest goal any workflow runs. dependency:go-offline was
+    # deliberately avoided: it also resolves the site/install/deploy lifecycle
+    # plugins (doxia, flexmark, jetty), which none of these workflows use and
+    # which would add tens of megabytes to every cache entry.
+    - name: Seed Maven cache
+      if: ${{ inputs.seed == 'true' && steps.restore.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: mvn -B --batch-mode --no-transfer-progress -DskipTests verify

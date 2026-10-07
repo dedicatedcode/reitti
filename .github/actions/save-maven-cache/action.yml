@@ -1,0 +1,25 @@
+name: Save Maven cache
+description: >-
+  Persists ~/.m2/repository to the repository-wide shared cache.
+
+  Use this as the final step of the job that runs the tests, so the entry that
+  gets created also contains surefire's provider and every plugin dependency.
+  Combined with ./setup-maven it is the only place the cache is written, which
+  is what keeps the entry complete forever.
+
+inputs:
+  key:
+    description: >-
+      Cache key to save under. Pass the cache-key output of ./setup-maven so the
+      key is defined in exactly one place.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Save shared Maven cache
+      if: ${{ always() }}
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ inputs.key }}
