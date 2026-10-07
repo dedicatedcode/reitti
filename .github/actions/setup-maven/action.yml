@@ -50,7 +50,7 @@ runs:
 
     - name: Restore shared Maven cache
       id: restore
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ~/.m2/repository
         key: maven-v2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}

@@ -19,7 +19,7 @@ runs:
   steps:
     - name: Save shared Maven cache
       if: ${{ always() }}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/.m2/repository
         key: ${{ inputs.key }}
