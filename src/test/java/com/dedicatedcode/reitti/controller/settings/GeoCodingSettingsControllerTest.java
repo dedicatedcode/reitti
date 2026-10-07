@@ -93,4 +93,26 @@ class GeoCodingSettingsControllerTest {
                 .andExpect(content().string(containsString("name=\"id\"")))
                 .andExpect(content().string(containsString(existing.getId().toString())));
     }
+
+    @Test
+    void getPage_AsRegularUser_ShouldBeForbidden() throws Exception {
+        mockMvc.perform(get("/settings/geocode-services").with(user(testingService.randomUser())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void saveService_AsRegularUser_ShouldBeForbidden() throws Exception {
+        // geocode_services is a server wide table, so regular users must not be able to mutate it
+        long countBefore = geocodeServiceJdbcService.count();
+
+        mockMvc.perform(post("/settings/geocode-services").with(csrf())
+                        .param("name", "Sneaky_" + UUID.randomUUID())
+                        .param("url", "https://photon.example.com")
+                        .param("type", GeocoderType.PHOTON.name())
+                        .param("priority", "1")
+                        .with(user(testingService.randomUser())))
+                .andExpect(status().isForbidden());
+
+        assertThat(geocodeServiceJdbcService.count()).isEqualTo(countBefore);
+    }
 }

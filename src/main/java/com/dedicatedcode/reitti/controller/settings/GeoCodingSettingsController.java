@@ -2,25 +2,14 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.UserType;
-import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceJdbcService;
-import com.dedicatedcode.reitti.repository.SignificantPlaceOverrideJdbcService;
-import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeService;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
-import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
-import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
-import com.dedicatedcode.reitti.service.jobs.JobType;
-import org.quartz.JobDetail;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -36,11 +25,6 @@ public class GeoCodingSettingsController {
 
     private final GeocodeServiceJdbcService geocodeServiceJdbcService;
     private final GeocodeServiceManager geocodeServiceManager;
-    private final SignificantPlaceJdbcService placeJdbcService;
-    private final SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService;
-    private final UserJdbcService userJdbcService;
-    private final JobSchedulingService jobScheduler;
-    private final JobDetail reverseGeocodingTask;
     private final I18nService i18n;
     private final boolean dataManagementEnabled;
     private final int maxErrors;
@@ -49,22 +33,12 @@ public class GeoCodingSettingsController {
 
     public GeoCodingSettingsController(GeocodeServiceJdbcService geocodeServiceJdbcService,
                                        GeocodeServiceManager geocodeServiceManager,
-                                       SignificantPlaceJdbcService placeJdbcService,
-                                       SignificantPlaceOverrideJdbcService significantPlaceOverrideJdbcService,
-                                       UserJdbcService userJdbcService,
-                                       JobSchedulingService jobScheduler,
-                                       @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
                                        I18nService i18n,
                                        @Value("${reitti.geocoding.photon.base-url:}") String photonBaseUrl,
                                        @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                        @Value("${reitti.geocoding.max-errors}") int maxErrors) {
         this.geocodeServiceJdbcService = geocodeServiceJdbcService;
         this.geocodeServiceManager = geocodeServiceManager;
-        this.placeJdbcService = placeJdbcService;
-        this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
-        this.userJdbcService = userJdbcService;
-        this.jobScheduler = jobScheduler;
-        this.reverseGeocodingTask = reverseGeocodingTask;
         this.i18n = i18n;
         this.dataManagementEnabled = dataManagementEnabled;
         this.maxErrors = maxErrors;
@@ -248,90 +222,6 @@ public class GeoCodingSettingsController {
     public String resetGeocodeServiceErrors(@PathVariable Long id, Model model) {
         GeocodeService service = geocodeServiceJdbcService.findById(id).orElseThrow();
         geocodeServiceJdbcService.save(service.resetErrorCount().withEnabled(true));
-        addDefaultModeAttributes(model);
-
-        return "settings/geocode-services :: geocode-services-content";
-    }
-
-    @PostMapping("/run-geocoding")
-    public String runGeocoding(Authentication authentication, Model model) {
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-
-            List<SignificantPlace> nonGeocodedPlaces = placeJdbcService.findNonGeocodedByUser(currentUser);
-
-            if (nonGeocodedPlaces.isEmpty()) {
-                model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
-            } else {
-                for (SignificantPlace place : nonGeocodedPlaces) {
-                    ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
-                            username,
-                            null,
-                            place.getId(),
-                            place.getLatitudeCentroid(),
-                            place.getLongitudeCentroid(),
-                            UUID.randomUUID().toString()
-                    );
-                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
-                                                  JobSchedulingService.Metadata.builder()
-                                                          .user(currentUser)
-                                                          .friendlyName("Manual reverse geocoding")
-                                                          .jobType(JobType.REVERSE_GEOCODE).build());
-                }
-
-                model.addAttribute("successMessage", i18n.translate("geocoding.run.success", nonGeocodedPlaces.size()));
-            }
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", i18n.translate("geocoding.run.error", e.getMessage()));
-        }
-
-        addDefaultModeAttributes(model);
-
-        return "settings/geocode-services :: geocode-services-content";
-    }
-
-    @PostMapping("/clear-and-rerun")
-    public String clearAndRerunGeocoding(Authentication authentication, Model model) {
-        try {
-            String username = authentication.getName();
-            User currentUser = userJdbcService.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-
-            List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(currentUser);
-
-            if (allPlaces.isEmpty()) {
-                model.addAttribute("successMessage", i18n.translate("geocoding.no.places"));
-            } else {
-                for (SignificantPlace place : allPlaces) {
-                    SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
-                    this.significantPlaceOverrideJdbcService.clear(currentUser, clearedPlace);
-                    placeJdbcService.update(currentUser, clearedPlace);
-                }
-
-                for (SignificantPlace place : allPlaces) {
-                    ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
-                            username,
-                            null,
-                            place.getId(),
-                            place.getLatitudeCentroid(),
-                            place.getLongitudeCentroid(),
-                            UUID.randomUUID().toString()
-                    );
-                    this.jobScheduler.enqueueTask(reverseGeocodingTask, event,
-                                                  JobSchedulingService.Metadata.builder()
-                                                          .user(currentUser)
-                                                          .friendlyName("Manual reverse geocoding")
-                                                          .jobType(JobType.REVERSE_GEOCODE).build());
-                }
-
-                model.addAttribute("successMessage", i18n.translate("geocoding.clear.success", allPlaces.size()));
-            }
-        } catch (Exception e) {
-            model.addAttribute("errorMessage", i18n.translate("geocoding.clear.error", e.getMessage()));
-        }
-
         addDefaultModeAttributes(model);
 
         return "settings/geocode-services :: geocode-services-content";

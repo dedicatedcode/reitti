@@ -1668,6 +1668,19 @@ body.auto-update-mode .today-fab {
     font-size: 1.2rem;
 }
 
+.settings-page .settings-nav-separator {
+    padding: 18px 25px 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--color-highlight);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    /* the nav becomes a horizontal flex scroller on small screens */
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .settings-content-area {
     flex: 1;
     padding-bottom: 24px;
@@ -1791,6 +1804,16 @@ body.auto-update-mode .today-fab {
     .settings-page .settings-nav-item.active {
         border-left: none;
         border-bottom-color: var(--color-highlight);
+    }
+
+    /* in the horizontal scroller a top border would only span the label, so use a vertical rule */
+    .settings-page .settings-nav-separator {
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        border-top: none;
+        border-left: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 0 10px;
     }
 
     .settings-content-area {

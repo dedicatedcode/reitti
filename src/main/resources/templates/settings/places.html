@@ -78,6 +78,42 @@
                                 th:text="#{form.next}">Next</button>
                     </div>
                 </div>
+
+                <div class="settings-card">
+                    <h3 th:text="#{geocoding.execution.title}">Geocoding Execution</h3>
+                    <p th:text="#{geocoding.execution.description}">Manually trigger geocoding operations for your
+                        significant places</p>
+
+                    <div class="action-card">
+                        <h4 th:text="#{geocoding.run.title}">Run Geocoding</h4>
+                        <p th:text="#{geocoding.run.description}">Process all significant places that haven't been
+                            geocoded yet</p>
+                        <button class="btn"
+                                th:attr="hx-post=@{/settings/places/run-geocoding(page=${currentPage}, search=${search})}, hx-confirm=#{geocoding.run.confirm}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
+                                hx-indicator="#run-geocode-spinner">
+                            <span class="button-text" th:text="#{geocoding.run.button}">Start Geocoding</span>
+                            <span id="run-geocode-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+                        </button>
+                    </div>
+                    <div class="action-card">
+                        <h4 th:text="#{geocoding.clear.title}">Clear and Re-geocode All</h4>
+                        <p th:text="#{geocoding.clear.description}">Clear all existing geocoding data and re-process all
+                            significant places</p>
+                        <div class="alert alert-warning">
+                            <strong><span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
+                        </div>
+                        <button class="btn btn-danger"
+                                th:attr="hx-post=@{/settings/places/clear-and-rerun(page=${currentPage}, search=${search})}, hx-confirm=#{geocoding.clear.confirm}"
+                                hx-target="#places-management"
+                                hx-swap="innerHTML"
+                                hx-indicator="#clear-re-geocode-spinner">
+                            <span class="button-text" th:text="#{geocoding.clear.button}">Clear and Re-geocode</span>
+                            <span id="clear-re-geocode-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
