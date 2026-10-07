@@ -7,6 +7,7 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +24,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CsrfProtectionIntegrationTest {
 
     private static final String CSRF_COOKIE = "XSRF-TOKEN";
+
+    /**
+     * Forces this test class onto its own application context.
+     */
+    @TestConfiguration(proxyBeanMethods = false)
+    static class DedicatedContext {
+    }
 
     @Autowired
     private MockMvc mockMvc;
