@@ -69,12 +69,10 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.tag }}
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v5
+      - name: Set up Maven
+        uses: ./.github/actions/setup-maven
         with:
-          java-version: '25'
-          distribution: 'temurin'
-          cache: maven
+          seed: 'false'
 
       - name: Install dependencies for acknowledgments script
         run: sudo apt-get update && sudo apt-get install -y jq curl
