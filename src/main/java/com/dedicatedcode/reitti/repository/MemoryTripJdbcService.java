@@ -42,7 +42,7 @@ public class MemoryTripJdbcService {
         return memoryTrip.withId(generatedId);
     }
 
-    public List<MemoryTrip> findByMemoryBlockId(Long memoryBlockId) {
+    public List<MemoryTrip> findByMemoryBlockId(User user, Long memoryBlockId) {
         String sql = """
             SELECT mt.id, mt.start_time, mt.end_time, mt.original_id,
                            sv.id as start_visit_id, sv.name as start_visit_name, sv.start_time as start_visit_start_time, sv.original_id as start_visit_original_id,
@@ -52,16 +52,16 @@ public class MemoryTripJdbcService {
             FROM memory_trips mt
             LEFT JOIN memory_visits sv ON mt.start_visit_id = sv.id
             LEFT JOIN memory_visits ev ON mt.end_visit_id = ev.id
-            WHERE mt.memory_block_id = ?
+            WHERE mt.memory_block_id = ? AND mt.user_id = ?
             ORDER BY mt.start_time
             """;
-        
-        return jdbcTemplate.query(sql, new MemoryTripRowMapper(), memoryBlockId);
+
+        return jdbcTemplate.query(sql, new MemoryTripRowMapper(), memoryBlockId, user.getId());
     }
 
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM memory_trips WHERE id = ?";
-        jdbcTemplate.update(sql, id);
+    public void deleteById(User user, Long id) {
+        String sql = "DELETE FROM memory_trips WHERE id = ? AND user_id = ?";
+        jdbcTemplate.update(sql, id, user.getId());
     }
 
     private static class MemoryTripRowMapper implements RowMapper<MemoryTrip> {

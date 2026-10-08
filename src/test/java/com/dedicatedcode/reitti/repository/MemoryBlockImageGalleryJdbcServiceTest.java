@@ -58,7 +58,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         testMemory = memoryJdbcService.create(testUser, memory);
 
         MemoryBlock block = new MemoryBlock(testMemory.getId(), BlockType.IMAGE_GALLERY, 0);
-        testBlock = memoryBlockJdbcService.create(block);
+        testBlock = memoryBlockJdbcService.create(testUser, block);
     }
 
     @Test
@@ -70,7 +70,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
 
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
         assertEquals(testBlock.getId(), created.getBlockId());
         assertEquals(2, created.getImages().size());
@@ -87,7 +87,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
         List<MemoryBlockImageGallery.GalleryImage> updatedImages = List.of(
                 new MemoryBlockImageGallery.GalleryImage("https://example.com/image1.jpg", "Updated Caption", null, null),
@@ -95,7 +95,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery updated = created.withImages(updatedImages);
-        MemoryBlockImageGallery result = memoryBlockImageGalleryJdbcService.update(updated);
+        MemoryBlockImageGallery result = memoryBlockImageGalleryJdbcService.update(testUser, updated);
 
         assertEquals(2, result.getImages().size());
         assertEquals("Updated Caption", result.getImages().get(0).getCaption());
@@ -109,11 +109,11 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        memoryBlockImageGalleryJdbcService.create(gallery);
+        memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
-        memoryBlockImageGalleryJdbcService.delete(testBlock.getId());
+        memoryBlockImageGalleryJdbcService.delete(testUser, testBlock.getId());
 
-        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(testBlock.getId());
+        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId());
         assertFalse(found.isPresent());
     }
 
@@ -125,11 +125,11 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        memoryBlockImageGalleryJdbcService.create(gallery);
+        memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
-        memoryBlockImageGalleryJdbcService.deleteByBlockId(testBlock.getId());
+        memoryBlockImageGalleryJdbcService.delete(testUser, testBlock.getId());
 
-        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId());
         assertTrue(galleries.isEmpty());
     }
 
@@ -140,9 +140,9 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        memoryBlockImageGalleryJdbcService.create(gallery);
+        memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
-        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findById(testBlock.getId());
+        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId());
 
         assertTrue(found.isPresent());
         assertEquals(testBlock.getId(), found.get().getBlockId());
@@ -159,9 +159,9 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        memoryBlockImageGalleryJdbcService.create(gallery);
+        memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
-        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockImageGallery> galleries = memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId());
 
         assertTrue(galleries.isPresent());
         assertEquals(3, galleries.get().getImages().size());
@@ -178,7 +178,7 @@ class MemoryBlockImageGalleryJdbcServiceTest {
         );
 
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), images);
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
         assertNull(created.getImages().get(0).getCaption());
         assertEquals("Caption 2", created.getImages().get(1).getCaption());
@@ -187,8 +187,54 @@ class MemoryBlockImageGalleryJdbcServiceTest {
     @Test
     void testCreateEmptyGallery() {
         MemoryBlockImageGallery gallery = new MemoryBlockImageGallery(testBlock.getId(), List.of());
-        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(gallery);
+        MemoryBlockImageGallery created = memoryBlockImageGalleryJdbcService.create(testUser, gallery);
 
         assertTrue(created.getImages().isEmpty());
+    }
+
+    @Test
+    void findByBlockId_WithForeignUser_ShouldReturnEmpty() {
+        User otherUser = testingService.randomUser();
+        memoryBlockImageGalleryJdbcService.create(testUser, new MemoryBlockImageGallery(testBlock.getId(), List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/secret.jpg", null, null, null))));
+
+        Optional<MemoryBlockImageGallery> found = memoryBlockImageGalleryJdbcService.findByBlockId(otherUser, testBlock.getId());
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void create_WithForeignUser_ShouldNotInsert() {
+        User otherUser = testingService.randomUser();
+
+        assertThrows(IllegalStateException.class, () -> memoryBlockImageGalleryJdbcService.create(
+                otherUser, new MemoryBlockImageGallery(testBlock.getId(), List.of(
+                        new MemoryBlockImageGallery.GalleryImage("https://example.com/hijacked.jpg", null, null, null)))));
+
+        assertTrue(memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId()).isEmpty());
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModify() {
+        User otherUser = testingService.randomUser();
+        memoryBlockImageGalleryJdbcService.create(testUser, new MemoryBlockImageGallery(testBlock.getId(), List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/original.jpg", null, null, null))));
+
+        memoryBlockImageGalleryJdbcService.update(otherUser, new MemoryBlockImageGallery(testBlock.getId(), List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/hijacked.jpg", null, null, null))));
+
+        MemoryBlockImageGallery found = memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId()).orElseThrow();
+        assertEquals("https://example.com/original.jpg", found.getImages().get(0).getImageUrl());
+    }
+
+    @Test
+    void delete_WithForeignUser_ShouldNotDelete() {
+        User otherUser = testingService.randomUser();
+        memoryBlockImageGalleryJdbcService.create(testUser, new MemoryBlockImageGallery(testBlock.getId(), List.of(
+                new MemoryBlockImageGallery.GalleryImage("https://example.com/keep.jpg", null, null, null))));
+
+        memoryBlockImageGalleryJdbcService.delete(otherUser, testBlock.getId());
+
+        assertTrue(memoryBlockImageGalleryJdbcService.findByBlockId(testUser, testBlock.getId()).isPresent());
     }
 }

@@ -63,23 +63,29 @@ public class ProcessingPipelineTask implements Job {
     public void execute(TaskData event) {
         Optional<User> byUsername = this.userJdbcService.findByUsername(event.getUsername());
         if (byUsername.isPresent()) {
-            handleDataForUser(event.getJobId(), byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId());
+            handleDataForUser(event.getJobId(), byUsername.get(), event.getPreviewId(), event.getTraceId(), event.getParentJobId(), event.isFullReprocess());
         } else {
             log.warn("No user found for username: {}", event.getUsername());
         }
     }
 
-    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId) {
-        AtomicInteger totalProcessed = new AtomicInteger();
-
-        long maxPoints = this.rawLocationPointJdbcService.countUnprocessedByUser(user);
+    private void handleDataForUser(UUID jobId, User user, String previewId, String traceId, UUID parentJobId, boolean fullReprocess) {
         userProcessingLock.locked(user, () -> {
+            long maxPoints = fullReprocess
+                    ? this.rawLocationPointJdbcService.countByUser(user)
+                    : this.rawLocationPointJdbcService.countUnprocessedByUser(user);
+
+            AtomicInteger totalProcessed = new AtomicInteger();
+            KeysetCursor cursor = new KeysetCursor();
+
             while (true) {
                 List<RawLocationPoint> currentBatch = null;
                 Instant earliest = null;
                 Instant latest = null;
                 try {
-                    if (previewId == null) {
+                    if (fullReprocess) {
+                        currentBatch = rawLocationPointJdbcService.findByUserOrderByTimestampWithKeyset(user, cursor.timestamp, batchSize);
+                    } else if (previewId == null) {
                         currentBatch = rawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, batchSize, 0);
                     } else {
                         currentBatch = previewRawLocationPointJdbcService.findByUserAndProcessedIsFalseOrderByTimestampWithLimit(user, previewId, batchSize, 0);
@@ -96,7 +102,10 @@ public class ProcessingPipelineTask implements Job {
 
                     LocationProcessEvent data = new LocationProcessEvent(user.getUsername(), earliest, latest, previewId, traceId, parentJobId);
                     locationProcessTask.processLocationEvent(data);
-                    markProcessed(currentBatch, previewId);
+                    if (!fullReprocess) {
+                        markProcessed(currentBatch, previewId);
+                    }
+                    cursor.advanceTo(currentBatch);
                     batchFailureTracker.clear(user, earliest);
                     totalProcessed.addAndGet(currentBatch.size());
                     jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
@@ -105,9 +114,12 @@ public class ProcessingPipelineTask implements Job {
                         batchFailureTracker.recordFailure(user, earliest);
                     }
                     if (earliest != null && batchFailureTracker.exceedsLimit(user, earliest)) {
-                        log.error("Batch for user [{}] between [{}] and [{}] failed [{}] times in a row. Marking [{}] point(s) as processed anyway to keep the pipeline going. Data in this range may be incomplete.",
+                        log.error("Batch for user [{}] between [{}] and [{}] failed [{}] times in a row. Skipping [{}] point(s) to keep the pipeline going. Data in this range may be incomplete.",
                                 user.getUsername(), earliest, latest, BatchFailureTracker.MAX_CONSECUTIVE_FAILURES, currentBatch.size(), e);
-                        markProcessed(currentBatch, previewId);
+                        if (!fullReprocess) {
+                            markProcessed(currentBatch, previewId);
+                        }
+                        cursor.advanceTo(currentBatch);
                         batchFailureTracker.clear(user, earliest);
                         totalProcessed.addAndGet(currentBatch.size());
                         jobMetadataRepository.updateProgress(jobId, totalProcessed.get(), maxPoints, "Processing...");
@@ -119,8 +131,20 @@ public class ProcessingPipelineTask implements Job {
                     }
                 }
             }
+            log.debug("Processed [{}] points for user [{}] (full reprocess: [{}])", totalProcessed.get(), user.getId(), fullReprocess);
         });
-        log.debug("Processed [{}] unprocessed points for user [{}]", totalProcessed.get(), user.getId());
+    }
+
+    /**
+     * Resumable (timestamp) keyset cursor, used only in full reprocess mode; in incremental mode
+     * the {@code processed} flag is what keeps the next read from returning the rows we just handled.
+     */
+    private static final class KeysetCursor {
+        private Instant timestamp;
+
+        private void advanceTo(List<RawLocationPoint> batch) {
+            this.timestamp = batch.getLast().getTimestamp();
+        }
     }
 
     private void markProcessed(List<RawLocationPoint> batch, String previewId) {
@@ -136,6 +160,7 @@ public class ProcessingPipelineTask implements Job {
         private final String previewId;
         private final Instant receivedAt;
         private final String traceId;
+        private final boolean fullReprocess;
 
         public TaskData(
                 String username,
@@ -150,7 +175,7 @@ public class ProcessingPipelineTask implements Job {
                 String traceId,
                 UUID jobId,
                 UUID parentJobId) {
-            this(username, previewId, traceId, Instant.now(), jobId, parentJobId);
+            this(username, previewId, traceId, Instant.now(), jobId, parentJobId, false);
         }
 
         @JsonCreator
@@ -159,12 +184,24 @@ public class ProcessingPipelineTask implements Job {
                         @JsonProperty("traceId") String traceId,
                         @JsonProperty("receivedAt") Instant receivedAt,
                         @JsonProperty("jobId") UUID jobId,
-                        @JsonProperty("parentJobId") UUID parentJobId) {
+                        @JsonProperty("parentJobId") UUID parentJobId,
+                        @JsonProperty("fullReprocess") Boolean fullReprocess) {
+            this(username, previewId, traceId, receivedAt, jobId, parentJobId, fullReprocess != null && fullReprocess);
+        }
+
+        private TaskData(String username,
+                         String previewId,
+                         String traceId,
+                         Instant receivedAt,
+                         UUID jobId,
+                         UUID parentJobId,
+                         boolean fullReprocess) {
             super(jobId, parentJobId);
             this.username = username;
             this.previewId = previewId;
             this.traceId = traceId;
             this.receivedAt = receivedAt != null ? receivedAt : Instant.now();
+            this.fullReprocess = fullReprocess;
         }
 
         public static TaskData fromJson(String json) {
@@ -187,14 +224,22 @@ public class ProcessingPipelineTask implements Job {
             return traceId;
         }
 
+        public boolean isFullReprocess() {
+            return fullReprocess;
+        }
+
+        public TaskData withFullReprocess() {
+            return new TaskData(username, previewId, traceId, receivedAt, jobId, parentJobId, true);
+        }
+
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(username, previewId, traceId, jobId, parentJobId);
+            return new TaskData(username, previewId, traceId, receivedAt, jobId, parentJobId, fullReprocess);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(username, previewId, traceId, jobId, parentJobId);
+            return new TaskData(username, previewId, traceId, receivedAt, jobId, parentJobId, fullReprocess);
         }
 
         @Override
@@ -204,6 +249,7 @@ public class ProcessingPipelineTask implements Job {
                     ", previewId='" + previewId + '\'' +
                     ", receivedAt=" + receivedAt +
                     ", traceId=" + traceId +
+                    ", fullReprocess=" + fullReprocess +
                     '}';
         }
     }

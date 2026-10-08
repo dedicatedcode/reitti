@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class PlacesEditorIntegrationTest {
@@ -93,7 +94,7 @@ class PlacesEditorIntegrationTest {
 
     @Test
     void shouldKeepEditorOpenWhenSavingWithoutReturnUrl() throws Exception {
-        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(user(user))
+        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(csrf()).with(user(user))
                         .param("name", "Renamed Place")
                         .param("polygonData", ""))
                 .andExpect(status().isOk())
@@ -106,7 +107,7 @@ class PlacesEditorIntegrationTest {
 
     @Test
     void shouldRedirectToReturnUrlWhenSavingWithReturnUrl() throws Exception {
-        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(user(user))
+        mockMvc.perform(post("/settings/places/{id}/update", place.getId()).with(csrf()).with(user(user))
                         .param("name", place.getName())
                         .param("polygonData", "")
                         .param("returnUrl", "/settings/places?page=0&search="))
@@ -178,7 +179,7 @@ class PlacesEditorIntegrationTest {
                 place.getId(), 53.55, 9.99,
                 Instant.parse("2026-08-23T08:26:20Z"), Instant.parse("2026-08-23T08:55:17Z")));
 
-        mockMvc.perform(post("/settings/places/suppressed/{id}/restore", tombstone.id()).with(user(user)))
+        mockMvc.perform(post("/settings/places/suppressed/{id}/restore", tombstone.id()).with(csrf()).with(user(user)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("No suppressed visits.")));
 
@@ -232,7 +233,7 @@ class PlacesEditorIntegrationTest {
     void shouldCreateAndListNoVisitZones() throws Exception {
         String polygonData = "[{\"lat\":53.5,\"lng\":9.9},{\"lat\":53.6,\"lng\":9.9},{\"lat\":53.6,\"lng\":10.0}]";
 
-        String body = mockMvc.perform(post("/settings/places/zones")
+        String body = mockMvc.perform(post("/settings/places/zones").with(csrf())
                         .param("name", "Bus Stop Area")
                         .param("polygonData", polygonData)
                         .with(user(user)))
@@ -253,7 +254,7 @@ class PlacesEditorIntegrationTest {
 
     @Test
     void shouldRejectZoneWithInvalidPolygon() throws Exception {
-        mockMvc.perform(post("/settings/places/zones")
+        mockMvc.perform(post("/settings/places/zones").with(csrf())
                         .param("name", "Too Small")
                         .param("polygonData", "[{\"lat\":53.5,\"lng\":9.9},{\"lat\":53.6,\"lng\":9.9}]")
                         .with(user(user)))
@@ -267,7 +268,7 @@ class PlacesEditorIntegrationTest {
         NoVisitZone zone = noVisitZoneJdbcService.create(user, new NoVisitZone("My Zone", List.of(
                 new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
 
-        String body = mockMvc.perform(post("/settings/places/zones/{id}/delete", zone.id()).with(user(user)))
+        String body = mockMvc.perform(post("/settings/places/zones/{id}/delete", zone.id()).with(csrf()).with(user(user)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -281,7 +282,7 @@ class PlacesEditorIntegrationTest {
                 new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
 
         String polygonData = "[{\"lat\":53.7,\"lng\":10.1},{\"lat\":53.8,\"lng\":10.1},{\"lat\":53.8,\"lng\":10.2}]";
-        String body = mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id())
+        String body = mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id()).with(csrf())
                         .param("polygonData", polygonData)
                         .with(user(user)))
                 .andExpect(status().isOk())
@@ -302,7 +303,7 @@ class PlacesEditorIntegrationTest {
         NoVisitZone zone = noVisitZoneJdbcService.create(user, new NoVisitZone("Stable Zone", List.of(
                 new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
 
-        mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id())
+        mockMvc.perform(post("/settings/places/zones/{id}/update", zone.id()).with(csrf())
                         .param("polygonData", "[{\"lat\":53.7,\"lng\":10.1}]")
                         .with(user(user)))
                 .andExpect(status().isBadRequest());
@@ -320,7 +321,7 @@ class PlacesEditorIntegrationTest {
         NoVisitZone zone = noVisitZoneJdbcService.create(other, new NoVisitZone("Foreign Zone", List.of(
                 new GeoPoint(53.5, 9.9), new GeoPoint(53.6, 9.9), new GeoPoint(53.6, 10.0))));
 
-        mockMvc.perform(post("/settings/places/zones/{id}/delete", zone.id()).with(user(user)))
+        mockMvc.perform(post("/settings/places/zones/{id}/delete", zone.id()).with(csrf()).with(user(user)))
                 .andExpect(status().isNotFound());
     }
 }

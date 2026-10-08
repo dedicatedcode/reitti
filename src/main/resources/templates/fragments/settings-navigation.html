@@ -66,13 +66,6 @@
            th:title="#{settings.map.styles.description}"
            th:text="#{settings.map.styles}">Map Styles</a>
 
-        <a th:href="@{/settings/geocode-services}"
-           th:unless="${isLiveDataOnly}"
-           class="settings-nav-item"
-           th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
-           th:title="#{settings.geocoding.description}"
-           th:text="#{settings.geocoding}">Geocoding</a>
-
         <a th:href="@{/settings/manage-data}"
            th:if="${dataManagementEnabled}"
            th:unless="${isLiveDataOnly}"
@@ -91,12 +84,25 @@
            th:classappend="${activeSection == 'devices'} ? 'active' : ''"
            th:title="#{settings.devices.description}"
            th:text="#{settings.devices}">Devices</a>
+        <div th:if="${isAdmin}" class="settings-nav-separator">
+            <span th:text="#{settings.server.section}">Server Settings</span>
+        </div>
+
+        <a th:href="@{/settings/geocode-services}"
+           th:if="${isAdmin}"
+           th:unless="${isLiveDataOnly}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'geocode-services'} ? 'active' : ''"
+           th:title="#{settings.geocoding.description}"
+           th:text="#{settings.geocoding}">Geocoding</a>
+
         <a th:href="@{/settings/logging}"
            th:if="${isAdmin}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'logging'} ? 'active' : ''"
            th:title="#{settings.logging.description}"
            th:text="#{settings.logging}">Logging</a>
+
         <a th:href="@{/settings/about}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'about'} ? 'active' : ''"

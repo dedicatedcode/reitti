@@ -68,8 +68,14 @@ public class MemoryBlockController {
         
         memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
-        memoryService.deleteBlock(blockId);
+
+        MemoryBlock block = memoryService.getBlockById(user, blockId)
+                .orElseThrow(() -> new IllegalArgumentException("Block not found"));
+        if (!block.getMemoryId().equals(memoryId)) {
+            throw new IllegalArgumentException("Block does not belong to this memory");
+        }
+
+        memoryService.deleteBlock(user, blockId);
         
         if (hxRequest != null) {
             return "memories/fragments :: empty";
@@ -114,7 +120,7 @@ public class MemoryBlockController {
                 memoryService.getBlock(user, timezone, memoryId, blockId).ifPresent(b ->
                         model.addAttribute("clusterVisitBlock", b));
                 List<ProcessedVisit> storedVisits = this.processedVisitJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate() != null ? memory.getEndDate() : Instant.now());
-                List<MemoryVisit> currentMemoryVisits = memoryVisitJdbcService.findByMemoryBlockId(blockId);
+                List<MemoryVisit> currentMemoryVisits = memoryVisitJdbcService.findByMemoryBlockId(user, blockId);
                 List<VisitDTO> availableVisits = new ArrayList<>();
                 currentMemoryVisits.stream()
                         .map(v -> VisitDTO.create(v, timezone))
@@ -127,7 +133,7 @@ public class MemoryBlockController {
                 return "memories/blocks/edit :: edit-cluster-visit-block";
             case CLUSTER_TRIP:
                 List<Trip> storedTrips = this.tripJdbcService.findByUserAndTimeOverlap(user, memory.getStartDate(), memory.getEndDate() != null ? memory.getEndDate() : Instant.now());
-                List<MemoryTrip> currentMemoryTrips = memoryTripJdbcService.findByMemoryBlockId(blockId);
+                List<MemoryTrip> currentMemoryTrips = memoryTripJdbcService.findByMemoryBlockId(user, blockId);
                 List<TripDTO> availableTrips = new ArrayList<>();
                 currentMemoryTrips.stream().map(v -> TripDTO.create(v, timezone))
                         .forEach(availableTrips::add);
@@ -182,7 +188,7 @@ public class MemoryBlockController {
 
         List<Long> partIds = new ArrayList<>();
         if (block.getType() == BlockType.CLUSTER_TRIP) {
-            List<MemoryTrip> persistedTrips = this.memoryTripJdbcService.findByMemoryBlockId(blockId);
+            List<MemoryTrip> persistedTrips = this.memoryTripJdbcService.findByMemoryBlockId(user, blockId);
 
             for (String selectedPart : selectedParts) {
                 String type = selectedPart.substring(0, selectedPart.lastIndexOf("-"));
@@ -194,7 +200,7 @@ public class MemoryBlockController {
                         persistedTrips.remove(knownMemoryTrip);
                         break;
                     case "t":
-                        Trip trip = this.tripJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                        Trip trip = this.tripJdbcService.findById(user, partId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
                         MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getBlockId(), trip.getStartVisit().getId());
                         MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getBlockId(), trip.getEndVisit().getId());
                         MemoryTrip persistedMemoryTrip = this.memoryTripJdbcService.save(user, MemoryTrip.create(trip, startVisit, endVisit), block.getBlockId(), trip.getId());
@@ -204,9 +210,9 @@ public class MemoryBlockController {
                         throw new IllegalArgumentException("Invalid part id [" + selectedPart + "] detected");
                 }
             }
-            persistedTrips.forEach(mt -> memoryTripJdbcService.deleteById(mt.getId()));
+            persistedTrips.forEach(mt -> memoryTripJdbcService.deleteById(user, mt.getId()));
         } else if (block.getType() == BlockType.CLUSTER_VISIT) {
-            List<MemoryVisit> persistedVisits = this.memoryVisitJdbcService.findByMemoryBlockId(blockId);
+            List<MemoryVisit> persistedVisits = this.memoryVisitJdbcService.findByMemoryBlockId(user, blockId);
             for (String selectedPart : selectedParts) {
                 String type = selectedPart.substring(0, selectedPart.lastIndexOf("-"));
                 long partId = Long.parseLong(selectedPart.substring(selectedPart.lastIndexOf("-") + 4));
@@ -217,7 +223,7 @@ public class MemoryBlockController {
                         persistedVisits.remove(knownMemoryVisit);
                         break;
                     case "v":
-                        ProcessedVisit visit = this.processedVisitJdbcService.findById(partId).orElseThrow(() -> new IllegalArgumentException("ProcessedVisit not found"));
+                        ProcessedVisit visit = this.processedVisitJdbcService.findById(user, partId).orElseThrow(() -> new IllegalArgumentException("ProcessedVisit not found"));
                         MemoryVisit persistedMemoryVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(visit), block.getBlockId(), visit.getId());
                         partIds.add(persistedMemoryVisit.getId());
                         break;
@@ -225,7 +231,7 @@ public class MemoryBlockController {
                         throw new IllegalArgumentException("Invalid part id [" + selectedPart + "] detected");
                 }
             }
-            persistedVisits.forEach(mt -> memoryVisitJdbcService.deleteById(mt.getId()));
+            persistedVisits.forEach(mt -> memoryVisitJdbcService.deleteById(user, mt.getId()));
         } else {
             throw new IllegalArgumentException("Invalid block type [" + block.getType() + "] detected");
         }
@@ -292,7 +298,7 @@ public class MemoryBlockController {
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.TEXT);
-        memoryService.addTextBlock(block.getId(), headline, content);
+        memoryService.addTextBlock(user, block.getId(), headline, content);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
@@ -313,7 +319,7 @@ public class MemoryBlockController {
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
-        MemoryBlockText textBlock = memoryService.getTextBlock(blockId)
+        MemoryBlockText textBlock = memoryService.getTextBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
 
         MemoryBlockText updated = textBlock.withHeadline(headline).withContent(content);
@@ -350,7 +356,7 @@ public class MemoryBlockController {
             throw new IllegalArgumentException("No images selected");
         }
 
-        memoryService.addImageGalleryBlock(block.getId(), imageBlocks);
+        memoryService.addImageGalleryBlock(user, block.getId(), imageBlocks);
         
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(memoryService.getBlock(user, timezone, memoryId, block.getId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
@@ -371,7 +377,7 @@ public class MemoryBlockController {
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
 
-        MemoryBlockImageGallery imageBlock = memoryService.getImagesForBlock(blockId);
+        MemoryBlockImageGallery imageBlock = memoryService.getImagesForBlock(user, blockId);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
         if (uploadedUrls != null) {

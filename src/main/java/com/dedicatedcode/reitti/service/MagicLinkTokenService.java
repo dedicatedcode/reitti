@@ -79,7 +79,7 @@ public class MagicLinkTokenService {
         magicLinkJdbcService.updateLastUsed(tokenId);
     }
     
-    public void deleteToken(long tokenId) {
-        magicLinkJdbcService.delete(tokenId);
+    public void deleteToken(User user, long tokenId) {
+        magicLinkJdbcService.delete(user, tokenId);
     }
 }

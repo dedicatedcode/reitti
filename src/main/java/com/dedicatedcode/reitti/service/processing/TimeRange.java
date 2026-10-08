@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.time.Instant;
 
 public record TimeRange(Instant start, Instant end) implements Serializable {
+    public static TimeRange unbound() {
+        return new TimeRange(Instant.MIN, Instant.MAX);
+    }
+
     public static TimeRange empty() {
         return new TimeRange(null, null);
     }
@@ -21,5 +25,13 @@ public record TimeRange(Instant start, Instant end) implements Serializable {
         Instant start = this.start == null ? other.start : this.start.isBefore(other.start) ? this.start : other.start;
         Instant end = this.end == null ? other.end : this.end.isAfter(other.end) ? this.end : other.end;
         return new TimeRange(start, end);
+    }
+
+    public boolean contains(TimeRange o) {
+        if (this.equals(empty())) {
+            return false;
+        }
+
+        return this.start.compareTo(o.start) <= 0 && this.end.compareTo(o.end) >= 0;
     }
 }

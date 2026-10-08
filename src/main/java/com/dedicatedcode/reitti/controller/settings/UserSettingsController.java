@@ -30,12 +30,15 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static com.dedicatedcode.reitti.model.Role.ADMIN;
+import static com.dedicatedcode.reitti.model.Role.USER;
 
 @Controller
 @RequestMapping("/settings")
 public class UserSettingsController {
+    private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{3,8}$");
 
     private final UserJdbcService userJdbcService;
     private final UserService userService;
@@ -217,6 +220,11 @@ public class UserSettingsController {
             model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, currentUser);
         }
+
+        if (color != null && !HEX_COLOR.matcher(color).matches()) {
+            throw new IllegalStateException("Color is in an invalid format. Only hex format is supported");
+        }
+
         try {
             if (StringUtils.hasText(username) && StringUtils.hasText(displayName) && StringUtils.hasText(password)) {
 
@@ -289,10 +297,10 @@ public class UserSettingsController {
                              @RequestParam(required = false)  String username,
                              @RequestParam(required = false)  String displayName,
                              @RequestParam(required = false) String password,
-                              @RequestParam(defaultValue = "USER") Role role,
-                              @RequestParam(defaultValue = "NORMAL") UserType userType,
-                              @RequestParam(required = false) String _confirmLiveDataOnly,
-                              @RequestParam Language preferred_language,
+                             @RequestParam(defaultValue = "USER") Role role,
+                             @RequestParam(defaultValue = "NORMAL") UserType userType,
+                             @RequestParam(required = false) String _confirmLiveDataOnly,
+                             @RequestParam Language preferred_language,
                              @RequestParam(defaultValue = "METRIC") String unit_system,
                              @RequestParam(required = false) Double homeLatitude,
                              @RequestParam(required = false) Double homeLongitude,
@@ -309,7 +317,7 @@ public class UserSettingsController {
                              Authentication authentication,
                              HttpServletRequest request,
                              HttpServletResponse response,
-                             Model model) {
+                             Model model) throws IllegalAccessException {
         String currentUsername = authentication.getName();
         User authenticatedUser = userJdbcService.findByUsername(currentUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + currentUsername));
@@ -321,6 +329,23 @@ public class UserSettingsController {
         if (!isCurrentUser && ADMIN != authenticatedUser.getRole()) {
             model.addAttribute("errorMessage", i18nService.translate("message.error.access.denied"));
             return getUserContent(model, authenticatedUser);
+        }
+
+        // Only admins can edit a role of a user, including themselves and promotion to ADMIN.
+        if (ADMIN != authenticatedUser.getRole() && USER != role) {
+            throw new IllegalAccessException("Only admins can edit a role of a user");
+        }
+
+        //make sure at least one admin will remain
+        if (ADMIN == authenticatedUser.getRole() && USER == role) {
+            if (this.userJdbcService.findAll().stream().filter(u -> u.getRole() == ADMIN).count() < 2) {
+                model.addAttribute("errorMessage", i18nService.translate("users.role.admin.last.demotion.error"));
+                return getUserContent(model, authenticatedUser);
+            }
+        }
+
+        if (color != null && !HEX_COLOR.matcher(color).matches()) {
+            throw new IllegalStateException("Color is in an invalid format. Only hex format is supported");
         }
 
         try {

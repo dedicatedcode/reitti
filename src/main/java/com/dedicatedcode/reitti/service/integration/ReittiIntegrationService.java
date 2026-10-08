@@ -72,13 +72,13 @@ public class ReittiIntegrationService {
 
                     log.debug("Fetching user timeline data range for [{}] from {} to {}", integration, startDate, endDate);
                     try {
-                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, handleRemoteUser(integration), Collections.emptyList(), null);
+                        return buildUserTimelineData(user, startDate, endDate, userTimezone, integration, handleRemoteUser(integration), Collections.emptyList(), null);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
                     return null;
                 }).toList();
@@ -95,13 +95,13 @@ public class ReittiIntegrationService {
                         RemoteUser remoteUser = handleRemoteUser(integration);
                         List<SingleTimelineEntry> timelineEntries = loadTimeLineEntriesRange(integration, startDate, endDate, userTimezone);
 
-                        return buildUserTimelineData(startDate, endDate, userTimezone, integration, remoteUser, timelineEntries, userDeviceRequest);
+                        return buildUserTimelineData(user, startDate, endDate, userTimezone, integration, remoteUser, timelineEntries, userDeviceRequest);
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
                     return null;
                 }).toList();
@@ -143,7 +143,10 @@ public class ReittiIntegrationService {
         }
     }
 
-    public Optional<AvatarService.AvatarData> getAvatar(Long integrationId) {
+    public Optional<AvatarService.AvatarData> getAvatar(User user, Long integrationId) {
+        if (this.jdbcService.findByIdAndUser(integrationId, user).isEmpty()) {
+            return Optional.empty();
+        }
         Map<String, Object> result;
         try {
             result = jdbcTemplate.queryForMap(
@@ -188,7 +191,7 @@ public class ReittiIntegrationService {
                         );
 
                         if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null) {
-                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                             return parseVisitResponse(remoteResponse.getBody());
                         } else if (remoteResponse.getStatusCode().is4xxClientError()) {
                             throw new RequestFailedException(remoteUrl, remoteResponse.getStatusCode(), remoteResponse.getBody());
@@ -197,10 +200,10 @@ public class ReittiIntegrationService {
                         }
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
                     return null;
                 })
@@ -231,7 +234,7 @@ public class ReittiIntegrationService {
                         );
 
                         if (remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getStatusCode().is2xxSuccessful() && remoteResponse.getBody() != null && remoteResponse.getBody().containsKey("hasLocation")) {
-                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                             if (!remoteResponse.getBody().get("hasLocation").equals(true)) {
                                 return null;
                             } else {
@@ -244,10 +247,10 @@ public class ReittiIntegrationService {
                         }
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     }
                     return null;
                 });
@@ -271,15 +274,15 @@ public class ReittiIntegrationService {
                                 remoteUrl, HttpMethod.GET, entity, MapMetadata.class, start, end, timezone);
 
                         if (response.getStatusCode().is2xxSuccessful()) {
-                            update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                             return response.getBody();
                         }
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                     } catch (Exception e) {
                         log.error("Failed to fetch metadata for integration [{}]", integrationId, e);
                     }
@@ -339,14 +342,14 @@ public class ReittiIntegrationService {
                                     return null;
                                 });
 
-                        update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                     } catch (RequestFailedException e) {
                         log.error("couldn't fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                         try { emitter.complete(); } catch (Exception ignored) {}
                     } catch (RequestTemporaryFailedException e) {
                         log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                        update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                         try { emitter.complete(); } catch (Exception ignored) {}
                     } catch (Exception e) {
                         log.error("Failed to stream locations for integration [{}]", integrationId, e);
@@ -359,9 +362,9 @@ public class ReittiIntegrationService {
                 });
     }
 
-    private ReittiIntegration update(ReittiIntegration integration) {
+    private ReittiIntegration update(User user, ReittiIntegration integration) {
         try {
-            return this.jdbcService.update(integration).orElseThrow();
+            return this.jdbcService.update(user, integration).orElseThrow();
         } catch (OptimisticLockException ignored) {
             log.debug("Optimistic lock has been detected for [{}]", integration);
         }
@@ -450,10 +453,10 @@ public class ReittiIntegrationService {
                 log.debug("Successfully registered subscription for integration: [{}]", integration.getId());
             } catch (Exception | RequestFailedException e) {
                 log.error("couldn't fetch user info for [{}]", integration, e);
-                update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
             } catch (RequestTemporaryFailedException e) {
                 log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
-                update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
             }
         }
     }
@@ -523,9 +526,9 @@ public class ReittiIntegrationService {
                     log.debug("Successfully unsubscribed from integration: [{}]", integration.getId());
                 } catch (Exception | RequestFailedException e) {
                     log.warn("Failed to unsubscribe from integration: [{}]", integration.getId(), e);
-                    update(integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
                 } catch (RequestTemporaryFailedException e) {
-                    update(integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
                 }
             }
         }
@@ -677,8 +680,8 @@ public class ReittiIntegrationService {
     }
 
 
-    private UserTimelineData buildUserTimelineData(LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<SingleTimelineEntry> timelineEntries, UserDeviceRequest userDeviceRequest) {
-        integration = update(integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+    private UserTimelineData buildUserTimelineData(User user, LocalDate startDate, LocalDate endDate, ZoneId userTimezone, ReittiIntegration integration, RemoteUser remoteUser, List<SingleTimelineEntry> timelineEntries, UserDeviceRequest userDeviceRequest) {
+        integration = update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
 
         String mapMetaDataUrl = String.format("/reitti-integration/metadata/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);
         String mapStreamDataUrl = String.format("/reitti-integration/stream/%d?start=%s&end=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone);

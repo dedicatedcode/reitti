@@ -41,7 +41,7 @@ public class MqttIntegrationJdbcService {
         if (integration.getId() == null) {
             return create(user, integration);
         } else {
-            return update(integration);
+            return update(user, integration);
         }
     }
 
@@ -93,12 +93,12 @@ public class MqttIntegrationJdbcService {
         );
     }
 
-    private MqttIntegration update(MqttIntegration integration) {
+    private MqttIntegration update(User user, MqttIntegration integration) {
         String sql = """
             UPDATE mqtt_integrations
             SET host = ?, port = ?, use_tls = ?, identifier = ?, topic = ?, username = ?, password = ?, device_id = ?,
                 payload_type = ?, enabled = ?, updated_at = ?, version = version + 1
-            WHERE id = ? AND version = ?
+            WHERE id = ? AND user_id = ? AND version = ?
             """;
         
         Instant now = Instant.now();
@@ -115,6 +115,7 @@ public class MqttIntegrationJdbcService {
             integration.isEnabled(),
             Timestamp.from(now),
             integration.getId(),
+            user.getId(),
             integration.getVersion()
         );
         

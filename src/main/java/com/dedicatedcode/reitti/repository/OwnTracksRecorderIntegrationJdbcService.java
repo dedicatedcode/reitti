@@ -74,9 +74,9 @@ public class OwnTracksRecorderIntegrationJdbcService {
         return integration.withId(id).withVersion(1L);
     }
 
-    public OwnTracksRecorderIntegration update(OwnTracksRecorderIntegration integration) {
-        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, reitti_device_id = ?, enabled = ?, auth_username = ?, auth_password = ?, last_successful_fetch = ?, version = version + 1 WHERE id = ? AND version = ?";
-        
+    public OwnTracksRecorderIntegration update(User user, OwnTracksRecorderIntegration integration) {
+        String sql = "UPDATE owntracks_recorder_integration SET base_url = ?, username = ?, device_id = ?, reitti_device_id = ?, enabled = ?, auth_username = ?, auth_password = ?, last_successful_fetch = ?, version = version + 1 WHERE id = ? AND user_id = ? AND version = ?";
+
         int rowsAffected = jdbcTemplate.update(sql,
                 integration.getBaseUrl(),
                 integration.getUsername(),
@@ -87,6 +87,7 @@ public class OwnTracksRecorderIntegrationJdbcService {
                 integration.getAuthPassword(),
                 integration.getLastSuccessfulFetch() != null ? java.sql.Timestamp.from(integration.getLastSuccessfulFetch()) : null,
                 integration.getId(),
+                user.getId(),
                 integration.getVersion());
 
         if (rowsAffected == 0) {
@@ -96,8 +97,4 @@ public class OwnTracksRecorderIntegrationJdbcService {
         return integration.withVersion(integration.getVersion() + 1);
     }
 
-    public void delete(OwnTracksRecorderIntegration integration) {
-        String sql = "DELETE FROM owntracks_recorder_integration WHERE id = ?";
-        jdbcTemplate.update(sql, integration.getId());
-    }
 }

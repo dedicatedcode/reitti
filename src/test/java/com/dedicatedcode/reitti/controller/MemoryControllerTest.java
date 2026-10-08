@@ -132,12 +132,12 @@ class MemoryControllerTest {
                                 .with(user(user)))
                 .andExpect(status().isOk());
 
-        List<MemoryBlock> byMemoryId = this.memoryBlockJdbcService.findByMemoryId(savedMemory.getId())
+        List<MemoryBlock> byMemoryId = this.memoryBlockJdbcService.findByMemoryId(user, savedMemory.getId())
                 .stream().filter(b -> b.getBlockType() == BlockType.CLUSTER_TRIP).toList();
         assertEquals(1, byMemoryId.size());
         MemoryBlock clusterBlock = byMemoryId.getFirst();
         assertEquals(BlockType.CLUSTER_TRIP, clusterBlock.getBlockType());
-        List<MemoryTrip> byMemoryBlockId = memoryTripJdbcService.findByMemoryBlockId(clusterBlock.getId());
+        List<MemoryTrip> byMemoryBlockId = memoryTripJdbcService.findByMemoryBlockId(user, clusterBlock.getId());
         assertEquals(1, byMemoryBlockId.size());
         MemoryTrip tripInCluster = byMemoryBlockId.getFirst();
         assertEquals("45.0000, 5.0000", tripInCluster.getStartVisit().getName());
@@ -207,7 +207,7 @@ class MemoryControllerTest {
                                 .with(user(user)))
                 .andExpect(status().isOk());
 
-        List<MemoryBlock> byMemoryId = this.memoryBlockJdbcService.findByMemoryId(savedMemory.getId())
+        List<MemoryBlock> byMemoryId = this.memoryBlockJdbcService.findByMemoryId(user, savedMemory.getId())
                 .stream().filter(b -> b.getBlockType() == BlockType.CLUSTER_TRIP).toList();
         assertEquals(1, byMemoryId.size());
 

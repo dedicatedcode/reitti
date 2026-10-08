@@ -26,6 +26,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class TransportationModesControllerTest {
@@ -171,7 +172,7 @@ class TransportationModesControllerTest {
         ));
 
         // When
-        mockMvc.perform(post("/settings/transportation-modes/add")
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.CYCLING.name())
                         .param("maxSpeed", "25.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
@@ -200,7 +201,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: add DRIVING with 60 mph in IMPERIAL
-        mockMvc.perform(post("/settings/transportation-modes/add")
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.DRIVING.name())
                         .param("maxSpeed", "60.0")
                         .param("unitSystem", UnitSystem.IMPERIAL.name())
@@ -226,7 +227,7 @@ class TransportationModesControllerTest {
         ));
 
         // When
-        mockMvc.perform(post("/settings/transportation-modes/add")
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.TRANSIT.name())
                         .param("color", "#96ceb4")
                         .param("icon", "fa-bus")
@@ -250,7 +251,7 @@ class TransportationModesControllerTest {
         ));
 
         // When
-        mockMvc.perform(post("/settings/transportation-modes/add")
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.WALKING.name())
                         .param("maxSpeed", "10.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
@@ -272,7 +273,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: try adding CYCLING with the same maxSpeed (10.0 km/h)
-        mockMvc.perform(post("/settings/transportation-modes/add")
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.CYCLING.name())
                         .param("maxSpeed", "10.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
@@ -294,7 +295,7 @@ class TransportationModesControllerTest {
         ));
 
         // When
-        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.CYCLING.name())
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.CYCLING.name()).with(csrf())
                         .param("maxSpeed", "30.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .param("color", "#222222")
@@ -322,7 +323,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: update with 75 mph in IMPERIAL
-        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.DRIVING.name())
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.DRIVING.name()).with(csrf())
                         .param("maxSpeed", "75.0")
                         .param("unitSystem", UnitSystem.IMPERIAL.name())
                         .with(user(testUser)))
@@ -345,7 +346,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: updating color only, maxSpeed is null
-        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name())
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name()).with(csrf())
                         .param("color", "#a29bfe")
                         .with(user(testUser)))
                 .andExpect(status().isOk())
@@ -369,7 +370,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: updating with empty strings for color and icon
-        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name())
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name()).with(csrf())
                         .param("maxSpeed", "5.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .param("color", "")
@@ -396,7 +397,7 @@ class TransportationModesControllerTest {
         ));
 
         // When: delete CYCLING
-        mockMvc.perform(post("/settings/transportation-modes/{mode}/delete", TransportMode.CYCLING.name())
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/delete", TransportMode.CYCLING.name()).with(csrf())
                         .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
@@ -411,7 +412,7 @@ class TransportationModesControllerTest {
 
     @Test
     void getContent_ShouldReturnTransportationModesContentFragment() throws Exception {
-        mockMvc.perform(post("/settings/transportation-modes/content").with(user(testUser)))
+        mockMvc.perform(post("/settings/transportation-modes/content").with(csrf()).with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
                 .andExpect(model().attributeExists("configs", "availableModes", "unitSystem", "isImperial"));
@@ -419,7 +420,7 @@ class TransportationModesControllerTest {
 
     @Test
     void reclassifyTrips_ShouldEnqueueTaskAndReturnStartedStatus() throws Exception {
-        mockMvc.perform(post("/settings/transportation-modes/reclassify").with(user(testUser)))
+        mockMvc.perform(post("/settings/transportation-modes/reclassify").with(csrf()).with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: reclassify-status"))
                 .andExpect(model().attribute("reclassifyStatus", "started"))

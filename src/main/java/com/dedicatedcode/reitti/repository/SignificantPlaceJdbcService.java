@@ -177,15 +177,15 @@ public class SignificantPlaceJdbcService {
     }
 
     @CacheEvict(cacheNames = "significant-places", key = "#place.id")
-    public SignificantPlace update(SignificantPlace place) {
+    public SignificantPlace update(User user, SignificantPlace place) {
         String sql = "UPDATE significant_places SET name = ?, address = ?, city = ?, country_code = ?, type = ?, " +
                 "latitude_centroid = ?, longitude_centroid = ?, geom = ST_GeomFromText(?, '4326'), " +
                 "polygon = CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END, " +
-                "timezone = ?, geocoded = ? WHERE id = ?";
+                "timezone = ?, geocoded = ? WHERE id = ? AND user_id = ?";
 
         String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
 
-        jdbcTemplate.update(sql,
+        int updated = jdbcTemplate.update(sql,
                             place.getName(),
                             place.getAddress(),
                             place.getCity(),
@@ -198,8 +198,12 @@ public class SignificantPlaceJdbcService {
                             polygonWkt,
                             place.getTimezone() != null ? place.getTimezone().getId() : null,
                             place.isGeocoded(),
-                            place.getId()
+                            place.getId(),
+                            user.getId()
         );
+        if (updated == 0) {
+            throw new IllegalStateException("Significant place with id [" + place.getId() + "] not found for user [" + user.getId() + "]");
+        }
         return findById(place.getId()).orElseThrow();    }
 
     @Cacheable("significant-places")
@@ -307,7 +311,11 @@ public class SignificantPlaceJdbcService {
 
     public void deleteForUser(User user, List<SignificantPlace> placesToRemove) {
         Long[] idList = placesToRemove.stream().map(SignificantPlace::getId).toList().toArray(Long[]::new);
-        this.jdbcTemplate.update("DELETE FROM geocoding_response WHERE significant_place_id = ANY(?)", (Object) idList);
+        this.jdbcTemplate.update("""
+                DELETE FROM geocoding_response gr
+                WHERE gr.significant_place_id = ANY(?)
+                  AND EXISTS (SELECT 1 FROM significant_places sp WHERE sp.id = gr.significant_place_id AND sp.user_id = ?)
+                """, (Object) idList, user.getId());
         this.jdbcTemplate.update("DELETE FROM significant_places WHERE user_id = ? AND id = ANY(?)", user.getId(), idList);
     }
 

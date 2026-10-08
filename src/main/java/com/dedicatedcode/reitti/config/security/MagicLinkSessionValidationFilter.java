@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.config.security;
 
 import com.dedicatedcode.reitti.model.security.MagicLinkToken;
 import com.dedicatedcode.reitti.repository.MagicLinkJdbcService;
+import com.dedicatedcode.reitti.service.ContextPathHolder;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,9 +20,11 @@ import java.util.Optional;
 public class MagicLinkSessionValidationFilter extends OncePerRequestFilter {
     
     private final MagicLinkJdbcService magicLinkJdbcService;
-    
-    public MagicLinkSessionValidationFilter(MagicLinkJdbcService magicLinkJdbcService) {
+    private final ContextPathHolder contextPathHolder;
+
+    public MagicLinkSessionValidationFilter(MagicLinkJdbcService magicLinkJdbcService, ContextPathHolder contextPathHolder) {
         this.magicLinkJdbcService = magicLinkJdbcService;
+        this.contextPathHolder = contextPathHolder;
     }
     
     @Override
@@ -38,7 +41,7 @@ public class MagicLinkSessionValidationFilter extends OncePerRequestFilter {
                 
                 SecurityContextHolder.clearContext();
                 request.getSession().invalidate();
-                response.sendRedirect("/error/magic-link?error=invalid");
+                response.sendRedirect(contextPathHolder.getContextPath() + "/error/magic-link?error=invalid");
                 return;
             }
         }

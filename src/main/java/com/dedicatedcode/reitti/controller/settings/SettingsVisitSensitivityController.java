@@ -145,7 +145,7 @@ public class SettingsVisitSensitivityController {
                         config = config.withRecalculationState(RecalculationState.NEEDED);
 
                     }
-                    configurationService.updateConfiguration(config);
+                    configurationService.updateConfiguration(user, config);
                 }
                 model.addAttribute("successMessage", "Configuration saved successfully. Changes will apply to new incoming data.");
             }
@@ -183,11 +183,11 @@ public class SettingsVisitSensitivityController {
             throw new IllegalArgumentException("Cannot delete default configuration");
         }
 
-        configurationService.delete(id);
+        configurationService.delete(user, id);
 
         DetectionParameter newLatest = this.configurationService.findCurrent(user, config.getValidSince());
         if (this.rawLocationPointJdbcService.containsData(user, newLatest.getValidSince(), config.getValidSince())) {
-            this.configurationService.updateConfiguration(newLatest.withRecalculationState(RecalculationState.NEEDED));
+            this.configurationService.updateConfiguration(user, newLatest.withRecalculationState(RecalculationState.NEEDED));
         }
         detectionParameters = configurationService.findAllConfigurationsForUser(user);
         model.addAttribute("configurations", detectionParameters);
@@ -223,7 +223,7 @@ public class SettingsVisitSensitivityController {
     public String dismissRecalculation(@AuthenticationPrincipal User user, Model model) {
         try {
             this.configurationService.findAllConfigurationsForUser(user)
-                    .forEach(config -> this.configurationService.updateConfiguration(config.withRecalculationState(RecalculationState.DONE)));
+                    .forEach(config -> this.configurationService.updateConfiguration(user, config.withRecalculationState(RecalculationState.DONE)));
             model.addAttribute("successMessage", messageSource.getMessage("visit.sensitivity.recalculation.dismissed", null, LocaleContextHolder.getLocale()));
         } catch (Exception e) {
             model.addAttribute("errorMessage", messageSource.getMessage("visit.sensitivity.recalculation.error", new Object[]{e.getMessage()}, LocaleContextHolder.getLocale()));
@@ -270,7 +270,7 @@ public class SettingsVisitSensitivityController {
             throw new IllegalArgumentException("No configuration needs recalculation");
         }
 
-        needsRecalculation.forEach(dp -> this.configurationService.updateConfiguration(dp.withRecalculationState(RecalculationState.RUNNING)));
+        needsRecalculation.forEach(dp -> this.configurationService.updateConfiguration(user, dp.withRecalculationState(RecalculationState.RUNNING)));
 
         log.debug("Scheduling recalculation task");
         this.jobScheduler.enqueueTask(visitSensitivityRecalculationTask,

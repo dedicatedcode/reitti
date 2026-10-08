@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 public class SetupControllerTest {
@@ -81,7 +82,7 @@ public class SetupControllerTest {
     void postSetup_WhileAdminPasswordEmpty_ShouldSetPasswordAndAllowLogin() throws Exception {
         adminWithRawPassword(null);
 
-        mockMvc.perform(post("/setup")
+        mockMvc.perform(post("/setup").with(csrf())
                         .param("username", ADMIN_USERNAME)
                         .param("password", "new-password-123")
                         .param("displayName", "Admin"))
@@ -92,7 +93,7 @@ public class SetupControllerTest {
         assertThat(passwordEncoder.matches("new-password-123", admin.getPassword())).isTrue();
         assertThat(admin.getRole()).isEqualTo(Role.ADMIN);
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/login").with(csrf())
                         .param("username", ADMIN_USERNAME)
                         .param("password", "new-password-123"))
                 .andExpect(status().is3xxRedirection())
@@ -103,13 +104,13 @@ public class SetupControllerTest {
     void postLogin_WithEmptyPassword_ShouldNotAuthenticate() throws Exception {
         adminWithRawPassword(null);
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/login").with(csrf())
                         .param("username", ADMIN_USERNAME)
                         .param("password", ""))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(unauthenticated());
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/login").with(csrf())
                         .param("username", ADMIN_USERNAME)
                         .param("password", "any-guessed-password"))
                 .andExpect(status().is3xxRedirection())
@@ -120,7 +121,7 @@ public class SetupControllerTest {
     void postSetup_AfterSetupCompleted_ShouldNotChangePassword() throws Exception {
         adminWithRawPassword("original-password");
 
-        mockMvc.perform(post("/setup")
+        mockMvc.perform(post("/setup").with(csrf())
                         .param("username", ADMIN_USERNAME)
                         .param("password", "attacker-password")
                         .param("displayName", "Hacked"))
@@ -138,7 +139,7 @@ public class SetupControllerTest {
         adminWithRawPassword(null);
         User regularUser = createRegularUser("users-password");
 
-        mockMvc.perform(post("/setup")
+        mockMvc.perform(post("/setup").with(csrf())
                         .param("username", regularUser.getUsername())
                         .param("password", "attacker-password")
                         .param("displayName", "Hacked"))
@@ -165,7 +166,7 @@ public class SetupControllerTest {
                     .andExpect(status().is3xxRedirection())
                     .andExpect(redirectedUrl("/login"));
 
-            mockMvc.perform(post("/setup")
+            mockMvc.perform(post("/setup").with(csrf())
                             .param("username", oidcAdmin.getUsername())
                             .param("password", "attacker-password")
                             .param("displayName", "Hacked"))

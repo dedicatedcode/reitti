@@ -119,8 +119,7 @@ public class ManageDataController {
 
         try {
             clearProcessedDataExceptPlaces(user);
-            markRawLocationPointsAsUnprocessed(user);
-            this.jobScheduler.enqueueTask(processingTask, new ProcessingPipelineTask.TaskData(user.getUsername(), null, null),
+            this.jobScheduler.enqueueTask(processingTask, new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withFullReprocess(),
                                  JobSchedulingService.Metadata.builder()
                                          .user(user)
                                          .friendlyName("Manual processing")
@@ -170,10 +169,6 @@ public class ManageDataController {
     private void clearProcessedDataExceptPlaces(User user) {
         tripJdbcService.deleteAllForUser(user);
         processedVisitJdbcService.deleteAllForUser(user);
-    }
-
-    private void markRawLocationPointsAsUnprocessed(User user) {
-        rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
     }
 
     private void removeAllDataExceptPlaces(User user) {

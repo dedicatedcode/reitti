@@ -65,7 +65,7 @@ public class TransportModeRecalculationTask implements Job {
                     if (!segments.equals(trip.getSegments())) {
                         log.trace("Reclassified trip {} from {} to {} to segments {}", trip.getId(), trip.getSegments(), endTime, segments);
                         trip = trip.withSegments(segments);
-                        this.tripJdbcService.update(trip);
+                        this.tripJdbcService.update(user, trip);
                     }
                     if (currentTrip.getAndIncrement() % 100 == 0) {
                         metadataRepository.updateProgress(taskData.getJobId(), currentTrip.get(), allTripsAmountForUser, "Updating trips");

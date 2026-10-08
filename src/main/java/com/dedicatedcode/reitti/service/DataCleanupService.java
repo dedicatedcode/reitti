@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -53,12 +54,11 @@ public class DataCleanupService implements Job {
         this.processingPipelineTask = processingPipelineTask;
         this.jobMetadataRepository = jobMetadataRepository;
     }
-    @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
-        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
-    }
 
-    public void execute(TaskData taskData) {
+    @Override
+    @Transactional
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        TaskData taskData = TaskData.fromJson((String) context.getMergedJobDataMap().get("data"));
         User user = userJdbcService.findById(taskData.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + taskData.userId + "] not found"));
         SignificantPlace updatedPlace = placeJdbcService.findById(taskData.placeId).orElseThrow(() -> new IllegalArgumentException("SignificantPlace with id [" + taskData.placeId + "] not found"));
         Long placeId = updatedPlace.getId();

@@ -71,14 +71,23 @@ class ApiTokenJdbcServiceTest {
     void findById_WithExistingId_ShouldReturnToken() {
         ApiToken token = testingService.createApiToken(testUser, "find-by-id-test", null);
 
-        Optional<ApiToken> found = apiTokenJdbcService.findById(token.getId());
+        Optional<ApiToken> found = apiTokenJdbcService.findById(testUser, token.getId());
         assertTrue(found.isPresent());
         assertEquals(token.getId(), found.get().getId());
     }
 
     @Test
     void findById_WithNonExistingId_ShouldReturnEmpty() {
-        Optional<ApiToken> found = apiTokenJdbcService.findById(999999L);
+        Optional<ApiToken> found = apiTokenJdbcService.findById(testUser, 999999L);
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void findById_WithForeignUserId_ShouldReturnEmpty() {
+        User otherUser = testingService.randomUser();
+        ApiToken token = testingService.createApiToken(testUser, "foreign-user-test", null);
+
+        Optional<ApiToken> found = apiTokenJdbcService.findById(otherUser, token.getId());
         assertTrue(found.isEmpty());
     }
 
@@ -126,9 +135,30 @@ class ApiTokenJdbcServiceTest {
         assertEquals("Updated Name", result.getName());
         assertNotNull(result.getLastUsedAt());
 
-        Optional<ApiToken> persisted = apiTokenJdbcService.findById(result.getId());
+        Optional<ApiToken> persisted = apiTokenJdbcService.findById(testUser, result.getId());
         assertTrue(persisted.isPresent());
         assertEquals("Updated Name", persisted.get().getName());
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModifyToken() {
+        User otherUser = testingService.randomUser();
+        ApiToken original = testingService.createApiToken(testUser, "Original Name", null);
+        ApiToken foreignToken = new ApiToken(
+                original.getId(),
+                original.getToken(),
+                otherUser,
+                original.getDevice(),
+                "Hijacked Name",
+                original.getCreatedAt(),
+                Instant.now()
+        );
+
+        assertThrows(org.springframework.dao.EmptyResultDataAccessException.class,
+                () -> apiTokenJdbcService.save(foreignToken));
+        Optional<ApiToken> persisted = apiTokenJdbcService.findById(testUser, original.getId());
+        assertTrue(persisted.isPresent());
+        assertEquals("Original Name", persisted.get().getName());
     }
 
     @Test
@@ -136,24 +166,24 @@ class ApiTokenJdbcServiceTest {
         ApiToken token = testingService.createApiToken(testUser, "To delete", null);
 
         apiTokenJdbcService.delete(token);
-        Optional<ApiToken> found = apiTokenJdbcService.findById(token.getId());
+        Optional<ApiToken> found = apiTokenJdbcService.findById(testUser, token.getId());
         assertTrue(found.isEmpty());
     }
 
     @Test
     void deleteById_ShouldThrowWhenTokenNotFound() {
         assertThrows(org.springframework.dao.EmptyResultDataAccessException.class,
-                () -> apiTokenJdbcService.deleteById(999999L));
+                () -> apiTokenJdbcService.deleteById(testUser, 999999L));
     }
 
     @Test
-    void count_ShouldReturnCurrentTokenCount() {
-        long before = apiTokenJdbcService.count();
-        testingService.createApiToken(testUser, "Count token 1", null);
-        testingService.createApiToken(testUser, "Count token 2", null);
+    void deleteById_WithForeignUserId_ShouldNotDeleteOtherUsersToken() {
+        User otherUser = testingService.randomUser();
+        ApiToken token = testingService.createApiToken(testUser, "Protected token", null);
 
-        long after = apiTokenJdbcService.count();
-        assertEquals(before + 2, after);
+        assertThrows(org.springframework.dao.EmptyResultDataAccessException.class,
+                () -> apiTokenJdbcService.deleteById(otherUser, token.getId()));
+        assertTrue(apiTokenJdbcService.findById(testUser, token.getId()).isPresent());
     }
 
     @Test

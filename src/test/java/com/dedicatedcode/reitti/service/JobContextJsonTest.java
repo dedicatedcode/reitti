@@ -18,7 +18,7 @@ class JobContextJsonTest {
         UUID parentJobId = UUID.randomUUID();
         Instant receivedAt = Instant.parse("2026-09-13T10:15:30Z");
         ProcessingPipelineTask.TaskData original = new ProcessingPipelineTask.TaskData(
-                "tester", "preview-1", "trace-1", receivedAt, jobId, parentJobId);
+                "tester", "preview-1", "trace-1", receivedAt, jobId, parentJobId, false);
 
         String json = original.toJson();
         ProcessingPipelineTask.TaskData restored = ProcessingPipelineTask.TaskData.fromJson(json);
@@ -29,6 +29,18 @@ class JobContextJsonTest {
         assertEquals("preview-1", restored.getPreviewId());
         assertEquals("trace-1", restored.getTraceId());
         assertEquals(receivedAt, restored.getReceivedAt());
+        assertFalse(restored.isFullReprocess());
+    }
+
+    @Test
+    void shouldRoundTripFullReprocessFlag() {
+        ProcessingPipelineTask.TaskData restored = ProcessingPipelineTask.TaskData.fromJson(
+                new ProcessingPipelineTask.TaskData("tester", null, null)
+                        .withFullReprocess()
+                        .withJobId(UUID.randomUUID())
+                        .toJson());
+
+        assertTrue(restored.isFullReprocess());
     }
 
     @Test

@@ -158,34 +158,37 @@ public class ProcessedVisitJdbcService {
         }
     }
 
-    public ProcessedVisit update(ProcessedVisit visit) {
-        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ?, metadata = ?::jsonb WHERE id = ?";
+    public ProcessedVisit update(User user, ProcessedVisit visit) {
+        String sql = "UPDATE processed_visits SET start_time = ?, end_time = ?, duration_seconds = ?, place_id = ?, metadata = ?::jsonb WHERE id = ? AND user_id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(visit.getStartTime()),
                 Timestamp.from(visit.getEndTime()),
                 visit.getDurationSeconds(),
                 visit.getPlace().getId(),
                 asJson(visit.getMetadata()),
-                visit.getId()
+                visit.getId(),
+                user.getId()
         );
         return visit;
     }
 
-    public Optional<ProcessedVisit> findById(Long id) {
+    public Optional<ProcessedVisit> findById(User user, Long id) {
         String sql = "SELECT pv.* " +
                 "FROM processed_visits pv " +
-                "WHERE pv.id = ?";
-        List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, id);
+                "WHERE pv.id = ? AND pv.user_id = ?";
+        List<ProcessedVisit> results = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, id, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public Map<Long, ProcessedVisit> findByIds(List<Long> ids) {
+    public Map<Long, ProcessedVisit> findByIds(User user, List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyMap();
         }
         String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
-        String sql = "SELECT pv.* FROM processed_visits pv WHERE pv.id IN (" + placeholders + ")";
-        List<ProcessedVisit> list = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, ids.toArray());
+        String sql = "SELECT pv.* FROM processed_visits pv WHERE pv.id IN (" + placeholders + ") AND pv.user_id = ?";
+        List<Object> args = new ArrayList<>(ids);
+        args.add(user.getId());
+        List<ProcessedVisit> list = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, args.toArray());
         return list.stream().collect(Collectors.toMap(ProcessedVisit::getId, v -> v));
     }
 
@@ -229,14 +232,8 @@ public class ProcessedVisitJdbcService {
         }
 
         List<Long> updateCounts = jdbcTemplate.query(sql, new ArgumentPreparedStatementSetter(batchArgs.toArray()), (resultSet, _) -> resultSet.getLong("id"));
-        updateCounts.stream().map(this::findById).filter(Optional::isPresent).map(Optional::get).forEach(result::add);
+        updateCounts.stream().map(id -> findById(user, id)).filter(Optional::isPresent).map(Optional::get).forEach(result::add);
         return result;
-    }
-
-    @SuppressWarnings("SqlWithoutWhere")
-    public void deleteAll() {
-        String sql = "DELETE FROM processed_visits";
-        jdbcTemplate.update(sql);
     }
 
     public void deleteAllForUser(User user) {

@@ -45,25 +45,20 @@ public class MemoryVisitJdbcService {
         return memoryVisit.withId(generatedId);
     }
 
-    public List<MemoryVisit> findByMemoryBlockId(Long memoryBlockId) {
+    public List<MemoryVisit> findByMemoryBlockId(User user, Long memoryBlockId) {
         String sql = """
             SELECT id, name, start_time, end_time, latitude_centroid, longitude_centroid, timezone
             FROM memory_visits
-            WHERE memory_block_id = ?
+            WHERE memory_block_id = ? AND user_id = ?
             ORDER BY start_time
             """;
-        
-        return jdbcTemplate.query(sql, new MemoryVisitRowMapper(), memoryBlockId);
+
+        return jdbcTemplate.query(sql, new MemoryVisitRowMapper(), memoryBlockId, user.getId());
     }
 
-    public void deleteByMemoryBlockId(Long memoryBlockId) {
-        String sql = "DELETE FROM memory_visits WHERE memory_block_id = ?";
-        jdbcTemplate.update(sql, memoryBlockId);
-    }
-
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM memory_visits WHERE id = ?";
-        jdbcTemplate.update(sql, id);
+    public void deleteById(User user, Long id) {
+        String sql = "DELETE FROM memory_visits WHERE id = ? AND user_id = ?";
+        jdbcTemplate.update(sql, id, user.getId());
     }
 
     private static class MemoryVisitRowMapper implements RowMapper<MemoryVisit> {

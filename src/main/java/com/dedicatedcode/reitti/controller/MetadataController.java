@@ -51,8 +51,8 @@ public class MetadataController {
                               @RequestParam(required = false) String returnUrl) {
 
         UserSettings userSettings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        Optional<ProcessedVisit> visit = type.equals("visit") ? this.processedVisitJdbcService.findById(id) : Optional.empty();
-        Optional<Trip> trip = type.equals("trip") ? this.tripJdbcService.findById(id) : Optional.empty();
+        Optional<ProcessedVisit> visit = type.equals("visit") ? this.processedVisitJdbcService.findById(user, id) : Optional.empty();
+        Optional<Trip> trip = type.equals("trip") ? this.tripJdbcService.findById(user, id) : Optional.empty();
         Map<String, Object> properties = switch (type) {
             case ("trip") -> trip.map(Trip::getMetadata).orElse(Collections.emptyMap());
             case ("visit") -> visit.map(ProcessedVisit::getMetadata).orElse(Collections.emptyMap());
@@ -97,7 +97,7 @@ public class MetadataController {
         metadata.setMood(mood);
         switch (type) {
             case "trip" -> {
-                Optional<Trip> trip = this.tripJdbcService.findById(id);
+                Optional<Trip> trip = this.tripJdbcService.findById(user, id);
                 if (trip.isEmpty()) {
                     throw new IllegalArgumentException("Trip not found");
                 } else {
@@ -105,7 +105,7 @@ public class MetadataController {
                 }
             }
             case "visit" -> {
-                Optional<ProcessedVisit> visit = this.processedVisitJdbcService.findById(id);
+                Optional<ProcessedVisit> visit = this.processedVisitJdbcService.findById(user, id);
                 if (visit.isEmpty()) {
                     throw new IllegalArgumentException("Visit not found");
                 } else {
