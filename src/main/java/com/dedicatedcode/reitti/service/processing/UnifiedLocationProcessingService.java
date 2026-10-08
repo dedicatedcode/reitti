@@ -16,6 +16,8 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.distance.DistanceOp;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +68,7 @@ public class UnifiedLocationProcessingService {
     private final JobDetail reverseGeocodingTask;
     private final Duration maxTripDurationInHours;
     private final Duration maxUntrackedMergeGapHours;
+    private final PointReaderWriter pointReaderWriter;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -85,6 +88,7 @@ public class UnifiedLocationProcessingService {
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             VisitSuppressionService visitSuppressionService,
+            PointReaderWriter pointReaderWriter,
             JobSchedulingService jobScheduler,
             @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
             @Value("${reitti.processing.max-trip-duration-hours}") int maxTripDurationInHours,
@@ -107,10 +111,12 @@ public class UnifiedLocationProcessingService {
         this.geometryFactory = geometryFactory;
         this.metadataOverrideService = metadataOverrideService;
         this.visitSuppressionService = visitSuppressionService;
+
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
         this.maxTripDurationInHours = Duration.ofHours(maxTripDurationInHours);
         this.maxUntrackedMergeGapHours = Duration.ofHours(maxUntrackedMergeGapHours);
+        this.pointReaderWriter = pointReaderWriter;
     }
 
     /**
@@ -892,13 +898,23 @@ public class UnifiedLocationProcessingService {
     }
 
     private SignificantPlace findClosestPlace(double latitude, double longitude, List<SignificantPlace> places) {
-
-        Comparator<SignificantPlace> distanceComparator = Comparator.comparingDouble(place ->
-                GeoUtils.distanceInMeters(
-                        latitude, longitude,
-                        place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         return places.stream()
-                .min(distanceComparator.thenComparing(SignificantPlace::getId))
+                .map(place -> {
+                    if (place.getPolygon() == null || place.getPolygon().size() < 3) {
+                        return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+                    }
+                    Polygon polygon = pointReaderWriter.toJtsPolygon(place.getPolygon());
+                    if (polygon.covers(point)) {
+                        return new Candidate(place, true, 0);
+                    }
+                    Coordinate nearest = DistanceOp.nearestPoints(polygon, point)[0];
+                    return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, nearest.y, nearest.x));
+                })
+                .min(Comparator.comparing((Candidate candidate) -> !candidate.containsPoint())
+                             .thenComparingDouble(Candidate::distanceInMeters)
+                             .thenComparing(candidate -> candidate.place().getId()))
+                .map(Candidate::place)
                 .orElseThrow(() -> new IllegalStateException("No places found"));
     }
 
@@ -937,4 +953,8 @@ public class UnifiedLocationProcessingService {
 
     private record TripDetectionResult(List<Trip> trips, long durationInMillis) {
     }
+
+    private record Candidate(SignificantPlace place, boolean containsPoint, double distanceInMeters) {
+    }
+
 }
