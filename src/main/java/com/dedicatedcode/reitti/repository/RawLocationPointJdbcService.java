@@ -215,6 +215,23 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), limit, offset);
     }
 
+    public List<RawLocationPoint> findByUserOrderByTimestampWithKeyset(User user, Instant afterTimestamp, int limit) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
+        if (after != null) {
+            sql.append("AND rlp.timestamp > ? ");
+        }
+        sql.append("ORDER BY rlp.timestamp LIMIT ?");
+
+        if (after != null) {
+            return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper, user.getId(), after, limit);
+        }
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper, user.getId(), limit);
+    }
+
     public List<Integer> findDistinctYearsByUser(User user) {
         String sql = """
                 SELECT DISTINCT EXTRACT(YEAR FROM day)
@@ -521,11 +538,6 @@ public class RawLocationPointJdbcService {
                 .collect(Collectors.toList());
         
         jdbcTemplate.batchUpdate(sql, batchArgs);
-    }
-
-    public void markAllAsUnprocessedForUser(User user) {
-        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ?";
-        jdbcTemplate.update(sql, user.getId());
     }
 
     public void markAllAsUnprocessedForUser(User user, List<LocalDate> affectedDays) {

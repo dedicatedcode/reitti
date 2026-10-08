@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -28,7 +29,6 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final SignificantPlaceJdbcService significantPlaceJdbcService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final UserProcessingLock userProcessingLock;
 
     public VisitSensitivityConfigurationRecalculationTask(VisitDetectionParametersJdbcService configurationService,
@@ -38,7 +38,7 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
                                                           @Qualifier("processingPipelineJob") JobDetail processingPipelineTask,
                                                           TripJdbcService tripJdbcService,
                                                           ProcessedVisitJdbcService processedVisitJdbcService,
-                                                          SignificantPlaceJdbcService significantPlaceJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService,
+                                                          SignificantPlaceJdbcService significantPlaceJdbcService,
                                                           UserProcessingLock userProcessingLock) {
         this.configurationService = configurationService;
         this.userJdbcService = userJdbcService;
@@ -48,42 +48,41 @@ public class VisitSensitivityConfigurationRecalculationTask implements Job {
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.userProcessingLock = userProcessingLock;
     }
 
     @Override
+    @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        execute(TaskData.fromJson((String) context.getMergedJobDataMap().get("data")));
-    }
-
-    public void execute(TaskData taskData) {
+        TaskData taskData = TaskData.fromJson((String) context.getMergedJobDataMap().get("data"));
         User user = userJdbcService.findById(taskData.userId).orElseThrow(() -> new IllegalArgumentException("User with id [" + taskData.userId + "] not found"));
         log.debug("Executing DataRecalculationJob for [{}]", user);
         try {
-            this.jobMetadataRepository.updateProgress(taskData.getJobId(), 0, 5, "Waiting for running processing to finish ...");
+            this.jobMetadataRepository.updateProgress(taskData.getJobId(), 0, 4, "Waiting for running processing to finish ...");
             userProcessingLock.locked(user, () -> {
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 1, 5, "Deleting Trips ...");
+                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 1, 4, "Deleting Trips ...");
                 tripJdbcService.deleteAllForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 2, 5, "Deleting Visits ...");
+                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 2, 4, "Deleting Visits ...");
                 processedVisitJdbcService.deleteAllForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 3, 5, "Deleting Places ...");
+                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 3, 4, "Deleting Places ...");
                 significantPlaceJdbcService.deleteForUser(user);
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 4, 5, "Flag points as unprocessed ...");
-                rawLocationPointJdbcService.markAllAsUnprocessedForUser(user);
                 this.configurationService.findAllConfigurationsForUser(user)
                         .forEach(config -> this.configurationService.updateConfiguration(user, config.withRecalculationState(RecalculationState.DONE)));
                 log.debug("Starting recalculation of all configurations");
-                this.jobMetadataRepository.updateProgress(taskData.getJobId(), 5, 5, "Starting recalculation ... ");
-                jobSchedulingService.enqueueTask(processingPipelineTask,
-                                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null).withParentJobId(taskData.getParentJobId()),
+                jobSchedulingService.enqueueTaskAfterCommit(processingPipelineTask,
+                                                 new ProcessingPipelineTask.TaskData(user.getUsername(), null, null)
+                                                         .withFullReprocess()
+                                                         .withParentJobId(taskData.getParentJobId()),
                                                  new JobSchedulingService.Metadata(user, JobType.LOCATION_PROCESSING, "Processing location data ..."));
             });
+            this.jobMetadataRepository.updateProgress(taskData.getJobId(), 4, 4, "Done");
         } catch (Exception e) {
-            log.error("Error clearing time range", e);
+            log.error("Error recalculating visit sensitivity configuration for user [{}]", user.getUsername(), e);
+            this.jobMetadataRepository.updateProgress(taskData.getJobId(), 0, 4, "Failed");
+            throw new JobExecutionException("Failed to recalculate visit sensitivity configuration for user [" + user.getUsername() + "]", e);
         }
-
     }
+
     public static class TaskData extends JobContext<TaskData> {
 
         private final Long userId;
