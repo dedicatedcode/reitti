@@ -1,4 +1,4 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.error;
 
 import java.util.Arrays;
 

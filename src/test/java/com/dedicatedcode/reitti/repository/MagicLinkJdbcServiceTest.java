@@ -33,7 +33,7 @@ class MagicLinkJdbcServiceTest {
         testUser = testingService.admin();
         // Clean up any existing magic link tokens for the test user
         List<MagicLinkToken> existingTokens = magicLinkJdbcService.findByUser(testUser);
-        existingTokens.forEach(token -> magicLinkJdbcService.delete(token.getId()));
+        existingTokens.forEach(token -> magicLinkJdbcService.delete(testUser, token.getId()));
     }
 
     @Test
@@ -121,32 +121,6 @@ class MagicLinkJdbcServiceTest {
             .containsExactlyInAnyOrder("user-token-1", "user-token-2");
     }
 
-    @Test
-    void shouldUpdateToken() {
-        // Given
-        MagicLinkToken originalToken = createTestToken("update-token");
-        Instant lastUsed = Instant.now();
-
-        MagicLinkToken updatedToken = new MagicLinkToken(
-                originalToken.getId(),
-                originalToken.getName(),
-                originalToken.getTokenHash(),
-                MagicLinkAccessLevel.ONLY_LIVE, // Changed access level
-                originalToken.getExpiryDate(),
-                originalToken.getCreatedAt(),
-                lastUsed, // Set last used
-                true
-        );
-
-        // When
-        Optional<MagicLinkToken> result = magicLinkJdbcService.update(updatedToken);
-
-        // Then
-        assertThat(result).isPresent();
-        assertThat(result.get().getAccessLevel()).isEqualTo(MagicLinkAccessLevel.ONLY_LIVE);
-        assertThat(result.get().getLastUsed()).isNotNull();
-        assertThat(result.get().isUsed()).isTrue();
-    }
 
     @Test
     void shouldDeleteToken() {
@@ -155,11 +129,24 @@ class MagicLinkJdbcServiceTest {
         long tokenId = token.getId();
 
         // When
-        magicLinkJdbcService.delete(tokenId);
+        magicLinkJdbcService.delete(testUser, tokenId);
 
         // Then
         Optional<MagicLinkToken> foundToken = magicLinkJdbcService.findById(tokenId);
         assertThat(foundToken).isEmpty();
+    }
+
+    @Test
+    void delete_WithForeignUser_ShouldNotDeleteToken() {
+        // Given
+        MagicLinkToken token = createTestToken("foreign-delete-token");
+        User otherUser = testingService.randomUser();
+
+        // When
+        magicLinkJdbcService.delete(otherUser, token.getId());
+
+        // Then
+        assertThat(magicLinkJdbcService.findById(token.getId())).isPresent();
     }
 
     @Test

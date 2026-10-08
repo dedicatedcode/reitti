@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.GeoUtils;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,14 +17,18 @@ import java.util.Optional;
 public class SignificantPlaceOverrideJdbcService {
     private final JdbcTemplate jdbcTemplate;
     private final PointReaderWriter pointReaderWriter;
+    private final double matchRadiusMeters;
 
-    public SignificantPlaceOverrideJdbcService(JdbcTemplate jdbcTemplate, PointReaderWriter pointReaderWriter) {
+    public SignificantPlaceOverrideJdbcService(JdbcTemplate jdbcTemplate,
+                                              PointReaderWriter pointReaderWriter,
+                                              @Value("${reitti.processing.place-override-match-radius-meters}") double matchRadiusMeters) {
         this.jdbcTemplate = jdbcTemplate;
         this.pointReaderWriter = pointReaderWriter;
+        this.matchRadiusMeters = matchRadiusMeters;
     }
 
     public Optional<PlaceInformationOverride> findByUserAndPoint(User user, GeoPoint point) {
-        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, point.latitude());
+        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(matchRadiusMeters, point.latitude());
         String sql = """
                 SELECT name, category, timezone, ST_AsText(polygon) as polygon FROM significant_places_overrides
                                                 WHERE user_id = ?
@@ -32,7 +37,7 @@ public class SignificantPlaceOverrideJdbcService {
                                                         ST_GeomFromText(?, '4326'),
                                                         0
                                                     )
-                                                ORDER BY ST_Distance(geom, ST_GeomFromText(?, '4326')) LIMIT 1
+                                                ORDER BY polygon IS NOT NULL DESC, ST_Distance(geom, ST_GeomFromText(?, '4326')) LIMIT 1
                 """;
         String pointWkt = pointReaderWriter.write(point);
         List<PlaceInformationOverride> override = jdbcTemplate.query(sql, (rs, rowNum) -> new PlaceInformationOverride(
@@ -50,7 +55,7 @@ public class SignificantPlaceOverrideJdbcService {
 
     public void insertOverride(User user, SignificantPlace place) {
         GeoPoint point = new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid());
-        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(5.0, place.getLatitudeCentroid());
+        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(matchRadiusMeters, place.getLatitudeCentroid());
         this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ? AND ST_DWithin(geom, ST_GeomFromText(?, '4326'), ?)", user.getId(), pointReaderWriter.write(point), meterInDegrees);
 
         String polygonWkt = this.pointReaderWriter.polygonToWkt(place.getPolygon());
@@ -61,7 +66,8 @@ public class SignificantPlaceOverrideJdbcService {
 
     public void clear(User user, SignificantPlace place) {
         GeoPoint point = new GeoPoint(place.getLatitudeCentroid(), place.getLongitudeCentroid());
-        this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ? AND ST_Equals(geom, ST_GeomFromText(?, '4326'))", user.getId(), pointReaderWriter.write(point));
+        double meterInDegrees = GeoUtils.metersToDegreesAtPosition(matchRadiusMeters, place.getLatitudeCentroid());
+        this.jdbcTemplate.update("DELETE FROM significant_places_overrides WHERE user_id = ? AND ST_DWithin(geom, ST_GeomFromText(?, '4326'), ?)", user.getId(), pointReaderWriter.write(point), meterInDegrees);
     }
 
     public void deleteForUser(User user) {

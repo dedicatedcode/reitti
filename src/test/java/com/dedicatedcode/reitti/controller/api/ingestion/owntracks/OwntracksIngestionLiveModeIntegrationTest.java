@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 @AutoConfigureWebMvc
@@ -93,7 +94,7 @@ class OwntracksIngestionLiveModeIntegrationTest {
                 }
                 """.formatted(lat, lon, tst, acc);
 
-        mockMvc.perform(post("/api/v1/ingest/owntracks")
+        mockMvc.perform(post("/api/v1/ingest/owntracks").with(csrf())
                         .with(user(new DeviceTokenUser(user, device)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))

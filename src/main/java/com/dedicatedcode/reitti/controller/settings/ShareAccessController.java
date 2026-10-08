@@ -131,7 +131,7 @@ public class ShareAccessController {
                                   @AuthenticationPrincipal User user,
                                   Model model) {
         try {
-            magicLinkTokenService.deleteToken(id);
+            magicLinkTokenService.deleteToken(user, id);
             model.addAttribute("successMessage", i18n.translate("magic.links.deleted.success"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", i18n.translate("magic.links.delete.error", e.getMessage()));
@@ -162,7 +162,7 @@ public class ShareAccessController {
                     .noneMatch(s -> s.getSharedWithUserId().equals(id)))
                     .map(s -> new UserSharing(null, user.getId(), s, null, generateColorForUser(user.getId()), photoIds.contains(s), null))
                     .collect(Collectors.toSet());
-            this.userSharingJdbcService.delete(toDelete);
+            this.userSharingJdbcService.delete(user, toDelete);
             this.userSharingJdbcService.create(user, toCreate);
 
             for (UserSharing existing : bySharingUser) {

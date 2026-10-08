@@ -109,8 +109,8 @@ public class TestingService {
                     }
 
                     // Check if all counts are stable
-                    long currentRawCount = rawLocationPointRepository.count();
-                    long currentTripCount = tripRepository.count();
+                    long currentRawCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);
+                    long currentTripCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM trips", Long.class);
 
                     boolean countsStable =
                             currentRawCount == lastRawCount.get() &&
@@ -130,9 +130,10 @@ public class TestingService {
 
     public void clearData() {
         //now clear the database
-        this.tripRepository.deleteAll();
-        this.processedVisitRepository.deleteAll();
-        this.rawLocationPointRepository.deleteAll();
+        jdbcTemplate.update("DELETE FROM trip_transport_modes");
+        jdbcTemplate.update("DELETE FROM trips");
+        jdbcTemplate.update("DELETE FROM processed_visits");
+        jdbcTemplate.update("DELETE FROM raw_location_points");
     }
 
     private boolean isSchedulerIdle() throws SchedulerException {
@@ -176,7 +177,7 @@ public class TestingService {
     public SignificantPlace newSignificantPlace(User user, double latitude, double longitude, String name) {
         SignificantPlace significantPlace = this.significantPlaceJdbcService.create(user, SignificantPlace.create(latitude, longitude));
         if (name != null) {
-            return this.significantPlaceJdbcService.update(significantPlace.withName(name));
+            return this.significantPlaceJdbcService.update(user, significantPlace.withName(name));
         } else {
             return significantPlace;
         }
@@ -224,7 +225,7 @@ public class TestingService {
             ps.setString(6, "{}");
             return ps;
         }, keyHolder);
-        return this.processedVisitRepository.findById(keyHolder.getKey().longValue()).orElseThrow();
+        return this.processedVisitRepository.findById(user, keyHolder.getKey().longValue()).orElseThrow();
     }
 
     public Trip createTrip(User user, ProcessedVisit startVisit, ProcessedVisit endVisit) {
@@ -256,7 +257,7 @@ public class TestingService {
         long duration = end.getEpochSecond() - start.getEpochSecond();
         jdbcTemplate.update("INSERT INTO trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters) VALUES (?,?,?,?,?)",
                 tripId, 0L, duration, transportMode.name(), 0.0);
-        return this.tripRepository.findById(tripId).orElseThrow();
+        return this.tripRepository.findById(user, tripId).orElseThrow();
     }
 
     public void awaitExpected(Function<JdbcTemplate, Boolean> consumer, int seconds) {

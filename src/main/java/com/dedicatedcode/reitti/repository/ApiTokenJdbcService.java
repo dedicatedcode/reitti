@@ -9,7 +9,6 @@ import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -58,7 +57,7 @@ public class ApiTokenJdbcService {
         return jdbcTemplate.query(sql, this::mapRowToApiToken, user.getId());
     }
 
-    public Optional<ApiToken> findById(Long id) {
+    public Optional<ApiToken> findById(User user, Long id) {
         String sql = """
             SELECT at.id, at.token, at.name, at.device_id, at.created_at, at.last_used_at,
                    u.id as user_id, u.username, u.password, u.display_name, u.profile_url, u.external_id, u.role, u.user_type, u.version as user_version,
@@ -66,10 +65,10 @@ public class ApiTokenJdbcService {
             FROM api_tokens at
             JOIN users u ON at.user_id = u.id
             LEFT JOIN devices d ON at.device_id = d.id
-            WHERE at.id = ?
+            WHERE at.id = ? AND at.user_id = ?
             """;
         try {
-            ApiToken apiToken = jdbcTemplate.queryForObject(sql, this::mapRowToApiToken, id);
+            ApiToken apiToken = jdbcTemplate.queryForObject(sql, this::mapRowToApiToken, id, user.getId());
             return Optional.ofNullable(apiToken);
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
@@ -101,40 +100,34 @@ public class ApiTokenJdbcService {
     }
 
     private ApiToken update(ApiToken apiToken) {
-        String sql = "UPDATE api_tokens SET token = ?, name = ?, last_used_at = ?, device_id = ? WHERE id = ?";
-        
+        String sql = "UPDATE api_tokens SET token = ?, name = ?, last_used_at = ?, device_id = ? WHERE id = ? AND user_id = ?";
+
         int rowsAffected = jdbcTemplate.update(sql,
             apiToken.getToken(),
             apiToken.getName(),
             apiToken.getLastUsedAt() != null ? Timestamp.from(apiToken.getLastUsedAt()) : null,
             apiToken.getDevice() != null ? apiToken.getDevice().id() : null,
-            apiToken.getId()
+            apiToken.getId(),
+            apiToken.getUser().getId()
         );
-        
+
         if (rowsAffected == 0) {
             throw new EmptyResultDataAccessException("No ApiToken found with id: " + apiToken.getId(), 1);
         }
-        
+
         return apiToken;
     }
 
-    public void deleteById(Long id) {
-        String sql = "DELETE FROM api_tokens WHERE id = ?";
-        int rowsAffected = jdbcTemplate.update(sql, id);
+    public void deleteById(User user, Long id) {
+        String sql = "DELETE FROM api_tokens WHERE id = ? AND user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, id, user.getId());
         if (rowsAffected == 0) {
             throw new EmptyResultDataAccessException("No ApiToken found with id: " + id, 1);
         }
     }
 
     public void delete(ApiToken apiToken) {
-        deleteById(apiToken.getId());
-    }
-
-    @Transactional(readOnly = true)
-    public long count() {
-        String sql = "SELECT COUNT(*) FROM api_tokens";
-        Long count = jdbcTemplate.queryForObject(sql, Long.class);
-        return count != null ? count : 0L;
+        deleteById(apiToken.getUser(), apiToken.getId());
     }
 
     private ApiToken mapRowToApiToken(ResultSet rs, int rowNum) throws SQLException {

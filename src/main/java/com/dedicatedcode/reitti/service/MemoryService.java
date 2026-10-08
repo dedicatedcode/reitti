@@ -88,12 +88,12 @@ public class MemoryService {
     @Transactional
     public MemoryBlock addBlock(User user, Long memoryId, int position, BlockType blockType) {
         this.memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new PageNotFoundException("Unable to find memory with id [" + memoryId + "]"));
-        int maxPosition = memoryBlockJdbcService.getMaxPosition(memoryId);
+        int maxPosition = memoryBlockJdbcService.getMaxPosition(user, memoryId);
 
         MemoryBlock block = new MemoryBlock(memoryId, blockType, maxPosition + 1);
-        block = memoryBlockJdbcService.create(block);
+        block = memoryBlockJdbcService.create(user, block);
         if (position > -1) {
-            List<MemoryBlock> list = memoryBlockJdbcService.findByMemoryId(memoryId);
+            List<MemoryBlock> list = memoryBlockJdbcService.findByMemoryId(user, memoryId);
             MemoryBlock lastBlock = list.removeLast();
             list.add(position, lastBlock);
             reorderBlocks(user, memoryId, list.stream().map(MemoryBlock::getId).toList());
@@ -102,13 +102,13 @@ public class MemoryService {
     }
 
     @Transactional
-    public void deleteBlock(Long blockId) {
-        memoryBlockJdbcService.delete(blockId);
+    public void deleteBlock(User user, Long blockId) {
+        memoryBlockJdbcService.delete(user, blockId);
     }
 
     public List<MemoryBlockPart> getBlockPartsForMemory(User user, Long memoryId, ZoneId timezone) {
         UserSettings settings = this.userSettingsJdbcService.getOrCreateDefaultSettings(user.getId());
-        List<MemoryBlock> blocks = memoryBlockJdbcService.findByMemoryId(memoryId);
+        List<MemoryBlock> blocks = memoryBlockJdbcService.findByMemoryId(user, memoryId);
         List<MemoryBlockPart> blockParts = new ArrayList<>();
         
         for (MemoryBlock block : blocks) {
@@ -133,8 +133,8 @@ public class MemoryService {
     }
     private Optional<? extends MemoryBlockPart> loadAndConvertBlockInstance(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
         return switch (block.getBlockType()) {
-            case TEXT -> memoryBlockTextJdbcService.findByBlockId(block.getId());
-            case IMAGE_GALLERY -> memoryBlockImageGalleryJdbcService.findByBlockId(block.getId());
+            case TEXT -> memoryBlockTextJdbcService.findByBlockId(user, block.getId());
+            case IMAGE_GALLERY -> memoryBlockImageGalleryJdbcService.findByBlockId(user, block.getId());
             case CLUSTER_TRIP -> getClusterTripBlock(user, timezone, block, settings);
             case CLUSTER_VISIT -> getClusterVisitBlock(user, timezone, block, settings);
         };
@@ -149,19 +149,19 @@ public class MemoryService {
     }
 
     @Transactional
-    public MemoryBlockText addTextBlock(Long blockId, String headline, String content) {
+    public MemoryBlockText addTextBlock(User user, Long blockId, String headline, String content) {
         MemoryBlockText blockText = new MemoryBlockText(blockId, headline, content);
-        return memoryBlockTextJdbcService.create(blockText);
+        return memoryBlockTextJdbcService.create(user, blockText);
     }
 
     @Transactional
     public MemoryBlockText updateTextBlock(User user, MemoryBlockText blockText) {
-        return memoryBlockTextJdbcService.update(blockText);
+        return memoryBlockTextJdbcService.update(user, blockText);
     }
 
     @Transactional
     public MemoryBlockImageGallery updateImageBlock(User user, MemoryBlockImageGallery blockText) {
-        return memoryBlockImageGalleryJdbcService.update(blockText);
+        return memoryBlockImageGalleryJdbcService.update(user, blockText);
     }
 
     @Transactional
@@ -171,7 +171,7 @@ public class MemoryService {
         switch (type) {
             case CLUSTER_TRIP:
                 for (Long partId : selectedParts) {
-                    this.tripJdbcService.findById(partId)
+                    this.tripJdbcService.findById(user, partId)
                             .map(trip -> {
                                 MemoryVisit startVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getStartVisit()), block.getId(), trip.getStartVisit().getId());
                                 MemoryVisit endVisit = this.memoryVisitJdbcService.save(user, MemoryVisit.create(trip.getEndVisit()), block.getId(), trip.getEndVisit().getId());
@@ -182,7 +182,7 @@ public class MemoryService {
                 break;
             case CLUSTER_VISIT:
                 for (Long partId : selectedParts) {
-                    this.processedVisitJdbcService.findById(partId)
+                    this.processedVisitJdbcService.findById(user, partId)
                             .map(visit -> {
                                 MemoryVisit memoryVisit = MemoryVisit.create(visit);
                                 return this.memoryVisitJdbcService.save(user, memoryVisit, block.getId(), visit.getId());
@@ -201,31 +201,31 @@ public class MemoryService {
         return memoryClusterBlockRepository.update(user, clusterBlock);
     }
 
-    public Optional<MemoryBlockText> getTextBlock(Long blockId) {
-        return memoryBlockTextJdbcService.findByBlockId(blockId);
+    public Optional<MemoryBlockText> getTextBlock(User user, Long blockId) {
+        return memoryBlockTextJdbcService.findByBlockId(user, blockId);
     }
 
     @Transactional
-    public MemoryBlockImageGallery addImageGalleryBlock(Long blockId, List<MemoryBlockImageGallery.GalleryImage> images) {
-        return this.memoryBlockImageGalleryJdbcService.create(new MemoryBlockImageGallery(blockId, images));
+    public MemoryBlockImageGallery addImageGalleryBlock(User user, Long blockId, List<MemoryBlockImageGallery.GalleryImage> images) {
+        return this.memoryBlockImageGalleryJdbcService.create(user, new MemoryBlockImageGallery(blockId, images));
 
     }
     @Transactional
-    public void deleteImageFromGallery(Long imageId) {
-        memoryBlockImageGalleryJdbcService.delete(imageId);
+    public void deleteImageFromGallery(User user, Long imageId) {
+        memoryBlockImageGalleryJdbcService.delete(user, imageId);
     }
 
-    public MemoryBlockImageGallery getImagesForBlock(Long blockId) {
-        return memoryBlockImageGalleryJdbcService.findByBlockId(blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"));
+    public MemoryBlockImageGallery getImagesForBlock(User user, Long blockId) {
+        return memoryBlockImageGalleryJdbcService.findByBlockId(user, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"));
     }
 
     @Transactional
     public void reorderBlocks(User user, Long memoryId, List<Long> blockIds) {
         // First, temporarily shift all positions to avoid unique constraint violations
-        List<MemoryBlock> allBlocks = memoryBlockJdbcService.findByMemoryId(memoryId);
+        List<MemoryBlock> allBlocks = memoryBlockJdbcService.findByMemoryId(user, memoryId);
         int offset = blockIds.size() + 2; // Use an offset larger than the number of blocks
         for (MemoryBlock block : allBlocks) {
-            memoryBlockJdbcService.update(block.withPosition(block.getPosition() + offset));
+            memoryBlockJdbcService.update(user, block.withPosition(block.getPosition() + offset));
         }
 
         // Now, set the correct positions
@@ -239,7 +239,7 @@ public class MemoryService {
                     throw new IllegalArgumentException("Block does not belong to this memory");
                 }
                 if (!block.getPosition().equals(i)) {
-                    memoryBlockJdbcService.update(block.withPosition(i));
+                    memoryBlockJdbcService.update(user, block.withPosition(i));
                 }
             }
         }
@@ -248,10 +248,10 @@ public class MemoryService {
     @Transactional
     public void recalculateMemory(User user, Long memoryId, ZoneId timezone) {
         Memory memory = memoryJdbcService.findById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
         // Delete all existing blocks
-        memoryBlockJdbcService.deleteByMemoryId(memoryId);
-        
+        memoryBlockJdbcService.deleteByMemoryId(user, memoryId);
+
         // Generate new blocks
         List<MemoryBlockPart> autoGeneratedBlocks = blockGenerationService.generate(user, memory, timezone);
 
@@ -259,15 +259,15 @@ public class MemoryService {
         for (MemoryBlockPart autoGeneratedBlock : autoGeneratedBlocks) {
             if (autoGeneratedBlock instanceof MemoryBlockText textBlock) {
                 MemoryBlock memoryBlock = addBlock(user, memoryId, -1, BlockType.TEXT);
-                memoryBlockTextJdbcService.create(new MemoryBlockText(memoryBlock.getId(), textBlock.getHeadline(), textBlock.getContent()));
+                memoryBlockTextJdbcService.create(user, new MemoryBlockText(memoryBlock.getId(), textBlock.getHeadline(), textBlock.getContent()));
             } else if (autoGeneratedBlock instanceof MemoryBlockImageGallery imageGalleryBlock) {
                 MemoryBlock memoryBlock = addBlock(user, memoryId, -1, BlockType.IMAGE_GALLERY);
-                memoryBlockImageGalleryJdbcService.create(new MemoryBlockImageGallery(memoryBlock.getId(), imageGalleryBlock.getImages()));
+                memoryBlockImageGalleryJdbcService.create(user, new MemoryBlockImageGallery(memoryBlock.getId(), imageGalleryBlock.getImages()));
             } else if (autoGeneratedBlock instanceof MemoryClusterBlock clusterBlock) {
                 createClusterBlock(user, memory, clusterBlock.getTitle(), -1, clusterBlock.getType(), clusterBlock.getPartIds());
             }
         }
-        
+
         log.info("Recalculated memory {} with {} blocks", memoryId, autoGeneratedBlocks.size());
     }
 
@@ -275,7 +275,7 @@ public class MemoryService {
     private Optional<? extends MemoryBlockPart> getClusterTripBlock(User user, ZoneId timezone, MemoryBlock block, UserSettings settings) {
         Optional<MemoryClusterBlock> clusterBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
         return clusterBlockOpt.map(memoryClusterBlock -> {
-            List<MemoryTrip> trips = memoryTripJdbcService.findByMemoryBlockId(memoryClusterBlock.getBlockId());
+            List<MemoryTrip> trips = memoryTripJdbcService.findByMemoryBlockId(user, memoryClusterBlock.getBlockId());
             Optional<MemoryTrip> first = trips.stream().findFirst();
             Optional<MemoryTrip> lastTrip = trips.stream().max(Comparator.comparing(MemoryTrip::getEndTime));
             if (first.isEmpty()) {
@@ -306,7 +306,7 @@ public class MemoryService {
         Optional<? extends MemoryBlockPart> part;
         Optional<MemoryClusterBlock> clusterVisitBlockOpt = memoryClusterBlockRepository.findByBlockId(user, block.getId());
         part = clusterVisitBlockOpt.map(memoryClusterBlock -> {
-            List<MemoryVisit> visits = memoryVisitJdbcService.findByMemoryBlockId(block.getId());
+            List<MemoryVisit> visits = memoryVisitJdbcService.findByMemoryBlockId(user, block.getId());
             Optional<MemoryVisit> first = visits.stream().findFirst();
             Optional<MemoryVisit> last = visits.stream().max(Comparator.comparing(MemoryVisit::getEndTime));
 

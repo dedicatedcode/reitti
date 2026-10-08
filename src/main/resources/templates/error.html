@@ -151,7 +151,7 @@
 
         <div class="error-actions">
             <div th:if="${status == 403}">
-                <form action="/logout" method="post" style="display: inline;">
+                <form th:action="@{/logout}" method="post" style="display: inline;">
                     <button type="submit" class="btn" th:text="#{nav.logout}">
                         <i class="lni lni-exit"></i> Logout
                     </button>

@@ -46,10 +46,10 @@ class TripTransportModeJdbcServiceTest {
         );
 
         // When
-        tripJdbcService.update(trip.withSegments(segments));
+        tripJdbcService.update(user, trip.withSegments(segments));
 
         // Then
-        Trip reloaded = tripJdbcService.findById(trip.getId()).orElseThrow();
+        Trip reloaded = tripJdbcService.findById(user, trip.getId()).orElseThrow();
         assertThat(reloaded.getSegments()).hasSize(2);
         assertThat(reloaded.getSegments().get(0).mode()).isEqualTo(TransportMode.WALKING);
         assertThat(reloaded.getSegments().get(0).offsetSeconds()).isEqualTo(0);
@@ -66,7 +66,7 @@ class TripTransportModeJdbcServiceTest {
                 new TransportModeSegment(TransportMode.WALKING, 0, 300, 1000.0),
                 new TransportModeSegment(TransportMode.DRIVING, 300, 700, 9000.0)
         );
-        tripJdbcService.update(trip.withSegments(segments));
+        tripJdbcService.update(user, trip.withSegments(segments));
 
         // When
         List<Object[]> stats = tripJdbcService.findTransportStatisticsByUser(user);
@@ -84,6 +84,37 @@ class TripTransportModeJdbcServiceTest {
         assertThat((Double) driving[1]).isEqualTo(9000.0);
         assertThat((Long) driving[2]).isEqualTo(700L);
         assertThat((Long) driving[3]).isEqualTo(1L);
+    }
+
+    @Test
+    void findById_WithForeignUser_ShouldReturnEmpty() {
+        Trip trip = createTrip();
+        User otherUser = testingService.randomUser();
+
+        assertThat(tripJdbcService.findById(otherUser, trip.getId())).isEmpty();
+    }
+
+    @Test
+    void findById_WithForeignUser_ShouldNotLeakTransportSegments() {
+        Trip trip = createTrip();
+        tripJdbcService.update(user, trip.withSegments(List.of(
+                new TransportModeSegment(TransportMode.WALKING, 0, 300, 1000.0))));
+        User otherUser = testingService.randomUser();
+
+        assertThat(tripJdbcService.findById(otherUser, trip.getId())).isEmpty();
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModifyTrip() {
+        Trip trip = createTrip();
+        User otherUser = testingService.randomUser();
+        Trip hijacked = trip.withSegments(List.of(
+                new TransportModeSegment(TransportMode.CYCLING, 0, 300, 1000.0)));
+
+        tripJdbcService.update(otherUser, hijacked);
+
+        Trip reloaded = tripJdbcService.findById(user, trip.getId()).orElseThrow();
+        assertThat(reloaded.getSegments()).noneMatch(s -> s.mode() == TransportMode.CYCLING);
     }
 
     private Trip createTrip() {

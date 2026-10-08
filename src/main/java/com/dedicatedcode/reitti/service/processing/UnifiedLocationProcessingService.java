@@ -16,10 +16,13 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.distance.DistanceOp;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -63,6 +66,9 @@ public class UnifiedLocationProcessingService {
     private final VisitSuppressionService visitSuppressionService;
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
+    private final Duration maxTripDurationInHours;
+    private final Duration maxUntrackedMergeGapHours;
+    private final PointReaderWriter pointReaderWriter;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -82,8 +88,11 @@ public class UnifiedLocationProcessingService {
             GeoLocationTimezoneService timezoneService,
             GeometryFactory geometryFactory, MetadataOverrideService metadataOverrideService,
             VisitSuppressionService visitSuppressionService,
+            PointReaderWriter pointReaderWriter,
             JobSchedulingService jobScheduler,
-            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask) {
+            @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
+            @Value("${reitti.processing.max-trip-duration-hours}") int maxTripDurationInHours,
+            @Value("${reitti.processing.max-untracked-merge-gap-hours}") int maxUntrackedMergeGapHours) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -102,8 +111,12 @@ public class UnifiedLocationProcessingService {
         this.geometryFactory = geometryFactory;
         this.metadataOverrideService = metadataOverrideService;
         this.visitSuppressionService = visitSuppressionService;
+
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
+        this.maxTripDurationInHours = Duration.ofHours(maxTripDurationInHours);
+        this.maxUntrackedMergeGapHours = Duration.ofHours(maxUntrackedMergeGapHours);
+        this.pointReaderWriter = pointReaderWriter;
     }
 
     /**
@@ -365,12 +378,12 @@ public class UnifiedLocationProcessingService {
      * Creates Trip entities between consecutive ProcessedVisits.
      */
     private TripDetectionResult detectTrips(User user, String previewId, Instant searchStart, Instant searchEnd, List<ProcessedVisit> processedVisits) {
-
+        boolean isLiveMode = previewId == null;
         long start = System.currentTimeMillis();
         processedVisits.sort(Comparator.comparing(ProcessedVisit::getStartTime));
 
         // Delete existing trips in range
-        if (previewId == null) {
+        if (isLiveMode) {
             List<Trip> existingTrips = tripJdbcService.findByUserAndTimeOverlap(
                     user, searchStart, searchEnd);
             tripJdbcService.deleteAll(existingTrips);
@@ -380,50 +393,25 @@ public class UnifiedLocationProcessingService {
             previewTripJdbcService.deleteAll(existingTrips);
         }
 
-        // Create trips between consecutive visits
-        List<Trip> trips = new ArrayList<>();
-        for (int i = 0; i < processedVisits.size() - 1; i++) {
-            ProcessedVisit startVisit = processedVisits.get(i);
-            ProcessedVisit endVisit = processedVisits.get(i + 1);
+        List<ProcessedVisit> chain = new ArrayList<>();
+        if (isLiveMode) {
+            this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart).ifPresent(chain::add);
+        }
+        chain.addAll(processedVisits);
+        if (isLiveMode) {
+            this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd).ifPresent(chain::add);
+        }
 
-            Trip trip = createTripBetweenVisits(user, previewId, startVisit, endVisit);
+        List<Trip> trips = new ArrayList<>();
+        for (int i = 0; i < chain.size() - 1; i++) {
+            Trip trip = createTripBetweenVisits(user, previewId, chain.get(i), chain.get(i + 1));
             if (trip != null) {
                 trips.add(trip);
             }
         }
-
-        if (previewId == null && !processedVisits.isEmpty()) {
-            //recreate the trip between this run's first visit and the processed visit before. We deleted that when we cleared the processed visits in the search range. But only if it is max 24h apart
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            if (firstProcessedVisitBefore.isPresent() && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisits.getFirst().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripBefore = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisits.getFirst());
-                if (tripBefore != null) {
-                    trips.add(tripBefore);
-                }
-            }
-
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (processedVisitAfter.isPresent() && Duration.between(processedVisits.getLast().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip tripAfter = createTripBetweenVisits(user, null, processedVisits.getLast(), processedVisitAfter.get());
-                if (tripAfter != null) {
-                    trips.add(tripAfter);
-                }
-            }
-        } else if (previewId == null) {
-            //all visits in the search range were suppressed, stitch the surrounding visits back together
-            Optional<ProcessedVisit> firstProcessedVisitBefore = this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart);
-            Optional<ProcessedVisit> processedVisitAfter = this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd);
-            if (firstProcessedVisitBefore.isPresent() && processedVisitAfter.isPresent()
-                    && Duration.between(firstProcessedVisitBefore.get().getEndTime(), processedVisitAfter.get().getStartTime()).compareTo(Duration.ofHours(24)) <= 0) {
-                Trip spanningTrip = createTripBetweenVisits(user, null, firstProcessedVisitBefore.get(), processedVisitAfter.get());
-                if (spanningTrip != null) {
-                    trips.add(spanningTrip);
-                }
-            }
-        }
         trips.sort(Comparator.comparing(Trip::getStartTime));
         // Save trips
-        if (previewId == null) {
+        if (isLiveMode) {
             trips = tripJdbcService.bulkInsert(user, trips);
         } else {
             trips = previewTripJdbcService.bulkInsert(user, previewId, trips);
@@ -514,9 +502,6 @@ public class UnifiedLocationProcessingService {
                     centroidLon += (candidate.getLongitude() - centroidLon) / n;
                     lastIncludedPos = pos;
                 }
-                // Outside radius: skip silently. The gap timer runs from
-                // lastIncludedPos, so transit points just tick the clock
-                // until maxGapSeconds is exceeded.
             }
 
             long durationSeconds = Duration.between(
@@ -574,6 +559,7 @@ public class UnifiedLocationProcessingService {
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
 
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
+            Duration gap = Duration.between(currentEndTime, nextVisit.getStartTime());
 
             if (samePlace && !withinTimeThreshold) {
                 RawLocationPointStream pointsBetweenVisits;
@@ -585,9 +571,11 @@ public class UnifiedLocationProcessingService {
                 if (pointsBetweenVisits.getCount() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
-                } else {
+                } else if (gap.compareTo(maxUntrackedMergeGapHours) <= 0) {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;
+                } else {
+                    logger.debug("There are no points tracked between {} and {}. Will not merge the visits at the same place across more than {}h without data", currentEndTime, nextVisit.getStartTime(), maxUntrackedMergeGapHours);
                 }
             }
 
@@ -801,7 +789,7 @@ public class UnifiedLocationProcessingService {
                 return null;
             }
         } else {
-            if (this.processedVisitJdbcService.findById(startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(endVisit.getId()).isEmpty()) {
+            if (this.processedVisitJdbcService.findById(user, startVisit.getId()).isEmpty() || this.processedVisitJdbcService.findById(user, endVisit.getId()).isEmpty()) {
                 logger.debug("One of the following visits [{},{}] where already deleted. Will skip trip creation.", startVisit.getId(), endVisit.getId());
                 return null;
             }
@@ -823,6 +811,11 @@ public class UnifiedLocationProcessingService {
             }
         }
 
+        if (Duration.between(tripStartTime, tripEndTime).compareTo(maxTripDurationInHours) > 0) {
+            logger.debug("Not connecting visits [{}] and [{}] of user [{}] by a trip: they are more than [{}]h apart",
+                         startVisit.getId(), endVisit.getId(), user.getUsername(), maxTripDurationInHours);
+            return null;
+        }
         // Get location points between the two visits
         RawLocationPointStream tripPoints;
         if (previewId == null) {
@@ -905,13 +898,23 @@ public class UnifiedLocationProcessingService {
     }
 
     private SignificantPlace findClosestPlace(double latitude, double longitude, List<SignificantPlace> places) {
-
-        Comparator<SignificantPlace> distanceComparator = Comparator.comparingDouble(place ->
-                GeoUtils.distanceInMeters(
-                        latitude, longitude,
-                        place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
         return places.stream()
-                .min(distanceComparator.thenComparing(SignificantPlace::getId))
+                .map(place -> {
+                    if (place.getPolygon() == null || place.getPolygon().size() < 3) {
+                        return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, place.getLatitudeCentroid(), place.getLongitudeCentroid()));
+                    }
+                    Polygon polygon = pointReaderWriter.toJtsPolygon(place.getPolygon());
+                    if (polygon.covers(point)) {
+                        return new Candidate(place, true, 0);
+                    }
+                    Coordinate nearest = DistanceOp.nearestPoints(polygon, point)[0];
+                    return new Candidate(place, false, GeoUtils.distanceInMeters(latitude, longitude, nearest.y, nearest.x));
+                })
+                .min(Comparator.comparing((Candidate candidate) -> !candidate.containsPoint())
+                             .thenComparingDouble(Candidate::distanceInMeters)
+                             .thenComparing(candidate -> candidate.place().getId()))
+                .map(Candidate::place)
                 .orElseThrow(() -> new IllegalStateException("No places found"));
     }
 
@@ -950,4 +953,8 @@ public class UnifiedLocationProcessingService {
 
     private record TripDetectionResult(List<Trip> trips, long durationInMillis) {
     }
+
+    private record Candidate(SignificantPlace place, boolean containsPoint, double distanceInMeters) {
+    }
+
 }

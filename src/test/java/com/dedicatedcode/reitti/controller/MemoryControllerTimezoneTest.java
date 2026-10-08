@@ -19,6 +19,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 public class MemoryControllerTimezoneTest {
@@ -48,7 +49,7 @@ public class MemoryControllerTimezoneTest {
         
         for (ZoneId timezone : timezones) {
             // Create memory with specific timezone
-            MvcResult createResult = mockMvc.perform(post("/memories")
+            MvcResult createResult = mockMvc.perform(post("/memories").with(csrf())
                     .with(user(user))
                     .param("title", "Test Memory " + timezone.getId())
                     .param("description", "Test description")
@@ -112,7 +113,7 @@ public class MemoryControllerTimezoneTest {
         ZoneId berlinTimezone = ZoneId.of("Europe/Berlin");
         
         // Create memory
-        MvcResult createResult = mockMvc.perform(post("/memories")
+        MvcResult createResult = mockMvc.perform(post("/memories").with(csrf())
                 .with(user(user))
                 .param("title", "DST Test Memory")
                 .param("description", "Testing daylight saving time")
@@ -171,7 +172,7 @@ public class MemoryControllerTimezoneTest {
         ZoneId chathamTimezone = ZoneId.of("Pacific/Chatham"); // UTC+12:45/+13:45
         LocalDateTime testDate = LocalDateTime.of(2023, 12, 31, 10, 0); // New Year's Eve
         LocalDateTime endDate = testDate.plusDays(1);
-        MvcResult createResult = mockMvc.perform(post("/memories")
+        MvcResult createResult = mockMvc.perform(post("/memories").with(csrf())
                 .with(user(user))
                 .param("title", "Edge Case Timezone Memory")
                 .param("description", "Testing unusual timezone offset")

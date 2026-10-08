@@ -43,7 +43,7 @@ class GeocodingResponseJdbcServiceTest {
 
         // When
         geocodingResponseJdbcService.insert(response);
-        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(place);
+        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(testingService.admin(), place);
 
         // Then
         assertThat(found).hasSize(1);
@@ -64,7 +64,7 @@ class GeocodingResponseJdbcServiceTest {
         SignificantPlace place = placeService.create(testingService.admin(), SignificantPlace.create(latitudeCentroid, longitudeCentroid));
 
         // When
-        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(place);
+        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(testingService.admin(), place);
 
         // Then
         assertThat(found).isEmpty();
@@ -89,7 +89,7 @@ class GeocodingResponseJdbcServiceTest {
 
         // When
         geocodingResponseJdbcService.insert(response);
-        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(place);
+        List<GeocodingResponse> found = geocodingResponseJdbcService.findBySignificantPlace(testingService.admin(), place);
 
         // Then
         assertThat(found).hasSize(1);

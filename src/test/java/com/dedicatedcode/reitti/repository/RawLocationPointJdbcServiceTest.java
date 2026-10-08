@@ -13,8 +13,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,11 +57,11 @@ class RawLocationPointJdbcServiceTest {
         RawLocationPoint anotherUserPoint = createProcessedPoint(anotherUser, day1.plus(12, ChronoUnit.HOURS));
 
         // Verify all points are initially processed
-        assertTrue(findPointById(point1Day1.getId()).isProcessed());
-        assertTrue(findPointById(point2Day1.getId()).isProcessed());
-        assertTrue(findPointById(point1Day2.getId()).isProcessed());
-        assertTrue(findPointById(point1Day3.getId()).isProcessed());
-        assertTrue(findPointById(anotherUserPoint.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point1Day1.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point2Day1.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point1Day2.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point1Day3.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserPoint.getId()).isProcessed());
 
         // When - mark only day 1 and day 2 as unprocessed
         List<LocalDate> affectedDays = List.of(
@@ -69,15 +72,15 @@ class RawLocationPointJdbcServiceTest {
 
         // Then
         // Points on day 1 and day 2 should be unprocessed
-        assertFalse(findPointById(point1Day1.getId()).isProcessed());
-        assertFalse(findPointById(point2Day1.getId()).isProcessed());
-        assertFalse(findPointById(point1Day2.getId()).isProcessed());
+        assertFalse(findPointById(testUser, point1Day1.getId()).isProcessed());
+        assertFalse(findPointById(testUser, point2Day1.getId()).isProcessed());
+        assertFalse(findPointById(testUser, point1Day2.getId()).isProcessed());
         
         // Point on day 3 should still be processed
-        assertTrue(findPointById(point1Day3.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point1Day3.getId()).isProcessed());
         
         // Another user's point should not be affected
-        assertTrue(findPointById(anotherUserPoint.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserPoint.getId()).isProcessed());
     }
 
     @Test
@@ -86,13 +89,13 @@ class RawLocationPointJdbcServiceTest {
         Instant day1 = LocalDate.of(2023, 12, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
         RawLocationPoint point = createProcessedPoint(testUser, day1.plus(10, ChronoUnit.HOURS));
         
-        assertTrue(findPointById(point.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point.getId()).isProcessed());
 
         // When
         rawLocationPointJdbcService.markAllAsUnprocessedForUser(testUser, List.of());
 
         // Then
-        assertTrue(findPointById(point.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point.getId()).isProcessed());
     }
 
     @Test
@@ -101,14 +104,14 @@ class RawLocationPointJdbcServiceTest {
         Instant day1 = LocalDate.of(2023, 12, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
         RawLocationPoint point = createProcessedPoint(testUser, day1.plus(10, ChronoUnit.HOURS));
         
-        assertTrue(findPointById(point.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point.getId()).isProcessed());
 
         // When - mark a different date
         List<LocalDate> affectedDays = List.of(LocalDate.of(2023, 12, 15));
         rawLocationPointJdbcService.markAllAsUnprocessedForUser(testUser, affectedDays);
 
         // Then
-        assertTrue(findPointById(point.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point.getId()).isProcessed());
     }
 
     @Test
@@ -118,16 +121,16 @@ class RawLocationPointJdbcServiceTest {
         RawLocationPoint unprocessedPoint = createUnprocessedPoint(testUser, day1.plus(10, ChronoUnit.HOURS));
         RawLocationPoint processedPoint = createProcessedPoint(testUser, day1.plus(14, ChronoUnit.HOURS));
         
-        assertFalse(findPointById(unprocessedPoint.getId()).isProcessed());
-        assertTrue(findPointById(processedPoint.getId()).isProcessed());
+        assertFalse(findPointById(testUser, unprocessedPoint.getId()).isProcessed());
+        assertTrue(findPointById(testUser, processedPoint.getId()).isProcessed());
 
         // When
         List<LocalDate> affectedDays = List.of(LocalDate.of(2023, 12, 1));
         rawLocationPointJdbcService.markAllAsUnprocessedForUser(testUser, affectedDays);
 
         // Then
-        assertFalse(findPointById(unprocessedPoint.getId()).isProcessed());
-        assertFalse(findPointById(processedPoint.getId()).isProcessed());
+        assertFalse(findPointById(testUser, unprocessedPoint.getId()).isProcessed());
+        assertFalse(findPointById(testUser, processedPoint.getId()).isProcessed());
     }
 
     @Test
@@ -155,15 +158,87 @@ class RawLocationPointJdbcServiceTest {
 
         // Then
         // Test user's points on affected days should be unprocessed
-        assertFalse(findPointById(testUserDay1.getId()).isProcessed());
-        assertFalse(findPointById(testUserDay2.getId()).isProcessed());
+        assertFalse(findPointById(testUser, testUserDay1.getId()).isProcessed());
+        assertFalse(findPointById(testUser, testUserDay2.getId()).isProcessed());
         
         // Test user's point on unaffected day should remain processed
-        assertTrue(findPointById(testUserDay3.getId()).isProcessed());
+        assertTrue(findPointById(testUser, testUserDay3.getId()).isProcessed());
         
         // Another user's points should not be affected
-        assertTrue(findPointById(anotherUserDay1.getId()).isProcessed());
-        assertTrue(findPointById(anotherUserDay2.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserDay1.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserDay2.getId()).isProcessed());
+    }
+
+    @Test
+    void findByUserOrderByTimestampWithKeyset_ShouldReturnEveryPointRegardlessOfProcessedFlagInKeysetOrder() {
+        // Given - all points already processed, which is the state a full recalculation
+        // starts from. The point of the keyset read is that it ignores the flag entirely.
+        Instant day1 = LocalDate.of(2023, 12, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        createProcessedPoint(testUser, day1.plus(9, ChronoUnit.HOURS));
+        createProcessedPoint(testUser, day1.plus(10, ChronoUnit.HOURS));
+        createProcessedPoint(testUser, day1.plus(11, ChronoUnit.HOURS));
+        createProcessedPoint(testUser, day1.plus(12, ChronoUnit.HOURS));
+        createProcessedPoint(testUser, day1.plus(13, ChronoUnit.HOURS));
+
+        // Another user's point must never leak into the result
+        createProcessedPoint(anotherUser, day1.plus(10, ChronoUnit.HOURS));
+
+        assertEquals(0, rawLocationPointJdbcService.countUnprocessedByUser(testUser),
+                "precondition: nothing is unprocessed, so the incremental query would return nothing");
+
+        // When - walk the whole table in batches of two using the keyset cursor
+        List<Long> seenIds = new ArrayList<>();
+        Instant cursorTimestamp = null;
+        while (true) {
+            List<RawLocationPoint> batch =
+                    rawLocationPointJdbcService.findByUserOrderByTimestampWithKeyset(testUser, cursorTimestamp, 2);
+            if (batch.isEmpty()) {
+                break;
+            }
+            for (RawLocationPoint point : batch) {
+                seenIds.add(point.getId());
+            }
+            cursorTimestamp = batch.getLast().getTimestamp();
+        }
+
+        // Then - every one of the user's points was returned exactly once, in timestamp order
+        assertEquals(5, seenIds.size());
+        assertEquals(5, new HashSet<>(seenIds).size(), "no point may be returned twice across batches");
+
+        List<RawLocationPoint> inOrder = rawLocationPointJdbcService
+                .findByUserOrderByTimestampWithKeyset(testUser, null, 100);
+        assertEquals(seenIds, inOrder.stream().map(RawLocationPoint::getId).toList());
+    }
+
+    @Test
+    void findByUserOrderByTimestampWithKeyset_ShouldResumeAfterCursorWithoutDuplicatesOrGaps() {
+        // Given
+        Instant day1 = LocalDate.of(2023, 12, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        createProcessedPoint(testUser, day1.plus(9, ChronoUnit.HOURS));
+        RawLocationPoint cursorPoint = createProcessedPoint(testUser, day1.plus(10, ChronoUnit.HOURS));
+        createProcessedPoint(testUser, day1.plus(11, ChronoUnit.HOURS));
+
+        // When - resume strictly after the middle point
+        List<RawLocationPoint> after = rawLocationPointJdbcService
+                .findByUserOrderByTimestampWithKeyset(testUser, cursorPoint.getTimestamp(), 100);
+
+        // Then
+        assertEquals(1, after.size());
+        assertTrue(after.getFirst().getTimestamp().isAfter(cursorPoint.getTimestamp()));
+    }
+
+    @Test
+    void findByUserOrderByTimestampWithKeyset_ShouldReturnEmpty_WhenCursorIsAtTheLastPoint() {
+        // Given
+        Instant day1 = LocalDate.of(2023, 12, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        RawLocationPoint last = createProcessedPoint(testUser, day1.plus(23, ChronoUnit.HOURS));
+
+        // When
+        List<RawLocationPoint> result = rawLocationPointJdbcService
+                .findByUserOrderByTimestampWithKeyset(testUser, last.getTimestamp(), 100);
+
+        // Then
+        assertTrue(result.isEmpty());
     }
 
     private RawLocationPoint createProcessedPoint(User user, Instant timestamp) {
@@ -194,7 +269,7 @@ class RawLocationPointJdbcServiceTest {
             created.getVersion()
         );
         
-        return rawLocationPointJdbcService.update(processed);
+        return rawLocationPointJdbcService.update(user, processed);
     }
 
     private RawLocationPoint createUnprocessedPoint(User user, Instant timestamp) {
@@ -213,8 +288,8 @@ class RawLocationPointJdbcServiceTest {
         return rawLocationPointJdbcService.create(user, point);
     }
 
-    private RawLocationPoint findPointById(Long id) {
-        return rawLocationPointJdbcService.findById(id)
+    private RawLocationPoint findPointById(User user, Long id) {
+        return rawLocationPointJdbcService.findById(user, id)
             .orElseThrow(() -> new RuntimeException("Point not found: " + id));
     }
 }

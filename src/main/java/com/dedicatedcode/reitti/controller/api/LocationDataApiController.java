@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.dto.RawLocationDataResponse;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
@@ -9,6 +10,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.LocationPointsSimplificationService;
+import com.dedicatedcode.reitti.service.security.DataAccessGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,14 +32,16 @@ public class LocationDataApiController {
     
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final LocationPointsSimplificationService simplificationService;
+    private final DataAccessGuard dataAccessGuard;
     private final UserJdbcService userJdbcService;
     
     @Autowired
     public LocationDataApiController(RawLocationPointJdbcService rawLocationPointJdbcService,
-                                     LocationPointsSimplificationService simplificationService,
+                                     LocationPointsSimplificationService simplificationService, DataAccessGuard dataAccessGuard,
                                      UserJdbcService userJdbcService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.simplificationService = simplificationService;
+        this.dataAccessGuard = dataAccessGuard;
         this.userJdbcService = userJdbcService;
     }
 
@@ -110,18 +114,13 @@ public class LocationDataApiController {
 
             boolean includeRawLocationPath = true;
             if (user instanceof TokenUser) {
-                if (!Objects.equals(user.getId(), userId)) {
-                    throw new IllegalAccessException("User not allowed to fetch raw location points for other users");
-                }
-
                 includeRawLocationPath = user.getAuthorities().stream().anyMatch(a ->
                         a.equals(MagicLinkAccessLevel.FULL_ACCESS.asAuthority()) ||
                         a.equals(MagicLinkAccessLevel.ONLY_LIVE.asAuthority()) ||
                         a.equals(MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS.asAuthority()));
             }
             // Get the user from the repository by userId
-            User userToFetchDataFrom = userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
 
             long start = System.nanoTime();
             List<RawLocationDataResponse.Segment> result;
@@ -145,6 +144,8 @@ public class LocationDataApiController {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "Invalid date format. Expected format: YYYY-MM-DD"
             ));
+        } catch (ForbiddenException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Error fetching raw location points", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

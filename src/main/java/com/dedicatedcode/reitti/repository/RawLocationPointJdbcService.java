@@ -215,6 +215,23 @@ public class RawLocationPointJdbcService {
         return jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId(), limit, offset);
     }
 
+    public List<RawLocationPoint> findByUserOrderByTimestampWithKeyset(User user, Instant afterTimestamp, int limit) {
+        StringBuilder sql = new StringBuilder()
+                .append("SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("FROM raw_location_points rlp ")
+                .append("WHERE rlp.user_id = ? ");
+        Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
+        if (after != null) {
+            sql.append("AND rlp.timestamp > ? ");
+        }
+        sql.append("ORDER BY rlp.timestamp LIMIT ?");
+
+        if (after != null) {
+            return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper, user.getId(), after, limit);
+        }
+        return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper, user.getId(), limit);
+    }
+
     public List<Integer> findDistinctYearsByUser(User user) {
         String sql = """
                 SELECT DISTINCT EXTRACT(YEAR FROM day)
@@ -240,8 +257,8 @@ public class RawLocationPointJdbcService {
         return rawLocationPoint.withId(id);
     }
 
-    public RawLocationPoint update(RawLocationPoint rawLocationPoint) {
-        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, elevation_meters = ?, geom = ST_GeomFromText(?, '4326'), processed = ?, synthetic = ? WHERE id = ?";
+    public RawLocationPoint update(User user, RawLocationPoint rawLocationPoint) {
+        String sql = "UPDATE raw_location_points SET timestamp = ?, accuracy_meters = ?, elevation_meters = ?, geom = ST_GeomFromText(?, '4326'), processed = ?, synthetic = ? WHERE id = ? AND user_id = ?";
         jdbcTemplate.update(sql,
                 Timestamp.from(rawLocationPoint.getTimestamp()),
                 rawLocationPoint.getAccuracyMeters(),
@@ -249,16 +266,17 @@ public class RawLocationPointJdbcService {
                 pointReaderWriter.write(rawLocationPoint.getGeom()),
                 rawLocationPoint.isProcessed(),
                 rawLocationPoint.isSynthetic(),
-                rawLocationPoint.getId()
+                rawLocationPoint.getId(),
+                user.getId()
         );
         return rawLocationPoint;
     }
 
-    public Optional<RawLocationPoint> findById(Long id) {
+    public Optional<RawLocationPoint> findById(User user, Long id) {
         String sql = "SELECT rlp.id, rlp.source_point_id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
                 "FROM raw_location_points rlp " +
-                "WHERE rlp.id = ?";
-        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id);
+                "WHERE rlp.id = ? AND rlp.user_id = ?";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, id, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
@@ -287,11 +305,6 @@ public class RawLocationPointJdbcService {
                 "ORDER BY rlp.timestamp ASC LIMIT 1";
         List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper, user.getId());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
-    }
-
-    @SuppressWarnings("DataFlowIssue")
-    public long count() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM raw_location_points", Long.class);
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -527,16 +540,6 @@ public class RawLocationPointJdbcService {
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }
 
-    public void deleteAll() {
-        String sql = "DELETE FROM raw_location_points";
-        jdbcTemplate.update(sql);
-    }
-
-    public void markAllAsUnprocessedForUser(User user) {
-        String sql = "UPDATE raw_location_points SET processed = false WHERE user_id = ?";
-        jdbcTemplate.update(sql, user.getId());
-    }
-
     public void markAllAsUnprocessedForUser(User user, List<LocalDate> affectedDays) {
         this.jdbcTemplate.update("UPDATE raw_location_points SET processed = false WHERE user_id = ? AND date_trunc('day', timestamp) = ANY(?)",
                                  user.getId(),
@@ -702,12 +705,12 @@ public class RawLocationPointJdbcService {
                ,user.getId(), Timestamp.from(timeRange.start()), Timestamp.from(timeRange.end()));
     }
 
-    public List<CoverageController.H3CellCount> findVisitedH3CellsCounts(Long userId, Instant startOfRange, Instant endOfRange) {
+    public List<CoverageController.H3CellCount> findVisitedH3CellsCounts(User user, Instant startOfRange, Instant endOfRange) {
         return this.jdbcTemplate.query("""
                                            SELECT h3_cell, COUNT(*), date_bin('5 minutes', timestamp, TIMESTAMP '2001-01-01') AS time_bucket
                                            FROM raw_location_points WHERE user_id = ? AND timestamp >= ? AND timestamp < ? AND h3_cell IS NOT NULL GROUP BY h3_cell, time_bucket;
                                            """, (rs, _) -> new CoverageController.H3CellCount(rs.getString("h3_cell"), rs.getTimestamp("time_bucket").toInstant(), rs.getLong("count")),
-                                userId,
+                                user.getId(),
                                 Timestamp.from(startOfRange),
                                 Timestamp.from(endOfRange));
     }

@@ -151,17 +151,40 @@ class SignificantPlaceOverrideJdbcServiceTest {
     }
 
     @Test
+    void findByUserAndPoint_MatchesAPlaceRecreatedSomeMetersOffButNotANeighbour() {
+        User user = testingService.randomUser();
+        SignificantPlace place = new SignificantPlace(1L, "Renamed", null, null, null, 40.7128, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.insertOverride(user, place);
+
+        // ~17m north: GPS jitter of a recreated place
+        assertEquals("Renamed", significantPlaceOverrideJdbcService.findByUserAndPoint(user, new GeoPoint(40.71295, -74.0060)).map(PlaceInformationOverride::name).orElse(null));
+        // ~45m north: a different place
+        assertFalse(significantPlaceOverrideJdbcService.findByUserAndPoint(user, new GeoPoint(40.7132, -74.0060)).isPresent());
+    }
+
+    @Test
+    void clear_RemovesTheOverrideOfThePlaceEvenIfItWasRecreatedSomeMetersOff() {
+        User user = testingService.randomUser();
+        significantPlaceOverrideJdbcService.insertOverride(user, new SignificantPlace(1L, "Renamed", null, null, null, 40.7128, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L));
+
+        SignificantPlace recreated = new SignificantPlace(2L, "Renamed", null, null, null, 40.71289, -74.0060, null, PlaceType.SHOP, ZoneId.of("America/New_York"), false, 1L);
+        significantPlaceOverrideJdbcService.clear(user, recreated);
+
+        assertFalse(significantPlaceOverrideJdbcService.findByUserAndPoint(user, recreated).isPresent());
+    }
+
+    @Test
     void testPolygonHandling() {
         // Create a test user
         User user = testingService.randomUser();
 
         // Create a polygon for the place (a simple rectangle around the center point)
         List<GeoPoint> polygon = List.of(
-            new GeoPoint(40.7120, -74.0070), // Southwest corner
-            new GeoPoint(40.7120, -74.0050), // Southeast corner
-            new GeoPoint(40.7136, -74.0050), // Northeast corner
-            new GeoPoint(40.7136, -74.0070), // Northwest corner
-            new GeoPoint(40.7120, -74.0070)  // Close the polygon
+                new GeoPoint(40.7120, -74.0070), // Southwest corner
+                new GeoPoint(40.7120, -74.0050), // Southeast corner
+                new GeoPoint(40.7136, -74.0050), // Northeast corner
+                new GeoPoint(40.7136, -74.0070), // Northwest corner
+                new GeoPoint(40.7120, -74.0070)  // Close the polygon
         );
 
         // Create a SignificantPlace with a polygon
@@ -178,11 +201,11 @@ class SignificantPlaceOverrideJdbcServiceTest {
         assertEquals("Polygon Place", result.get().name());
         assertEquals(PlaceType.WORK, result.get().category());
         assertEquals(ZoneId.of("America/New_York"), result.get().timezone());
-        
+
         // Verify the polygon is returned correctly
         assertNotNull(result.get().polygon());
         assertEquals(5, result.get().polygon().size()); // Should have 5 points (including closing point)
-        
+
         // Verify the polygon points match what we inserted
         List<GeoPoint> returnedPolygon = result.get().polygon();
         for (int i = 0; i < polygon.size(); i++) {

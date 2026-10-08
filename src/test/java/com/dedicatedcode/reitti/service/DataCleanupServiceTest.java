@@ -83,11 +83,11 @@ class DataCleanupServiceTest {
 
         // Then
         // Trips involving removed places should be deleted
-        assertTrue(tripJdbcService.findById(tripToRemove1.getId()).isEmpty());
-        assertTrue(tripJdbcService.findById(tripToRemove2.getId()).isEmpty());
+        assertTrue(tripJdbcService.findById(testUser, tripToRemove1.getId()).isEmpty());
+        assertTrue(tripJdbcService.findById(testUser, tripToRemove2.getId()).isEmpty());
         
         // Trips not involving removed places should remain
-        assertTrue(tripJdbcService.findById(tripToKeep.getId()).isPresent());
+        assertTrue(tripJdbcService.findById(testUser, tripToKeep.getId()).isPresent());
     }
 
     @Test
@@ -106,11 +106,11 @@ class DataCleanupServiceTest {
 
         // Then
         // Visits for removed places should be deleted
-        assertTrue(processedVisitJdbcService.findById(visitToRemove1.getId()).isEmpty());
-        assertTrue(processedVisitJdbcService.findById(visitToRemove2.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToRemove1.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToRemove2.getId()).isEmpty());
         
         // Visits for kept places should remain
-        assertTrue(processedVisitJdbcService.findById(visitToKeep.getId()).isPresent());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToKeep.getId()).isPresent());
     }
 
     @Test
@@ -125,7 +125,7 @@ class DataCleanupServiceTest {
         
         // Create visit for another user (should not be affected)
         SignificantPlace anotherUserPlace = createTestPlace(anotherUser, "Another User Place", 53.866149, 10.703927);
-        ProcessedVisit anotherUserVisit = createTestVisit(anotherUserPlace, baseTime, baseTime.plus(1, ChronoUnit.HOURS));
+        ProcessedVisit anotherUserVisit = createTestVisit(anotherUser, anotherUserPlace, baseTime, baseTime.plus(1, ChronoUnit.HOURS));
 
         // When - only remove placeToRemove1
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
@@ -134,14 +134,14 @@ class DataCleanupServiceTest {
 
         // Then
         // Only visit for removed place should be deleted
-        assertTrue(processedVisitJdbcService.findById(visitToRemove.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToRemove.getId()).isEmpty());
         
         // Visits for places not in removal list should remain
-        assertTrue(processedVisitJdbcService.findById(visitToKeep1.getId()).isPresent());
-        assertTrue(processedVisitJdbcService.findById(visitToKeep2.getId()).isPresent());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToKeep1.getId()).isPresent());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToKeep2.getId()).isPresent());
         
         // Another user's visits should not be affected
-        assertTrue(processedVisitJdbcService.findById(anotherUserVisit.getId()).isPresent());
+        assertTrue(processedVisitJdbcService.findById(anotherUser, anotherUserVisit.getId()).isPresent());
     }
 
     @Test
@@ -186,10 +186,10 @@ class DataCleanupServiceTest {
         RawLocationPoint anotherUserPoint = createProcessedPoint(anotherUser, day1Time);
 
         // Verify all points are initially processed
-        assertTrue(findPointById(pointDay1.getId()).isProcessed());
-        assertTrue(findPointById(pointDay2.getId()).isProcessed());
-        assertTrue(findPointById(pointDay3.getId()).isProcessed());
-        assertTrue(findPointById(anotherUserPoint.getId()).isProcessed());
+        assertTrue(findPointById(testUser, pointDay1.getId()).isProcessed());
+        assertTrue(findPointById(testUser, pointDay2.getId()).isProcessed());
+        assertTrue(findPointById(testUser, pointDay3.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserPoint.getId()).isProcessed());
 
         // When - cleanup with day1 and day2 as affected days
         List<SignificantPlace> placesToRemove = List.of(placeToRemove1);
@@ -198,14 +198,14 @@ class DataCleanupServiceTest {
 
         // Then
         // Points on affected days should be marked as unprocessed
-        assertFalse(findPointById(pointDay1.getId()).isProcessed());
-        assertFalse(findPointById(pointDay2.getId()).isProcessed());
+        assertFalse(findPointById(testUser, pointDay1.getId()).isProcessed());
+        assertFalse(findPointById(testUser, pointDay2.getId()).isProcessed());
         
         // Points on unaffected days should remain processed
-        assertTrue(findPointById(pointDay3.getId()).isProcessed());
+        assertTrue(findPointById(testUser, pointDay3.getId()).isProcessed());
         
         // Another user's points should not be affected
-        assertTrue(findPointById(anotherUserPoint.getId()).isProcessed());
+        assertTrue(findPointById(anotherUser, anotherUserPoint.getId()).isProcessed());
     }
 
     @Test
@@ -222,13 +222,13 @@ class DataCleanupServiceTest {
 
         // Then
         // Visit should be removed
-        assertTrue(processedVisitJdbcService.findById(visitToRemove.getId()).isEmpty());
+        assertTrue(processedVisitJdbcService.findById(testUser, visitToRemove.getId()).isEmpty());
         
         // Place should be removed
         assertTrue(placeJdbcService.findById(placeToRemove1.getId()).isEmpty());
         
         // Point should remain processed (no affected days)
-        assertTrue(findPointById(point.getId()).isProcessed());
+        assertTrue(findPointById(testUser, point.getId()).isProcessed());
     }
 
     private SignificantPlace createTestPlace(User user, String name, double latitude, double longitude) {
@@ -249,9 +249,13 @@ class DataCleanupServiceTest {
     }
 
     private ProcessedVisit createTestVisit(SignificantPlace place, Instant startTime, Instant endTime) {
+        return createTestVisit(testUser, place, startTime, endTime);
+    }
+
+    private ProcessedVisit createTestVisit(User user, SignificantPlace place, Instant startTime, Instant endTime) {
         long duration = ChronoUnit.SECONDS.between(startTime, endTime);
         ProcessedVisit visit = new ProcessedVisit(place, startTime, endTime, duration,null);
-        return processedVisitJdbcService.create(testUser, visit);
+        return processedVisitJdbcService.create(user, visit);
     }
 
     private Trip createTestTrip(ProcessedVisit startVisit, ProcessedVisit endVisit) {
@@ -300,11 +304,11 @@ class DataCleanupServiceTest {
             created.getVersion()
         );
         
-        return rawLocationPointJdbcService.update(processed);
+        return rawLocationPointJdbcService.update(user, processed);
     }
 
-    private RawLocationPoint findPointById(Long id) {
-        return rawLocationPointJdbcService.findById(id)
+    private RawLocationPoint findPointById(User user, Long id) {
+        return rawLocationPointJdbcService.findById(user, id)
             .orElseThrow(() -> new RuntimeException("Point not found: " + id));
     }
 }

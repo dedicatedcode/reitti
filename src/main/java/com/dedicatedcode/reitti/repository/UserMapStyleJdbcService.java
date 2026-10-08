@@ -73,8 +73,7 @@ public class UserMapStyleJdbcService {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    private Optional<UserMapStyle> findOwnedById(User user, long id) {
-        List<UserMapStyle> results = jdbcTemplate.query(
+    public Optional<UserMapStyle> findOwnedById(User user, long id) {        List<UserMapStyle> results = jdbcTemplate.query(
                 "SELECT * FROM user_map_styles WHERE user_id = ? AND id = ?",
                 rowMapper,
                 user.getId(),
@@ -183,8 +182,9 @@ public class UserMapStyleJdbcService {
 
     @Transactional
     @CacheEvict(cacheNames = {"mapStyleJson", "mapStyles"}, allEntries = true)
-    public void delete(long id) {
-        jdbcTemplate.update("UPDATE user_map_style_settings SET active_style_id = (SELECT id FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ?", id);
-        jdbcTemplate.update("DELETE FROM user_map_styles WHERE id = ?", id);
+    public void delete(User user, long id) {
+        jdbcTemplate.update("UPDATE user_map_style_settings SET active_style_id = (SELECT id FROM user_map_styles WHERE name = 'Reitti' LIMIT 1) WHERE active_style_id = ? " +
+                "AND EXISTS (SELECT 1 FROM user_map_styles WHERE id = ? AND user_id = ?)", id, id, user.getId());
+        jdbcTemplate.update("DELETE FROM user_map_styles WHERE id = ? AND user_id = ?", id, user.getId());
     }
 }

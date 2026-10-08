@@ -52,13 +52,6 @@ public class ReittiIntegrationJdbcService {
         return jdbcTemplate.query(sql, ROW_MAPPER, user.getId());
     }
 
-    private Optional<ReittiIntegration> findById(Long id) {
-        String sql = "SELECT id, url, token, color, enabled, created_at, updated_at, last_used, version, status, last_message " +
-                "FROM reitti_integrations WHERE id = ?";
-        List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER, id);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
-    }
-
     public Optional<ReittiIntegration> findByIdAndUser(Long id, User user) {
         String sql = "SELECT id, url, token, color, enabled, created_at, updated_at, last_used, version, status, last_message " +
                     "FROM reitti_integrations WHERE id = ? AND user_id = ?";
@@ -90,46 +83,47 @@ public class ReittiIntegrationJdbcService {
         return this.findByIdAndUser(id, user).orElseThrow();
     }
 
-    public Optional<ReittiIntegration> update(ReittiIntegration integration) throws OptimisticLockException {
+    public Optional<ReittiIntegration> update(User user, ReittiIntegration integration) throws OptimisticLockException {
         String sql = "UPDATE reitti_integrations SET url = ?, token = ?, color = ?, enabled = ?, updated_at = ?, last_used = ?, last_message = ?, status = ?, version = version + 1 " +
-                    "WHERE id = ? AND version = ? RETURNING id, url, token, color, enabled, created_at, updated_at, last_used, version, status, last_message";
-        
+                    "WHERE id = ? AND user_id = ? AND version = ? RETURNING id, url, token, color, enabled, created_at, updated_at, last_used, version, status, last_message";
+
         LocalDateTime now = LocalDateTime.now();
-        List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER, 
-            integration.getUrl(), 
-            integration.getToken(), 
-            integration.getColor(), 
-            integration.isEnabled(), 
-            Timestamp.valueOf(now), 
+        List<ReittiIntegration> results = jdbcTemplate.query(sql, ROW_MAPPER,
+            integration.getUrl(),
+            integration.getToken(),
+            integration.getColor(),
+            integration.isEnabled(),
+            Timestamp.valueOf(now),
             integration.getLastUsed().map(Timestamp::valueOf).orElse(null),
             integration.getLastMessage().orElse(null),
             integration.getStatus().name(),
             integration.getId(),
+            user.getId(),
             integration.getVersion());
-        
+
         if (results.isEmpty()) {
-            Optional<ReittiIntegration> existing = findById(integration.getId());
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
             return Optional.empty();
         }
-        
+
         return Optional.of(results.getFirst());
     }
 
-    public boolean delete(ReittiIntegration integration) throws OptimisticLockException {
-        String sql = "DELETE FROM reitti_integrations WHERE id = ? AND version = ?";
-        int rowsAffected = jdbcTemplate.update(sql, integration.getId(), integration.getVersion());
-        
+    public boolean delete(User user, ReittiIntegration integration) throws OptimisticLockException {
+        String sql = "DELETE FROM reitti_integrations WHERE id = ? AND user_id = ? AND version = ?";
+        int rowsAffected = jdbcTemplate.update(sql, integration.getId(), user.getId(), integration.getVersion());
+
         if (rowsAffected == 0) {
-            Optional<ReittiIntegration> existing = findById(integration.getId());
+            Optional<ReittiIntegration> existing = findByIdAndUser(integration.getId(), user);
             if (existing.isPresent()) {
                 throw new OptimisticLockException("The integration has been modified by another process. Please refresh and try again.");
             }
             return false;
         }
-        
+
         return true;
     }
 

@@ -208,7 +208,7 @@ public class ApiTokenSettingsController {
                               Model model) {
 
         try {
-            apiTokenService.deleteToken(tokenId);
+            apiTokenService.deleteToken(user, tokenId);
             model.addAttribute("successMessage", getMessage("message.success.token.deleted"));
         } catch (Exception e) {
             model.addAttribute("errorMessage", getMessage("message.error.token.deletion", e.getMessage()));

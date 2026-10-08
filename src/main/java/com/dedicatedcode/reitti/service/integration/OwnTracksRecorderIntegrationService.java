@@ -122,7 +122,7 @@ public class OwnTracksRecorderIntegrationService {
                         if (latestTimestamp != null) {
                             // Update lastSuccessfulFetch with the latest timestamp from the data
                             OwnTracksRecorderIntegration updatedIntegration = integration.withLastSuccessfulFetch(latestTimestamp);
-                            jdbcService.update(updatedIntegration);
+                            jdbcService.update(user, updatedIntegration);
                         }
 
                     }
@@ -173,7 +173,7 @@ public class OwnTracksRecorderIntegrationService {
                     authPassword,
                     device.id(),
                     enabled, existing.getLastSuccessfulFetch(), existing.getVersion());
-            return jdbcService.update(updated);
+            return jdbcService.update(user, updated);
         } else {
             OwnTracksRecorderIntegration newIntegration = new OwnTracksRecorderIntegration(
                     normalizedBaseUrl,

@@ -65,27 +65,6 @@ public class MagicLinkJdbcService {
         return new MagicLinkToken(id, token.getName(), token.getTokenHash(), token.getAccessLevel(), token.getExpiryDate(), token.getResourceType(), token.getResourceId(), now, null, false);
     }
 
-    @CacheEvict(value = "magic-links", allEntries = true)
-    public Optional<MagicLinkToken> update(MagicLinkToken updatedToken) {
-        String sql = """
-            UPDATE magic_link_tokens
-            SET token_hash = ?, access_level = ?, expiry_date = ?, last_used_at = ?
-            WHERE id = ?
-            """;
-
-        int rowsAffected = jdbcTemplate.update(sql,
-                updatedToken.getTokenHash(),
-                updatedToken.getAccessLevel().name(),
-                updatedToken.getExpiryDate() != null ? Timestamp.from(updatedToken.getExpiryDate()) : null,
-                updatedToken.getLastUsed() != null ? Timestamp.from(updatedToken.getLastUsed()) : null,
-                updatedToken.getId());
-
-        if (rowsAffected > 0) {
-            return findById(updatedToken.getId());
-        }
-        return Optional.empty();
-    }
-
     @Transactional(readOnly = true)
     @Cacheable(value = "magic-links", key = "#id")
     public Optional<MagicLinkToken> findById(long id) {
@@ -164,9 +143,9 @@ public class MagicLinkJdbcService {
     }
 
     @CacheEvict(value = "magic-links", allEntries = true)
-    public void delete(long id) {
-        String sql = "DELETE FROM magic_link_tokens WHERE id = ?";
-        jdbcTemplate.update(sql, id);
+    public void delete(User user, long id) {
+        String sql = "DELETE FROM magic_link_tokens WHERE id = ? AND user_id = ?";
+        jdbcTemplate.update(sql, id, user.getId());
     }
 
     private static class MagicLinkTokenRowMapper implements RowMapper<MagicLinkToken> {

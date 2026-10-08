@@ -1,6 +1,5 @@
-package com.dedicatedcode.reitti.controller;
+package com.dedicatedcode.reitti.controller.error;
 
-import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -10,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.HashMap;
@@ -146,11 +144,4 @@ public class CustomErrorController implements ErrorController {
         return sb.toString();
     }
 
-    @ExceptionHandler(PageNotFoundException.class)
-    public String handlePageNotFound(Model model) {
-        model.addAttribute("status", 404);
-        model.addAttribute("error", "Not Found");
-        model.addAttribute("message", "The page you are looking for could not be found.");
-        return "error";
-    }
 }

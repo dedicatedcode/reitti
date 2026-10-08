@@ -214,11 +214,11 @@ public class MapStylesSettingsController {
 
     @DeleteMapping
     public String deleteMapStyle(@AuthenticationPrincipal User user, @RequestParam Long id, Model model) {
-        if (this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
+        if (this.userMapStyleJdbcService.findOwnedById(user, id).isEmpty()) {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
         }
 
-        this.userMapStyleJdbcService.delete(id);
+        this.userMapStyleJdbcService.delete(user, id);
         return getPage(user, model);
     }
 

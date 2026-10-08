@@ -216,7 +216,7 @@ public class UserService {
 
     @Transactional
     public void deleteUser(User user) {
-        this.visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).forEach(detectionParameter -> this.visitDetectionParametersJdbcService.delete(detectionParameter.getId()));
+        this.visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).forEach(detectionParameter -> this.visitDetectionParametersJdbcService.delete(user, detectionParameter.getId()));
         this.transportModeJdbcService.deleteAllForUser(user);
         this.userSettingsJdbcService.deleteFor(user);
         this.geocodingResponseJdbcService.deleteAllForUser(user);

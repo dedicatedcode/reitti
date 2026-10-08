@@ -6,17 +6,16 @@ import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 @Repository
 public class JobMetadataRepository {
@@ -70,6 +69,7 @@ public class JobMetadataRepository {
         return timestamp == null ? null : timestamp.toInstant();
     }
 
+    @Transactional(propagation = REQUIRES_NEW)
     public void updateProgress(UUID jobId, long current, long max, String message) {
         this.jdbcTemplate.update("UPDATE job_meta_data SET current_progress = ?, max_progress = ?, progress_message = ? WHERE id = ?", current, max, message, jobId);
     }
@@ -106,7 +106,6 @@ public class JobMetadataRepository {
         return state.stream().map(JobState::valueOf).findFirst();
     }
 
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByStates(List<JobState> states) {
         if (states.isEmpty()) {
             return List.of();
@@ -117,20 +116,17 @@ public class JobMetadataRepository {
         return jdbcTemplate.query(sql, jobMetadataRowMapper, states.stream().map(Enum::name).toArray());
     }
 
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public List<JobMetadata> findByParentJobId(UUID parentId) {
         String sql = "SELECT id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
                 "FROM job_meta_data WHERE parent_job_id = ?";
         return jdbcTemplate.query(sql, jobMetadataRowMapper, parentId);
     }
 
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public Optional<JobMetadata> findById(UUID jobId) {
         List<JobMetadata> query = this.jdbcTemplate.query("SELECT * FROM job_meta_data WHERE id = ?", jobMetadataRowMapper, jobId);
         return query.stream().findFirst();
     }
 
-    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     public void updateParentJobState(UUID parentJobId, JobState newState) {
         Optional<JobMetadata> parent = findById(parentJobId);
         if (parent.isEmpty()) return;

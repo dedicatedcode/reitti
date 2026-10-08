@@ -63,14 +63,14 @@ class MetadataOverrideServiceIntegrationTest {
         Long visitId = createVisit(place, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600));
         Long tripId = createTrip(visitId, visitId, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600));
 
-        Trip trip = tripJdbcService.findById(tripId).orElseThrow();
+        Trip trip = tripJdbcService.findById(user, tripId).orElseThrow();
         MemoryMetadata metadata = new MemoryMetadata(trip.getStartTime(), trip.getEndTime());
         metadata.setReason("commute");
 
         metadataService.saveTripMetadata(user, trip, metadata);
 
         // Check trip metadata was updated
-        Trip updatedTrip = tripJdbcService.findById(tripId).orElseThrow();
+        Trip updatedTrip = tripJdbcService.findById(user, tripId).orElseThrow();
         assertEquals("commute", updatedTrip.getMetadata().get("reason"));
 
         // Check override table has a matching row
@@ -83,14 +83,14 @@ class MetadataOverrideServiceIntegrationTest {
     @Test
     void saveVisitMetadataCreatesOverrideAndUpdatesVisit() {
         Long visitId = createVisit(place, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600));
-        ProcessedVisit visit = processedVisitJdbcService.findById(visitId).orElseThrow();
+        ProcessedVisit visit = processedVisitJdbcService.findById(user, visitId).orElseThrow();
 
         MemoryMetadata metadata = new MemoryMetadata(visit.getStartTime(), visit.getEndTime());
         metadata.setDescription("groceries");
 
         metadataService.saveVisitMetadata(user, visit, metadata);
 
-        ProcessedVisit updatedVisit = processedVisitJdbcService.findById(visitId).orElseThrow();
+        ProcessedVisit updatedVisit = processedVisitJdbcService.findById(user, visitId).orElseThrow();
         assertEquals("groceries", updatedVisit.getMetadata().get("description"));
 
         Optional<MemoryMetadata> override = metadataService.findOverlappingMetadata(
@@ -102,7 +102,7 @@ class MetadataOverrideServiceIntegrationTest {
     @Test
     void repeatedSaveReusesExistingOverride() {
         Long visitId = createVisit(place, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600));
-        ProcessedVisit visit = processedVisitJdbcService.findById(visitId).orElseThrow();
+        ProcessedVisit visit = processedVisitJdbcService.findById(user, visitId).orElseThrow();
 
         MemoryMetadata first = new MemoryMetadata(visit.getStartTime(), visit.getEndTime());
         first.setReason("first");

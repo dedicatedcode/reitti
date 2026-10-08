@@ -135,7 +135,7 @@ public class OwntracksIngestionApiController {
                 ReittiRemoteInfo info = reittiIntegrationService.getInfo(integration);
                 String tid = generateTid(info.userInfo().username());
 
-                OwntracksFriendResponse owntracksFriendResponse = reittiIntegrationService.getAvatar(integration.getId())
+                OwntracksFriendResponse owntracksFriendResponse = reittiIntegrationService.getAvatar(user, integration.getId())
                         .map(avatarData -> new OwntracksFriendResponse(tid, info.userInfo().displayName(), avatarData.imageData(), avatarData.mimeType()))
                         .orElse(new OwntracksFriendResponse(tid, info.userInfo().displayName(), null, null));
 

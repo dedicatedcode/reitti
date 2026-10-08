@@ -57,7 +57,7 @@ class MemoryBlockTextJdbcServiceTest {
         testMemory = memoryJdbcService.create(testUser, memory);
 
         MemoryBlock block = new MemoryBlock(testMemory.getId(), BlockType.TEXT, 0);
-        testBlock = memoryBlockJdbcService.create(block);
+        testBlock = memoryBlockJdbcService.create(testUser, block);
     }
 
     @Test
@@ -68,7 +68,7 @@ class MemoryBlockTextJdbcServiceTest {
                 "Test content goes here"
         );
 
-        MemoryBlockText created = memoryBlockTextJdbcService.create(textBlock);
+        MemoryBlockText created = memoryBlockTextJdbcService.create(testUser, textBlock);
 
         assertEquals(testBlock.getId(), created.getBlockId());
         assertEquals("Test Headline", created.getHeadline());
@@ -83,13 +83,13 @@ class MemoryBlockTextJdbcServiceTest {
                 "Original content"
         );
 
-        memoryBlockTextJdbcService.create(textBlock);
+        memoryBlockTextJdbcService.create(testUser, textBlock);
 
         MemoryBlockText updated = textBlock
                 .withHeadline("Updated Headline")
                 .withContent("Updated content");
 
-        MemoryBlockText result = memoryBlockTextJdbcService.update(updated);
+        MemoryBlockText result = memoryBlockTextJdbcService.update(testUser, updated);
 
         assertEquals("Updated Headline", result.getHeadline());
         assertEquals("Updated content", result.getContent());
@@ -103,9 +103,9 @@ class MemoryBlockTextJdbcServiceTest {
                 "Test content"
         );
 
-        memoryBlockTextJdbcService.create(textBlock);
+        memoryBlockTextJdbcService.create(testUser, textBlock);
 
-        Optional<MemoryBlockText> found = memoryBlockTextJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockText> found = memoryBlockTextJdbcService.findByBlockId(testUser, testBlock.getId());
 
         assertTrue(found.isPresent());
         assertEquals("Test Headline", found.get().getHeadline());
@@ -120,10 +120,10 @@ class MemoryBlockTextJdbcServiceTest {
                 "Test content"
         );
 
-        memoryBlockTextJdbcService.create(textBlock);
-        memoryBlockTextJdbcService.delete(testBlock.getId());
+        memoryBlockTextJdbcService.create(testUser, textBlock);
+        memoryBlockTextJdbcService.delete(testUser, testBlock.getId());
 
-        Optional<MemoryBlockText> found = memoryBlockTextJdbcService.findByBlockId(testBlock.getId());
+        Optional<MemoryBlockText> found = memoryBlockTextJdbcService.findByBlockId(testUser, testBlock.getId());
         assertFalse(found.isPresent());
     }
 
@@ -135,7 +135,7 @@ class MemoryBlockTextJdbcServiceTest {
                 "Content without headline"
         );
 
-        MemoryBlockText created = memoryBlockTextJdbcService.create(textBlock);
+        MemoryBlockText created = memoryBlockTextJdbcService.create(testUser, textBlock);
 
         assertNull(created.getHeadline());
         assertEquals("Content without headline", created.getContent());
@@ -149,9 +149,51 @@ class MemoryBlockTextJdbcServiceTest {
                 null
         );
 
-        MemoryBlockText created = memoryBlockTextJdbcService.create(textBlock);
+        MemoryBlockText created = memoryBlockTextJdbcService.create(testUser, textBlock);
 
         assertEquals("Headline only", created.getHeadline());
         assertNull(created.getContent());
+    }
+
+    @Test
+    void findByBlockId_WithForeignUser_ShouldReturnEmpty() {
+        User otherUser = testingService.randomUser();
+        memoryBlockTextJdbcService.create(testUser, new MemoryBlockText(testBlock.getId(), "Secret", "Secret content"));
+
+        Optional<MemoryBlockText> found = memoryBlockTextJdbcService.findByBlockId(otherUser, testBlock.getId());
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void create_WithForeignUser_ShouldNotInsert() {
+        User otherUser = testingService.randomUser();
+
+        assertThrows(IllegalStateException.class, () -> memoryBlockTextJdbcService.create(
+                otherUser, new MemoryBlockText(testBlock.getId(), "Hijacked", "Hijacked content")));
+
+        assertTrue(memoryBlockTextJdbcService.findByBlockId(testUser, testBlock.getId()).isEmpty());
+    }
+
+    @Test
+    void update_WithForeignUser_ShouldNotModify() {
+        User otherUser = testingService.randomUser();
+        memoryBlockTextJdbcService.create(testUser, new MemoryBlockText(testBlock.getId(), "Original", "Original content"));
+
+        memoryBlockTextJdbcService.update(otherUser, new MemoryBlockText(testBlock.getId(), "Hijacked", "Hijacked content"));
+
+        MemoryBlockText found = memoryBlockTextJdbcService.findByBlockId(testUser, testBlock.getId()).orElseThrow();
+        assertEquals("Original", found.getHeadline());
+        assertEquals("Original content", found.getContent());
+    }
+
+    @Test
+    void delete_WithForeignUser_ShouldNotDelete() {
+        User otherUser = testingService.randomUser();
+        memoryBlockTextJdbcService.create(testUser, new MemoryBlockText(testBlock.getId(), "Keep", "Keep content"));
+
+        memoryBlockTextJdbcService.delete(otherUser, testBlock.getId());
+
+        assertTrue(memoryBlockTextJdbcService.findByBlockId(testUser, testBlock.getId()).isPresent());
     }
 }

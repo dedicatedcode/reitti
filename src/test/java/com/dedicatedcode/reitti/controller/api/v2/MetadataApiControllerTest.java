@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @IntegrationTest
 class MetadataApiControllerTest {
@@ -72,7 +73,7 @@ class MetadataApiControllerTest {
 
     @Test
     void postMetadataForTripCreatesAndReturnsJson() throws Exception {
-        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId())
+        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId()).with(csrf())
                                 .param("mood", "HAPPY")
                                 .param("reason", "commute")
                                 .param("notes", "nice trip")
@@ -92,7 +93,7 @@ class MetadataApiControllerTest {
 
     @Test
     void postMetadataForVisitCreatesAndReturnsJson() throws Exception {
-        mockMvc.perform(post("/api/v2/metadata/visit/{id}", visit1.getId())
+        mockMvc.perform(post("/api/v2/metadata/visit/{id}", visit1.getId()).with(csrf())
                                 .param("reason", "groceries"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reason").value("groceries"));
@@ -101,12 +102,12 @@ class MetadataApiControllerTest {
     @Test
     void subsequentPostOverwrites() throws Exception {
         // First post
-        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId())
+        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId()).with(csrf())
                                 .param("reason", "first"))
                 .andExpect(status().isOk());
 
         // Second post with different reason
-        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId())
+        mockMvc.perform(post("/api/v2/metadata/trip/{id}", trip.getId()).with(csrf())
                                 .param("reason", "second"))
                 .andExpect(status().isOk());
 

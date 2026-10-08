@@ -1,15 +1,21 @@
 package com.dedicatedcode.reitti.controller.api.v2;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.dto.MapMetadata;
 import com.dedicatedcode.reitti.model.devices.Device;
-import com.dedicatedcode.reitti.model.security.TokenUser;
+import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.*;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.GeoJsonExportService;
 import com.dedicatedcode.reitti.service.StreamingRawLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.processing.TimeRange;
+import com.dedicatedcode.reitti.service.security.DataAccessGuard;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -19,36 +25,31 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v2/locations")
 public class LocationApiController {
 
-    private final UserJdbcService userJdbcService;
+    private final DataAccessGuard dataAccessGuard;
     private final DeviceJdbcService deviceJdbcService;
-    private final UserSharingJdbcService userSharingJdbcService;
     private final RawLocationPointJdbcService jdbcService;
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final GeoJsonExportService geoJsonExportService;
     private final StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService;
 
-    public LocationApiController(UserJdbcService userJdbcService,
+    public LocationApiController(DataAccessGuard dataAccessGuard,
                                  DeviceJdbcService deviceJdbcService,
-                                 UserSharingJdbcService userSharingJdbcService,
                                  RawLocationPointJdbcService jdbcService,
                                  SourceLocationPointJdbcService sourceLocationPointJdbcService,
                                  GeoJsonExportService geoJsonExportService,
                                  StreamingRawLocationPointJdbcService streamingRawLocationPointJdbcService) {
-        this.userJdbcService = userJdbcService;
+        this.dataAccessGuard = dataAccessGuard;
         this.deviceJdbcService = deviceJdbcService;
-        this.userSharingJdbcService = userSharingJdbcService;
         this.jdbcService = jdbcService;
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.geoJsonExportService = geoJsonExportService;
@@ -61,10 +62,11 @@ public class LocationApiController {
                            @RequestParam String start,
                            @RequestParam String end,
                            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
-        Instant startInstant = parseInstant(start, timezone, false);
-        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
-        return this.jdbcService.getMetadata(userToFetchDataFrom, startInstant, endInstant);
+        User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
+
+        MapMetadata metadata = this.jdbcService.getMetadata(userToFetchDataFrom, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS));
+        return cleanUpByAccessLevel(user, metadata);
     }
 
     @GetMapping("/metadata/{userId}/device/{deviceId}")
@@ -73,13 +75,16 @@ public class LocationApiController {
                            @PathVariable Long deviceId,
                            @RequestParam String start,
                            @RequestParam String end,
-                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
-        Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+                           @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        if (!userToFetchDataFrom.equals(user)) {
+            throw new ForbiddenException("Users cant load device data from other users");
+        }
 
-        Instant startInstant = parseInstant(start, timezone, false);
-        Instant endInstant = parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS);
-        return this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, startInstant, endInstant);
+        TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
+        Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        MapMetadata metadata = this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS));
+        return cleanUpByAccessLevel(user, metadata);
     }
 
     @GetMapping(value = "/stream/{userId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -89,12 +94,13 @@ public class LocationApiController {
             @RequestParam String start,
             @RequestParam String end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+        User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
         CompletableFuture.runAsync(() -> {
             try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS), emitter);
             } catch (Exception e) {
                 if (e.getCause() instanceof java.io.IOException) {
                     try { emitter.complete(); } catch (Exception ignored) {}
@@ -117,15 +123,17 @@ public class LocationApiController {
             @PathVariable Long deviceId,
             @RequestParam String start,
             @RequestParam String end,
-            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
-        User userToFetchDataFrom = loadUserToFetchDataFrom(user, userId);
+            @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
+        User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
+
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
         CompletableFuture.runAsync(() -> {
             try {
-                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, device, parseInstant(start, timezone, false), parseInstant(end, timezone, true).plus(1, ChronoUnit.SECONDS), emitter);
+                streamingRawLocationPointJdbcService.streamPoints(userToFetchDataFrom, device, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS), emitter);
             } catch (Exception e) {
                 if (e.getCause() instanceof java.io.IOException) {
                     try { emitter.complete(); } catch (Exception ignored) {}
@@ -148,12 +156,14 @@ public class LocationApiController {
                                                                @RequestParam String end,
                                                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
+            TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
+
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     geoJsonExportService.generateGeoJsonContentStreaming(
                             user,
-                            parseInstant(start, timezone, false),
-                            parseInstant(end, timezone, true),
+                            timeRange.start(),
+                            timeRange.end().plus(1, ChronoUnit.SECONDS),
                             deviceId,
                             writer);
                 } catch (Exception e) {
@@ -183,12 +193,14 @@ public class LocationApiController {
                                                                @RequestParam String end,
                                                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
+            TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
+
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     geoJsonExportService.generateGeoJsonContentStreaming(
                             user,
-                            parseInstant(start, timezone, false),
-                            parseInstant(end, timezone, true),
+                            timeRange.start(),
+                            timeRange.end().plus(1, ChronoUnit.SECONDS),
                             writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GeoJSON file", e);
@@ -210,37 +222,15 @@ public class LocationApiController {
                     });
         }
     }
-    private User loadUserToFetchDataFrom(User user, Long userId) throws IllegalAccessException {
-        if (user.getId().equals(userId)) {
-            return user;
-        }
-        if (user instanceof TokenUser) {
-            if (!Objects.equals(user.getId(), userId)) {
-                throw new IllegalAccessException("User not allowed to fetch raw location points for other users");
-            }
-        }
-        if (this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream().noneMatch(userSharing -> userSharing.getSharingUserId().equals(userId))) {
-            throw new IllegalAccessException("User not allowed to fetch raw location points for other user with id " + userId);
-        }
 
-        return userJdbcService.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
-
-    private Instant parseInstant(String input, ZoneId timezone, boolean end) {
-        try {
-            return LocalDateTime.parse(input).atZone(timezone).toInstant();
-        } catch (Exception ignored) {
+    private static MapMetadata cleanUpByAccessLevel(User user, MapMetadata metadata) {
+        Collection<? extends GrantedAuthority> authorities = user.getAuthorities();
+        if (authorities.contains(MagicLinkAccessLevel.ONLY_LAST_LOCATION.asAuthority())) {
+            return new MapMetadata(0, 0, 0, 0, 0, 0, 0, metadata.latestLocation());
+        } else if (authorities.contains(MagicLinkAccessLevel.MEMORY_VIEW_ONLY.asAuthority()) || authorities.contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority())) {
+            return new MapMetadata(metadata.minTimestamp(), metadata.maxTimestamp(), metadata.totalPoints(), metadata.minLat(), metadata.maxLat(), metadata.minLng(), metadata.maxLng(), Optional.empty());
+        } else {
+            return metadata;
         }
-
-        try {
-            return LocalDateTime.parse(input + (end ? "T23:59:59" : "T00:00:00")).atZone(timezone).toInstant();
-        } catch (Exception ignored) {
-        }
-        try {
-            return ZonedDateTime.parse(input).toInstant();
-        } catch (Exception ignored) {
-        }
-        throw new IllegalArgumentException("Invalid date format");
     }
 }

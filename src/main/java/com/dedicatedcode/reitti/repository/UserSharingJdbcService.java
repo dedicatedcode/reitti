@@ -66,8 +66,9 @@ public class UserSharingJdbcService {
         );
     }
 
-    public void delete(Set<UserSharing> toDelete) {
-        this.jdbcTemplate.batchUpdate("DELETE FROM user_sharing WHERE id = ?", toDelete.stream().map(userSharing -> new Object[]{userSharing.getId()}).collect(Collectors.toList()));
+    public void delete(User user, Set<UserSharing> toDelete) {
+        this.jdbcTemplate.batchUpdate("DELETE FROM user_sharing WHERE id = ? AND sharing_user_id = ?",
+                toDelete.stream().map(userSharing -> new Object[]{userSharing.getId(), user.getId()}).collect(Collectors.toList()));
     }
 
     public void dismissSharedAccess(Long sharingId, Long sharedWithUserId) {

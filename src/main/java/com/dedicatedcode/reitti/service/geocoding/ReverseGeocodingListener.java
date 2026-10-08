@@ -96,7 +96,7 @@ public class ReverseGeocodingListener implements Job {
                     place = place.withName(override.get().name()).withType(override.get().category()).withTimezone(override.get().timezone());
                 }
                 if (event.previewId() == null) {
-                    significantPlaceJdbcService.update(place.withGeocoded(true));
+                    significantPlaceJdbcService.update(user, place.withGeocoded(true));
                     userNotificationService.placeUpdate(user, place, null);
                 } else {
                     previewSignificantPlaceJdbcService.update(place.withGeocoded(true));

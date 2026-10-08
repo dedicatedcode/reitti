@@ -69,7 +69,7 @@ public class ImmichIntegrationJdbcService {
             return immichIntegration.withId(id);
         } else {
             // Update existing record
-            String sql = "UPDATE immich_integrations SET server_url = ?, api_token = ?, album_id = ?, album_name = ?, use_best_guess_location = ?, enabled = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?";
+            String sql = "UPDATE immich_integrations SET server_url = ?, api_token = ?, album_id = ?, album_name = ?, use_best_guess_location = ?, enabled = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ? AND version = ?";
             Instant now = Instant.now();
             jdbcTemplate.update(sql,
                     immichIntegration.getServerUrl(),
@@ -80,22 +80,11 @@ public class ImmichIntegrationJdbcService {
                     immichIntegration.isEnabled(),
                     java.sql.Timestamp.from(now),
                     immichIntegration.getId(),
+                    user.getId(),
                     immichIntegration.getVersion()
             );
-            return findById(immichIntegration.getId()).orElseThrow();
+            return findByUser(user).orElseThrow();
         }
     }
 
-    public Optional<ImmichIntegration> findById(Long id) {
-        String sql = "SELECT ii.* " +
-                "FROM immich_integrations ii " +
-                "WHERE ii.id = ?";
-
-        try {
-            List<ImmichIntegration> results = jdbcTemplate.query(sql, IMMICH_INTEGRATION_ROW_MAPPER, id);
-            return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-        } catch (EmptyResultDataAccessException e) {
-            return Optional.empty();
-        }
-    }
 }

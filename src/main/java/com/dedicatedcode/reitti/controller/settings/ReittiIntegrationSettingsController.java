@@ -83,7 +83,7 @@ public class ReittiIntegrationSettingsController {
                         integration.getLastMessage().orElse(null),
                         color
                     );
-                    this.jdbcService.update(updatedIntegration);
+                    this.jdbcService.update(user, updatedIntegration);
                     model.addAttribute("successMessage", "Reitti integration updated successfully");
                 } catch (OptimisticLockException e) {
                     model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
@@ -110,7 +110,7 @@ public class ReittiIntegrationSettingsController {
                     } else {
                         updated = updated.withStatus(ReittiIntegration.Status.ACTIVE);
                     }
-                    this.jdbcService.update(updated);
+                    this.jdbcService.update(user, updated);
                     model.addAttribute("successMessage", "Integration status updated successfully");
                 } catch (OptimisticLockException e) {
                     model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
@@ -130,7 +130,7 @@ public class ReittiIntegrationSettingsController {
         try {
             this.jdbcService.findByIdAndUser(id, user).ifPresent(integration -> {
                 try {
-                    this.jdbcService.delete(integration);
+                    this.jdbcService.delete(user, integration);
                 } catch (OptimisticLockException e) {
                     model.addAttribute("errorMessage", "Integration is out of date. Please reload the page and try again.");
                 }

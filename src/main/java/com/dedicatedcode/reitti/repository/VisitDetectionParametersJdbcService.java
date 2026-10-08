@@ -103,7 +103,7 @@ public class VisitDetectionParametersJdbcService {
     }
 
     @CacheEvict(value = "configurations", allEntries = true)
-    public void updateConfiguration(DetectionParameter detectionParameter) {
+    public void updateConfiguration(User user, DetectionParameter detectionParameter) {
         String sql = """
             UPDATE visit_detection_parameters SET
                 valid_since = ?,
@@ -115,7 +115,7 @@ public class VisitDetectionParametersJdbcService {
                 density_max_interpolation_distance_meters = ?,
                 density_max_interpolation_gap_minutes = ?,
                 recalculation_state = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """;
         
         Timestamp validSinceTimestamp = detectionParameter.getValidSince() != null ?
@@ -131,18 +131,19 @@ public class VisitDetectionParametersJdbcService {
             detectionParameter.getLocationDensity().getMaxInterpolationDistanceMeters(),
             detectionParameter.getLocationDensity().getMaxInterpolationGapMinutes(),
             detectionParameter.getRecalculationState().name(),
-            detectionParameter.getId()
+            detectionParameter.getId(),
+            user.getId()
         );
     }
 
     @CacheEvict(value = "configurations", allEntries = true)
-    public void delete(Long configurationId) {
+    public void delete(User user, Long configurationId) {
         String sql = """
             DELETE FROM visit_detection_parameters
-            WHERE id = ? AND valid_since IS NOT NULL
+            WHERE id = ? AND user_id = ? AND valid_since IS NOT NULL
             """;
         
-        jdbcTemplate.update(sql, configurationId);
+        jdbcTemplate.update(sql, configurationId, user.getId());
     }
 
     public DetectionParameter findCurrent(User user, Instant instant) {

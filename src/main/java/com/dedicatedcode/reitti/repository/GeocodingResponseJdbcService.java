@@ -37,14 +37,15 @@ public class GeocodingResponseJdbcService {
     }
     
     @Transactional(readOnly = true)
-    public List<GeocodingResponse> findBySignificantPlace(SignificantPlace significantPlace) {
+    public List<GeocodingResponse> findBySignificantPlace(User user, SignificantPlace significantPlace) {
         String sql = """
-            SELECT id, significant_place_id, raw_data, provider_name, fetched_at, status, error_details
-            FROM geocoding_response
-            WHERE significant_place_id = ?
-            ORDER BY fetched_at DESC
+            SELECT gr.id, gr.significant_place_id, gr.raw_data, gr.provider_name, gr.fetched_at, gr.status, gr.error_details
+            FROM geocoding_response gr
+            JOIN significant_places sp ON sp.id = gr.significant_place_id
+            WHERE gr.significant_place_id = ? AND sp.user_id = ?
+            ORDER BY gr.fetched_at DESC
             """;
-        return jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId());
+        return jdbcTemplate.query(sql, new GeocodingResponseRowMapper(), significantPlace.getId(), user.getId());
     }
 
     public void deleteAllForUser(User user) {
