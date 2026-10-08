@@ -140,6 +140,9 @@
                                     <span th:text="${job.state()}">STATE</span>
                                 </span>
                             </div>
+                            <div class="job-progress-text"
+                                 th:if="${job.state().name() == 'FAILED' and job.progressText() != null}"
+                                 th:text="${job.progressText()}">What went wrong</div>
                         </div>
                     </div>
                 </div>

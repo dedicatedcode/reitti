@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.config;
 import com.dedicatedcode.reitti.service.DataCleanupService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
+import com.dedicatedcode.reitti.service.integration.IntervalsIcuHistoricalImportTask;
 import com.dedicatedcode.reitti.service.jobs.TransportModeRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.VisitSensitivityConfigurationRecalculationTask;
 import com.dedicatedcode.reitti.service.jobs.ZoneRecalculationTask;
@@ -67,6 +68,14 @@ public class TaskConfig {
     public JobDetail promotionJobDetail() {
         return JobBuilder.newJob(PromotionJobHandler.class)
                 .withIdentity("promotion-job")
+                .storeDurably()
+                .build();
+    }
+
+    @Bean("intervalsIcuHistoricalImportJob")
+    public JobDetail intervalsIcuHistoricalImportJobDetail() {
+        return JobBuilder.newJob(IntervalsIcuHistoricalImportTask.class)
+                .withIdentity("intervals-icu-historical-import-job")
                 .storeDurably()
                 .build();
     }
