@@ -166,181 +166,6 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                 </div>
             </div>
         </details>
-        <details data-section="owntracks-recorder" th:attr="open=${openSection == 'owntracks-recorder' ? 'open' : null}">
-            <summary><span th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</span></summary>
-            <div>
-                <p th:text="#{integrations.owntracks.recorder.description}">Connect to an OwnTracks Recorder instance to fetch location data from specific users and devices.</p>
-
-                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
-                    <span th:text="${successMessage}">Configuration saved successfully</span>
-                </div>
-                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
-                    <span th:text="${errorMessage}">Error message</span>
-                </div>
-
-                <form th:hx-post="@{/settings/integrations/owntracks-recorder-integration}" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
-                    <div class="form-group">
-                        <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
-                        <input type="url"
-                               id="recorderBaseUrl"
-                               name="baseUrl"
-                               required
-                               autocomplete="off"
-                               th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
-                               th:value="${ownTracksRecorderIntegration?.baseUrl}">
-                    </div>
-                    <div class="form-group">
-                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
-                        <input type="text"
-                               id="recorderUsername"
-                               name="username"
-                               required
-                               autocomplete="off"
-                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
-                               th:value="${ownTracksRecorderIntegration?.username}">
-                    </div>
-                    <div class="form-group">
-                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
-                        <input type="text"
-                               id="recorderDeviceId"
-                               name="deviceId"
-                               required
-                               autocomplete="off"
-                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
-                               th:value="${ownTracksRecorderIntegration?.deviceId}">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="recorderAuthUsername" th:text="#{integrations.owntracks.recorder.auth.username}">Authentication Username</label>
-                        <input type="text"
-                               id="recorderAuthUsername"
-                               name="authUsername"
-                               autocomplete="off"
-                               th:placeholder="#{integrations.owntracks.recorder.auth.username.placeholder}"
-                               th:value="${ownTracksRecorderIntegration?.authUsername}">
-                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="recorderAuthPassword" th:text="#{integrations.owntracks.recorder.auth.password}">Authentication Password</label>
-                        <input type="password"
-                               id="recorderAuthPassword"
-                               name="authPassword"
-                               autocomplete="off"
-                               th:placeholder="#{integrations.owntracks.recorder.auth.password.placeholder}"
-                               th:value="${ownTracksRecorderIntegration?.authPassword}">
-                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
-                    </div>
-                    <div class="form-group" th:if="${devices.size() > 1}">
-                        <label for="reittiDevice" th:text="#{integrations.owntracks.recorder.reittiDevice}">Reitti Device</label>
-                        <select id="reittiDevice" name="reittiDeviceId" class="form-control">
-                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${ownTracksRecorderIntegration != NULL && device.id() == ownTracksRecorderIntegration?.reittiDeviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
-                        </select>
-                        <small th:text="#{integrations.owntracks.recorder.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
-                    </div>
-                    <input th:if="${devices.size() == 1}" type="hidden" name="reittiDeviceId" th:value="${devices.get(0).id()}">
-
-                    <div class="form-group slide-reveal-container">
-                            <input type="checkbox"
-                                   name="enabled"
-                                   id="recorderEnabled"
-                                   value="true"
-                                   th:checked="${ownTracksRecorderIntegration?.enabled}">
-                        <label for="recorderEnabled" class="slide-reveal">
-                            <span class="slide-box"></span>
-                            <span class="label-text" th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
-                        </label>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 20px;">
-                        <button type="submit" class="btn" th:text="#{integrations.owntracks.recorder.save}">Save Configuration</button>
-                        <button type="button"
-                                class="btn"
-                                id="test-recorder-connection-btn"
-                                th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
-                        <button type="button"
-                                class="btn"
-                                id="load-historical-btn"
-                                th:attr="hx-post=@{/settings/integrations/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}, disabled=${!hasRecorderIntegration}"
-                                hx-target="#integrations"
-                                hx-swap="innerHTML"
-                                th:text="#{integrations.owntracks.recorder.load.historical}">Load Historical Data</button>
-                    </div>
-                </form>
-
-                <div id="recorder-connection-test-result" style="margin-top: 10px;"></div>
-
-                <script>
-                    document.getElementById('test-recorder-connection-btn').addEventListener('click', function() {
-                        const baseUrl = document.getElementById('recorderBaseUrl').value;
-                        const username = document.getElementById('recorderUsername').value;
-                        const deviceId = document.getElementById('recorderDeviceId').value;
-                        const authUsername = document.getElementById('recorderAuthUsername').value;
-                        const authPassword = document.getElementById('recorderAuthPassword').value;
-                        const resultDiv = document.getElementById('recorder-connection-test-result');
-
-                        if (!baseUrl || !username || !deviceId) {
-                            const message = t('integrations.owntracks.recorder.test.missing.fields')
-                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
-                            return;
-                        }
-
-                        // Show loading state
-                        const loadingMessage = t('integrations.owntracks.recorder.test.loading');
-                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
-
-                        // Make AJAX request to test connection
-                        fetch(window.contextPath + '/settings/integrations/owntracks-recorder-integration/test', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: new URLSearchParams({
-                                baseUrl: baseUrl,
-                                username: username,
-                                deviceId: deviceId,
-                                authUsername: authUsername,
-                                authPassword: authPassword
-                            })
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
-                                } else {
-                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
-                                }
-                            })
-                            .catch(error => {
-                                const errorMessage = t('integrations.owntracks.recorder.test.failed');
-                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
-                            });
-                    });
-
-                    // Add loading indicator for Load Historical Data button
-                    document.addEventListener('htmx:beforeRequest', function(evt) {
-                        if (evt.detail.elt.id === 'load-historical-btn') {
-                            const loadingText = t('integrations.owntracks.recorder.loading.historical');
-                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>' + loadingText + '</span>';
-                            evt.detail.elt.disabled = true;
-                        }
-                    });
-
-                    // Add CSS for spinner animation
-                    if (!document.querySelector('#spinner-styles')) {
-                        const style = document.createElement('style');
-                        style.id = 'spinner-styles';
-                        style.textContent = `
-                                    @keyframes spin {
-                                        0% { transform: rotate(0deg); }
-                                        100% { transform: rotate(360deg); }
-                                    }
-                                `;
-                        document.head.appendChild(style);
-                    }
-                </script>
-            </div>
-        </details>
         <details data-section="mqtt" th:attr="open=${openSection == 'mqtt' ? 'open' : null}">
             <summary><span th:text="#{integrations.mqtt.title}">MQTT Integration</span></summary>
             <div>
@@ -535,6 +360,309 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
                                 resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
                             });
                     });
+                </script>
+            </div>
+        </details>
+    </div>
+
+    <div class="divider left" th:text="#{integrations.data-stores.title}">External Data Stores</div>
+    <div class="divider-description left" th:text="#{integrations.data-stores.description}">Let Reitti pull your recorded tracks from an external service instead of receiving them live from your phone.</div>
+    <div>
+        <details data-section="intervals-icu" th:attr="open=${openSection == 'intervals-icu' ? 'open' : null}">
+            <summary><span th:text="#{integrations.intervals.icu.title}">⏱️ intervals.icu Integration</span></summary>
+            <div>
+                <p th:text="#{integrations.intervals.icu.description}">intervals.icu syncs your activities from Garmin Connect, Wahoo and others. Reitti can pull the original activity files from your intervals.icu account and import them.</p>
+
+                <div class="setup-steps">
+                    <h4 th:text="#{integrations.setup.instructions}">Setup Instructions:</h4>
+                    <ol>
+                        <li th:utext="#{integrations.intervals.icu.step1}">Sign in at intervals.icu</li>
+                        <li th:utext="#{integrations.intervals.icu.step2}">Open your user settings and scroll to <strong>Developer Settings</strong></li>
+                        <li th:utext="#{integrations.intervals.icu.step3}">Copy your API key</li>
+                        <li th:utext="#{integrations.intervals.icu.step4}">Make sure Garmin Connect sync is enabled on your intervals.icu account</li>
+                        <li th:utext="#{integrations.intervals.icu.step5}">Paste the key below and save the configuration</li>
+                    </ol>
+                </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <div th:if="${intervalsIcuIntegration != null && intervalsIcuIntegration.athleteName != null}"
+                     class="alert alert-info" style="display: block;">
+                    <span th:text="#{integrations.intervals.icu.athlete.connected(${intervalsIcuIntegration.athleteName})}">Connected to your intervals.icu account</span>
+                    <span th:if="${intervalsIcuLastSync != null}"
+                          th:text="#{integrations.intervals.icu.last.sync(${intervalsIcuLastSync})}"></span>
+                </div>
+
+                <form th:hx-post="@{/settings/integrations/intervals-icu-integration}" hx-target="#integrations" hx-swap="innerHTML" class="intervals-icu-form" style="margin-top: 20px;" autocomplete="off">
+                    <div class="form-group">
+                        <label for="intervalsIcuApiKey" th:text="#{integrations.intervals.icu.api.key}">API Key</label>
+                        <input type="password"
+                               id="intervalsIcuApiKey"
+                               name="apiKey"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.intervals.icu.api.key.placeholder}"
+                               th:value="${intervalsIcuIntegration?.apiKey}">
+                        <small th:text="#{integrations.intervals.icu.api.key.description}">Found under Developer Settings in your intervals.icu user settings.</small>
+                    </div>
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="intervalsIcuReittiDevice" th:text="#{integrations.intervals.icu.reittiDevice}">Reitti Device</label>
+                        <select id="intervalsIcuReittiDevice" name="reittiDeviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${intervalsIcuIntegration != NULL && device.id() == intervalsIcuIntegration?.reittiDeviceId}" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.intervals.icu.reittiDevice.description}">Select the device that imported location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="reittiDeviceId" th:value="${devices.get(0).id()}">
+
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox"
+                               name="enabled"
+                               id="intervalsIcuEnabled"
+                               value="true"
+                               th:checked="${intervalsIcuIntegration?.enabled}">
+                        <label for="intervalsIcuEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.intervals.icu.enabled}">Enable Integration</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px; align-items: center;">
+                        <button type="submit" class="btn" th:text="#{integrations.intervals.icu.save}">Save Configuration</button>
+                        <button type="button"
+                                class="btn"
+                                id="test-intervals-icu-connection-btn"
+                                th:text="#{integrations.intervals.icu.test.connection}">Test Connection</button>
+                        <button type="button"
+                                class="btn"
+                                th:attr="hx-post=@{/settings/integrations/intervals-icu-integration/sync}, disabled=${!hasIntervalsIcuIntegration}"
+                                hx-target="#integrations"
+                                hx-swap="innerHTML"
+                                hx-indicator="#intervals-icu-sync-spinner"
+                                th:text="#{integrations.intervals.icu.sync}">Sync Now</button>
+                        <button type="button"
+                                class="btn"
+                                th:attr="hx-post=@{/settings/integrations/intervals-icu-integration/load-historical}, hx-confirm=#{integrations.intervals.icu.load.historical.confirm}, disabled=${!hasIntervalsIcuIntegration}"
+                                hx-target="#integrations"
+                                hx-swap="innerHTML"
+                                hx-indicator="#intervals-icu-history-spinner"
+                                th:text="#{integrations.intervals.icu.load.historical}">Load Historical Data</button>
+                        <span id="intervals-icu-sync-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+                        <span id="intervals-icu-history-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+                    </div>
+                </form>
+
+                <div id="intervals-icu-connection-test-result" style="margin-top: 10px;"></div>
+
+                <script>
+                    document.getElementById('test-intervals-icu-connection-btn').addEventListener('click', function() {
+                        const apiKey = document.getElementById('intervalsIcuApiKey').value;
+                        const resultDiv = document.getElementById('intervals-icu-connection-test-result');
+
+                        if (!apiKey) {
+                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + t('integrations.intervals.icu.test.missing.fields') + '</div>';
+                            return;
+                        }
+
+                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + t('integrations.intervals.icu.test.loading') + '</div>';
+
+                        fetch(window.contextPath + '/settings/integrations/intervals-icu-integration/test', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                apiKey: apiKey
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                const cssClass = data.success ? 'alert-success' : 'alert-danger';
+                                resultDiv.innerHTML = '<div class="alert ' + cssClass + '" style="display: block;">' + data.message + '</div>';
+                            })
+                            .catch(error => {
+                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + t('integrations.intervals.icu.test.failed') + ': ' + error.message + '</div>';
+                            });
+                    });
+                </script>
+            </div>
+        </details>
+        <details data-section="owntracks-recorder" th:attr="open=${openSection == 'owntracks-recorder' ? 'open' : null}">
+            <summary><span th:text="#{integrations.owntracks.recorder.title}">📊 OwnTracks Recorder Integration</span></summary>
+            <div>
+                <p th:text="#{integrations.owntracks.recorder.description}">Connect to an OwnTracks Recorder instance to fetch location data from specific users and devices.</p>
+
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Configuration saved successfully</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Error message</span>
+                </div>
+
+                <form th:hx-post="@{/settings/integrations/owntracks-recorder-integration}" hx-target="#integrations" hx-swap="innerHTML" class="owntracks-recorder-form" style="margin-top: 20px;" autocomplete="off">
+                    <div class="form-group">
+                        <label for="recorderBaseUrl" th:text="#{integrations.owntracks.recorder.base.url}">Base URL</label>
+                        <input type="url"
+                               id="recorderBaseUrl"
+                               name="baseUrl"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.base.url.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.baseUrl}">
+                    </div>
+                    <div class="form-group">
+                        <label for="recorderUsername" th:text="#{integrations.owntracks.recorder.username}">Username</label>
+                        <input type="text"
+                               id="recorderUsername"
+                               name="username"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.username.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.username}">
+                    </div>
+                    <div class="form-group">
+                        <label for="recorderDeviceId" th:text="#{integrations.owntracks.recorder.device.id}">Device ID</label>
+                        <input type="text"
+                               id="recorderDeviceId"
+                               name="deviceId"
+                               required
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.device.id.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.deviceId}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recorderAuthUsername" th:text="#{integrations.owntracks.recorder.auth.username}">Authentication Username</label>
+                        <input type="text"
+                               id="recorderAuthUsername"
+                               name="authUsername"
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.auth.username.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.authUsername}">
+                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recorderAuthPassword" th:text="#{integrations.owntracks.recorder.auth.password}">Authentication Password</label>
+                        <input type="password"
+                               id="recorderAuthPassword"
+                               name="authPassword"
+                               autocomplete="off"
+                               th:placeholder="#{integrations.owntracks.recorder.auth.password.placeholder}"
+                               th:value="${ownTracksRecorderIntegration?.authPassword}">
+                        <small th:text="#{integrations.owntracks.recorder.auth.optional}">Leave empty if no authentication is needed</small>
+                    </div>
+                    <div class="form-group" th:if="${devices.size() > 1}">
+                        <label for="reittiDevice" th:text="#{integrations.owntracks.recorder.reittiDevice}">Reitti Device</label>
+                        <select id="reittiDevice" name="reittiDeviceId" class="form-control">
+                            <option th:text="${device.name()}" th:value="${device.id()}" th:selected="${ownTracksRecorderIntegration != NULL && device.id() == ownTracksRecorderIntegration?.reittiDeviceId}" value="reitti" th:each="device : ${devices}">Reitti</option>
+                        </select>
+                        <small th:text="#{integrations.owntracks.recorder.reittiDevice.description}">Select the device that incoming location data should be linked to</small>
+                    </div>
+                    <input th:if="${devices.size() == 1}" type="hidden" name="reittiDeviceId" th:value="${devices.get(0).id()}">
+
+                    <div class="form-group slide-reveal-container">
+                            <input type="checkbox"
+                                   name="enabled"
+                                   id="recorderEnabled"
+                                   value="true"
+                                   th:checked="${ownTracksRecorderIntegration?.enabled}">
+                        <label for="recorderEnabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{integrations.owntracks.recorder.enabled}">Enable Integration</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn" th:text="#{integrations.owntracks.recorder.save}">Save Configuration</button>
+                        <button type="button"
+                                class="btn"
+                                id="test-recorder-connection-btn"
+                                th:text="#{integrations.owntracks.recorder.test.connection}">Test Connection</button>
+                        <button type="button"
+                                class="btn"
+                                id="load-historical-btn"
+                                th:attr="hx-post=@{/settings/integrations/owntracks-recorder-integration/load-historical}, hx-confirm=#{integrations.owntracks.recorder.load.historical.confirm}, disabled=${!hasRecorderIntegration}"
+                                hx-target="#integrations"
+                                hx-swap="innerHTML"
+                                th:text="#{integrations.owntracks.recorder.load.historical}">Load Historical Data</button>
+                    </div>
+                </form>
+
+                <div id="recorder-connection-test-result" style="margin-top: 10px;"></div>
+
+                <script>
+                    document.getElementById('test-recorder-connection-btn').addEventListener('click', function() {
+                        const baseUrl = document.getElementById('recorderBaseUrl').value;
+                        const username = document.getElementById('recorderUsername').value;
+                        const deviceId = document.getElementById('recorderDeviceId').value;
+                        const authUsername = document.getElementById('recorderAuthUsername').value;
+                        const authPassword = document.getElementById('recorderAuthPassword').value;
+                        const resultDiv = document.getElementById('recorder-connection-test-result');
+
+                        if (!baseUrl || !username || !deviceId) {
+                            const message = t('integrations.owntracks.recorder.test.missing.fields')
+                            resultDiv.innerHTML = '<div class="alert alert-warning" style="display: block;">' + message + '</div>';
+                            return;
+                        }
+
+                        // Show loading state
+                        const loadingMessage = t('integrations.owntracks.recorder.test.loading');
+                        resultDiv.innerHTML = '<div style="color: var(--color-text-white);">' + loadingMessage + '</div>';
+
+                        // Make AJAX request to test connection
+                        fetch(window.contextPath + '/settings/integrations/owntracks-recorder-integration/test', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                baseUrl: baseUrl,
+                                username: username,
+                                deviceId: deviceId,
+                                authUsername: authUsername,
+                                authPassword: authPassword
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    resultDiv.innerHTML = '<div class="alert alert-success" style="display: block;">' + data.message + '</div>';
+                                } else {
+                                    resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + data.message + '</div>';
+                                }
+                            })
+                            .catch(error => {
+                                const errorMessage = t('integrations.owntracks.recorder.test.failed');
+                                resultDiv.innerHTML = '<div class="alert alert-danger" style="display: block;">' + errorMessage + ': ' + error.message + '</div>';
+                            });
+                    });
+
+                    // Add loading indicator for Load Historical Data button
+                    document.addEventListener('htmx:beforeRequest', function(evt) {
+                        if (evt.detail.elt.id === 'load-historical-btn') {
+                            const loadingText = t('integrations.owntracks.recorder.loading.historical');
+                            evt.detail.elt.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>' + loadingText + '</span>';
+                            evt.detail.elt.disabled = true;
+                        }
+                    });
+
+                    // Add CSS for spinner animation
+                    if (!document.querySelector('#spinner-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'spinner-styles';
+                        style.textContent = `
+                                    @keyframes spin {
+                                        0% { transform: rotate(0deg); }
+                                        100% { transform: rotate(360deg); }
+                                    }
+                                `;
+                        document.head.appendChild(style);
+                    }
                 </script>
             </div>
         </details>

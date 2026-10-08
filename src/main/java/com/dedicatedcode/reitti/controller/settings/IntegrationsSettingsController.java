@@ -6,6 +6,7 @@ import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.integration.ImmichIntegration;
+import com.dedicatedcode.reitti.model.integration.IntervalsIcuIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.security.ApiToken;
 import com.dedicatedcode.reitti.model.security.User;
@@ -15,10 +16,16 @@ import com.dedicatedcode.reitti.repository.OptimisticLockException;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.*;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import com.dedicatedcode.reitti.service.integration.IntervalsIcuHistoricalImportTask;
+import com.dedicatedcode.reitti.service.integration.IntervalsIcuIntegrationService;
 import com.dedicatedcode.reitti.service.integration.OwnTracksRecorderIntegrationService;
 import com.dedicatedcode.reitti.service.integration.mqtt.MqttIntegration;
 import com.dedicatedcode.reitti.service.integration.mqtt.PayloadType;
+import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobType;
 import jakarta.servlet.http.HttpServletRequest;
+import org.quartz.JobDetail;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,18 +34,28 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequestMapping("/settings/integrations")
 public class IntegrationsSettingsController {
+
+    private static final DateTimeFormatter LAST_SYNC_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
     private final ContextPathHolder contextPathHolder;
     private final ApiTokenService apiTokenService;
     private final RawLocationPointJdbcService rawLocationPointJdbcService;
     private final DeviceJdbcService deviceJdbcService;
     private final ImmichIntegrationService immichIntegrationService;
     private final OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService;
+    private final IntervalsIcuIntegrationService intervalsIcuIntegrationService;
+    private final JobSchedulingService jobSchedulingService;
+    private final JobDetail intervalsIcuHistoricalImportJob;
     private final DynamicMqttProvider mqttProvider;
     private final MqttIntegrationJdbcService mqttIntegrationJdbcService;
     private final I18nService i18n;
@@ -49,6 +66,9 @@ public class IntegrationsSettingsController {
                                           RawLocationPointJdbcService rawLocationPointJdbcService, DeviceJdbcService deviceJdbcService,
                                           ImmichIntegrationService immichIntegrationService,
                                           OwnTracksRecorderIntegrationService ownTracksRecorderIntegrationService,
+                                          IntervalsIcuIntegrationService intervalsIcuIntegrationService,
+                                          JobSchedulingService jobSchedulingService,
+                                          @Qualifier("intervalsIcuHistoricalImportJob") JobDetail intervalsIcuHistoricalImportJob,
                                           DynamicMqttProvider mqttProvider,
                                           MqttIntegrationJdbcService mqttIntegrationJdbcService,
                                           I18nService i18nService,
@@ -59,6 +79,9 @@ public class IntegrationsSettingsController {
         this.deviceJdbcService = deviceJdbcService;
         this.immichIntegrationService = immichIntegrationService;
         this.ownTracksRecorderIntegrationService = ownTracksRecorderIntegrationService;
+        this.intervalsIcuIntegrationService = intervalsIcuIntegrationService;
+        this.jobSchedulingService = jobSchedulingService;
+        this.intervalsIcuHistoricalImportJob = intervalsIcuHistoricalImportJob;
         this.mqttProvider = mqttProvider;
         this.mqttIntegrationJdbcService = mqttIntegrationJdbcService;
         this.i18n = i18nService;
@@ -107,6 +130,14 @@ public class IntegrationsSettingsController {
         } else {
             model.addAttribute("hasRecorderIntegration", false);
         }
+
+        Optional<IntervalsIcuIntegration> intervalsIcuIntegration = intervalsIcuIntegrationService.getIntegrationForUser(currentUser);
+        model.addAttribute("intervalsIcuIntegration", intervalsIcuIntegration.orElse(null));
+        model.addAttribute("hasIntervalsIcuIntegration", intervalsIcuIntegration.map(IntervalsIcuIntegration::isEnabled).orElse(false));
+        model.addAttribute("intervalsIcuLastSync", intervalsIcuIntegration
+                .map(IntervalsIcuIntegration::getLastSuccessfulFetch)
+                .map(lastSync -> LAST_SYNC_FORMAT.format(lastSync))
+                .orElse(null));
 
         Optional<MqttIntegration> mqttIntegration = this.mqttIntegrationJdbcService.findByUser(currentUser);
         if (mqttIntegration.isPresent()) {
@@ -265,6 +296,86 @@ public class IntegrationsSettingsController {
             redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.owntracks.recorder.load.historical.error", e.getMessage()));
         }
         return "redirect:/settings/integrations/integrations-content?openSection=owntracks-recorder";
+    }
+
+    @PostMapping("/intervals-icu-integration")
+    public String saveIntervalsIcuIntegration(@RequestParam String apiKey,
+                                              @RequestParam(defaultValue = "false") boolean enabled,
+                                              @RequestParam Long reittiDeviceId,
+                                              @AuthenticationPrincipal User currentUser,
+                                              RedirectAttributes redirectAttributes) {
+        try {
+            Device device = this.deviceJdbcService.find(currentUser, reittiDeviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+            intervalsIcuIntegrationService.saveIntegration(currentUser, device, apiKey, enabled);
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.intervals.icu.config.saved"));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.intervals.icu.config.error", e.getMessage()));
+        }
+        return "redirect:/settings/integrations/integrations-content?openSection=intervals-icu";
+    }
+
+    @PostMapping("/intervals-icu-integration/test")
+    @ResponseBody
+    public Map<String, Object> testIntervalsIcuConnection(@RequestParam(required = false) String apiKey) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            IntegrationTestResult result = intervalsIcuIntegrationService.testConnection(apiKey);
+            if (result.success()) {
+                response.put("success", true);
+                response.put("message", result.message() == null || result.message().isBlank()
+                        ? i18n.translate("integrations.intervals.icu.connection.success")
+                        : i18n.translate("integrations.intervals.icu.connection.success.as", result.message()));
+            } else {
+                response.put("success", false);
+                response.put("message", i18n.translate("integrations.intervals.icu.connection.failed", result.message()));
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", i18n.translate("integrations.intervals.icu.connection.failed", e.getMessage()));
+        }
+        return response;
+    }
+
+    @PostMapping("/intervals-icu-integration/sync")
+    public String syncIntervalsIcu(@AuthenticationPrincipal User currentUser, RedirectAttributes redirectAttributes) {
+        try {
+            IntervalsIcuIntegrationService.SyncResult result = intervalsIcuIntegrationService.syncIncremental(currentUser);
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.intervals.icu.sync.success",
+                    result.imported(), result.skipped(), result.failed()));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.intervals.icu.sync.error", e.getMessage()));
+        }
+        return "redirect:/settings/integrations/integrations-content?openSection=intervals-icu";
+    }
+
+    @PostMapping("/intervals-icu-integration/load-historical")
+    public String loadIntervalsIcuHistoricalData(@AuthenticationPrincipal User currentUser,
+                                                 RedirectAttributes redirectAttributes) {
+        try {
+            intervalsIcuIntegrationService.getIntegrationForUser(currentUser)
+                    .orElseThrow(() -> new IllegalStateException("No intervals.icu configuration has been saved yet"));
+
+            LocalDate newest = LocalDate.now(ZoneOffset.UTC);
+            LocalDate oldest = intervalsIcuIntegrationService.getHistoryEarliestDate();
+            if (oldest.isAfter(newest)) {
+                oldest = newest;
+            }
+
+            JobSchedulingService.Metadata metadata = JobSchedulingService.Metadata.builder()
+                    .user(currentUser)
+                    .jobType(JobType.INTERVALS_ICU_IMPORT)
+                    .friendlyName("Load Historical Data")
+                    .build();
+            jobSchedulingService.enqueueTask(intervalsIcuHistoricalImportJob,
+                    new IntervalsIcuHistoricalImportTask.TaskData(currentUser.getId(), oldest, newest),
+                    metadata);
+
+            redirectAttributes.addFlashAttribute("successMessage", i18n.translate("integrations.intervals.icu.load.historical.success"));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", i18n.translate("integrations.intervals.icu.load.historical.error", e.getMessage()));
+        }
+        return "redirect:/settings/integrations/integrations-content?openSection=intervals-icu";
     }
 
     @PostMapping("/mqtt-integration")

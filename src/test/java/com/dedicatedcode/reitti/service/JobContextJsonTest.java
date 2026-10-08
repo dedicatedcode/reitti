@@ -1,10 +1,12 @@
 package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.service.h3.H3CellUpdateJob;
+import com.dedicatedcode.reitti.service.integration.IntervalsIcuHistoricalImportTask;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -87,5 +89,53 @@ class JobContextJsonTest {
         // the whole payload must survive as a single string - no line breaks that could
         // break quartz property storage
         assertFalse(json.contains("\n"));
+    }
+
+    @Test
+    void shouldRoundTripIntervalsIcuHistoricalImportTaskData() {
+        UUID jobId = UUID.randomUUID();
+        UUID parentJobId = UUID.randomUUID();
+        IntervalsIcuHistoricalImportTask.TaskData original =
+                new IntervalsIcuHistoricalImportTask.TaskData(42L, LocalDate.parse("2024-11-17"), LocalDate.parse("2026-10-08"))
+                        .withJobId(jobId)
+                        .withParentJobId(parentJobId);
+
+        String json = original.toJson();
+        IntervalsIcuHistoricalImportTask.TaskData restored = IntervalsIcuHistoricalImportTask.TaskData.fromJson(json);
+
+        assertEquals(jobId, restored.getJobId());
+        assertEquals(parentJobId, restored.getParentJobId());
+        assertEquals(42L, restored.userId());
+        assertEquals(LocalDate.parse("2024-11-17"), restored.fromDate());
+        assertEquals(LocalDate.parse("2026-10-08"), restored.toDate());
+        // Dates are kept as plain strings because JobContext serializes with a mapper that has no
+        // JavaTimeModule, and the payload must survive as a single String for Quartz property storage.
+        assertFalse(json.contains("\n"));
+        assertTrue(json.contains("\"2024-11-17\""));
+    }
+
+    @Test
+    void shouldResumeIntervalsIcuHistoricalImportFromTheAdvancedCursor() {
+        IntervalsIcuHistoricalImportTask.TaskData data =
+                new IntervalsIcuHistoricalImportTask.TaskData(42L, LocalDate.parse("2010-01-01"), LocalDate.parse("2026-10-08"))
+                        .withJobId(UUID.randomUUID())
+                        .withFromDate("2024-11-17");
+
+        IntervalsIcuHistoricalImportTask.TaskData restored =
+                IntervalsIcuHistoricalImportTask.TaskData.fromJson(data.toJson());
+
+        assertEquals(LocalDate.parse("2024-11-17"), restored.fromDate());
+        assertEquals(LocalDate.parse("2026-10-08"), restored.toDate());
+    }
+
+    @Test
+    void shouldTolerateUnknownFieldsInIntervalsIcuHistoricalImportTaskData() {
+        String json = new IntervalsIcuHistoricalImportTask.TaskData(42L, LocalDate.parse("2024-11-17"), LocalDate.parse("2026-10-08"))
+                .toJson().replace("{", "{\"removedField\":\"legacy-value\",");
+
+        IntervalsIcuHistoricalImportTask.TaskData restored = IntervalsIcuHistoricalImportTask.TaskData.fromJson(json);
+
+        assertEquals(42L, restored.userId());
+        assertEquals(LocalDate.parse("2024-11-17"), restored.fromDate());
     }
 }

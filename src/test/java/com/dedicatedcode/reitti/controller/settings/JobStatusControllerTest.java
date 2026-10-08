@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -112,6 +113,40 @@ class JobStatusControllerTest {
     void shouldHandleCancelOfUnknownJob() throws Exception {
         mockMvc.perform(delete("/settings/job/{id}", UUID.randomUUID()).with(csrf()).with(user(admin)))
                 .andExpect(status().isOk());
+    }
+
+
+    @Test
+    void shouldShowTheFailureReasonForAFailedJob() throws Exception {
+        UUID jobId = jobSchedulingService.createParentJob(admin, JobType.INTERVALS_ICU_IMPORT, "controller-test-failed-marker");
+        try {
+            jobMetadataRepository.updateProgress(jobId, 0, 0,
+                    "intervals.icu rejected the request: 429 TOO_MANY_REQUESTS");
+            jobMetadataRepository.updateState(jobId, JobState.FAILED, Instant.now());
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-failed-marker")))
+                    .andExpect(content().string(containsString("intervals.icu rejected the request: 429 TOO_MANY_REQUESTS")));
+        } finally {
+            jobMetadataRepository.delete(jobId);
+        }
+    }
+
+    @Test
+    void shouldNotShowTheProgressTextOfACompletedJob() throws Exception {
+        UUID jobId = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-completed-marker");
+        try {
+            jobMetadataRepository.updateProgress(jobId, 3, 3, "controller-test-stale-progress-text");
+            jobMetadataRepository.updateState(jobId, JobState.COMPLETED, Instant.now());
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-completed-marker")))
+                    .andExpect(content().string(not(containsString("controller-test-stale-progress-text"))));
+        } finally {
+            jobMetadataRepository.delete(jobId);
+        }
     }
 
     private UUID scheduleChild(UUID parentId) {
