@@ -9,7 +9,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: avatar-pulse 5s infinite;
     cursor:pointer;
 }
 
@@ -45,15 +44,4 @@
 
 .maplibregl-popup-content {
     z-index: 1001 !important;
-}
-@keyframes avatar-pulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-    }
 }
