@@ -65,6 +65,7 @@ public class UnifiedLocationProcessingService {
     private final JobSchedulingService jobScheduler;
     private final JobDetail reverseGeocodingTask;
     private final Duration maxTripDurationInHours;
+    private final Duration maxUntrackedMergeGapHours;
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
@@ -86,7 +87,8 @@ public class UnifiedLocationProcessingService {
             VisitSuppressionService visitSuppressionService,
             JobSchedulingService jobScheduler,
             @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
-            @Value("${reitti.processing.max-trip-duration-hours}") int maxTripDurationInHours) {
+            @Value("${reitti.processing.max-trip-duration-hours}") int maxTripDurationInHours,
+            @Value("${reitti.processing.max-untracked-merge-gap-hours}") int maxUntrackedMergeGapHours) {
         this.userJdbcService = userJdbcService;
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
@@ -108,6 +110,7 @@ public class UnifiedLocationProcessingService {
         this.jobScheduler = jobScheduler;
         this.reverseGeocodingTask = reverseGeocodingTask;
         this.maxTripDurationInHours = Duration.ofHours(maxTripDurationInHours);
+        this.maxUntrackedMergeGapHours = Duration.ofHours(maxUntrackedMergeGapHours);
     }
 
     /**
@@ -550,6 +553,7 @@ public class UnifiedLocationProcessingService {
             boolean withinTimeThreshold = Duration.between(currentEndTime, nextVisit.getStartTime()).getSeconds() <= mergeConfiguration.getMaxMergeTimeBetweenSameVisits();
 
             boolean shouldMergeWithNextVisit = samePlace && withinTimeThreshold;
+            Duration gap = Duration.between(currentEndTime, nextVisit.getStartTime());
 
             if (samePlace && !withinTimeThreshold) {
                 RawLocationPointStream pointsBetweenVisits;
@@ -561,9 +565,11 @@ public class UnifiedLocationProcessingService {
                 if (pointsBetweenVisits.getCount() > 2) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
-                } else {
+                } else if (gap.compareTo(maxUntrackedMergeGapHours) <= 0) {
                     logger.debug("There are no points tracked between {} and {}. Will merge consecutive visits because they are on the same place", currentEndTime, nextVisit.getStartTime());
                     shouldMergeWithNextVisit = true;
+                } else {
+                    logger.debug("There are no points tracked between {} and {}. Will not merge the visits at the same place across more than {}h without data", currentEndTime, nextVisit.getStartTime(), maxUntrackedMergeGapHours);
                 }
             }
 
