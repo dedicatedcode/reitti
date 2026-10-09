@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,8 @@ import static org.springframework.transaction.annotation.Propagation.REQUIRES_NE
 
 @Repository
 public class JobMetadataRepository {
+    private static final String SELECT_COLUMNS = "id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message ";
+
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<JobMetadata> jobMetadataRowMapper = (rs, ignored) -> {
         String parentJobIdStr = rs.getString("parent_job_id");
@@ -26,7 +29,7 @@ public class JobMetadataRepository {
                 UUID.fromString(rs.getString("id")),
                 rs.getString("task_id"),
                 parentJobIdStr != null ? UUID.fromString(parentJobIdStr) : null,
-                rs.getLong("user_id"),
+                rs.getObject("user_id", Long.class),
                 JobType.valueOf(rs.getString("type")),
                 rs.getString("friendly_name"),
                 JobState.valueOf(rs.getString("status")),
@@ -110,15 +113,55 @@ public class JobMetadataRepository {
         if (states.isEmpty()) {
             return List.of();
         }
-        String inClause = String.join(",", Collections.nCopies(states.size(), "?"));
-        String sql = "SELECT id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
-                "FROM job_meta_data WHERE status IN (" + inClause + ") ORDER BY created_at DESC";
-        return jdbcTemplate.query(sql, jobMetadataRowMapper, states.stream().map(Enum::name).toArray());
+        String sql = "SELECT " + SELECT_COLUMNS + "FROM job_meta_data WHERE " + stateInClause(states.size()) + " ORDER BY created_at DESC";
+        return jdbcTemplate.query(sql, jobMetadataRowMapper, stateNames(states));
+    }
+
+    /**
+     * Top-level jobs (no parent) that belong to the given user. Jobs without a user are system jobs and
+     * are only returned when {@code includeSystemJobs} is set.
+     */
+    public List<JobMetadata> findParentJobsByStates(List<JobState> states, Long userId, boolean includeSystemJobs) {
+        if (states.isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT " + SELECT_COLUMNS + "FROM job_meta_data WHERE parent_job_id IS NULL AND "
+                + stateInClause(states.size()) + (includeSystemJobs ? " AND (user_id = ? OR user_id IS NULL)" : " AND user_id = ?")
+                + " ORDER BY created_at DESC";
+        Object[] args = new Object[states.size() + 1];
+        System.arraycopy(stateNames(states), 0, args, 0, states.size());
+        args[states.size()] = userId;
+        return jdbcTemplate.query(sql, jobMetadataRowMapper, args);
+    }
+
+    public List<JobMetadata> findByParentJobIds(List<JobState> states, Collection<UUID> parentJobIds) {
+        if (states.isEmpty() || parentJobIds.isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT " + SELECT_COLUMNS + "FROM job_meta_data WHERE "
+                + stateInClause(states.size()) + " AND parent_job_id IN ("
+                + String.join(",", Collections.nCopies(parentJobIds.size(), "?")) + ")";
+        Object[] args = new Object[states.size() + parentJobIds.size()];
+        int i = 0;
+        for (JobState state : states) {
+            args[i++] = state.name();
+        }
+        for (UUID parentJobId : parentJobIds) {
+            args[i++] = parentJobId;
+        }
+        return jdbcTemplate.query(sql, jobMetadataRowMapper, args);
+    }
+
+    private static String stateInClause(int stateCount) {
+        return "status IN (" + String.join(",", Collections.nCopies(stateCount, "?")) + ")";
+    }
+
+    private static Object[] stateNames(List<JobState> states) {
+        return states.stream().map(Enum::name).toArray();
     }
 
     public List<JobMetadata> findByParentJobId(UUID parentId) {
-        String sql = "SELECT id, user_id, task_id, type, friendly_name, status, enqueued_at, scheduled_at, processing_at, finished_at, parent_job_id, current_progress, max_progress, progress_message " +
-                "FROM job_meta_data WHERE parent_job_id = ?";
+        String sql = "SELECT " + SELECT_COLUMNS + "FROM job_meta_data WHERE parent_job_id = ?";
         return jdbcTemplate.query(sql, jobMetadataRowMapper, parentId);
     }
 
