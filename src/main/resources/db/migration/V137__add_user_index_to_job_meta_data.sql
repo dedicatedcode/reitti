@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_job_meta_data_user_status ON job_meta_data (user_id, status);

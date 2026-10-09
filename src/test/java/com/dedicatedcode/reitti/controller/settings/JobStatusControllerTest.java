@@ -149,6 +149,101 @@ class JobStatusControllerTest {
         }
     }
 
+    @Test
+    void shouldNotShowTheJobsOfAnotherUser() throws Exception {
+        User otherUser = testingService.randomUser();
+        UUID jobId = jobSchedulingService.createParentJob(otherUser, JobType.GPX_IMPORT, "controller-test-other-user-marker");
+        try {
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString("controller-test-other-user-marker"))));
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(otherUser)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-other-user-marker")));
+        } finally {
+            jobMetadataRepository.delete(jobId);
+        }
+    }
+
+    @Test
+    void shouldShowSystemJobsToAdminsOnly() throws Exception {
+        UUID systemJobId = createSystemJob("controller-test-system-job-marker");
+        try {
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(testingService.randomUser())))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString("controller-test-system-job-marker"))));
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("controller-test-system-job-marker")));
+        } finally {
+            jobMetadataRepository.delete(systemJobId);
+        }
+    }
+
+    @Test
+    void shouldShowTheUsernameInsteadOfTheRawUserId() throws Exception {
+        UUID jobId = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-username-marker");
+        try {
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("User: " + admin.getUsername() + ", Type: GPX_IMPORT")))
+                    .andExpect(content().string(not(containsString("User ID:"))));
+        } finally {
+            jobMetadataRepository.delete(jobId);
+        }
+    }
+
+    @Test
+    void shouldShowASystemLabelForJobsWithoutAnOwner() throws Exception {
+        UUID systemJobId = createSystemJob("controller-test-system-label-marker");
+        try {
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("User: System, Type: H3_CELL_UPDATE")));
+        } finally {
+            jobMetadataRepository.delete(systemJobId);
+        }
+    }
+
+    @Test
+    void shouldNotCancelTheJobOfAnotherUser() throws Exception {
+        User otherUser = testingService.randomUser();
+        UUID jobId = jobSchedulingService.createParentJob(otherUser, JobType.GPX_IMPORT, "controller-test-foreign-cancel-marker");
+        try {
+            mockMvc.perform(delete("/settings/job/{id}", jobId).with(csrf()).with(user(testingService.randomUser())))
+                    .andExpect(status().isForbidden());
+
+            assertTrue(jobMetadataRepository.findById(jobId).isPresent());
+        } finally {
+            jobMetadataRepository.delete(jobId);
+        }
+    }
+
+    @Test
+    void shouldLetAdminsCancelASystemJob() throws Exception {
+        UUID systemJobId = createSystemJob("controller-test-system-cancel-marker");
+        try {
+            mockMvc.perform(delete("/settings/job/{id}", systemJobId).with(csrf()).with(user(testingService.randomUser())))
+                    .andExpect(status().isForbidden());
+            assertTrue(jobMetadataRepository.findById(systemJobId).isPresent());
+
+            mockMvc.perform(delete("/settings/job/{id}", systemJobId).with(csrf()).with(user(admin)))
+                    .andExpect(status().isOk());
+            assertFalse(jobMetadataRepository.findById(systemJobId).isPresent());
+        } finally {
+            jobMetadataRepository.delete(systemJobId);
+        }
+    }
+
+    private UUID createSystemJob(String friendlyName) {
+        UUID jobId = UUID.randomUUID();
+        jobMetadataRepository.insert(jobId, "controller-test-system-task", JobType.H3_CELL_UPDATE, friendlyName,
+                JobState.AWAITING, Instant.now(), Instant.now(), null);
+        return jobId;
+    }
+
     private UUID scheduleChild(UUID parentId) {
         List<UUID> before = jobMetadataRepository.findByStates(List.of(JobState.AWAITING)).stream()
                 .map(JobMetadataRepository.JobMetadata::getId)
