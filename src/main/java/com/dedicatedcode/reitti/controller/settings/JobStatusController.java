@@ -3,15 +3,19 @@ package com.dedicatedcode.reitti.controller.settings;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.jobs.JobInfo;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,21 +23,32 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Controller
 @RequestMapping("/settings")
 public class JobStatusController {
 
+    private static final List<JobState> ACTIVE_STATES = List.of(JobState.PREPARING, JobState.CREATED, JobState.AWAITING, JobState.RUNNING);
+    private static final List<JobState> TERMINAL_STATES = List.of(JobState.COMPLETED, JobState.FAILED);
+    private static final List<JobState> ALL_STATES = Stream.of(ACTIVE_STATES, TERMINAL_STATES).flatMap(List::stream).toList();
+
     private final boolean dataManagementEnabled;
     private final JobMetadataRepository jobMetadataRepository;
     private final JobSchedulingService jobSchedulingService;
+    private final UserJdbcService userJdbcService;
+    private final I18nService i18n;
 
     public JobStatusController(@Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                JobMetadataRepository jobMetadataRepository,
-                               JobSchedulingService jobSchedulingService) {
+                               JobSchedulingService jobSchedulingService,
+                               UserJdbcService userJdbcService,
+                               I18nService i18n) {
         this.dataManagementEnabled = dataManagementEnabled;
         this.jobMetadataRepository = jobMetadataRepository;
         this.jobSchedulingService = jobSchedulingService;
+        this.userJdbcService = userJdbcService;
+        this.i18n = i18n;
     }
 
     @GetMapping("/job-status")
@@ -45,36 +60,31 @@ public class JobStatusController {
     }
 
     @GetMapping("/queue-stats-content")
-    public String getQueueStatsContent(@RequestParam(defaultValue = "UTC") ZoneId timezone, Model model) {
-        List<JobMetadataRepository.JobMetadata> activeJobs =
-                jobMetadataRepository.findByStates(
-                        List.of(JobState.PREPARING, JobState.CREATED, JobState.AWAITING, JobState.RUNNING)
-                );
+    public String getQueueStatsContent(@AuthenticationPrincipal User user,
+                                       @RequestParam(defaultValue = "UTC") ZoneId timezone,
+                                       Model model) {
+        boolean isAdmin = user.getRole() == Role.ADMIN;
 
-        List<JobMetadataRepository.JobMetadata> terminalJobs =
-                jobMetadataRepository.findByStates(
-                        List.of(JobState.COMPLETED, JobState.FAILED)
-                );
+        List<JobMetadataRepository.JobMetadata> activeParents =
+                jobMetadataRepository.findParentJobsByStates(ACTIVE_STATES, user.getId(), isAdmin);
 
-        // Combine to get full picture of parents and children
-        List<JobMetadataRepository.JobMetadata> allJobs = new ArrayList<>(activeJobs);
-        allJobs.addAll(terminalJobs);
+        List<JobMetadataRepository.JobMetadata> terminalParents =
+                jobMetadataRepository.findParentJobsByStates(TERMINAL_STATES, user.getId(), isAdmin);
 
-        // Separate parent and child jobs
-        Map<Boolean, List<JobMetadataRepository.JobMetadata>> partitioned = allJobs.stream()
-                .collect(Collectors.partitioningBy(job -> job.getParentJobId() == null));
-        List<JobMetadataRepository.JobMetadata> parentJobs = partitioned.get(true);
-        List<JobMetadataRepository.JobMetadata> childJobs = partitioned.get(false);
-
-        // Group children by parent ID
-        Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent = childJobs.stream()
+        // Children are fetched by parent id instead of by user, so a child never disappears from the
+        // progress of a parent the current user is allowed to see.
+        Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent = jobMetadataRepository
+                .findByParentJobIds(ALL_STATES, parentIds(activeParents, terminalParents)).stream()
                 .collect(Collectors.groupingBy(JobMetadataRepository.JobMetadata::getParentJobId));
+
+        List<JobMetadataRepository.JobMetadata> allParents = new ArrayList<>(activeParents);
+        allParents.addAll(terminalParents);
 
         // Separate parent jobs into pending and fully complete (past)
         List<JobMetadataRepository.JobMetadata> pendingParents = new ArrayList<>();
         List<JobMetadataRepository.JobMetadata> pastParents = new ArrayList<>();
 
-        for (JobMetadataRepository.JobMetadata parent : parentJobs) {
+        for (JobMetadataRepository.JobMetadata parent : allParents) {
             List<JobMetadataRepository.JobMetadata> children = childrenByParent.getOrDefault(parent.getId(), List.of());
             boolean hasActiveChildren = children.stream()
                     .anyMatch(child -> !isTerminal(child.getState()));
@@ -106,12 +116,33 @@ public class JobStatusController {
     }
 
     @DeleteMapping("/job/{id}")
-    public String cancelJob(@PathVariable UUID id,
+    public String cancelJob(@AuthenticationPrincipal User user,
+                            @PathVariable UUID id,
                             @RequestParam(defaultValue = "UTC") ZoneId timezone,
                             Model model) {
-        jobSchedulingService.cancel(id);
+        jobMetadataRepository.findById(id)
+                .ifPresent(metadata -> {
+                    if (!isVisibleTo(metadata, user)) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+                    }
+                    jobSchedulingService.cancel(id);
+                });
         // Re-fetch and render the current status
-        return getQueueStatsContent(timezone, model);
+        return getQueueStatsContent(user, timezone, model);
+    }
+
+    /**
+     * A user may only see their own jobs. Admins additionally see system jobs, which have no owner.
+     */
+    private boolean isVisibleTo(JobMetadataRepository.JobMetadata metadata, User user) {
+        Long ownerId = metadata.getUserId();
+        return ownerId == null ? user.getRole() == Role.ADMIN : ownerId.equals(user.getId());
+    }
+
+    private static Collection<UUID> parentIds(List<JobMetadataRepository.JobMetadata>... parentGroups) {
+        return Stream.of(parentGroups).flatMap(List::stream)
+                .map(JobMetadataRepository.JobMetadata::getId)
+                .toList();
     }
 
     private boolean isTerminal(JobState state) {
@@ -182,7 +213,7 @@ public class JobStatusController {
     private JobInfo mapToJobInfo(ZoneId timezone, JobMetadataRepository.JobMetadata metadata) {
         JobState state = metadata.getState();
         String jobName = metadata.getFriendlyName();
-        String jobDescription = String.format("User ID: %s, Type: %s", metadata.getUserId(), metadata.getJobType());
+        String jobDescription = i18n.translate("jobs.description.user", ownerLabel(metadata), metadata.getJobType());
         boolean canCancel = state == JobState.AWAITING;
 
         Long durationSeconds = null;
@@ -219,6 +250,13 @@ public class JobStatusController {
             return instant.atZone(timezone).toLocalDateTime();
         }
     }
+
+    private String ownerLabel(JobMetadataRepository.JobMetadata metadata) {
+        return metadata.getUserId() == null
+                ? i18n.translate("jobs.system")
+                : userJdbcService.findById(metadata.getUserId()).map(User::getUsername).orElse(null);
+    }
+
     private float progressPercent(JobMetadataRepository.JobMetadata metadata) {
         if (metadata.getMaxProgress() == null || metadata.getCurrentProgress() == null || metadata.getMaxProgress() == 0) return 0f;
         return ((float) metadata.getCurrentProgress() / metadata.getMaxProgress()) * 100f;

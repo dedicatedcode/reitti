@@ -145,4 +145,56 @@ class JobMetadataRepositoryTest {
 
         jobMetadataRepository.delete(jobId);
     }
+
+    @Test
+    void shouldKeepSystemJobsWithoutAnOwner() {
+        UUID jobId = UUID.randomUUID();
+        jobMetadataRepository.insert(jobId, "system-task", JobType.H3_CELL_UPDATE, "system-job", JobState.AWAITING, Instant.now(), Instant.now(), null);
+
+        assertNull(jobMetadataRepository.findById(jobId).orElseThrow().getUserId());
+
+        jobMetadataRepository.delete(jobId);
+    }
+
+    @Test
+    void shouldFindParentJobsOfASingleUser() {
+        UUID ownJobId = UUID.randomUUID();
+        UUID otherUsersJobId = UUID.randomUUID();
+        UUID systemJobId = UUID.randomUUID();
+        UUID childJobId = UUID.randomUUID();
+        jobMetadataRepository.insert(ownJobId, user, "t1", JobType.GPX_IMPORT, "own-parent", JobState.AWAITING, Instant.now(), Instant.now(), null);
+        jobMetadataRepository.insert(childJobId, user, "t2", JobType.GPX_IMPORT, "own-child", JobState.AWAITING, Instant.now(), Instant.now(), ownJobId);
+        jobMetadataRepository.insert(otherUsersJobId, testingService.randomUser(), "t3", JobType.GPX_IMPORT, "other-parent", JobState.AWAITING, Instant.now(), Instant.now(), null);
+        jobMetadataRepository.insert(systemJobId, "t4", JobType.H3_CELL_UPDATE, "system-parent", JobState.AWAITING, Instant.now(), Instant.now(), null);
+
+        List<UUID> visibleIds = ids(jobMetadataRepository.findParentJobsByStates(List.of(JobState.AWAITING), user.getId(), false));
+        assertEquals(List.of(ownJobId), visibleIds, "children and jobs of other users must not show up as parents");
+
+        List<UUID> adminIds = ids(jobMetadataRepository.findParentJobsByStates(List.of(JobState.AWAITING), user.getId(), true));
+        assertTrue(adminIds.containsAll(List.of(ownJobId, systemJobId)));
+        assertFalse(adminIds.contains(otherUsersJobId));
+        assertFalse(adminIds.contains(childJobId));
+
+        jobMetadataRepository.delete(ownJobId);
+        jobMetadataRepository.delete(otherUsersJobId);
+        jobMetadataRepository.delete(systemJobId);
+    }
+
+    @Test
+    void shouldFindChildrenByParentIdRegardlessOfTheirOwner() {
+        UUID parentId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        jobMetadataRepository.insert(parentId, user, "t1", JobType.GPX_IMPORT, "parent", JobState.AWAITING, Instant.now(), Instant.now(), null);
+        jobMetadataRepository.insert(childId, "system-task", JobType.H3_CELL_UPDATE, "child", JobState.AWAITING, Instant.now(), Instant.now(), parentId);
+
+        assertEquals(List.of(childId), ids(jobMetadataRepository.findByParentJobIds(List.of(JobState.AWAITING), List.of(parentId))));
+        assertTrue(jobMetadataRepository.findByParentJobIds(List.of(JobState.AWAITING), List.of()).isEmpty());
+        assertTrue(jobMetadataRepository.findByParentJobIds(List.of(), List.of(parentId)).isEmpty());
+
+        jobMetadataRepository.delete(parentId);
+    }
+
+    private static List<UUID> ids(List<JobMetadataRepository.JobMetadata> jobs) {
+        return jobs.stream().map(JobMetadataRepository.JobMetadata::getId).sorted().toList();
+    }
 }
