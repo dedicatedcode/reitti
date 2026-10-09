@@ -25,16 +25,6 @@ public class SyntheticPointInserter {
 
     private static final Logger logger = LoggerFactory.getLogger(SyntheticPointInserter.class);
 
-    /**
-     * Gaps failing the interpolation distance check are treated as stationary (device off during
-     * a longer stay) and filled with a cluster anchored at the first point, if the gap is at
-     * least this long. Shorter gaps are plausibly real movement and stay unfilled.
-     */
-    static final Duration MIN_STATIONARY_GAP = Duration.ofMinutes(15);
-
-    /**
-     * Radius of the deterministic jitter around the anchor point for stationary fills.
-     */
     private static final double STATIONARY_JITTER_RADIUS_METERS = 15.0;
 
     private final LocationDensityConfig config;
@@ -108,7 +98,7 @@ public class SyntheticPointInserter {
 
         int gapThresholdSeconds = config.getGapThresholdSeconds();
         long maxInterpolationSeconds = densityConfig.getMaxInterpolationGapMinutes() * 60L;
-        double maxInterpolationDistanceMeters = densityConfig.getMaxInterpolationDistanceMeters();
+        long maxInterpolatedGapSeconds = config.getMaxInterpolationGapHours() * 3600L;
 
         List<LocationPoint> allSyntheticPoints = new ArrayList<>();
 
@@ -137,26 +127,38 @@ public class SyntheticPointInserter {
                     if (from.isSynthetic() || to.isSynthetic()) {
                         // wall at a manually deleted point: this sub-segment stays unfilled
                         syntheticPoints = List.of();
-                    } else if (GeoUtils.distanceInMeters(from, to) <= maxInterpolationDistanceMeters) {
-                        syntheticPoints = syntheticGenerator.generateSyntheticPoints(
-                                from, to,
-                                config.getTargetPointsPerMinute(),
-                                maxInterpolationDistanceMeters
-                        );
-                    } else if (segmentSeconds >= MIN_STATIONARY_GAP.getSeconds()) {
-                        // Distance too large for interpolation but the gap is long enough to assume
-                        // the user stayed in place (e.g. device off during a longer stay): fill with a
-                        // stationary cluster anchored at the first point
-                        syntheticPoints = syntheticGenerator.generateStationaryPoints(
-                                from, to,
-                                config.getTargetPointsPerMinute(),
-                                STATIONARY_JITTER_RADIUS_METERS
-                        );
                     } else {
-                        syntheticPoints = List.of();
+                        double distanceMeters = GeoUtils.distanceInMeters(from, to);
+                        double impliedSpeedMps = distanceMeters / segmentSeconds;
+                        if (impliedSpeedMps <= config.getMaxStationarySpeedMps()) {
+                            // Too slow to have travelled. The device simply stopped reporting while the
+                            // user stayed put (battery saving, or a plain gap), so fill with a stationary
+                            // cluster anchored at the first point.
+                            syntheticPoints = syntheticGenerator.generateStationaryPoints(
+                                    from, to,
+                                    config.getTargetPointsPerMinute(),
+                                    STATIONARY_JITTER_RADIUS_METERS
+                            );
+                        } else if (segmentSeconds <= maxInterpolatedGapSeconds) {
+                            // Movement over a gap short enough that a straight line between the
+                            // endpoints is honest.
+                            syntheticPoints = syntheticGenerator.generateSyntheticPoints(
+                                    from, to,
+                                    config.getTargetPointsPerMinute()
+                            );
+                        } else {
+                            // Movement over a gap longer than we are willing to interpolate: nothing
+                            // plausible to draw between the endpoints, so leave the hole rather than
+                            // fabricate a straight line across it.
+                            syntheticPoints = List.of();
+                        }
+                        logger.trace("Gap of {}s over {}m ({} km/h) between {} and {} -> {} synthetic points [{}]",
+                                segmentSeconds, String.format("%.0f", distanceMeters),
+                                String.format("%.2f", impliedSpeedMps * 3.6),
+                                from.getTimestamp(), to.getTimestamp(), syntheticPoints.size(),
+                                impliedSpeedMps <= config.getMaxStationarySpeedMps() ? "stationary"
+                                        : segmentSeconds <= maxInterpolatedGapSeconds ? "interpolated" : "unfilled");
                     }
-                    logger.trace("Gap of {}s between {} and {} -> {} synthetic points",
-                            segmentSeconds, from.getTimestamp(), to.getTimestamp(), syntheticPoints.size());
                     allSyntheticPoints.addAll(syntheticPoints);
                 }
             }
