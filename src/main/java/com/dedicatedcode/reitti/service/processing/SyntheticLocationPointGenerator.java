@@ -20,16 +20,10 @@ public class SyntheticLocationPointGenerator {
     private static final Logger logger = LoggerFactory.getLogger(SyntheticLocationPointGenerator.class);
     
     public List<LocationPoint> generateSyntheticPoints(
-            RawLocationPoint startPoint, 
-            RawLocationPoint endPoint, 
-            int targetPointsPerMinute,
-            double maxDistanceMeters) {
-        
-        if (!shouldInterpolate(startPoint, endPoint, maxDistanceMeters)) {
-            logger.trace("Skipping interpolation between points: distance too large or other constraints not met");
-            return List.of();
-        }
-        
+            RawLocationPoint startPoint,
+            RawLocationPoint endPoint,
+            int targetPointsPerMinute) {
+
         List<LocationPoint> syntheticPoints = new ArrayList<>();
         
         // Calculate target interval in seconds
@@ -145,22 +139,7 @@ public class SyntheticLocationPointGenerator {
         return syntheticPoints;
     }
 
-    private boolean shouldInterpolate(RawLocationPoint start, RawLocationPoint end, double maxDistance) {
-        // Check if the distance between points is within an acceptable range
-        double distance = GeoUtils.distanceInMeters(start, end);
-        
-        if (distance > maxDistance) {
-            logger.trace("Distance {} meters exceeds maximum interpolation distance {} meters",
-                distance, maxDistance);
-            return false;
-        }
-        
-        return true;
-    }
-    
     private GeoPoint interpolateCoordinates(GeoPoint start, GeoPoint end, double ratio) {
-        // Use linear interpolation for coordinates
-        // For more accuracy over long distances, could use great circle interpolation
         double lat = start.latitude() + (end.latitude() - start.latitude()) * ratio;
         double lon = start.longitude() + (end.longitude() - start.longitude()) * ratio;
         

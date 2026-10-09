@@ -53,11 +53,6 @@ public class IntervalsIcuIntegrationService {
     private static final DateTimeFormatter LOCAL_DATE_TIME = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final TypeReference<List<ActivitySummary>> ACTIVITY_LIST_TYPE = new TypeReference<>() {
     };
-    /**
-     * Asks the activities endpoint for a projection. Without it every activity arrives as a ~200 field
-     * document of which 99 percent is unused, and the server also strips null values from a projection,
-     * which keeps the response small as well as safe to bind.
-     */
     private static final String ACTIVITY_FIELDS = "id,file_type,start_date_local";
 
     private final IntervalsIcuIntegrationJdbcService jdbcService;
@@ -282,10 +277,6 @@ public class IntervalsIcuIntegrationService {
         return value instanceof Number number ? number.longValue() : 0L;
     }
 
-    /**
-     * Reads the whole window oldest first. The activities endpoint returns newest first and honours a limit,
-     * so large windows are walked backwards by narrowing the newest date until a short page is returned.
-     */
     private Window fetchActivityWindow(IntervalsIcuIntegration integration, LocalDate from, LocalDate to) {
         List<ActivitySummary> collected = new ArrayList<>();
         boolean truncated = false;
@@ -334,13 +325,6 @@ public class IntervalsIcuIntegrationService {
         }
     }
 
-    /**
-     * Reads the body as text and leaves the parsing to the caller. Asking RestTemplate for a typed response
-     * instead breaks on error responses: intervals.icu answers a rejected key with a JSON object such as
-     * {"status":401,"error":"Unauthorized"}, and the error handler then tries to read that object into the
-     * expected list type, which surfaces as an opaque "Error while extracting response" instead of the
-     * actual 401.
-     */
     private String get(String url, String apiKey, MediaType accept) {
         ResponseEntity<String> response = restTemplate.exchange(
                 url, HttpMethod.GET, new HttpEntity<>(createHeaders(apiKey, accept)), String.class);
@@ -353,10 +337,6 @@ public class IntervalsIcuIntegrationService {
         return new IllegalStateException("Unexpected response from " + url + ": " + excerpt, cause);
     }
 
-    /**
-     * Resolves the linked intervals.icu account once so the settings page can show who is connected.
-     * Only attempted while the identity is still unknown, so it costs at most one extra request per sync.
-     */
     private IntervalsIcuIntegration refreshAthleteIfUnknown(User user, IntervalsIcuIntegration integration) {
         if (integration.getAthleteName() != null) {
             return integration;
@@ -442,15 +422,6 @@ public class IntervalsIcuIntegrationService {
     public record AthleteInfo(@JsonProperty("id") String athleteId, @JsonProperty("name") String name) {
     }
 
-    /**
-     * The only three values the import needs: the id used to download the file and to deduplicate, the
-     * original file type used to pick an importer, and the start date used to resume a historical import.
-     *
-     * Every field is a String on purpose. The activities endpoint is asked for exactly these fields, but
-     * should it ever answer with the full object instead, this still binds cleanly: intervals.icu omits or
-     * nulls a large share of its activity properties, and Jackson 3 rejects null for a primitive field. A
-     * primitive boolean trainer flag used to abort the whole sync on the first uploaded activity.
-     */
     @JsonIgnoreProperties(ignoreUnknown = true)
     static class ActivitySummary {
 
