@@ -87,6 +87,11 @@ public class UserNotificationService {
         notifyReittiSubscriptions(user, eventType, dates);
     }
 
+    public void previewCompleted(User user, String previewId) {
+        log.debug("Preview [{}] completed for user [{}]", previewId, user.getId());
+        sendToQueue(user, SSEType.PREVIEW_DONE, previewId);
+    }
+
     public void newLocationData(User user, Device device, TimeRange timeRange) {
         SSEType eventType = SSEType.RAW_DATA;
         log.debug("New RawLocationPoints for user [{}] and device [{}]", user.getId(), device.id());

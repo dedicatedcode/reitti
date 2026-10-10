@@ -223,6 +223,7 @@
                 const form = document.getElementById('configuration-form');
                 const formData = new FormData(form);
                 formData.set('previewDate', currentDate);
+                formData.set('timezone', getUserTimezone());
 
                 // Trigger the preview update
                 htmx.ajax('POST', window.contextPath + '/settings/visit-sensitivity/preview', {
