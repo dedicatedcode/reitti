@@ -25,7 +25,6 @@ public class TransportModeService {
     private final TransportModeOverrideJdbcService transportModeOverrideJdbcService;
 
     private static final long CHUNK_DURATION_SECONDS = 60;
-    private static final long MIN_SEGMENT_DURATION_SECONDS = CHUNK_DURATION_SECONDS * 3;
 
     public TransportModeService(TransportModeJdbcService transportModeJdbcService,
                                 TransportModeOverrideJdbcService transportModeOverrideJdbcService) {
@@ -81,10 +80,8 @@ public class TransportModeService {
         }
 
         log.trace("segmentTrip: before post-processing: {} segments: {}", result.size(), segmentSummary(result));
-        result = collapseShortSegments(result);
-        log.trace("segmentTrip: after collapse: {} segments: {}", result.size(), segmentSummary(result));
-        result = mergeSameModeSegments(result);
-        log.trace("segmentTrip: after merge: {} segments: {}", result.size(), segmentSummary(result));
+        result = absorbImplausibleRuns(result, configs);
+        log.trace("segmentTrip: after flanking absorption: {} segments: {}", result.size(), segmentSummary(result));
 
         // Ensure segments tile the trip time range contiguously
         for (int i = 0; i < result.size() - 1; i++) {
@@ -174,6 +171,8 @@ public class TransportModeService {
         Long pendingStartOffset = null;
         long pendingEndOffset = 0;
         List<RawLocationPoint> pendingPoints = new ArrayList<>();
+        RawLocationPoint carry = null;
+        RawLocationPoint spanLead = null;
         RawLocationPoint nextPoint = pointIterator.hasNext() ? pointIterator.next() : null;
         for (long offset = 0; offset < totalDuration && nextPoint != null; offset += CHUNK_DURATION_SECONDS) {
             long chunkEnd = Math.min(offset + CHUNK_DURATION_SECONDS, totalDuration);
@@ -189,44 +188,70 @@ public class TransportModeService {
                 log.trace("chunkAndClassify: chunk {} at +{}s sparse ({} point(s)), deferring classification", chunkCount, offset, chunkPoints.size());
                 if (pendingStartOffset == null) {
                     pendingStartOffset = offset;
+                    spanLead = carry;
                 }
                 pendingEndOffset = chunkEnd;
                 pendingPoints.addAll(chunkPoints);
+                if (!chunkPoints.isEmpty()) {
+                    carry = chunkPoints.getLast();
+                }
                 chunkCount++;
                 continue;
             }
 
-            flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+            carry = flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, spanLead, carry, configs, chunks);
             pendingStartOffset = null;
+            spanLead = null;
             pendingPoints.clear();
 
-            TransportMode mode = classifySegment(chunkPoints, configs);
-            double distanceMeters = GeoUtils.calculateTripDistance(chunkPoints);
-            double avgSpeed = calculateAverageSpeedKmh(chunkPoints);
-            log.trace("chunkAndClassify: chunk {} at +{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", chunkCount, offset, chunkPoints.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
+            List<RawLocationPoint> measured = withLead(carry, chunkPoints);
+            carry = chunkPoints.getLast();
+
+            TransportMode mode = classifySegment(measured, configs);
+            double distanceMeters = GeoUtils.calculateTripDistance(measured);
+            double avgSpeed = calculateAverageSpeedKmh(measured);
+            log.trace("chunkAndClassify: chunk {} at +{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", chunkCount, offset, measured.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
             chunks.add(new ChunkClass(mode, chunkEnd - offset, distanceMeters));
             chunkCount++;
         }
 
-        flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, configs, chunks);
+        flushSparseSpan(pendingStartOffset, pendingEndOffset, pendingPoints, spanLead, carry, configs, chunks);
 
         log.trace("chunkAndClassify: {} chunks from {} points over {}s", chunks.size(), pointCount, totalDuration);
         return chunks;
     }
 
-    private void flushSparseSpan(Long startOffset, long endOffset, List<RawLocationPoint> spanPoints, List<TransportModeConfig> configs, List<ChunkClass> chunks) {
-        if (startOffset == null) {
-            return;
+    private List<RawLocationPoint> withLead(RawLocationPoint lead, List<RawLocationPoint> points) {
+        if (lead == null) {
+            return points;
         }
+        List<RawLocationPoint> withLead = new ArrayList<>(points.size() + 1);
+        withLead.add(lead);
+        withLead.addAll(points);
+        return withLead;
+    }
+
+    private RawLocationPoint flushSparseSpan(Long startOffset, long endOffset, List<RawLocationPoint> spanPoints,
+                                            RawLocationPoint lead, RawLocationPoint carry,
+                                            List<TransportModeConfig> configs, List<ChunkClass> chunks) {
+        if (startOffset == null) {
+            return carry;
+        }
+        if (spanPoints.isEmpty()) {
+            return carry;
+        }
+        RawLocationPoint outgoing = spanPoints.getLast();
         if (spanPoints.size() < 2) {
             log.trace("flushSparseSpan: sparse span at +{}s..+{}s dropped ({} point(s)), covered by neighboring segments", startOffset, endOffset, spanPoints.size());
-            return;
+            return outgoing;
         }
-        TransportMode mode = classifySegment(spanPoints, configs);
-        double distanceMeters = GeoUtils.calculateTripDistance(spanPoints);
-        double avgSpeed = calculateAverageSpeedKmh(spanPoints);
-        log.trace("flushSparseSpan: sparse span at +{}s..+{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", startOffset, endOffset, spanPoints.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
+        List<RawLocationPoint> measured = withLead(lead, spanPoints);
+        TransportMode mode = classifySegment(measured, configs);
+        double distanceMeters = GeoUtils.calculateTripDistance(measured);
+        double avgSpeed = calculateAverageSpeedKmh(measured);
+        log.trace("flushSparseSpan: sparse span at +{}s..+{}s: {} pts, avgSpeed={} km/h, distance={}m → {}", startOffset, endOffset, measured.size(), String.format("%.1f", avgSpeed), String.format("%.0f", distanceMeters), mode);
         chunks.add(new ChunkClass(mode, endOffset - startOffset, distanceMeters));
+        return outgoing;
     }
 
     private double calculateAverageSpeedKmh(List<RawLocationPoint> points) {
@@ -290,43 +315,52 @@ public class TransportModeService {
         return result;
     }
 
-    private List<TransportModeSegment> collapseShortSegments(List<TransportModeSegment> segments) {
-        if (segments.size() < 3) {
-            return segments;
-        }
-
-        int totalCollapsed = 0;
-        List<TransportModeSegment> result = new ArrayList<>(segments);
-        boolean changed;
-        do {
-            changed = false;
-            List<TransportModeSegment> next = new ArrayList<>();
-            for (int i = 0; i < result.size(); i++) {
-                TransportModeSegment current = result.get(i);
-                if (i == 0 || i == result.size() - 1) {
-                    next.add(current);
-                    continue;
-                }
-                TransportModeSegment prev = result.get(i - 1);
-                TransportModeSegment nextSeg = result.get(i + 1);
-                if (prev.mode() == nextSeg.mode() && current.mode() != prev.mode()
-                        && current.durationSeconds() < MIN_SEGMENT_DURATION_SECONDS) {
-                    log.trace("collapseShortSegments: collapsing {}@+{}s+{}s ({}s < {}s) between {} and {}",
-                            current.mode(), current.offsetSeconds(), current.durationSeconds(),
-                            current.durationSeconds(), MIN_SEGMENT_DURATION_SECONDS, prev.mode(), nextSeg.mode());
-                    totalCollapsed++;
-                    changed = true;
-                } else {
-                    next.add(current);
-                }
+    private int band(TransportMode mode, List<TransportModeConfig> configs) {
+        for (int i = 0; i < configs.size(); i++) {
+            if (configs.get(i).mode() == mode) {
+                return i;
             }
-            result = next;
-        } while (changed);
+        }
+        return configs.size();
+    }
 
-        if (totalCollapsed > 0) {
-            log.trace("collapseShortSegments: collapsed {} short segment(s) (MIN_SEGMENT_DURATION_SECONDS={}s)", totalCollapsed, MIN_SEGMENT_DURATION_SECONDS);
+    private List<TransportModeSegment> absorbImplausibleRuns(List<TransportModeSegment> segments,
+                                                            List<TransportModeConfig> configs) {
+        List<TransportModeSegment> result = mergeSameModeSegments(segments);
+        for (int i = indexOfFirstImplausibleRun(result, configs); i > 0; i = indexOfFirstImplausibleRun(result, configs)) {
+            TransportModeSegment left = result.get(i - 1);
+            TransportModeSegment absorbed = result.get(i);
+            TransportModeSegment right = result.get(i + 1);
+            log.trace("absorbImplausibleRuns: absorbing {}@+{}s+{}s into the preceding {} run, flanked by {} and {}",
+                    absorbed.mode(), absorbed.offsetSeconds(), absorbed.durationSeconds(),
+                    left.mode(), left.mode(), right.mode());
+
+            List<TransportModeSegment> next = new ArrayList<>(result.size() - 1);
+            next.addAll(result.subList(0, i - 1));
+            next.add(new TransportModeSegment(
+                    left.mode(),
+                    left.offsetSeconds(),
+                    left.durationSeconds() + absorbed.durationSeconds(),
+                    left.distanceMeters() + absorbed.distanceMeters()));
+            next.addAll(result.subList(i + 1, result.size()));
+            result = mergeSameModeSegments(next);
         }
         return result;
+    }
+
+    private int indexOfFirstImplausibleRun(List<TransportModeSegment> segments, List<TransportModeConfig> configs) {
+        for (int i = 1; i < segments.size() - 1; i++) {
+            int band = band(segments.get(i).mode(), configs);
+            boolean slowerThanBoth = band < band(segments.get(i - 1).mode(), configs)
+                    && band < band(segments.get(i + 1).mode(), configs);
+            boolean fasterThanBothButShort = band > band(segments.get(i - 1).mode(), configs)
+                    && band > band(segments.get(i + 1).mode(), configs)
+                    && segments.get(i).durationSeconds() <= CHUNK_DURATION_SECONDS;
+            if (slowerThanBoth || fasterThanBothButShort) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
