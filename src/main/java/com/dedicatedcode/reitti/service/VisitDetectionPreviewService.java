@@ -2,7 +2,9 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.model.processing.DetectionParameter;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.processing.ProcessingPipelineTask;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,13 +33,17 @@ public class VisitDetectionPreviewService {
     private final JdbcTemplate jdbcTemplate;
     private final JobSchedulingService jobScheduler;
     private final JobDetail processingPipelineTask;
+    private final JobMetadataRepository jobMetadataRepository;
     private final Map<String, Instant> previewLastUpdated = new ConcurrentHashMap<>();
+    private final Map<String, UUID> previewParentJobs = new ConcurrentHashMap<>();
 
     public VisitDetectionPreviewService(JdbcTemplate jdbcTemplate,
                                         JobSchedulingService jobScheduler,
+                                        JobMetadataRepository jobMetadataRepository,
                                         @Qualifier("processingPipelineJob") JobDetail processingPipelineTask) {
         this.jdbcTemplate = jdbcTemplate;
         this.jobScheduler = jobScheduler;
+        this.jobMetadataRepository = jobMetadataRepository;
         this.processingPipelineTask = processingPipelineTask;
     }
 
@@ -72,6 +79,7 @@ public class VisitDetectionPreviewService {
 
         log.debug("Copied preview data user [{}] with previewId [{}] successfully", user.getId(), previewId);
         UUID parentJob = this.jobScheduler.createParentJob(user, VISIT_TRIP_DETECTION, previewId);
+        this.previewParentJobs.put(previewId, parentJob);
         ProcessingPipelineTask.TaskData triggerEvent = new ProcessingPipelineTask.TaskData(user.getUsername(), previewId, UUID.randomUUID().toString()).withParentJobId(parentJob);
         this.jobScheduler.enqueueTask(processingPipelineTask, triggerEvent,
                                       JobSchedulingService.Metadata.builder().user(user).jobType(VISIT_TRIP_DETECTION)
@@ -82,23 +90,49 @@ public class VisitDetectionPreviewService {
         return previewId;
     }
 
+    private boolean isTerminal(JobState state) {
+        return state == JobState.COMPLETED || state == JobState.FAILED;
+    }
+
+    private Optional<JobState> jobState(String previewId) {
+        UUID parentJobId = this.previewParentJobs.get(previewId);
+        if (parentJobId == null) {
+            return Optional.empty();
+        }
+        return this.jobMetadataRepository.getState(parentJobId);
+    }
+
     public boolean isPreviewReady(String previewId) {
         Instant lastUpdate = previewLastUpdated.get(previewId);
         if (lastUpdate == null) {
             return false;
         }
+
+        // The parent job state is authoritative: the preview tables are only fully
+        // populated once the pipeline run and its geocoding children are done.
+        Optional<JobState> state = jobState(previewId);
+        if (state.isPresent()) {
+            return isTerminal(state.get());
+        }
+
+        // Fallback when the parent job is unknown: keep the original grace period
+        // so the preview does not wait forever.
         return Instant.now().minusSeconds(READY_THRESHOLD_SECONDS).isAfter(lastUpdate);
     }
 
+    public boolean isPreviewFailed(String previewId) {
+        return jobState(previewId).map(JobState.FAILED::equals).orElse(false);
+    }
 
     public void updatePreviewStatus(String previewId) {
         if (previewId != null) {
             log.debug("Updating preview status for previewId: {}", previewId);
             previewLastUpdated.put(previewId, Instant.now());
-            
+
             if (previewLastUpdated.size() > MAX_PREVIEW_ENTRIES) {
                 Instant cutoff = Instant.now().minusSeconds(3600);
-                previewLastUpdated.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+                previewLastUpdated.keySet().removeIf(key -> previewLastUpdated.get(key).isBefore(cutoff));
+                previewParentJobs.keySet().removeIf(key -> !previewLastUpdated.containsKey(key));
             }
         }
     }

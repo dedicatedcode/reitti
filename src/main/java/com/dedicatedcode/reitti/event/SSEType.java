@@ -5,5 +5,6 @@ public enum SSEType {
     TRIPS,
     PLACE,
     VISITS,
-    RAW_DATA
+    RAW_DATA,
+    PREVIEW_DONE
 }

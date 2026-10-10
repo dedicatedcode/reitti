@@ -396,10 +396,14 @@ public class UnifiedLocationProcessingService {
         List<ProcessedVisit> chain = new ArrayList<>();
         if (isLiveMode) {
             this.processedVisitJdbcService.findFirstProcessedVisitBefore(user, searchStart).ifPresent(chain::add);
+        } else {
+            this.previewProcessedVisitJdbcService.findFirstProcessedVisitBefore(user, previewId, searchStart).ifPresent(chain::add);
         }
         chain.addAll(processedVisits);
         if (isLiveMode) {
             this.processedVisitJdbcService.findFirstProcessedVisitAfter(user, searchEnd).ifPresent(chain::add);
+        } else {
+            this.previewProcessedVisitJdbcService.findFirstProcessedVisitAfter(user, previewId, searchEnd).ifPresent(chain::add);
         }
 
         List<Trip> trips = new ArrayList<>();
@@ -420,22 +424,6 @@ public class UnifiedLocationProcessingService {
         return new TripDetectionResult(trips, System.currentTimeMillis() - start);
     }
 
-    /**
-     * Detects stay points by walking forward through time-ordered points.
-     * <p>
-     * For each anchor, scans forward including points within stayRadiusMeters of
-     * the running centroid. Points outside the radius are skipped (GPS noise,
-     * transit). If no in-radius point appears within maxGapSeconds of the last
-     * included point, the stay ends.
-     * <p>
-     * Output is chronologically ordered and non-overlapping by construction:
-     * after a valid stay, the scan resumes from the point after the last
-     * included one, guaranteeing the next stay starts strictly later.
-     * <p>
-     * The points are consumed from a chunked stream so only a bounded buffer
-     * (the current cluster plus points within one max-gap window of it) is
-     * held in memory, regardless of the size of the scanned range.
-     */
     private List<StayPoint> detectStayPointsSlidingWindow(
             Iterator<RawLocationPoint> pointStream,
             DetectionParameter parameter) {
