@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +47,8 @@ class ProcessingPipelineTaskTest {
     private JobMetadataRepository jobMetadataRepository;
     @Mock
     private UnifiedLocationProcessingService locationProcessTask;
+    @Mock
+    private UserNotificationService userNotificationService;
 
     private final UserProcessingLock userProcessingLock = new UserProcessingLock();
     private final BatchFailureTracker batchFailureTracker = new BatchFailureTracker();
@@ -62,7 +65,8 @@ class ProcessingPipelineTaskTest {
                 10,
                 locationProcessTask,
                 userProcessingLock,
-                batchFailureTracker);
+                batchFailureTracker,
+                userNotificationService);
     }
 
     @Test

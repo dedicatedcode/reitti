@@ -8,6 +8,7 @@ import com.dedicatedcode.reitti.repository.PreviewRawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.*;
@@ -34,6 +35,7 @@ public class ProcessingPipelineTask implements Job {
     private final JobMetadataRepository jobMetadataRepository;
     private final UserProcessingLock userProcessingLock;
     private final BatchFailureTracker batchFailureTracker;
+    private final UserNotificationService userNotificationService;
     private final int batchSize;
 
     public ProcessingPipelineTask(RawLocationPointJdbcService rawLocationPointJdbcService,
@@ -43,7 +45,8 @@ public class ProcessingPipelineTask implements Job {
                                   @Value("${reitti.import.batch-size:1000}") int batchSize,
                                   UnifiedLocationProcessingService locationProcessTask,
                                   UserProcessingLock userProcessingLock,
-                                  BatchFailureTracker batchFailureTracker) {
+                                  BatchFailureTracker batchFailureTracker,
+                                  UserNotificationService userNotificationService) {
         this.rawLocationPointJdbcService = rawLocationPointJdbcService;
         this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
         this.userJdbcService = userJdbcService;
@@ -52,6 +55,7 @@ public class ProcessingPipelineTask implements Job {
         this.locationProcessTask = locationProcessTask;
         this.userProcessingLock = userProcessingLock;
         this.batchFailureTracker = batchFailureTracker;
+        this.userNotificationService = userNotificationService;
     }
 
     @Override
@@ -133,6 +137,10 @@ public class ProcessingPipelineTask implements Job {
             }
             log.debug("Processed [{}] points for user [{}] (full reprocess: [{}])", totalProcessed.get(), user.getId(), fullReprocess);
         });
+
+        if (previewId != null) {
+            this.userNotificationService.previewCompleted(user, previewId);
+        }
     }
 
     /**

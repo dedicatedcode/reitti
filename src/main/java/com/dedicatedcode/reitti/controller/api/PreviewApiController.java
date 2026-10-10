@@ -33,9 +33,11 @@ public class PreviewApiController {
     @GetMapping("/{previewId}/status")
     public ResponseEntity<Map<String, Object>> getPreviewStatus(@PathVariable String previewId) {
         boolean ready = visitDetectionPreviewService.isPreviewReady(previewId);
-        
+        boolean failed = visitDetectionPreviewService.isPreviewFailed(previewId);
+
         return ResponseEntity.ok(Map.of(
             "ready", ready,
+            "failed", failed,
             "previewId", previewId
         ));
     }

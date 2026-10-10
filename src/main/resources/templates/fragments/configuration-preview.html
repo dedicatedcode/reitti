@@ -87,6 +87,9 @@
             let previewReady = false;
             let eventSource = null;
             let reconnectTimeoutId = null;
+            let statusPollTimeoutId = null;
+            let statusPollCount = 0;
+            const MAX_STATUS_POLLS = 60;
             
             window.showCurrentData = function() {
                 document.getElementById('current-data-btn').classList.add('active');
@@ -424,31 +427,48 @@
                 }
             }
             function checkPreviewStatus() {
+                statusPollTimeoutId = null;
                 fetch(window.contextPath + `/api/v1/preview/${previewId}/status`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.ready) {
                             previewReady = true;
-                            document.getElementById('preview-status').innerHTML = 
-                                `<i class="lni lni-checkmark-circle"></i><span>${locale.preview.ready}</span>`;
-                            document.getElementById('preview-data-btn').disabled = false;
+                            const statusElement = document.getElementById('preview-status');
+                            if (statusElement) {
+                                statusElement.innerHTML = data.failed
+                                    ? `<i class="lni lni-warning"></i><span>${locale.preview.error}</span>`
+                                    : `<i class="lni lni-checkmark-circle"></i><span>${locale.preview.ready}</span>`;
+                            }
+                            const previewBtn = document.getElementById('preview-data-btn');
+                            if (previewBtn) {
+                                previewBtn.disabled = false;
+                            }
                             
                             // If preview tab is active, initialize the map
-                            if (document.getElementById('preview-data-btn').classList.contains('active')) {
+                            if (previewBtn && previewBtn.classList.contains('active')) {
                                 initPreviewMap();
                             } else if (previewMapInitialized) {
                                 // If map is already initialized, just load the data
                                 loadPreviewMapData();
                             }
+                        } else if (++statusPollCount > MAX_STATUS_POLLS) {
+                            const statusElement = document.getElementById('preview-status');
+                            if (statusElement) {
+                                statusElement.innerHTML = 
+                                    `<i class="lni lni-warning"></i><span>${locale.preview.error}</span>`;
+                            }
                         } else {
                             // Continue polling
-                            setTimeout(checkPreviewStatus, 2000);
+                            statusPollTimeoutId = setTimeout(checkPreviewStatus, 2000);
                         }
                     })
                     .catch(error => {
                         console.error('Error checking preview status:', error);
-                        document.getElementById('preview-status').innerHTML = 
-                            `<i class="lni lni-warning"></i><span>${locale.preview.error}</span>`;
+                        const statusElement = document.getElementById('preview-status');
+                        if (statusElement) {
+                            statusElement.innerHTML = 
+                                `<i class="lni lni-warning"></i><span>${locale.preview.error}</span>`;
+                        }
                     });
             }
 
@@ -508,9 +528,14 @@
                         
                         // Check if this event is for our preview
                         if (eventData.previewId && eventData.previewId === previewId) {
-                            console.log('Configuration Preview: Received event for our preview, reloading data');
-                            // Check if the event date matches our preview date
-                            if (eventData.type === 'PLACE' || (eventData.date && eventData.date === previewDate)) {
+                            if (eventData.type === 'PREVIEW_DONE') {
+                                // The run finished (successfully or not): re-read the status
+                                // so the chip shows ready or error and polling stops.
+                                console.log('Configuration Preview: Preview processing finished');
+                                previewReady = true;
+                                checkPreviewStatus();
+                            } else if (eventData.type === 'PLACE' || (eventData.date && eventData.date === previewDate)) {
+                                console.log('Configuration Preview: Received event for our preview, reloading data');
                                 // Reload preview data if preview is ready and visible
                                 if (previewReady) {
                                     if (document.getElementById('preview-data-btn').classList.contains('active')) {
@@ -544,6 +569,11 @@
                 if (reconnectTimeoutId) {
                     clearTimeout(reconnectTimeoutId);
                     reconnectTimeoutId = null;
+                }
+
+                if (statusPollTimeoutId) {
+                    clearTimeout(statusPollTimeoutId);
+                    statusPollTimeoutId = null;
                 }
             }
 

@@ -9,8 +9,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,12 +22,11 @@ import java.util.stream.Collectors;
 public class PreviewProcessedVisitJdbcService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
     private final PreviewSignificantPlaceJdbcService significantPlaceJdbcService;
 
-    public PreviewProcessedVisitJdbcService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, PreviewSignificantPlaceJdbcService significantPlaceJdbcService) {
+    public PreviewProcessedVisitJdbcService(JdbcTemplate jdbcTemplate,
+                                            PreviewSignificantPlaceJdbcService significantPlaceJdbcService) {
         this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
         this.significantPlaceJdbcService = significantPlaceJdbcService;
     }
 
@@ -39,14 +36,13 @@ public class PreviewProcessedVisitJdbcService {
             SignificantPlace place = significantPlaceJdbcService.findById(rs.getLong("place_id")).orElseThrow();
             Long processedVisitId = rs.getLong("id");
             try {
-                Map<String, Object> metadata = objectMapper.readValue(rs.getString("metadata"),new TypeReference<>() {});
                 return new ProcessedVisit(
                         processedVisitId,
                         place,
                         rs.getTimestamp("start_time").toInstant(),
                         rs.getTimestamp("end_time").toInstant(),
                         rs.getLong("duration_seconds"),
-                        metadata,
+                        Collections.emptyMap(),
                         rs.getLong("version")
                 );
             } catch (JacksonException e) {
@@ -72,6 +68,20 @@ public class PreviewProcessedVisitJdbcService {
         String sql = "SELECT pv.* FROM preview_processed_visits pv WHERE pv.id IN (" + placeholders + ")";
         List<ProcessedVisit> list = jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, ids.toArray());
         return list.stream().collect(Collectors.toMap(ProcessedVisit::getId, v -> v));
+    }
+
+    public Optional<ProcessedVisit> findFirstProcessedVisitBefore(User user, String previewId, Instant time) {
+        String sql = "SELECT pv.* " +
+                "FROM preview_processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.preview_id = ? AND pv.end_time < ? ORDER BY pv.end_time DESC LIMIT 1";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), previewId, Timestamp.from(time)).stream().findFirst();
+    }
+
+    public Optional<ProcessedVisit> findFirstProcessedVisitAfter(User user, String previewId, Instant time) {
+        String sql = "SELECT pv.* " +
+                "FROM preview_processed_visits pv " +
+                "WHERE pv.user_id = ? AND pv.preview_id = ? AND pv.start_time > ? ORDER BY pv.start_time LIMIT 1";
+        return jdbcTemplate.query(sql, PROCESSED_VISIT_ROW_MAPPER, user.getId(), previewId, Timestamp.from(time)).stream().findFirst();
     }
 
     public List<ProcessedVisit> findByUserAndTimeOverlap(User user, String previewId, Instant startTime, Instant endTime) {
