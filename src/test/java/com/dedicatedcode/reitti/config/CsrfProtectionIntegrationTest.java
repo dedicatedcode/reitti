@@ -122,6 +122,41 @@ class CsrfProtectionIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void apiMutation_withUrlToken_shouldNotRequireCsrfToken() throws Exception {
+        String apiToken = testingService.createApiToken(testUser, "url-token-csrf-probe", testingService.findDefaultDevice(testUser)).getToken();
+
+        mockMvc.perform(post("/api/v1/ingest/owntracks?token=" + apiToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "_type": "location",
+                                    "lat": 53.863149,
+                                    "lon": 10.700927,
+                                    "tst": 1699545600,
+                                    "acc": 10.5
+                                }
+                                """))
+                .andExpect(result -> assertThat(result.getResponse().getStatus())
+                        .as("query-param token auth under /api must be CSRF-exempt and authenticate")
+                        .isEqualTo(200));
+    }
+
+    @Test
+    void apiMutation_withInvalidUrlToken_shouldBeUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/ingest/owntracks?token=does-not-exist")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void mutation_outsideApi_withTokenParam_shouldBeForbidden() throws Exception {
+        mockMvc.perform(post("/memories?token=some-token")
+                        .with(user(testUser)))
+                .andExpect(status().isForbidden());
+    }
+
     private String fetchCsrfToken() throws Exception {
         MvcResult result = mockMvc.perform(get("/login")).andReturn();
         Cookie cookie = result.getResponse().getCookie(CSRF_COOKIE);

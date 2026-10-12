@@ -76,7 +76,17 @@ public class SecurityConfig {
                 return true;
             }
             String authHeader = request.getHeader("Authorization");
-            return authHeader != null && !authHeader.isBlank();
+            if (authHeader != null && !authHeader.isBlank()) {
+                return true;
+            }
+            // Device clients authenticate via ?token= under /api/ (UrlTokenAuthenticationFilter),
+            // they cannot obtain a CSRF token and must stay exempt.
+            String urlToken = request.getParameter("token");
+            if (urlToken == null || urlToken.isBlank()) {
+                return false;
+            }
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            return path.startsWith("/api/");
         };
     }
 
