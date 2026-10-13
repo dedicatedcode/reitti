@@ -44,6 +44,7 @@ public class StreamingRawLocationPointJdbcService {
                 EXTRACT(EPOCH FROM timestamp) as ts
             FROM raw_location_points
             WHERE user_id = ?
+              AND synthetic IS FALSE
               AND timestamp >= ? AND timestamp < ?
             ORDER BY timestamp
         """;
