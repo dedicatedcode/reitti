@@ -1833,9 +1833,11 @@ function setupMapInteractions() {
             let added = 0;
             let latestT = -Infinity;
             let latestId = null;
+            const {tStart, tEnd} = selectableRange();
 
             for (const p of FinalTimeline) {
                 if (p.sourceId == null) continue;
+                if (p.t < tStart || p.t > tEnd) continue;
                 if (p.lat >= minLat && p.lat <= maxLat && p.lng >= minLng && p.lng <= maxLng) {
                     W.selected.add(p.id);
                     added++;
@@ -1844,7 +1846,6 @@ function setupMapInteractions() {
             }
             if (latestId) {
                 W.selectionAnchorId = latestId;
-                scrollTimelineToTime(latestT);
             }
             if (added > 0) {
                 toast(t('workbench.toast.selected_points', [added]));
@@ -2363,9 +2364,12 @@ function renderMultiSelectionBody() {
     const byStream = new Map();
     let synthetic = 0, moved = 0;
     let tMin = Infinity, tMax = -Infinity;
+    let outsideView = 0;
+    const {tStart, tEnd} = selectableRange();
 
     for (const p of points) {
         byStream.set(p.streamId, (byStream.get(p.streamId) || 0) + 1);
+        if (p.t < tStart || p.t > tEnd) outsideView++;
         if (p.sourceId == null) synthetic++;
         else if (EditStore.movedPoints.has(p.sourceId)) moved++;
         if (p.t < tMin) tMin = p.t;
@@ -2392,8 +2396,13 @@ function renderMultiSelectionBody() {
     if (synthetic) rows.push(row(t('workbench.selection_info.keys.generated'), `<span class="v">${synthetic}</span>`));
     if (moved)     rows.push(row(t('workbench.selection_info.keys.moved'), `<span class="v">${moved}</span>`));
 
+    const tags = [];
+    if (outsideView) {
+        tags.push(`<span class="sel-info-tag outside-view">${t('workbench.selection_info.tags.outside_view', [outsideView])}</span>`);
+    }
+
     return rows.join('') +
-        `<div class="sel-info-tags">${breakdown.join('')}</div>`;
+        `<div class="sel-info-tags">${tags.join('')}${breakdown.join('')}</div>`;
 }
 
 function row(k, vHtml) {
