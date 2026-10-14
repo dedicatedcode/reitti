@@ -373,6 +373,12 @@
     border: 1px solid rgba(143, 197, 230, 0.3);
 }
 
+.sel-info-tag.outside-view {
+    background: rgba(165, 169, 159, 0.15);
+    color: #a5a99f;
+    border: 1px solid rgba(165, 169, 159, 0.3);
+}
+
 .sel-info-tags {
     display: flex;
     flex-wrap: wrap;
