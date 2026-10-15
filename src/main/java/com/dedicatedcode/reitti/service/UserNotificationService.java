@@ -16,6 +16,7 @@ import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.integration.ReittiSubscriptionService;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
+import com.dedicatedcode.reitti.service.statistics.StatisticsDataVersionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,28 +38,33 @@ public class UserNotificationService {
     private final UserSharingJdbcService userSharingJdbcService;
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final UserSseEmitterService userSseEmitterService;
+    private final StatisticsDataVersionService statisticsDataVersionService;
 
     public UserNotificationService(ReittiSubscriptionService reittiSubscriptionService,
                                    UserJdbcService userJdbcService,
                                    UserSharingJdbcService userSharingJdbcService,
                                    UserSettingsJdbcService userSettingsJdbcService,
-                                   UserSseEmitterService userSseEmitterService) {
+                                   UserSseEmitterService userSseEmitterService,
+                                   StatisticsDataVersionService statisticsDataVersionService) {
         this.reittiSubscriptionService = reittiSubscriptionService;
         this.userJdbcService = userJdbcService;
         this.userSharingJdbcService = userSharingJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.userSseEmitterService = userSseEmitterService;
+        this.statisticsDataVersionService = statisticsDataVersionService;
     }
 
     public void placeUpdate(User user, SignificantPlace place, String previewId) {
         SSEType eventType = SSEType.PLACE;
         log.debug("Place updated for user [{}]", user.getId());
+        statisticsDataVersionService.bump(user.getId());
         sendToQueue(user, eventType, previewId);
     }
 
     public void newVisits(User user, List<ProcessedVisit> processedVisits) {
         SSEType eventType = SSEType.VISITS;
         log.debug("New Visits for user [{}]", user.getId());
+        statisticsDataVersionService.bump(user.getId());
         Set<LocalDate> dates = calculateAffectedDates(user, processedVisits.stream().map(ProcessedVisit::getStartTime).toList(), processedVisits.stream().map(ProcessedVisit::getEndTime).toList());
         sendToQueue(user, dates, eventType, null);
         notifyOtherUsers(user, eventType, dates);
@@ -72,6 +78,7 @@ public class UserNotificationService {
     public void newTrips(User user, List<Trip> trips, String previewId) {
         SSEType eventType = SSEType.TRIPS;
         log.debug("New trips for user [{}]", user.getId());
+        statisticsDataVersionService.bump(user.getId());
         Set<LocalDate> dates = calculateAffectedDates(user, trips.stream().map(Trip::getStartTime).toList(), trips.stream().map(Trip::getEndTime).toList());
         sendToQueue(user, dates, eventType, previewId);
         notifyOtherUsers(user, eventType, dates);

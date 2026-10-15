@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
+import com.dedicatedcode.reitti.model.PeriodCoverage;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -51,5 +52,11 @@ public class NoOpSpatialCoverageService implements SpatialCoverageService {
     @Override
     public List<CoverageInformation> getDeviceCoverage(User user, Device device, Instant until, Locale locale) {
         return List.of();
+    }
+
+    @Override
+    public Optional<PeriodCoverage> getPeriodCoverage(User user, double homeLatitude, double homeLongitude,
+                                                      Instant start, Instant end, boolean includeDistance, Locale locale) {
+        return Optional.empty();
     }
 }

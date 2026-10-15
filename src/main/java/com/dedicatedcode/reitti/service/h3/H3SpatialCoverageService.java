@@ -2,6 +2,9 @@ package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
+import com.dedicatedcode.reitti.model.PeriodCoverage;
+import com.dedicatedcode.reitti.model.geo.GeoUtils;
+import com.uber.h3core.util.LatLng;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.security.User;
@@ -491,4 +494,148 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     }
 
     private record CoverageStats(long osmId, int resolution, int visitedCells, int totalCells) {}
+
+    private static final int PERIOD_RESOLUTION = 9;
+    private static final double HOME_AREA_SEARCH_RADIUS_METERS = 60_000;
+    private static final double MAX_POINT_JUMP_METERS = 50_000;
+    private static final String[] DIRECTIONS = {"n", "ne", "e", "se", "s", "sw", "w", "nw"};
+
+    @Override
+    public Optional<PeriodCoverage> getPeriodCoverage(User user, double homeLatitude, double homeLongitude,
+                                                      Instant start, Instant end, boolean includeDistance, Locale locale) {
+        Map<Long, Instant> firstSeen = new HashMap<>();
+        jdbcTemplate.query("""
+                           SELECT h3_index, MIN(first_visited_at) AS first_visited_at
+                           FROM h3_cells_stats
+                           WHERE user_id = ? AND ((h3_index >> 52) & 15) = ? AND first_visited_at < ?
+                           GROUP BY h3_index
+                           """, rs -> {
+            firstSeen.put(rs.getLong("h3_index"), rs.getTimestamp("first_visited_at").toInstant());
+        }, user.getId(), PERIOD_RESOLUTION, Timestamp.from(end));
+
+        if (firstSeen.isEmpty()) {
+            return Optional.empty();
+        }
+
+        int newCells = 0;
+        int[] sectors = new int[DIRECTIONS.length];
+        for (Map.Entry<Long, Instant> entry : firstSeen.entrySet()) {
+            if (!entry.getValue().isBefore(start)) {
+                newCells++;
+                LatLng center = h3.cellToLatLng(entry.getKey());
+                if (GeoUtils.distanceInMeters(homeLatitude, homeLongitude, center.lat, center.lng) > 300) {
+                    sectors[sector(homeLatitude, homeLongitude, center.lat, center.lng)]++;
+                }
+            }
+        }
+        String direction = null;
+        int sectorTotal = Arrays.stream(sectors).sum();
+        if (sectorTotal >= 3) {
+            int best = 0;
+            for (int i = 1; i < sectors.length; i++) {
+                if (sectors[i] > sectors[best]) {
+                    best = i;
+                }
+            }
+            if (sectors[best] >= sectorTotal * 0.4) {
+                direction = DIRECTIONS[best];
+            }
+        }
+
+        String homeAreaName = null;
+        Double homeAreaBefore = null;
+        Double homeAreaAfter = null;
+        if (rocksDBService.isAvailable()) {
+            Long homeArea = findHomeArea(h3.latLngToCell(homeLatitude, homeLongitude, PERIOD_RESOLUTION));
+            int totalCells = homeArea != null ? rocksDBService.getTotalCells(homeArea, PERIOD_RESOLUTION) : 0;
+            if (homeArea != null && totalCells > 0) {
+                int before = 0;
+                int after = 0;
+                for (Map.Entry<Long, Instant> entry : firstSeen.entrySet()) {
+                    LatLng center = h3.cellToLatLng(entry.getKey());
+                    if (GeoUtils.distanceInMeters(homeLatitude, homeLongitude, center.lat, center.lng) > HOME_AREA_SEARCH_RADIUS_METERS) {
+                        continue;
+                    }
+                    if (!rocksDBService.getOsmIds(entry.getKey()).contains(homeArea)) {
+                        continue;
+                    }
+                    after++;
+                    if (entry.getValue().isBefore(start)) {
+                        before++;
+                    }
+                }
+                homeAreaName = getLocalizedName(homeArea, locale);
+                homeAreaBefore = Math.min(1.0, (double) before / totalCells);
+                homeAreaAfter = Math.min(1.0, (double) after / totalCells);
+            }
+        }
+
+        Double knownShare = null;
+        double newDistance = 0;
+        if (includeDistance) {
+            double[] distances = new double[2];
+            double[] previous = new double[2];
+            boolean[] hasPrevious = {false};
+            jdbcTemplate.query("""
+                               SELECT ST_Y(geom) AS lat, ST_X(geom) AS lng, h3_cell
+                               FROM raw_location_points
+                               WHERE user_id = ? AND timestamp >= ? AND timestamp < ?
+                                 AND synthetic IS FALSE
+                               ORDER BY timestamp
+                               """, rs -> {
+                double lat = rs.getDouble("lat");
+                double lng = rs.getDouble("lng");
+                long cell = rs.getLong("h3_cell");
+                long parent = rs.wasNull() || cell == 0
+                        ? h3.latLngToCell(lat, lng, PERIOD_RESOLUTION)
+                        : (h3.getResolution(cell) > PERIOD_RESOLUTION ? h3.cellToParent(cell, PERIOD_RESOLUTION) : cell);
+                if (hasPrevious[0]) {
+                    double distance = GeoUtils.distanceInMeters(previous[0], previous[1], lat, lng);
+                    if (distance < MAX_POINT_JUMP_METERS) {
+                        Instant seen = firstSeen.get(parent);
+                        boolean known = seen != null && seen.isBefore(start);
+                        distances[known ? 0 : 1] += distance;
+                    }
+                }
+                previous[0] = lat;
+                previous[1] = lng;
+                hasPrevious[0] = true;
+            }, user.getId(), Timestamp.from(start), Timestamp.from(end));
+            double total = distances[0] + distances[1];
+            if (total > 0) {
+                knownShare = distances[0] / total;
+                newDistance = distances[1];
+            }
+        }
+
+        return Optional.of(new PeriodCoverage(homeAreaName, homeAreaBefore, homeAreaAfter, newCells, firstSeen.size(),
+                                              knownShare, newDistance, direction));
+    }
+
+    private Long findHomeArea(long homeCell) {
+        Long best = null;
+        int bestScore = Integer.MAX_VALUE;
+        for (Long osmId : rocksDBService.getOsmIds(homeCell)) {
+            int level = rocksDBService.getAdminLevel(osmId);
+            if (level < 4) {
+                continue;
+            }
+            int score = level <= 8 ? (8 - level) : (level - 8) + 4;
+            if (score < bestScore) {
+                best = osmId;
+                bestScore = score;
+            }
+        }
+        return best;
+    }
+
+    private static int sector(double fromLat, double fromLng, double toLat, double toLng) {
+        double phi1 = Math.toRadians(fromLat);
+        double phi2 = Math.toRadians(toLat);
+        double deltaLambda = Math.toRadians(toLng - fromLng);
+        double y = Math.sin(deltaLambda) * Math.cos(phi2);
+        double x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+        double bearing = (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
+        return (int) Math.round(bearing / 45.0) % 8;
+    }
 }
