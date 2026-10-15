@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service;
 
 import com.dedicatedcode.reitti.dto.workbench.MovedPointDto;
 import com.dedicatedcode.reitti.model.CoverageInformation;
+import com.dedicatedcode.reitti.model.PeriodCoverage;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 
@@ -29,4 +30,7 @@ public interface SpatialCoverageService {
     List<CoverageInformation> getCoverage(User user, Instant until, Locale locale);
 
     List<CoverageInformation> getDeviceCoverage(User user, Device device, Instant until, Locale locale);
+
+    Optional<PeriodCoverage> getPeriodCoverage(User user, double homeLatitude, double homeLongitude,
+                                               Instant start, Instant end, boolean includeDistance, Locale locale);
 }

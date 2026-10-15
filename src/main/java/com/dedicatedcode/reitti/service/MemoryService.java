@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service;
 
+import com.dedicatedcode.reitti.service.statistics.StatisticsDataVersionService;
 import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.model.TimeDisplayMode;
 import com.dedicatedcode.reitti.model.memory.*;
@@ -32,6 +33,7 @@ public class MemoryService {
     private final UserSettingsJdbcService userSettingsJdbcService;
     private final TripJdbcService tripJdbcService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
+    private final StatisticsDataVersionService statisticsDataVersionService;
 
     public MemoryService(
             MemoryJdbcService memoryJdbcService,
@@ -44,7 +46,8 @@ public class MemoryService {
             MemoryTripJdbcService memoryTripJdbcService,
             UserSettingsJdbcService userSettingsJdbcService,
             TripJdbcService tripJdbcService,
-            ProcessedVisitJdbcService processedVisitJdbcService) {
+            ProcessedVisitJdbcService processedVisitJdbcService,
+            StatisticsDataVersionService statisticsDataVersionService) {
         this.memoryJdbcService = memoryJdbcService;
         this.memoryBlockJdbcService = memoryBlockJdbcService;
         this.memoryBlockTextJdbcService = memoryBlockTextJdbcService;
@@ -56,20 +59,24 @@ public class MemoryService {
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.tripJdbcService = tripJdbcService;
         this.processedVisitJdbcService = processedVisitJdbcService;
+        this.statisticsDataVersionService = statisticsDataVersionService;
     }
 
     @Transactional
     public Memory createMemory(User user, Memory memory) {
+        statisticsDataVersionService.bump(user.getId());
         return memoryJdbcService.create(user, memory);
     }
 
     @Transactional
     public Memory updateMemory(User user, Memory memory) {
+        statisticsDataVersionService.bump(user.getId());
         return memoryJdbcService.update(user, memory);
     }
 
     @Transactional
     public void deleteMemory(User user, Long memoryId) {
+        statisticsDataVersionService.bump(user.getId());
         memoryJdbcService.delete(user, memoryId);
     }
 

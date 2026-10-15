@@ -2,216 +2,308 @@
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
 <body>
 
-<div class="year-nav" th:fragment="years-navigation">
-    <div class="year-nav-item active" id="overall-entry" data-year="overall"
-         th:hx-get="@{/statistics/overall}"
-         hx-target="#statistics-panel"
-         hx-trigger="load, click[shouldTrigger(this)]"
-         hx-swap="outerHTML">
-        <div th:text="#{statistics.overall}">Overall</div>
+<div th:fragment="report" class="stats-report" th:with="r=${report}, nav=${report.navigation()}">
+    <div class="stats-topbar">
+        <div class="stats-brand">
+            <span class="stats-brand-name">Reitti</span>
+            <details class="stats-picker">
+                <summary th:text="${r.title()}">September 2026</summary>
+                <div class="stats-picker-panel">
+                    <a class="stats-picker-all"
+                       th:classappend="${nav.allToggle().active()} ? 'active'"
+                       th:href="@{${nav.allToggle().path()}}"
+                       th:hx-get="@{/statistics/fragments/report(period=${nav.allToggle().key()})}"
+                       th:hx-push-url="@{${nav.allToggle().path()}}"
+                       th:text="${nav.allToggle().label()}">All time</a>
+                    <div class="stats-picker-year" th:each="option : ${nav.years()}">
+                        <a class="stats-picker-year-link"
+                           th:classappend="${option.yearLink().active()} ? 'active'"
+                           th:href="@{${option.yearLink().path()}}"
+                           th:hx-get="@{/statistics/fragments/report(period=${option.yearLink().key()})}"
+                           th:hx-push-url="@{${option.yearLink().path()}}"
+                           th:text="${option.year()}">2026</a>
+                        <div class="stats-picker-months">
+                            <a th:each="month : ${option.months()}"
+                               th:classappend="${month.active()} ? 'active'"
+                               th:href="@{${month.path()}}"
+                               th:hx-get="@{/statistics/fragments/report(period=${month.key()})}"
+                               th:hx-push-url="@{${month.path()}}"
+                               th:text="${month.label()}">September 2026</a>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+        <nav class="stats-period-nav">
+            <a th:if="${nav.previous() != null}" class="stats-arrow"
+               th:href="@{${nav.previous().path()}}"
+               th:hx-get="@{/statistics/fragments/report(period=${nav.previous().key()})}"
+               th:hx-push-url="@{${nav.previous().path()}}"
+               th:title="${nav.previous().label()}"><i class="lni lni-arrow-left"></i></a>
+            <span th:unless="${nav.previous() != null}" class="stats-arrow disabled"><i class="lni lni-arrow-left"></i></span>
+            <div class="stats-toggle">
+                <a th:each="toggle, iter : ${ {nav.monthToggle(), nav.yearToggle(), nav.allToggle()} }"
+                   th:classappend="${toggle.active()} ? 'active'"
+                   th:href="@{${toggle.path()}}"
+                   th:hx-get="@{/statistics/fragments/report(period=${toggle.key()})}"
+                   th:hx-push-url="@{${toggle.path()}}"
+                   th:text="${iter.index == 0} ? #{statistics.toggle.month} : (${iter.index == 1} ? #{statistics.toggle.year} : #{statistics.toggle.all})">Month</a>
+            </div>
+            <a th:if="${nav.next() != null}" class="stats-arrow"
+               th:href="@{${nav.next().path()}}"
+               th:hx-get="@{/statistics/fragments/report(period=${nav.next().key()})}"
+               th:hx-push-url="@{${nav.next().path()}}"
+               th:title="${nav.next().label()}"><i class="lni lni-arrow-right"></i></a>
+            <span th:unless="${nav.next() != null}" class="stats-arrow disabled"><i class="lni lni-arrow-right"></i></span>
+        </nav>
     </div>
-    <div class="year-nav-item" th:each="year : ${years}"
-         th:attr="hx-get=@{'/statistics/'+ ${year}}, data-year=${year}"
-         hx-target="#statistics-panel"
-         hx-trigger="click[shouldTrigger(this)]"
-         hx-swap="outerHTML">
-        <div th:text="${year}">2024</div>
-    </div>
-    <script>
-        // Initialize global chart data storage
-        if (!window.chartData) {
-            window.chartData = {
-                transport: {},
-                monthlyTransport: {},
-                dailyTransport: {}
-            };
-        }
 
-        new function () {
-            document.querySelector('.year-nav').addEventListener('click', function (event) {
-                const entry = event.target.closest('.year-nav-item');
-                if (!entry) return;
-                const isCurrentlyActive = entry.classList.contains('active');
-                if (isCurrentlyActive) {
-                    return;
-                }
-                document.querySelectorAll('.year-nav .year-nav-item')
-                    .forEach(e => e.classList.remove('active'));
-                entry.classList.add('active');
-            });
-        }()
-    </script>
+    <div class="stats-suggestion" th:if="${r.home() != null and r.home().suggestion() != null}">
+        <i class="lni lni-home-2"></i>
+        <span th:text="${r.home().suggestion().text()}">This looks like your home.</span>
+        <div class="stats-suggestion-actions">
+            <button class="btn"
+                    th:hx-post="@{/statistics/home-suggestion/{id}/accept(id=${r.home().suggestion().placeId()}, period=${r.period().key()})}"
+                    th:text="#{statistics.home.suggestion.accept}">Mark as Home</button>
+            <button class="btn btn-secondary"
+                    th:hx-post="@{/statistics/home-suggestion/{id}/dismiss(id=${r.home().suggestion().placeId()}, period=${r.period().key()})}"
+                    th:text="#{statistics.home.suggestion.dismiss}">Not my home</button>
+        </div>
+    </div>
+
+    <section class="stats-empty" th:unless="${r.hasData()}">
+        <h1 class="stats-headline" th:text="#{statistics.no.data}">No data available</h1>
+    </section>
+
+    <th:block th:if="${r.hasData()}">
+        <section class="stats-intro">
+            <h1 class="stats-headline" th:text="${r.headline()}">On weekdays you stayed inside a 6 km radius.</h1>
+            <div class="stats-tracking-row">
+                <p class="stats-tracking" th:text="${r.trackingLine()}">28 of 30 days tracked</p>
+                <details th:replace="~{:: explain('intro')}"></details>
+            </div>
+            <div class="stats-kpis">
+                <div class="stats-kpi" th:each="kpi : ${r.kpis()}">
+                    <span class="stats-kpi-value"><th:block th:text="${kpi.value()}">386</th:block><small th:if="${kpi.unit() != null}" th:text="${kpi.unit()}">km</small></span>
+                    <span class="stats-kpi-label" th:text="${kpi.label()}">distance</span>
+                </div>
+            </div>
+            <p class="stats-note" th:text="${r.kpiNote()}">Eddington 18 means 18 days of at least 18 km.</p>
+            <p class="stats-note stats-home-note">
+                <th:block th:text="${r.home().description()}">Home is the place marked Home.</th:block>
+                <th:block th:if="${r.home().changingText() != null}" th:text="' ' + ${r.home().changingText()}"></th:block>
+            </p>
+        </section>
+
+        <div class="stats-grid">
+            <section class="stats-card" th:if="${r.weekSplit() != null}">
+                <div th:replace="~{:: card-head('week')}"></div>
+                <table class="stats-table">
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th th:text="${r.weekSplit().weekdayLabel()}">Weekday</th>
+                        <th th:text="${r.weekSplit().weekendLabel()}">Weekend</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${r.weekSplit().rows()}">
+                        <td th:text="${row.label()}">At home</td>
+                        <td th:text="${row.weekday()}">58%</td>
+                        <td th:text="${row.weekend()}">41%</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="stats-card" th:if="${r.movement() != null}">
+                <div th:replace="~{:: card-head('movement')}"></div>
+                <div class="stats-bars">
+                    <div class="stats-bar" th:each="bar : ${r.movement().bars()}">
+                        <span class="stats-bar-label" th:text="${bar.label()}">Distance</span>
+                        <div class="stats-bar-track">
+                            <span th:each="segment : ${bar.segments()}"
+                                  class="stats-bar-segment"
+                                  th:classappend="'mode-' + ${segment.mode()}"
+                                  th:style="'width:' + ${segment.percent()} + '%'"
+                                  th:title="${segment.title()}"></span>
+                        </div>
+                    </div>
+                </div>
+                <p class="stats-caption" th:text="${r.movement().caption()}">Driving covered the ground, walking made the trips.</p>
+                <ul class="stats-legend">
+                    <li th:each="entry : ${r.movement().legend()}">
+                        <i class="stats-swatch" th:classappend="'mode-' + ${entry.mode()}"></i><span th:text="${entry.label()}">Walk</span>
+                    </li>
+                </ul>
+                <p class="stats-small" th:if="${r.movement().speeds() != null}" th:text="${r.movement().speeds()}">Walk 5 km/h</p>
+            </section>
+
+            <section class="stats-card stats-card-wide" th:if="${r.dayTypes() != null}">
+                <div th:replace="~{:: card-head('days')}"></div>
+                <div class="stats-split">
+                    <div th:replace="~{:: donut(${r.dayTypes().donut()}, 'day')}"></div>
+                    <div class="stats-calendar" th:if="${!r.dayTypes().calendar().isEmpty()}"
+                         th:classappend="${r.period().isYear()} ? 'is-year'">
+                        <span class="stats-calendar-blank" th:each="i : ${#numbers.sequence(1, r.dayTypes().leadingBlanks())}"
+                              th:if="${r.dayTypes().leadingBlanks() > 0}"></span>
+                        <span th:each="cell : ${r.dayTypes().calendar()}"
+                              class="stats-calendar-day"
+                              th:classappend="'day-' + ${cell.type()} + (${cell.thin()} ? ' thin' : '')"
+                              th:title="${cell.title()}"></span>
+                    </div>
+                </div>
+                <p class="stats-small" th:text="${r.dayTypes().summary()}">16 commute · 6 wander</p>
+                <p class="stats-small" th:each="note : ${r.distanceNotes()}" th:text="${note}">Median 4 km from home.</p>
+            </section>
+
+            <section class="stats-card" th:if="${r.timeSplit() != null}">
+                <div th:replace="~{:: card-head('time')}"></div>
+                <div th:replace="~{:: donut(${r.timeSplit()}, 'time')}"></div>
+            </section>
+
+            <section class="stats-card" th:if="${r.usualTrip() != null or r.radar() != null}">
+                <div th:replace="~{:: card-head('usual-trip')}"></div>
+                <th:block th:if="${r.usualTrip() != null}">
+                    <p class="stats-lead" th:text="${r.usualTrip().title()}">Home → Office</p>
+                    <p class="stats-text" th:text="${r.usualTrip().frequency()}">18 of 22 weekdays.</p>
+                    <p class="stats-text" th:text="${r.usualTrip().duration()}">Usually 28 min, give or take 9.</p>
+                    <div class="stats-progress"><span th:style="'width:' + ${r.usualTrip().share()} + '%'"></span></div>
+                </th:block>
+                <svg th:if="${r.radar() != null}" class="stats-radar" viewBox="0 0 200 200" role="img"
+                     th:attr="aria-label=#{statistics.radar.label}">
+                    <circle th:each="ring : ${r.radar().rings()}" class="stats-radar-ring" cx="100" cy="100" th:attr="r=${ring.r()}"></circle>
+                    <line class="stats-radar-axis" x1="100" y1="8" x2="100" y2="192"></line>
+                    <line class="stats-radar-axis" x1="8" y1="100" x2="192" y2="100"></line>
+                    <text class="stats-radar-compass" x="100" y="6" text-anchor="middle" th:text="#{statistics.direction.short.n}">N</text>
+                    <text class="stats-radar-compass" x="197" y="102" text-anchor="end" th:text="#{statistics.direction.short.e}">E</text>
+                    <text class="stats-radar-compass" x="100" y="199" text-anchor="middle" th:text="#{statistics.direction.short.s}">S</text>
+                    <text class="stats-radar-compass" x="3" y="102" th:text="#{statistics.direction.short.w}">W</text>
+                    <text th:each="ring : ${r.radar().rings()}" class="stats-radar-label" th:attr="x=${ring.labelX()},y=${ring.labelY()}" th:text="${ring.label()}">6 km</text>
+                    <circle th:each="dot : ${r.radar().dots()}" class="stats-radar-dot" th:attr="cx=${dot.x()},cy=${dot.y()},r=${dot.r()}">
+                        <title th:text="${dot.title()}">Place</title>
+                    </circle>
+                    <circle class="stats-radar-home" cx="100" cy="100" r="2.5"></circle>
+                </svg>
+            </section>
+
+            <section class="stats-card" th:if="${!r.routines().isEmpty()}">
+                <div th:replace="~{:: card-head('routines')}"></div>
+                <ul class="stats-lines">
+                    <li th:each="line : ${r.routines()}" th:insert="~{:: text-line(${line})}"></li>
+                </ul>
+            </section>
+
+            <section class="stats-card" th:if="${!r.stays().isEmpty()}">
+                <div th:replace="~{:: card-head('stays')}"></div>
+                <ul class="stats-lines">
+                    <li th:each="line : ${r.stays()}" th:text="${line}">4 nights away.</li>
+                </ul>
+            </section>
+
+            <section class="stats-card stats-card-placeholder" th:if="${coverageEnabled}"
+                     th:hx-get="@{/statistics/fragments/coverage(period=${r.period().key()})}"
+                     hx-trigger="revealed"
+                     hx-target="this"
+                     hx-swap="outerHTML">
+                <div th:replace="~{:: card-head('coverage')}"></div>
+                <p class="stats-small" th:text="#{timeline.loading}">Loading...</p>
+            </section>
+
+            <section class="stats-card" th:if="${r.comparison() != null}">
+                <div th:replace="~{:: card-head('comparison')}"></div>
+                <div class="stats-compare" th:if="${!r.comparison().options().isEmpty()}">
+                    <label for="stats-compare-select" th:text="#{statistics.comparison.select}">Compared with</label>
+                    <input type="hidden" id="stats-compare-period" name="period" th:value="${r.period().key()}">
+                    <select id="stats-compare-select" name="compare"
+                            th:hx-get="@{/statistics/fragments/report}"
+                            hx-trigger="change"
+                            hx-include="#stats-compare-period">
+                        <optgroup th:label="#{statistics.comparison.group.suggested}" th:if="${!r.comparison().suggestedOptions().isEmpty()}">
+                            <option th:each="option : ${r.comparison().suggestedOptions()}"
+                                    th:value="${option.key()}" th:selected="${option.selected()}" th:text="${option.label()}">Previous month</option>
+                        </optgroup>
+                        <optgroup th:label="#{statistics.comparison.group.other}" th:if="${!r.comparison().otherOptions().isEmpty()}">
+                            <option th:each="option : ${r.comparison().otherOptions()}"
+                                    th:value="${option.key()}" th:selected="${option.selected()}" th:text="${option.label()}">July 2025</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <p class="stats-lead" th:if="${r.comparison().headline() != null}" th:text="${r.comparison().headline()}">September 2025 compared with August 2025.</p>
+                <ul class="stats-lines" th:if="${!r.comparison().lines().isEmpty()}">
+                    <li th:each="line : ${r.comparison().lines()}" th:text="${line}">206 km travelled, against 270 km.</li>
+                </ul>
+                <h3 class="stats-subheading" th:if="${!r.comparison().highlights().isEmpty() or !r.comparison().topPlaces().isEmpty()}"
+                    th:text="#{statistics.comparison.highlights(${r.title()})}">Highlights of September 2025</h3>
+                <ul class="stats-lines" th:if="${!r.comparison().highlights().isEmpty()}">
+                    <li th:each="line : ${r.comparison().highlights()}" th:text="${line}">Busiest month: July, 610 km.</li>
+                </ul>
+                <ul class="stats-places" th:if="${!r.comparison().topPlaces().isEmpty()}">
+                    <li th:each="place : ${r.comparison().topPlaces()}">
+                        <a class="stats-place-name stats-link" th:href="@{${place.href()}}" th:text="${place.name()}">Park</a>
+                        <span class="stats-place-meta" th:text="${place.hours()} + ' · ' + ${place.visits()}">6 h · 4 visits</span>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="stats-card" th:if="${!r.leftovers().isEmpty() or r.photoCheckAvailable()}">
+                <div th:replace="~{:: card-head('leftovers')}"></div>
+                <ul class="stats-lines">
+                    <li th:each="line : ${r.leftovers()}" th:insert="~{:: text-line(${line})}"></li>
+                    <li th:if="${r.photoCheckAvailable()}"
+                        class="stats-muted"
+                        th:hx-get="@{/statistics/fragments/photos(period=${r.period().key()})}"
+                        hx-trigger="revealed"
+                        hx-target="this"
+                        hx-swap="outerHTML"
+                        th:text="#{timeline.loading}">Loading...</li>
+                </ul>
+            </section>
+        </div>
+    </th:block>
+
+    <footer class="stats-footnotes">
+        <p th:each="note : ${r.footnotes()}" th:text="${note}">Times are local.</p>
+    </footer>
 </div>
 
-<div th:fragment="statistics-content" id="statistics-panel" class="statistics-content"
-     th:attr="data-statistics-type=${statisticsType},
-              data-year=${year},
-              data-month=${month},
-              data-transport-stats=${transportStats != null ? transportStats : '[]'},
-              data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
-
-    <h2 th:text="${title}">Statistics</h2>
-
-    <!-- Check if there's any data available -->
-    <div th:if="${topVisits == null or topVisits.isEmpty()} and ${transportStats == null or transportStats == '[]'}"
-         class="no-data-message" th:text="#{statistics.no.data}">No data available</div>
-
-    <!-- Top Visits Section -->
-    <div th:if="${topVisits != null and !topVisits.isEmpty()}" class="statistics-section">
-        <h3 th:text="#{statistics.top.places}">Top Places by Stay Time</h3>
-        <div class="places-stats-grid">
-            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
-                <div class="place-map-container">
-                    <div class="place-map"
-                         th:id="'place-map-' + ${visitStat.index}"
-                         th:data-lat="${visit.latitude}"
-                         th:data-lng="${visit.longitude}"></div>
-                </div>
-                <div class="place-name" th:text="${visit.placeName}">Home</div>
-                <div class="place-stats">
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
-                        <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">2400.00h</span>
-                    </div>
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
-                        <span class="place-stat-value" th:text="${visit.visitCount}">365</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Transport Statistics Section -->
-    <div th:if="${transportStats != null and transportStats != '[]'}" class="statistics-section">
-        <h3 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h3>
-        <div th:if="${statisticsType == 'overall'}" class="transport-charts-container">
-            <div class="transport-chart-section">
-                <div class="pie-chart-container">
-                    <canvas id="transportPieChart_overall"></canvas>
-
-                </div>
-            </div>
-        </div>
-
-        <div th:if="${statisticsType == 'year'}" class="transport-charts-container">
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
-                <div class="pie-chart-container">
-                    <canvas th:id="'transportPieChart_' + ${year}"></canvas>
-                </div>
-            </div>
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</div>
-                <div class="chart-container">
-                    <canvas th:id="'monthlyTransportChart_' + ${year}"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div th:if="${statisticsType == 'month'}" class="transport-charts-container">
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
-                <div class="pie-chart-container">
-                    <canvas th:id="'transportPieChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
-                <div class="chart-container">
-                    <canvas th:id="'dailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Monthly breakdown for year view -->
-    <div th:if="${statisticsType == 'year' and months != null and !months.isEmpty()}" class="statistics-section">
-        <h3 th:text="#{statistics.monthly.breakdown}">Monthly Breakdown</h3>
-        <div class="months-grid">
-            <div class="month-item" th:each="month, iterStats : ${months}"
-                 th:attr="hx-get=@{'/statistics/' + ${year} + '/' + ${month}},
-                          hx-target='#month-details-' + ${month},
-                          data-year=${year},
-                          data-month=${month},
-                          hx-trigger=${iterStats.index == 0 ? 'intersect once' : 'load'}">
-                <div th:id="'month-details-' + ${month}" class="month-details"></div>
-            </div>
-        </div>
-    </div>
-
-    <script th:inline="javascript">
-        window.setTimeout(() => {
-            initializePlaceMaps();
-            renderCharts();
-        }, 100)
-    </script>
-
+<div th:fragment="card-head(key)" class="stats-card-head">
+    <h2 th:text="#{'statistics.section.' + ${key}}">Section</h2>
+    <details th:replace="~{:: explain(${key})}"></details>
 </div>
 
-<div th:fragment="month-content" class="month-content"
-     th:attr="data-year=${year},
-              data-month=${month},
-              data-transport-stats=${transportStats != null ? transportStats : '[]'},
-              data-breakdown-transport=${breakdownTransportData != null ? breakdownTransportData : '[]'}">
-    <h4 th:text="${title}">Statistics for January 2024</h4>
-    
-    <!-- Check if there's any data available -->
-    <div th:unless="${dataAvailable}"
-         class="no-data-message" th:text="#{statistics.no.data}">No data available for this month</div>
-    
-    <!-- Top Visits Section for Month -->
-    <div th:if="${dataAvailable}" class="statistics-section">
-        <h5 th:text="#{statistics.top.places}">Top Places by Stay Time</h5>
-        <div class="places-stats-grid">
-            <div class="place-stats-card" th:each="visit, visitStat : ${topVisits}">
-                <div class="place-map-container">
-                    <div class="place-map" 
-                         th:id="'month-place-map-' + ${visitStat.index}"
-                         th:data-lat="${visit.latitude}"
-                         th:data-lng="${visit.longitude}"></div>
-                </div>
-                <div class="place-name" th:text="${visit.placeName}">Home</div>
-                <div class="place-stats">
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.total.hours}">Total Hours</span>
-                        <span class="place-stat-value" th:text="${#numbers.formatDecimal(visit.totalStayTimeHours, 1, 2)} + 'h'">200.00h</span>
-                    </div>
-                    <div class="place-stat-item">
-                        <span class="place-stat-label" th:text="#{statistics.visits}">Visits</span>
-                        <span class="place-stat-value" th:text="${visit.visitCount}">30</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Transport Statistics Section for Month -->
-    <div th:if="${dataAvailable}" class="statistics-section">
-        <h5 th:text="#{statistics.transport.distance}">Distance by Transport Mode</h5>
-        
-        <div class="transport-charts-container">
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.transport.distribution}">Transport Distribution</div>
-                <div class="pie-chart-container">
-                    <canvas th:id="'monthTransportPieChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-            <div class="transport-chart-section">
-                <div class="transport-chart-title" th:text="#{statistics.daily.breakdown}">Daily Breakdown</div>
-                <div class="chart-container">
-                    <canvas th:id="'monthDailyTransportChart_' + ${year} + '_' + ${month}"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+<details th:fragment="explain(key)" class="stats-explain">
+    <summary th:title="#{statistics.explain.toggle}" th:attr="aria-label=#{statistics.explain.toggle}"><i class="lni lni-question-mark-circle"></i></summary>
+    <div class="stats-explain-panel" th:text="#{'statistics.explain.' + ${key}}">Explanation</div>
+</details>
 
-    <script th:inline="javascript">
-        window.setTimeout(() => {
-            initializePlaceMaps();
-            renderCharts();
-        }, 100)
-    </script>
+<th:block th:fragment="text-line(line)"><th:block th:if="${line.lead() != null}"><a class="stats-link" th:href="@{${line.lead().href()}}" th:text="${line.lead().label()}">Office</a>, </th:block><th:block th:text="${line.text()}">Text</th:block><th:block th:if="${!line.links().isEmpty()}"> <th:block th:each="link, iter : ${line.links()}"><a class="stats-link" th:href="@{${link.href()}}" th:text="${link.label()}">10 Sep</a><th:block th:unless="${iter.last}">, </th:block></th:block>.</th:block></th:block>
+
+<div th:fragment="donut(donut, prefix)" class="stats-donut-wrapper">
+    <div class="stats-donut" th:style="'background:' + ${donut.gradient()}">
+        <div class="stats-donut-hole"><span th:text="${donut.centerLabel()}">30 days</span></div>
+    </div>
+    <ul class="stats-legend stats-legend-vertical">
+        <li th:each="slice : ${donut.slices()}">
+            <i class="stats-swatch" th:classappend="${prefix} + '-' + ${slice.key()}"></i>
+            <span th:text="${slice.label()}">Home</span>
+            <span class="stats-legend-value" th:text="${slice.percent()}">51%</span>
+        </li>
+    </ul>
 </div>
+
+<section th:fragment="coverage" class="stats-card" th:if="${coverage != null}">
+    <div th:replace="~{:: card-head('coverage')}"></div>
+    <div class="stats-big">
+        <span class="stats-kpi-value" th:text="${coverage.value()}">+3.8%</span>
+        <span class="stats-kpi-label" th:text="${coverage.label()}">of the home city</span>
+    </div>
+    <ul class="stats-lines">
+        <li th:each="line : ${coverage.lines()}" th:text="${line}">12 new cells.</li>
+    </ul>
+</section>
+
+<li th:fragment="photos" th:if="${staysWithoutPhotos > 0}" th:text="#{statistics.leftovers.no-photo(${staysWithoutPhotos})}">2 long stays have no photo.</li>
 
 </body>
+</html>
