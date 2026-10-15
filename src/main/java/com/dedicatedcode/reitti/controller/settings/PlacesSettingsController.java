@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.service.statistics.StatisticsDataVersionService;
 import com.dedicatedcode.reitti.dto.PlaceInfo;
 import com.dedicatedcode.reitti.dto.SuppressedVisitInfo;
 import com.dedicatedcode.reitti.model.*;
@@ -62,6 +63,7 @@ public class PlacesSettingsController {
     private final SuppressedVisitService suppressedVisitService;
     private final NoVisitZoneJdbcService noVisitZoneJdbcService;
     private final NoVisitZoneService noVisitZoneService;
+    private final StatisticsDataVersionService statisticsDataVersionService;
 
     public PlacesSettingsController(PlaceService placeService,
                                     SignificantPlaceJdbcService placeJdbcService,
@@ -78,7 +80,8 @@ public class PlacesSettingsController {
                                     SuppressedVisitJdbcService suppressedVisitJdbcService,
                                     SuppressedVisitService suppressedVisitService,
                                     NoVisitZoneJdbcService noVisitZoneJdbcService,
-                                    NoVisitZoneService noVisitZoneService) {
+                                    NoVisitZoneService noVisitZoneService,
+                                    StatisticsDataVersionService statisticsDataVersionService) {
         this.placeService = placeService;
         this.placeJdbcService = placeJdbcService;
         this.significantPlaceOverrideJdbcService = significantPlaceOverrideJdbcService;
@@ -96,6 +99,7 @@ public class PlacesSettingsController {
         this.suppressedVisitService = suppressedVisitService;
         this.noVisitZoneJdbcService = noVisitZoneJdbcService;
         this.noVisitZoneService = noVisitZoneService;
+        this.statisticsDataVersionService = statisticsDataVersionService;
     }
 
     @GetMapping
@@ -378,6 +382,7 @@ public class PlacesSettingsController {
                     placeJdbcService.update(user, updatedPlace);
                 }
                 significantPlaceOverrideJdbcService.insertOverride(user, updatedPlace);
+                statisticsDataVersionService.bump(user.getId());
 
                 if (returnUrl != null && !returnUrl.isBlank()) {
                     return "redirect:" + returnUrl;
