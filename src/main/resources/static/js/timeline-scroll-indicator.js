@@ -90,27 +90,32 @@ class TimelineScrollIndicator {
 
     calculateSnapPositions() {
         const timelineEntries = this.timelineContainer.querySelectorAll('.timeline-entry');
-        const entryCount = timelineEntries.length;
-        
-        if (entryCount === 0) {
+        const maxScroll = this.timeline.scrollHeight - this.timeline.clientHeight;
+        const hasAggregatedEntries = this.timelineContainer.querySelector('.aggregated-entry') !== null;
+
+        // No snapping in aggregate mode: the tall stat cards need free scrolling
+        if (timelineEntries.length === 0 || maxScroll <= 0 || hasAggregatedEntries) {
             this.snapPositions = [];
             return;
         }
 
-        // Calculate snap positions based on entry count
-        // Each entry gets an equal portion of the scroll track
-        this.snapPositions = [];
-        for (let i = 0; i < entryCount; i++) {
-            const position = i / (entryCount - 1); // 0 to 1
-            this.snapPositions.push(Math.max(0, Math.min(1, position)));
+        // Snap to the real entry tops (document-relative), not an even distribution,
+        // so entries of different heights still snap to their actual boundaries.
+        const scrollerRect = this.timeline.getBoundingClientRect();
+        this.snapPositions = Array.from(timelineEntries).map(entry => {
+            const absoluteTop = entry.getBoundingClientRect().top - scrollerRect.top + this.timeline.scrollTop;
+            return Math.max(0, Math.min(1, absoluteTop / maxScroll));
+        });
+        if (this.snapPositions[this.snapPositions.length - 1] !== 1) {
+            this.snapPositions.push(1);
         }
     }
 
     handleScroll() {
-        if (this.isSnapping) return;
-
         // Update position immediately for smooth scrolling
         this.updateScrollPosition();
+
+        if (this.isSnapping) return;
 
         // Clear existing timer
         if (this.scrollEndTimer) {
@@ -130,15 +135,15 @@ class TimelineScrollIndicator {
         const scrollHeight = this.timeline.scrollHeight;
         const clientHeight = this.timeline.clientHeight;
         const maxScroll = scrollHeight - clientHeight;
-        
+
         if (maxScroll <= 0) return;
 
         const currentScrollPercentage = scrollTop / maxScroll;
-        
+
         // Find the nearest snap position
         let nearestPosition = this.snapPositions[0];
         let minDistance = Math.abs(currentScrollPercentage - nearestPosition);
-        
+
         for (let i = 1; i < this.snapPositions.length; i++) {
             const distance = Math.abs(currentScrollPercentage - this.snapPositions[i]);
             if (distance < minDistance) {
@@ -149,10 +154,16 @@ class TimelineScrollIndicator {
 
         // Calculate target scroll position
         const targetScrollTop = nearestPosition * maxScroll;
-            this.timeline.scrollTo({
-                top: targetScrollTop,
-                behavior: 'smooth'
-            });
+        if (Math.abs(targetScrollTop - scrollTop) < 2) return;
+
+        this.isSnapping = true;
+        this.timeline.scrollTo({
+            top: targetScrollTop,
+            behavior: 'smooth'
+        });
+        setTimeout(() => {
+            this.isSnapping = false;
+        }, 400);
     }
 
     updateScrollPosition() {

@@ -1133,31 +1133,101 @@ tr:hover {
     text-shadow: 0px 0px 0px white, 2px 2px 0px #24201c, 1px 1px 0 #171414;
 }
 
-.timeline-container .aggregated-entry .overview-container {
-    display: flex;
-    gap: 1rem;
-    padding: 16px;
+.timeline-container .aggregated-entry .timeline-agg-section {
+    padding: 8px 16px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
-.timeline-container .aggregated-entry .amount-overview {
-    display: flex;
-    gap: 1rem;
+.timeline-container .aggregated-entry .stats-kpis {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0;
     text-align: center;
-    padding-top: 24px;
 }
 
-.timeline-container .aggregated-entry .activity-overview {
-    border-right: 1px solid var(--color-highlight);
-    padding-right: 8px;
-}
-
-.timeline-container .aggregated-entry .amount-overview .overview-icon {
+.timeline-container .aggregated-entry .stats-kpi-value {
     font-size: 2rem;
-    color: var(--color-highlight);
 }
 
-.timeline-container .aggregated-entry .amount-overview .overview-amount {
-    font-size: 2rem;
+.timeline-container .aggregated-entry .stats-kpi-label {
+    font-size: 0.95rem;
+}
+
+.timeline-container .aggregated-entry .timeline-activity-day,
+.timeline-container .aggregated-entry .timeline-activity-hour {
+    background: rgba(245, 222, 179, 0.12);
+}
+
+.timeline-container .aggregated-entry .level-1 {
+    background: rgba(245, 222, 179, 0.3);
+}
+
+.timeline-container .aggregated-entry .level-2 {
+    background: rgba(245, 222, 179, 0.5);
+}
+
+.timeline-container .aggregated-entry .level-3 {
+    background: rgba(245, 222, 179, 0.72);
+}
+
+.timeline-container .aggregated-entry .level-4 {
+    background: var(--color-highlight);
+}
+
+.timeline-container .aggregated-entry .timeline-activity.is-month {
+    grid-template-rows: repeat(7, 11px);
+    grid-auto-columns: 1fr;
+    gap: 3px;
+    width: 100%;
+}
+
+.timeline-container .aggregated-entry .timeline-activity-hourly {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 12px);
+    grid-auto-columns: 1fr;
+    gap: 2px;
+    width: 100%;
+}
+
+.timeline-container .aggregated-entry .timeline-activity-hour {
+    border-radius: 1px;
+}
+
+.timeline-container .aggregated-entry .timeline-activity-hour.is-blank {
+    background: transparent;
+}
+
+.timeline-container .aggregated-entry .stats-bar-label {
+    font-size: 0.95rem;
+}
+
+.timeline-container .aggregated-entry .stats-legend {
+    font-size: 0.95rem;
+}
+
+.timeline-container .aggregated-entry .timeline-mood-icon {
+    margin-left: 0.2rem;
+}
+
+.timeline-container .aggregated-entry .timeline-agg-headline {
+    color: var(--stats-muted);
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+}
+
+.timeline-container .aggregated-entry .timeline-top-places {
+    font-size: 1rem;
+    margin-top: 0;
+}
+
+.timeline-container .aggregated-entry .timeline-top-places li span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .timeline-container .aggregated-entry .headline .overview-link {
@@ -1177,8 +1247,10 @@ tr:hover {
 .timeline-container .aggregated-entry-container {
     position: relative;
     pointer-events: all;
-    left: 24px;
+    margin-left: 24px;
+    justify-self: stretch;
 }
+
 .timeline-container .aggregated-entry {
     -webkit-backdrop-filter: blur(14px);
     background-color: rgba(0, 0, 0, 0.45);
@@ -1190,7 +1262,9 @@ tr:hover {
     border: 1px solid var(--panel-line);
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-
+    max-width: 32rem;
+    cursor: default;
+    font-weight: 300;
 }
 
 .timeline-container .aggregated-entry .sub-headline {

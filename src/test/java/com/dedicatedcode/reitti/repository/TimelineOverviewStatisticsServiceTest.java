@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.repository;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.timeline.GroupedTimelineEntry;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
@@ -71,7 +72,7 @@ class TimelineOverviewStatisticsServiceTest {
             );
         }
 
-        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT);
+        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT, UnitSystem.METRIC);
 
         assertNotNull(entries);
         assertFalse(entries.isEmpty());
@@ -107,6 +108,39 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(place.getId(), visitPart.placeId());
         assertEquals(Mood.HAPPY, visitPart.mood());
         assertTrue(visitPart.percent() >= 0.0 && visitPart.percent() <= 1.0);
+
+        assertFalse(firstWeek.monthly());
+        assertEquals(0, firstWeek.leadingBlanks());
+        assertTrue(firstWeek.overview().stream().allMatch(o -> o.level() == 4));
+        assertTrue(firstWeek.overview().stream().allMatch(o -> o.title() != null && o.title().contains("visits")));
+        assertEquals("0", firstWeek.formattedDistance());
+        assertEquals("km", firstWeek.distanceUnit());
+
+        assertEquals(168, firstWeek.activity().size());
+        assertTrue(firstWeek.activity().stream().noneMatch(GroupedTimelineEntry.ActivityCell::blank));
+        GroupedTimelineEntry.ActivityCell nightCell = firstWeek.activity().get(0);
+        assertEquals(0, nightCell.level());
+        GroupedTimelineEntry.ActivityCell stayCell = firstWeek.activity().get(5 * 7);
+        assertEquals(0, stayCell.level());
+        GroupedTimelineEntry.ActivityCell morningCell = firstWeek.activity().get(7 * 7);
+        assertEquals(4, morningCell.level());
+        assertNotNull(morningCell.title());
+        assertTrue(morningCell.title().contains("07:00"));
+        assertTrue(morningCell.title().contains("1 h"));
+
+        assertNotNull(firstWeek.movement());
+        assertEquals(1, firstWeek.movement().bars().size());
+        assertEquals("time", firstWeek.movement().bars().get(0).labelKey());
+        assertEquals(1, firstWeek.movement().bars().get(0).segments().size());
+        assertEquals("WALKING", firstWeek.movement().bars().get(0).segments().get(0).mode());
+        assertEquals(100.0, firstWeek.movement().bars().get(0).segments().get(0).percent(), 0.001);
+        assertEquals(1, firstWeek.movement().legend().size());
+        assertEquals("WALKING", firstWeek.movement().legend().get(0).mode());
+        assertNull(firstWeek.movement().legend().get(0).moodIcon());
+
+        assertEquals(1, firstWeek.topPlaces().size());
+        assertEquals("Test Place", firstWeek.topPlaces().get(0).name());
+        assertNotNull(firstWeek.topPlaces().get(0).duration());
     }
 
     @Test
@@ -147,7 +181,7 @@ class TimelineOverviewStatisticsServiceTest {
             );
         }
 
-        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT);
+        List<GroupedTimelineEntry> entries = service.load(user, startDate.atStartOfDay(tz).toInstant(), endDate.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT, UnitSystem.METRIC);
 
         assertNotNull(entries);
         assertFalse(entries.isEmpty());
@@ -177,6 +211,20 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(79140L, visit.durationSeconds());
         assertEquals(2, visit.parts().size());
         assertEquals(0.2729, visit.parts().get(0).percent(), 0.001);
+
+        assertTrue(janEntry.monthly());
+        assertTrue(janEntry.activity().isEmpty());
+        assertEquals(LocalDate.of(2024, 1, 1).getDayOfWeek().getValue() - 1, janEntry.leadingBlanks());
+        long maxActivity = janEntry.overview().stream().mapToLong(o -> o.visits() + o.trips()).max().orElseThrow();
+        assertEquals(4, janEntry.overview().stream().filter(o -> o.visits() + o.trips() == maxActivity).findFirst().orElseThrow().level());
+        assertEquals(0, janEntry.overview().stream().filter(o -> o.visits() + o.trips() == 0).findFirst().orElseThrow().level());
+
+        assertNotNull(janEntry.movement());
+        assertEquals(1, janEntry.movement().legend().size());
+        assertEquals(Mood.STRESSED.getIcon(), janEntry.movement().legend().get(0).moodIcon());
+
+        assertEquals(1, janEntry.topPlaces().size());
+        assertEquals("Test Place", janEntry.topPlaces().get(0).name());
     }
 
     @Test
@@ -184,7 +232,7 @@ class TimelineOverviewStatisticsServiceTest {
         ZoneId tz = ZoneId.systemDefault();
         Instant start = Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
         Instant end = Instant.now();
-        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, LocalTime.MIDNIGHT);
+        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, LocalTime.MIDNIGHT, UnitSystem.METRIC);
         assertNotNull(entries);
         assertTrue(entries.isEmpty());
     }
@@ -225,7 +273,7 @@ class TimelineOverviewStatisticsServiceTest {
                 )
         );
 
-        List<GroupedTimelineEntry> entries = service.load(user, dayStart, dayEnd.plus(1, java.time.temporal.ChronoUnit.SECONDS), tz, LocalTime.MIDNIGHT);
+        List<GroupedTimelineEntry> entries = service.load(user, dayStart, dayEnd.plus(1, java.time.temporal.ChronoUnit.SECONDS), tz, LocalTime.MIDNIGHT, UnitSystem.METRIC);
 
         assertNotNull(entries);
         assertEquals(1, entries.size());
@@ -274,6 +322,81 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(Mood.ADVENTUROUS, vp.mood());
         assertEquals(3600L, vp.durationSeconds());
         assertEquals(0.166, vp.percent(), 0.001);
+
+        assertNotNull(entry.movement());
+        assertEquals(1, entry.movement().bars().size());
+        assertEquals("time", entry.movement().bars().get(0).labelKey());
+        assertEquals(1, entry.movement().legend().size());
+        assertEquals(Mood.ADVENTUROUS.getIcon(), entry.movement().legend().get(0).moodIcon());
+        assertEquals(1, entry.topPlaces().size());
+        assertEquals(4, entry.overview().get(0).level());
+
+        assertEquals(168, entry.activity().size());
+        assertEquals(144, entry.activity().stream().filter(GroupedTimelineEntry.ActivityCell::blank).count());
+        GroupedTimelineEntry.ActivityCell stayHour = entry.activity().get(10 * 7);
+        assertFalse(stayHour.blank());
+        assertEquals(0, stayHour.level());
+        GroupedTimelineEntry.ActivityCell tripHour = entry.activity().get(11 * 7);
+        assertFalse(tripHour.blank());
+        assertEquals(4, tripHour.level());
+        assertTrue(entry.activity().stream().filter(c -> !c.blank()).allMatch(c -> c.title() != null));
+    }
+
+    @Test
+    void testDistanceIsMappedIntoMovementView() {
+        ZoneId tz = ZoneId.of("Europe/Berlin");
+        LocalDate date = LocalDate.of(2025, 3, 3);
+        Instant dayStart = date.atStartOfDay(tz).toInstant();
+
+        ProcessedVisit visit1 = testingService.createVisit(user, place, dayStart.plus(8, ChronoUnit.HOURS), dayStart.plus(9, ChronoUnit.HOURS));
+        ProcessedVisit visit2 = testingService.createVisit(user, place, dayStart.plus(10, ChronoUnit.HOURS), dayStart.plus(11, ChronoUnit.HOURS));
+
+        Instant tripStart = visit1.getEndTime();
+        Instant tripEnd = visit2.getStartTime();
+        long duration = tripEnd.getEpochSecond() - tripStart.getEpochSecond();
+        Long tripId = jdbcTemplate.queryForObject(
+                "INSERT INTO trips (user_id, start_time, end_time, duration_seconds, estimated_distance_meters, travelled_distance_meters, start_visit_id, end_visit_id, metadata) VALUES (:userId, :start, :end, :duration, :distance, :distance, :startVisit, :endVisit, '{}'::jsonb) RETURNING id",
+                Map.of(
+                        "userId", user.getId(),
+                        "start", Timestamp.from(tripStart),
+                        "end", Timestamp.from(tripEnd),
+                        "duration", duration,
+                        "distance", 12000.0,
+                        "startVisit", visit1.getId(),
+                        "endVisit", visit2.getId()
+                ),
+                Long.class);
+        jdbcTemplate.update("INSERT INTO trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters) VALUES (:tripId, 0, :duration, :mode, :distance)",
+                            Map.of(
+                                    "tripId", tripId,
+                                    "duration", duration,
+                                    "mode", TransportMode.DRIVING.name(),
+                                    "distance", 12000.0
+                            ));
+
+        List<GroupedTimelineEntry> entries = service.load(user, dayStart, date.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT, UnitSystem.METRIC);
+
+        assertEquals(1, entries.size());
+        GroupedTimelineEntry entry = entries.get(0);
+        assertEquals("12", entry.formattedDistance());
+        assertEquals("km", entry.distanceUnit());
+
+        assertNotNull(entry.movement());
+        assertEquals(2, entry.movement().bars().size());
+        GroupedTimelineEntry.MovementView.Bar distanceBar = entry.movement().bars().get(0);
+        assertEquals("distance", distanceBar.labelKey());
+        assertEquals(1, distanceBar.segments().size());
+        assertEquals("DRIVING", distanceBar.segments().get(0).mode());
+        assertEquals(100.0, distanceBar.segments().get(0).percent(), 0.001);
+        assertTrue(distanceBar.segments().get(0).title().contains("12 km"));
+        assertEquals("time", entry.movement().bars().get(1).labelKey());
+
+        GroupedTimelineEntry.TransportModePart part = entry.transportEntries().get(0).parts().get(0);
+        assertEquals(12000L, part.distanceMeters());
+
+        List<GroupedTimelineEntry> imperial = service.load(user, dayStart, date.atTime(LocalTime.MAX).atZone(tz).toInstant(), tz, LocalTime.MIDNIGHT, UnitSystem.IMPERIAL);
+        assertEquals("7.5", imperial.get(0).formattedDistance());
+        assertEquals("mi", imperial.get(0).distanceUnit());
     }
 
     @Test
@@ -292,7 +415,7 @@ class TimelineOverviewStatisticsServiceTest {
         Instant start = com.dedicatedcode.reitti.service.TimeUtil.startOfDay(rangeStart, tz, dayStart);
         Instant end = com.dedicatedcode.reitti.service.TimeUtil.endOfDay(rangeEnd, tz, dayStart);
 
-        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, dayStart);
+        List<GroupedTimelineEntry> entries = service.load(user, start, end, tz, dayStart, UnitSystem.METRIC);
 
         assertNotNull(entries);
         assertEquals(2, entries.size());
