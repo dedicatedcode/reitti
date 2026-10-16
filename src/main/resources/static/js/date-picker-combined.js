@@ -159,7 +159,6 @@ class TimebandUtils {
         const itemWidth = (config.itemWidth || 0) + 1;
         const containerWidth = scrollContainer.clientWidth;
         const count = this.getItemsToAddCount(timeband, containerWidth, itemWidth);
-        const estimatedAddedWidth = itemWidth * count;
 
         const newItems = this.generateNewItems(
             datePicker,
@@ -185,7 +184,12 @@ class TimebandUtils {
         requestAnimationFrame(() => {
             if (isLeft) {
                 scrollContainer.insertBefore(fragment, scrollContainer.firstChild);
-                scrollContainer.scrollLeft = previousScrollLeft + estimatedAddedWidth;
+                // Items can render wider than the configured itemWidth, so
+                // measure the real added width to keep the view stationary.
+                const addedWidth = newItems.reduce(
+                    (sum, itemData) => sum + (itemData.element?.offsetWidth || 0), 0
+                );
+                scrollContainer.scrollLeft = previousScrollLeft + addedWidth;
             } else {
                 scrollContainer.appendChild(fragment);
             }
@@ -877,19 +881,34 @@ class DatePicker {
         return Math.ceil((containerWidth * 3) / itemWidth);
     }
 
-    #generateDays() {
-        const center = this.#options.startDate || new Date();
-        const total = this.#calculateInitialItemCount(TIMEBANDS.DAY);
-
-        let start;
+    // Window of items to generate: always contains the target date. Without
+    // future dates the window's right edge is capped at today, so zooming into
+    // an old element keeps it inside the generated (scrollable) range instead
+    // of silently snapping the view to today.
+    #computeItemWindow(total, targetIndex, todayIndex) {
+        const half = Math.floor(total / 2);
         if (this.#options.allowFutureDates) {
-            start = new Date(center);
-            start.setDate(center.getDate() - Math.floor(total / 2));
-        } else {
-            const rightEdge = new Date();
-            start = new Date(rightEdge);
-            start.setDate(rightEdge.getDate() - total + 1);
+            return {
+                startIndex: targetIndex - half,
+                endIndex: targetIndex + (total - 1 - half)
+            };
         }
+        const endIndex = Math.min(targetIndex + half, todayIndex);
+        return { startIndex: endIndex - (total - 1), endIndex };
+    }
+
+    #generateDays() {
+        const target = clampToStartOfDay(this.#options.startDate || new Date());
+        const total = this.#calculateInitialItemCount(TIMEBANDS.DAY);
+        const dayIndex = (d) =>
+            Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000;
+
+        const { startIndex } = this.#computeItemWindow(
+            total, dayIndex(target), dayIndex(new Date())
+        );
+
+        const start = new Date(target);
+        start.setDate(start.getDate() - (dayIndex(target) - startIndex));
 
         const maxDate = this.#options.allowFutureDates ? undefined : new Date();
         this.#items = [];
@@ -902,17 +921,17 @@ class DatePicker {
     }
 
     #generateMonths() {
-        const center = this.#options.startDate || new Date();
+        const target = this.#options.startDate || new Date();
+        const targetMonth = new Date(target.getFullYear(), target.getMonth(), 1);
         const total = this.#calculateInitialItemCount(TIMEBANDS.MONTH);
+        const monthIndex = (d) => d.getFullYear() * 12 + d.getMonth();
 
-        let start;
-        if (this.#options.allowFutureDates) {
-            start = new Date(center.getFullYear(), center.getMonth() - Math.floor(total / 2), 1);
-        } else {
-            const now = new Date();
-            const rightEdge = new Date(now.getFullYear(), now.getMonth(), 1);
-            start = new Date(rightEdge.getFullYear(), rightEdge.getMonth() - total + 1, 1);
-        }
+        const { startIndex } = this.#computeItemWindow(
+            total, monthIndex(targetMonth), monthIndex(new Date())
+        );
+
+        const start = new Date(targetMonth);
+        start.setMonth(start.getMonth() - (monthIndex(targetMonth) - startIndex));
 
         const maxDate = this.#options.allowFutureDates ? undefined : new Date();
         this.#items = [];
@@ -924,17 +943,15 @@ class DatePicker {
     }
 
     #generateYears() {
-        const center = this.#options.startDate || new Date();
+        const target = this.#options.startDate || new Date();
+        const targetYear = target.getFullYear();
         const total = this.#calculateInitialItemCount(TIMEBANDS.YEAR);
 
-        let startYear;
-        if (this.#options.allowFutureDates) {
-            startYear = center.getFullYear() - Math.floor(total / 2);
-        } else {
-            const now = new Date();
-            startYear = now.getFullYear() - total + 1;
-        }
+        const { startIndex } = this.#computeItemWindow(
+            total, targetYear, new Date().getFullYear()
+        );
 
+        const startYear = targetYear - (targetYear - startIndex);
         const maxDate = this.#options.allowFutureDates ? undefined : new Date();
         this.#items = [];
         for (let i = 0; i < total; i++) {
@@ -1458,7 +1475,7 @@ class DatePicker {
         if (this.#isTransitioning) return;
 
         const date = mouseDate || this.getCenterDate();
-        const pos = mousePos || this.#scrollContainer.clientWidth / 2;
+        const pos = mousePos ?? this.#scrollContainer.clientWidth / 2;
 
         const transitions = {
             [TIMEBANDS.DAY]: { out: TIMEBANDS.MONTH },
@@ -1564,31 +1581,39 @@ class DatePicker {
         }
     }
 
+    // Content-space rect of an item, from real DOM offsets. Items can render
+    // wider than the configured itemWidth (CSS uses min-width), so index*width
+    // math drifts; actual offsets keep hit-testing and alignment exact.
+    #itemContentRect(itemData) {
+        const el = itemData?.element;
+        if (!el) return null;
+        const base = el.offsetParent === this.#scrollContainer
+            ? 0
+            : this.#scrollContainer.offsetLeft;
+        return { left: el.offsetLeft - base, width: el.offsetWidth };
+    }
+
+    #findItemAtContentX(x) {
+        for (const item of this.#items) {
+            const rect = this.#itemContentRect(item);
+            if (rect && x >= rect.left && x < rect.left + rect.width) return item;
+        }
+        return null;
+    }
+
     getCenterDate() {
-        const { scrollLeft, clientWidth } = this.#scrollContainer;
-        const cfg = this.#timebandConfigs[this.#currentTimeband];
-        if (!cfg) return this.#options.startDate || new Date();
-
-        const width = (cfg.itemWidth || 0) + 1;
-        const index = Math.floor((scrollLeft + clientWidth / 2) / width);
-
-        return (index >= 0 && index < this.#items.length)
-            ? this.#items[index].date
-            : this.#options.startDate || new Date();
+        const item = this.#findItemAtContentX(
+            this.#scrollContainer.scrollLeft + this.#scrollContainer.clientWidth / 2
+        );
+        return item?.date || this.#options.startDate || new Date();
     }
 
     getDateUnderMouse(event) {
         const rect = this.#scrollContainer.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const cfg = this.#timebandConfigs[this.#currentTimeband];
-        if (!cfg) return this.getCenterDate();
-
-        const width = (cfg.itemWidth || 0) + 1;
-        const index = Math.floor((this.#scrollContainer.scrollLeft + mouseX) / width);
-
-        return (index >= 0 && index < this.#items.length)
-            ? this.#items[index].date
-            : this.getCenterDate();
+        const item = this.#findItemAtContentX(
+            this.#scrollContainer.scrollLeft + (event.clientX - rect.left)
+        );
+        return item?.date || this.getCenterDate();
     }
 
     getMousePositionInContainer(event) {
@@ -1686,21 +1711,19 @@ class DatePicker {
 
     scrollToCenter(instant = false) {
         const centerDate = this.#options.startDate || new Date();
-        const cfg = this.#timebandConfigs[this.#currentTimeband];
-        if (!cfg) return;
-
-        const index = this.#findIndexForDate(centerDate, this.#currentTimeband);
-        const itemWidth = (cfg.itemWidth || 0) + 1;
         const containerWidth = this.#scrollContainer.clientWidth;
 
+        const index = this.#findIndexForDate(centerDate, this.#currentTimeband);
+        const rect = index >= 0 ? this.#itemContentRect(this.#items[index]) : null;
+
         let target;
-        if (this.#options.allowFutureDates) {
-            target = index >= 0
-                ? (index * itemWidth) - (containerWidth / 2) + (itemWidth / 2)
-                : (this.#scrollContainer.scrollWidth - containerWidth) / 2;
+        if (rect) {
+            target = this.#options.allowFutureDates
+                ? rect.left + rect.width / 2 - containerWidth / 2
+                : rect.left + rect.width - containerWidth;
         } else {
-            target = index >= 0
-                ? (index * itemWidth) - containerWidth + itemWidth
+            target = this.#options.allowFutureDates
+                ? (this.#scrollContainer.scrollWidth - containerWidth) / 2
                 : this.#scrollContainer.scrollWidth - containerWidth;
         }
 
@@ -1733,13 +1756,10 @@ class DatePicker {
         const index = this.#findIndexForDate(targetDate, this.#currentTimeband);
         if (index < 0) return;
 
-        const cfg = this.#timebandConfigs[this.#currentTimeband];
-        if (!cfg) return;
+        const rect = this.#itemContentRect(this.#items[index]);
+        if (!rect) return;
 
-        const itemWidth = (cfg.itemWidth || 0) + 1;
-        const center = (index * itemWidth) + (itemWidth / 2);
-
-        this.#setScrollLeft(Math.max(0, center - alignPosition), instant);
+        this.#setScrollLeft(Math.max(0, rect.left + rect.width / 2 - alignPosition), instant);
     }
 
     /* External API */
@@ -1947,22 +1967,24 @@ class DatePicker {
     getVisibleDateRange() {
         if (!this.#items.length) return null;
 
-        const { scrollLeft, clientWidth } = this.#scrollContainer;
-        const cfg = this.#timebandConfigs[this.#currentTimeband];
-        if (!cfg) return null;
+        const viewStart = this.#scrollContainer.scrollLeft;
+        const viewEnd = viewStart + this.#scrollContainer.clientWidth;
 
-        const width = (cfg.itemWidth || 0) + 1;
-        const firstIndex = Math.max(0, Math.floor(scrollLeft / width));
-        const lastIndex = Math.min(
-            this.#items.length - 1,
-            Math.ceil((scrollLeft + clientWidth) / width)
-        );
+        let firstItem = null;
+        let lastItem = null;
+        for (const item of this.#items) {
+            const rect = this.#itemContentRect(item);
+            if (!rect) continue;
+            if (rect.left + rect.width <= viewStart || rect.left >= viewEnd) continue;
+            if (!firstItem) firstItem = item;
+            lastItem = item;
+        }
 
-        if (firstIndex >= this.#items.length || lastIndex < 0) return null;
+        if (!firstItem || !lastItem) return null;
 
         return {
-            start: TimebandUtils.getItemRangeStart(this.#items[firstIndex], this.#currentTimeband),
-            end: TimebandUtils.getItemRangeEnd(this.#items[lastIndex], this.#currentTimeband)
+            start: TimebandUtils.getItemRangeStart(firstItem, this.#currentTimeband),
+            end: TimebandUtils.getItemRangeEnd(lastItem, this.#currentTimeband)
         };
     }
 
