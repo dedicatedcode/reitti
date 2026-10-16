@@ -1431,7 +1431,7 @@
                     id: entry.dataset.id,
                     coordinates: [parseFloat(entry.dataset.lng), parseFloat(entry.dataset.lat)]
                 });
-            } else {
+            } else if (!entry.classList.contains('aggregated-entry')) {
                 onTripClick({
                     id: entry.dataset.id,
                     managerId: entry.dataset.userId,
