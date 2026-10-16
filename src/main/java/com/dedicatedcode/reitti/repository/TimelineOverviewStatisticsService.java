@@ -1,11 +1,13 @@
 package com.dedicatedcode.reitti.repository;
 
 import com.dedicatedcode.reitti.dto.timeline.GroupedTimelineEntry;
+import com.dedicatedcode.reitti.model.UnitSystem;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.metadata.Mood;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ContextPathHolder;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.statistics.StatisticsFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -14,10 +16,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.time.temporal.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,7 +38,7 @@ public class TimelineOverviewStatisticsService {
         this.contextPathHolder = contextPathHolder;
     }
 
-    public List<GroupedTimelineEntry> load(User user, Instant start, Instant end, ZoneId userTimezone, LocalTime dayStartTime) {
+    public List<GroupedTimelineEntry> load(User user, Instant start, Instant end, ZoneId userTimezone, LocalTime dayStartTime, UnitSystem unitSystem) {
 
         Duration duration = Duration.between(start, end.plus(1, ChronoUnit.SECONDS));
         Granularity granularity = duration.toDays() >= 365 ? Granularity.MONTHLY : Granularity.WEEKLY;
@@ -180,7 +182,31 @@ SELECT
                                                                             ORDER BY 1;
                                                                             """, params);
 
+        List<Map<String, Object>> hourlyActivity = granularity == Granularity.WEEKLY ? this.jdbcTemplate.queryForList("""
+                                                                                       SELECT h.slot_start AS time_bucket,
+                                                                                              COALESCE(t.seconds, 0)::BIGINT AS activity_seconds
+                                                                                       FROM (
+                                                                                           SELECT GENERATE_SERIES(
+                                                                                               (:start AT TIME ZONE :timezone),
+                                                                                               (:end AT TIME ZONE :timezone),
+                                                                                               '1 hour'::interval
+                                                                                           ) AS slot_start
+                                                                                       ) h
+                                                                                       LEFT JOIN LATERAL (
+                                                                                           SELECT SUM(EXTRACT(EPOCH FROM (
+                                                                                               LEAST(t.end_time AT TIME ZONE :timezone, h.slot_start + interval '1 hour')
+                                                                                               - GREATEST(t.start_time AT TIME ZONE :timezone, h.slot_start)
+                                                                                           ))) AS seconds
+                                                                                           FROM trips t
+                                                                                           WHERE t.user_id = :userId
+                                                                                             AND t.start_time AT TIME ZONE :timezone < h.slot_start + interval '1 hour'
+                                                                                             AND t.end_time AT TIME ZONE :timezone > h.slot_start
+                                                                                       ) t ON TRUE
+                                                                                       ORDER BY h.slot_start;
+                                                                                       """, params) : Collections.emptyList();
+
         Locale locale = LocaleContextHolder.getLocale();
+        StatisticsFormatter formatter = new StatisticsFormatter(i18nService, locale, unitSystem, null);
         List<GroupedTimelineEntry> entries = new ArrayList<>();
 
         Map<LocalDate, List<Map<String, Object>>> splitTrips = splitupIntoDays(start, userTimezone, granularity, allTripsByLower);
@@ -195,26 +221,30 @@ SELECT
         Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> visitMoods = calculateMoodRingValue(userTimezone, visitMoodCountsPerSlice);
         Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> tripMoods = calculateMoodRingValue(userTimezone, tripMoodCountsPerSlice);
 
+        Map<LocalDate, long[]> activityPerHour = calculateHourlyActivity(hourlyActivity);
+
         Set<LocalDate> allExistingGroupKeys = extractKeys(splitTrips, splitVisits, transportModeData, visitMoods, tripMoods);
 
         List<LocalDate> sortedKeys = allExistingGroupKeys.stream().sorted().toList();
 
         for (LocalDate sortedKey : sortedKeys) {
-            LocalDate endDate = granularity == Granularity.MONTHLY ? sortedKey.withDayOfMonth(sortedKey.lengthOfMonth()) : sortedKey.with(ChronoField.DAY_OF_WEEK, 1).plusWeeks(1);
             List<Map<String, Object>> tripsPerSegment = splitTrips.get(sortedKey);
             List<Map<String, Object>> visitsPerSegment = splitVisits.get(sortedKey);
             List<GroupedTimelineEntry.OverviewEntry> overviewEntries = new ArrayList<>();
             for (int i = 0; i < visitsPerSegment.size(); i++) {
-                LocalDate day = visitsPerSegment.get(i).get("time_bucket") != null ? ((Timestamp) visitsPerSegment.get(i).get("time_bucket")).toInstant().atZone(userTimezone).toLocalDate() : null;
+                LocalDate day = visitsPerSegment.get(i).get("time_bucket") != null ? ((Timestamp) visitsPerSegment.get(i).get("time_bucket")).toLocalDateTime().toLocalDate() : null;
                 long dailyAmountOfVisits = visitsPerSegment.get(i).get("amount") != null ? (long) visitsPerSegment.get(i).get("amount") : 0;
                 long dailyAmountOfTrips = tripsPerSegment.get(i).get("amount") != null ? (long) tripsPerSegment.get(i).get("amount") : 0;
-                overviewEntries.add(new GroupedTimelineEntry.OverviewEntry(day, dailyAmountOfVisits, dailyAmountOfTrips));
+                overviewEntries.add(new GroupedTimelineEntry.OverviewEntry(day, dailyAmountOfVisits, dailyAmountOfTrips, 0, null));
             }
 
             if (overviewEntries.stream().mapToLong(o -> o.visits() + o.trips()).sum() == 0) {
                 log.debug("Skipping empty timeline entry for {}", sortedKey);
                 continue;
             }
+
+            overviewEntries = withActivityLevels(overviewEntries, formatter);
+            int leadingBlanks = overviewEntries.getFirst().slot() != null ? overviewEntries.getFirst().slot().getDayOfWeek().getValue() - 1 : 0;
 
             Map<TransportMode, List<GroupedTimelineEntry.TransportModePart>> transportModeListMap = transportModeData.getOrDefault(sortedKey, Collections.emptyMap());
             List<GroupedTimelineEntry.TransportEntry> transportEntries = new ArrayList<>();
@@ -224,6 +254,8 @@ SELECT
             Map<String, List<GroupedTimelineEntry.VisitPart>> visitMoodDurationMap = visitsMoodDurationData.getOrDefault(sortedKey, Collections.emptyMap());
             List<GroupedTimelineEntry.VisitEntry> visitEntries = new ArrayList<>();
             visitMoodDurationMap.forEach((placeName, visitMoodDurationParts) -> visitEntries.add(new GroupedTimelineEntry.VisitEntry(placeName, visitMoodDurationParts)));
+
+            long totalDistanceMeters = transportEntries.stream().mapToLong(GroupedTimelineEntry.TransportEntry::totalDistanceMeters).sum();
 
             String name;
             String subheadline;
@@ -238,19 +270,119 @@ SELECT
             LocalDate adjustedRangeStart = sortedKey.isBefore(start.atZone(userTimezone).toLocalDate()) ? start.atZone(userTimezone).toLocalDate() : sortedKey;
             LocalDate adjustedRangeEnd = rangeEnd.isAfter(end.atZone(userTimezone).toLocalDate()) ? end.atZone(userTimezone).toLocalDate() : rangeEnd;
             subheadline = i18nService.translate("js.common.time-range", adjustedRangeStart.format(DateTimeFormatter.ofPattern("dd.MM").withLocale(locale)), adjustedRangeEnd.format(DateTimeFormatter.ofPattern("dd.MM.yyyy").withLocale(locale)));
+            List<GroupedTimelineEntry.ActivityCell> activity = granularity == Granularity.WEEKLY ?
+                    buildActivityCells(sortedKey, adjustedRangeStart, adjustedRangeEnd, activityPerHour, formatter, locale) :
+                    Collections.emptyList();
             entries.add(new GroupedTimelineEntry(UUID.randomUUID(),
                                                  name,
                                                  subheadline,
                                                  String.format(contextPathHolder.getContextPath() + "/?startDate=%s&endDate=%s", adjustedRangeStart, adjustedRangeEnd),
+                                                 granularity == Granularity.MONTHLY,
+                                                 leadingBlanks,
                                                  overviewEntries,
+                                                 activity,
+                                                 formatter.distanceNumber(totalDistanceMeters),
+                                                 formatter.distanceUnit(),
                                                  amountOfPlaces.get(sortedKey),
                                                  amountOfTrips.get(sortedKey),
                                                  visitMoods.get(sortedKey),
                                                  tripMoods.get(sortedKey),
                                                  transportEntries,
-                                                 visitEntries));
+                                                 visitEntries,
+                                                 buildMovementView(transportEntries, formatter),
+                                                 buildTopPlaces(visitEntries, formatter)));
         }
         return entries;
+    }
+
+    private List<GroupedTimelineEntry.OverviewEntry> withActivityLevels(List<GroupedTimelineEntry.OverviewEntry> entries, StatisticsFormatter formatter) {
+        long maxActivity = entries.stream().mapToLong(e -> e.visits() + e.trips()).max().orElse(0);
+        return entries.stream().map(e -> {
+            long activity = e.visits() + e.trips();
+            int level = activity == 0 ? 0 : Math.max(1, (int) Math.ceil(4.0 * activity / maxActivity));
+            String title = i18nService.translate("timeline.grouped.activity.tooltip", e.slot() != null ? formatter.day(e.slot()) : "", e.visits(), e.trips());
+            return new GroupedTimelineEntry.OverviewEntry(e.slot(), e.visits(), e.trips(), level, title);
+        }).toList();
+    }
+
+    private Map<LocalDate, long[]> calculateHourlyActivity(List<Map<String, Object>> hourlyActivity) {
+        Map<LocalDate, long[]> result = new HashMap<>();
+        for (Map<String, Object> row : hourlyActivity) {
+            LocalDateTime slotStart = ((Timestamp) row.get("time_bucket")).toLocalDateTime();
+            long seconds = row.get("activity_seconds") != null ? ((Number) row.get("activity_seconds")).longValue() : 0L;
+            result.computeIfAbsent(slotStart.toLocalDate(), _ -> new long[24])[slotStart.getHour()] = seconds;
+        }
+        return result;
+    }
+
+    private List<GroupedTimelineEntry.ActivityCell> buildActivityCells(LocalDate weekStart, LocalDate rangeStart, LocalDate rangeEnd, Map<LocalDate, long[]> activityPerHour, StatisticsFormatter formatter, Locale locale) {
+        List<GroupedTimelineEntry.ActivityCell> cells = new ArrayList<>();
+        for (int hour = 0; hour < 24; hour++) {
+            for (int dow = 0; dow < 7; dow++) {
+                LocalDate date = weekStart.plusDays(dow);
+                if (date.isBefore(rangeStart) || date.isAfter(rangeEnd)) {
+                    cells.add(new GroupedTimelineEntry.ActivityCell(true, 0, null));
+                    continue;
+                }
+                long[] hours = activityPerHour.get(date);
+                long seconds = hours != null ? hours[hour] : 0;
+                int level = seconds == 0 ? 0 : Math.clamp((int) Math.ceil(4.0 * seconds / 3600.0), 1, 4);
+                String title = i18nService.translate("timeline.grouped.activity.hourly.tooltip",
+                                                     date.getDayOfWeek().getDisplayName(TextStyle.SHORT, locale),
+                                                     String.format("%02d:00", hour),
+                                                     String.format("%02d:00", hour + 1),
+                                                     formatter.duration(seconds));
+                cells.add(new GroupedTimelineEntry.ActivityCell(false, level, title));
+            }
+        }
+        return cells;
+    }
+
+    private GroupedTimelineEntry.MovementView buildMovementView(List<GroupedTimelineEntry.TransportEntry> transportEntries, StatisticsFormatter formatter) {
+        List<GroupedTimelineEntry.TransportEntry> sorted = transportEntries.stream()
+                .sorted(Comparator.comparingLong(GroupedTimelineEntry.TransportEntry::durationSeconds).reversed())
+                .toList();
+        long totalDurationSeconds = sorted.stream().mapToLong(GroupedTimelineEntry.TransportEntry::durationSeconds).sum();
+        long totalDistanceMeters = sorted.stream().mapToLong(GroupedTimelineEntry.TransportEntry::totalDistanceMeters).sum();
+        if (totalDurationSeconds == 0) {
+            return null;
+        }
+
+        List<GroupedTimelineEntry.MovementView.Segment> distanceSegments = new ArrayList<>();
+        List<GroupedTimelineEntry.MovementView.Segment> timeSegments = new ArrayList<>();
+        List<GroupedTimelineEntry.MovementView.LegendEntry> legend = new ArrayList<>();
+        for (GroupedTimelineEntry.TransportEntry transportEntry : sorted) {
+            String mode = transportEntry.transportMode().name();
+            String modeName = formatter.modeName(transportEntry.transportMode());
+            long durationSeconds = transportEntry.durationSeconds();
+            long distanceMeters = transportEntry.totalDistanceMeters();
+
+            if (totalDistanceMeters > 0 && distanceMeters > 0) {
+                double share = (double) distanceMeters / totalDistanceMeters;
+                distanceSegments.add(new GroupedTimelineEntry.MovementView.Segment(mode, share * 100, modeName + " · " + formatter.distance(distanceMeters) + " · " + formatter.percent(share)));
+            }
+            double timeShare = (double) durationSeconds / totalDurationSeconds;
+            timeSegments.add(new GroupedTimelineEntry.MovementView.Segment(mode, timeShare * 100, modeName + " · " + formatter.duration(durationSeconds) + " · " + formatter.percent(timeShare)));
+
+            String moodIcon = transportEntry.dominantMood().map(Mood::getIcon).orElse(null);
+            legend.add(new GroupedTimelineEntry.MovementView.LegendEntry(mode, modeName, moodIcon));
+        }
+
+        List<GroupedTimelineEntry.MovementView.Bar> bars = new ArrayList<>();
+        if (!distanceSegments.isEmpty()) {
+            bars.add(new GroupedTimelineEntry.MovementView.Bar("distance", distanceSegments));
+        }
+        bars.add(new GroupedTimelineEntry.MovementView.Bar("time", timeSegments));
+        return new GroupedTimelineEntry.MovementView(bars, legend);
+    }
+
+    private List<GroupedTimelineEntry.TopPlace> buildTopPlaces(List<GroupedTimelineEntry.VisitEntry> visitEntries, StatisticsFormatter formatter) {
+        return visitEntries.stream()
+                .filter(v -> v.name() != null)
+                .sorted(Comparator.comparingLong(GroupedTimelineEntry.VisitEntry::durationSeconds).reversed())
+                .limit(5)
+                .map(v -> new GroupedTimelineEntry.TopPlace(v.name(), formatter.duration(v.durationSeconds())))
+                .toList();
     }
 
     private Set<LocalDate> extractKeys(Map<LocalDate, List<Map<String, Object>>> amountOfTrips, Map<LocalDate, List<Map<String, Object>>> splitVisits, Map<LocalDate, Map<TransportMode, List<GroupedTimelineEntry.TransportModePart>>> transportModeData, Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> visitMoods, Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> tripMoods) {
@@ -295,8 +427,9 @@ SELECT
                 long totalTripDuration = transportModeData.stream().mapToLong(t -> (Long) t.get("duration_seconds")).sum();
                 List<GroupedTimelineEntry.TransportModePart> transportModeParts = transportModeData.stream().map(t -> {
                     long moodDuration = (long) t.get("duration_seconds");
+                    long distanceMeters = t.get("distance_meters") != null ? (long) t.get("distance_meters") : 0L;
                     double percent = (double) moodDuration / (double) totalTripDuration;
-                    return new GroupedTimelineEntry.TransportModePart(transportMode, t.get("mood") != null ? Mood.valueOf((String) t.get("mood")) : null, (long) t.get("duration_seconds"), percent);
+                    return new GroupedTimelineEntry.TransportModePart(transportMode, t.get("mood") != null ? Mood.valueOf((String) t.get("mood")) : null, (long) t.get("duration_seconds"), distanceMeters, percent);
                 }).sorted((o1, o2) -> (int) (o2.percent() - o1.percent())).toList();
                 transportModesByDate.put(transportMode, transportModeParts);
             }

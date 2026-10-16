@@ -136,7 +136,7 @@ public class TimelineController {
         List<? extends TimelineEntry> currentUserEntries;
         if (loadTimeline && (authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN") || authorities.contains("ROLE_MAGIC_LINK_FULL_ACCESS"))) {
             if (shouldAggregate) {
-                currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone, dayStartTime);
+                currentUserEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, timezone, dayStartTime, viewerSettings.getUnitSystem());
             } else {
                 currentUserEntries = this.timelineService.buildTimelineEntries(user, timezone, startDate, startOfRange, endOfRange, authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN"));
             }
@@ -310,7 +310,7 @@ public class TimelineController {
 
                         if (loadTimeline) {
                             if (shouldAggregate) {
-                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone, dayStartTime);
+                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone, dayStartTime, viewerSettings.getUnitSystem());
                             } else {
                                 userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false);
                             }
