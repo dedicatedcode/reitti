@@ -252,6 +252,8 @@
     let gpsDataManagers = [];
     let currentDateRange = null;
     let activeId = null;
+    let historyInitialized = false;
+    let pendingHistoryRestore = null;
 
 
         const timelineControl = new TimelineControl(
@@ -916,7 +918,7 @@
         loadPhotos();
     }
 
-    function updateUrlWithDate(currentDateRange) {
+    function updateUrlWithDate(currentDateRange, replace = false) {
         const url = new URL(window.location);
         url.searchParams.set('startDate', currentDateRange.startDate);
         url.searchParams.set('endDate', currentDateRange.endDate);
@@ -930,7 +932,11 @@
         if (workbenchLink) {
             workbenchLink.href = window.contextPath + '/workbench?date=' + currentDateRange.startDate;
         }
-        window.history.pushState({}, '', url);
+        if (replace) {
+            window.history.replaceState({}, '', url);
+        } else {
+            window.history.pushState({}, '', url);
+        }
     }
 
     function loadStartingActiveId() {
@@ -1054,7 +1060,7 @@
      * Today-button visibility and the dateChanged event that reloads the
      * timeline and GPS data. Used by the picker itself and by type-to-jump.
      */
-    function handleDateSelection(data) {
+    function handleDateSelection(data, pushUrl = true) {
         const startDate = new Date(data.startDate + 'T00:00:00');
         let endDate;
         if (data.endDate) {
@@ -1072,11 +1078,18 @@
                     break;
             }
         }
-        currentDateRange = {
+        const newRange = {
             startDate: window.datePicker.formatDate(startDate),
             endDate: window.datePicker.formatDate(endDate)
         };
-        updateUrlWithDate(currentDateRange);
+        const rangeChanged = !currentDateRange
+            || currentDateRange.startDate !== newRange.startDate
+            || currentDateRange.endDate !== newRange.endDate;
+        currentDateRange = newRange;
+        if (pushUrl && (rangeChanged || !historyInitialized)) {
+            updateUrlWithDate(currentDateRange, !historyInitialized);
+            historyInitialized = true;
+        }
         updateTodayFabVisibility();
         document.body.dispatchEvent(new CustomEvent('dateChanged'));
     }
@@ -1085,6 +1098,58 @@
         if (!window.datePicker) return;
         window.datePicker.setSelectedRange(e.detail.startDate, e.detail.endDate);
         handleDateSelection({ startDate: e.detail.startDate, endDate: e.detail.endDate, timeband: 'day' });
+    });
+
+    /**
+     * Applies a user/device selection coming from history navigation without
+     * pushing a new URL entry. Mirrors selectUser/selectDevice/clearSelection
+     * minus the URL update and photo load (the dateChanged reload covers those).
+     */
+    function applyHistorySelection(id) {
+        document.querySelectorAll('.user-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.device-header').forEach(header => {
+            header.classList.remove('active');
+        });
+        document.querySelectorAll('.user-timeline-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        if (id) {
+            const [userId, deviceId] = String(id).split('_');
+            const header = deviceId
+                ? document.querySelector(`.device-header[data-user-id="${userId}"][data-device-id="${deviceId}"]`)
+                : document.querySelector(`.user-header[data-user-id="${userId}"]`);
+            if (header) {
+                header.classList.add('active');
+            }
+            if (!deviceId) {
+                const targetSection = document.querySelector(`.user-timeline-section[data-user-id="${userId}"]`);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                }
+            }
+        }
+        mapRenderer.setSelectedManager(id);
+    }
+
+    window.addEventListener('popstate', function () {
+        if (!window.datePicker) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('startDate');
+        if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return;
+        const endDate = urlParams.get('endDate') || startDate;
+        const restoredId = urlParams.get('active') || null;
+        if (currentDateRange
+            && currentDateRange.startDate === startDate
+            && currentDateRange.endDate === endDate
+            && (activeId || null) === restoredId) {
+            return;
+        }
+        activeId = restoredId;
+        applyHistorySelection(restoredId);
+        pendingHistoryRestore = {startDate, endDate};
+        window.datePicker.setSelectedRange(startDate, endDate);
     });
 
     /**
@@ -1148,7 +1213,11 @@
         applyDatePickerModeLayout();
 
         window.datePicker.on('selectionChange', function (data) {
-            handleDateSelection(data);
+            const restoring = pendingHistoryRestore !== null
+                && pendingHistoryRestore.startDate === data.startDate
+                && pendingHistoryRestore.endDate === (data.endDate || data.startDate);
+            pendingHistoryRestore = null;
+            handleDateSelection(data, !restoring);
         });
 
         // Listen for date picker view changes to update Today button visibility
@@ -1412,6 +1481,33 @@
 
         // Handle clicks on timeline entries
         document.querySelector('.timeline-container').addEventListener('click', function (event) {
+            const dateCell = event.target.closest('.stats-calendar-day[data-date], .timeline-activity-hour[data-date]');
+            if (dateCell) {
+                const date = dateCell.dataset.date;
+                if (window.datePicker) {
+                    window.datePicker.setSelectedRange(date, date);
+                    handleDateSelection({startDate: date, endDate: date, timeband: 'day'});
+                }
+                return;
+            }
+
+            const placeItem = event.target.closest('.timeline-top-places li[data-lat]');
+            if (placeItem) {
+                const lat = parseFloat(placeItem.dataset.lat);
+                const lng = parseFloat(placeItem.dataset.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    if (previousCameraState == null) {
+                        previousCameraState = mapRenderer.getCameraState();
+                    }
+                    mapRenderer.flyTo({
+                        center: [lng, lat],
+                        zoom: 16,
+                        duration: 1500
+                    });
+                }
+                return;
+            }
+
             const entry = event.target.closest('.timeline-entry');
             if (!entry) return;
 
@@ -1438,6 +1534,19 @@
                     endTime: entry.dataset.end
                 });
             }
+        });
+
+        // Week heatmap: hovering a cell highlights its whole row (row = day)
+        document.querySelector('.timeline-container').addEventListener('mouseover', function (event) {
+            document.querySelectorAll('.timeline-activity-hourly .is-row-hover').forEach(c => c.classList.remove('is-row-hover'));
+            const grid = event.target.closest('.timeline-activity-hourly');
+            const cell = event.target.closest('.timeline-activity-hour');
+            if (!grid || !cell) return;
+            const cells = Array.from(grid.children);
+            const row = cells.indexOf(cell) % 7;
+            cells.forEach((c, i) => {
+                if (i % 7 === row) c.classList.add('is-row-hover');
+            });
         });
 
         createDatePicker();

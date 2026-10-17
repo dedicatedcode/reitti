@@ -16,7 +16,7 @@ public record GroupedTimelineEntry(UUID syntheticId, String name, String subHead
     public record OverviewEntry(LocalDate slot, Long visits, Long trips, int level, String title) {
     }
 
-    public record ActivityCell(boolean blank, int level, String title) {
+    public record ActivityCell(boolean blank, int level, String title, LocalDate date) {
     }
 
     public record MovementView(List<Bar> bars, List<LegendEntry> legend) {
@@ -30,7 +30,7 @@ public record GroupedTimelineEntry(UUID syntheticId, String name, String subHead
         }
     }
 
-    public record TopPlace(String name, String duration) {
+    public record TopPlace(String name, String duration, Double latitude, Double longitude) {
     }
 
     public record TransportEntry(TransportMode transportMode, List<TransportModePart> parts) {
@@ -62,6 +62,6 @@ public record GroupedTimelineEntry(UUID syntheticId, String name, String subHead
 
     public record TransportModePart(TransportMode transportMode, Mood mood, long durationSeconds, long distanceMeters, double percent) {
     }
-    public record VisitPart(Long placeId, String placeName, Mood mood, long durationSeconds, double percent) {
+    public record VisitPart(Long placeId, String placeName, Mood mood, long durationSeconds, double percent, Double latitude, Double longitude) {
     }
 }
