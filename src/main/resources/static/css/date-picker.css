@@ -95,10 +95,6 @@
     text-decoration: underline;
 }
 
-.timeband-item.locked.today {
-    border-color: #ffc107;
-}
-
 .primary-text {
     font-size: 18px;
     font-weight: 500;

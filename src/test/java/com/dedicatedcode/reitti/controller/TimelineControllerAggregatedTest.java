@@ -88,6 +88,9 @@ class TimelineControllerAggregatedTest {
                 .andExpect(content().string(containsString("mode-WALKING")))
                 .andExpect(content().string(containsString("timeline-top-places")))
                 .andExpect(content().string(containsString("Test Place")))
+                .andExpect(content().string(containsString("is-clickable")))
+                .andExpect(content().string(containsString("data-lat")))
+                .andExpect(content().string(containsString("data-lng")))
                 .andExpect(content().string(containsString("Most time spent")))
                 .andExpect(content().string(containsString("<small>km</small>")))
                 .andExpect(content().string(not(containsString("activity-overview-chart"))));
@@ -117,6 +120,7 @@ class TimelineControllerAggregatedTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("timeline-activity is-month")))
                 .andExpect(content().string(containsString("timeline-activity-day")))
+                .andExpect(content().string(containsString("data-date")))
                 .andExpect(content().string(containsString("level-4")))
                 .andExpect(content().string(containsString("mode-CYCLING")))
                 .andExpect(content().string(not(containsString("timeline-activity-hourly"))));

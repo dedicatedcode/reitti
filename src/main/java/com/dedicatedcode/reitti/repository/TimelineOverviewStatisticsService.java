@@ -147,10 +147,12 @@ SELECT
                                                                                            DATE_TRUNC(:granularity, DATE_TRUNC('day', v.start_time AT TIME ZONE :timezone) - make_interval(mins => :dayStartMinutes)) AT TIME ZONE :timezone AS time_bucket,
                                                                                            lm.metadata->>'mood' AS mood,
                                                                                            v.id,
-                                                                                          s.id AS place_id,
-                                                                                          s.name AS place_name,
-                                                                                          SUM(v.duration_seconds)::BIGINT AS duration_seconds,
-                                                                                          COUNT(*) AS mood_count
+                                                                                           s.id AS place_id,
+                                                                                           s.name AS place_name,
+                                                                                           s.latitude_centroid,
+                                                                                           s.longitude_centroid,
+                                                                                           SUM(v.duration_seconds)::BIGINT AS duration_seconds,
+                                                                                           COUNT(*) AS mood_count
                                                                                       FROM processed_visits v
                                                                                       LEFT JOIN LATERAL (
                                                                                           SELECT metadata
@@ -166,7 +168,7 @@ SELECT
                                                                                       LEFT JOIN significant_places s ON s.id = v.place_id
                                                                                       WHERE v.user_id = :userId
                                                                                         AND v.start_time >= :start AND v.start_time <= :end
-                                                                                      GROUP BY 1, 2, 3, 4, 5
+                                                                                      GROUP BY 1, 2, 3, 4, 5, 6, 7
                                                                                       ORDER BY time_bucket;
                                                                                       """, params);
 
@@ -321,7 +323,7 @@ SELECT
             for (int dow = 0; dow < 7; dow++) {
                 LocalDate date = weekStart.plusDays(dow);
                 if (date.isBefore(rangeStart) || date.isAfter(rangeEnd)) {
-                    cells.add(new GroupedTimelineEntry.ActivityCell(true, 0, null));
+                    cells.add(new GroupedTimelineEntry.ActivityCell(true, 0, null, null));
                     continue;
                 }
                 long[] hours = activityPerHour.get(date);
@@ -332,7 +334,7 @@ SELECT
                                                      String.format("%02d:00", hour),
                                                      String.format("%02d:00", hour + 1),
                                                      formatter.duration(seconds));
-                cells.add(new GroupedTimelineEntry.ActivityCell(false, level, title));
+                cells.add(new GroupedTimelineEntry.ActivityCell(false, level, title, date));
             }
         }
         return cells;
@@ -378,11 +380,18 @@ SELECT
 
     private List<GroupedTimelineEntry.TopPlace> buildTopPlaces(List<GroupedTimelineEntry.VisitEntry> visitEntries, StatisticsFormatter formatter) {
         return visitEntries.stream()
-                .filter(v -> v.name() != null)
+                .filter(v -> v.name() != null && !v.parts().isEmpty())
                 .sorted(Comparator.comparingLong(GroupedTimelineEntry.VisitEntry::durationSeconds).reversed())
                 .limit(5)
-                .map(v -> new GroupedTimelineEntry.TopPlace(v.name(), formatter.duration(v.durationSeconds())))
+                .map(v -> {
+                    GroupedTimelineEntry.VisitPart part = v.parts().getFirst();
+                    return new GroupedTimelineEntry.TopPlace(v.name(), formatter.duration(v.durationSeconds()), part.latitude(), part.longitude());
+                })
                 .toList();
+    }
+
+    private Double toDouble(Object value) {
+        return value instanceof Number number ? number.doubleValue() : null;
     }
 
     private Set<LocalDate> extractKeys(Map<LocalDate, List<Map<String, Object>>> amountOfTrips, Map<LocalDate, List<Map<String, Object>>> splitVisits, Map<LocalDate, Map<TransportMode, List<GroupedTimelineEntry.TransportModePart>>> transportModeData, Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> visitMoods, Map<LocalDate, List<GroupedTimelineEntry.MoodValue>> tripMoods) {
@@ -452,10 +461,12 @@ SELECT
                 for (Map<String, Object> partValue : partValues) {
                     long duration = (long) partValue.get("duration_seconds");
                     Long placeId = (Long) partValue.get("place_id");
+                    Double latitude = toDouble(partValue.get("latitude_centroid"));
+                    Double longitude = toDouble(partValue.get("longitude_centroid"));
                     String cleaned = StringUtils.hasText(placeName) ? placeName : null;
                     String moodValue = (String) partValue.get("mood");
                     Mood mood = moodValue != null ? Mood.valueOf(moodValue) : null;
-                    parts.computeIfAbsent(cleaned, _ -> new ArrayList<>()).add(new GroupedTimelineEntry.VisitPart(placeId, cleaned, mood, duration, (double) duration / (double) totalDuration));
+                    parts.computeIfAbsent(cleaned, _ -> new ArrayList<>()).add(new GroupedTimelineEntry.VisitPart(placeId, cleaned, mood, duration, (double) duration / (double) totalDuration, latitude, longitude));
                 }
             }
             if (!parts.isEmpty()) {
