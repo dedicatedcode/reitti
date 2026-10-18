@@ -112,12 +112,14 @@
                     <span th:each="day : ${entry.overview()}"
                           class="stats-calendar-day timeline-activity-day"
                           th:classappend="'level-' + ${day.level()}"
+                          th:data-date="${day.slot() != null} ? ${#temporals.format(day.slot(), 'yyyy-MM-dd')}"
                           th:title="${day.title()}"></span>
                 </div>
                 <div class="timeline-agg-section timeline-activity-hourly" th:unless="${entry.monthly()}">
                     <span th:each="cell : ${entry.activity()}"
                           class="timeline-activity-hour"
                           th:classappend="${cell.blank()} ? 'is-blank' : ('level-' + ${cell.level()})"
+                          th:data-date="${cell.date() != null} ? ${#temporals.format(cell.date(), 'yyyy-MM-dd')}"
                           th:title="${cell.title()}"></span>
                 </div>
                 <div class="timeline-agg-section" th:if="${entry.movement() != null}">
@@ -142,7 +144,10 @@
                 <div class="timeline-agg-section" th:if="${!entry.topPlaces().isEmpty()}">
                     <div class="timeline-agg-headline" th:text="#{timeline.grouped.top-places.headline}">Most time spent</div>
                     <ul class="stats-places timeline-top-places">
-                        <li th:each="place : ${entry.topPlaces()}">
+                        <li th:each="place : ${entry.topPlaces()}"
+                            th:classappend="${place.latitude() != null and place.longitude() != null} ? 'is-clickable'"
+                            th:data-lat="${place.latitude()}"
+                            th:data-lng="${place.longitude()}">
                             <span th:text="${place.name()}">Park</span>
                             <span class="stats-place-meta" th:text="${place.duration()}">6 h</span>
                         </li>

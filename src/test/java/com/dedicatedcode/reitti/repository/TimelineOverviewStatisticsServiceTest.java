@@ -120,10 +120,14 @@ class TimelineOverviewStatisticsServiceTest {
         assertTrue(firstWeek.activity().stream().noneMatch(GroupedTimelineEntry.ActivityCell::blank));
         GroupedTimelineEntry.ActivityCell nightCell = firstWeek.activity().get(0);
         assertEquals(0, nightCell.level());
+        assertEquals(LocalDate.of(2025, 1, 6), nightCell.date());
         GroupedTimelineEntry.ActivityCell stayCell = firstWeek.activity().get(5 * 7);
         assertEquals(0, stayCell.level());
         GroupedTimelineEntry.ActivityCell morningCell = firstWeek.activity().get(7 * 7);
         assertEquals(4, morningCell.level());
+        assertEquals(LocalDate.of(2025, 1, 6), morningCell.date());
+        assertEquals(LocalDate.of(2025, 1, 12), firstWeek.activity().get(6).date());
+        assertEquals(LocalDate.of(2025, 1, 12), firstWeek.activity().get(23 * 7 + 6).date());
         assertNotNull(morningCell.title());
         assertTrue(morningCell.title().contains("07:00"));
         assertTrue(morningCell.title().contains("1 h"));
@@ -141,6 +145,8 @@ class TimelineOverviewStatisticsServiceTest {
         assertEquals(1, firstWeek.topPlaces().size());
         assertEquals("Test Place", firstWeek.topPlaces().get(0).name());
         assertNotNull(firstWeek.topPlaces().get(0).duration());
+        assertEquals(place.getLatitudeCentroid(), firstWeek.topPlaces().get(0).latitude());
+        assertEquals(place.getLongitudeCentroid(), firstWeek.topPlaces().get(0).longitude());
     }
 
     @Test
@@ -191,6 +197,7 @@ class TimelineOverviewStatisticsServiceTest {
         assertTrue(janEntry.name().contains("January"));
         assertTrue(janEntry.subHeadline().contains("01."));
         assertEquals(31, janEntry.overview().size());
+        assertEquals(LocalDate.of(2024, 1, 1), janEntry.overview().get(0).slot());
         long daysWithVisits = janEntry.overview().stream().filter(e -> e.visits() > 0).count();
         assertEquals(1, daysWithVisits);
         assertEquals(1, janEntry.trips());

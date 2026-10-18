@@ -1200,6 +1200,28 @@ tr:hover {
     background: transparent;
 }
 
+.timeline-container .aggregated-entry .stats-calendar-day[data-date],
+.timeline-container .aggregated-entry .timeline-activity-hour[data-date] {
+    cursor: pointer;
+}
+
+.timeline-container .aggregated-entry .stats-calendar-day[data-date]:hover {
+    filter: brightness(1.3);
+}
+
+.timeline-container .aggregated-entry .timeline-activity-hour.is-row-hover {
+    box-shadow: inset 0 0 0 1px rgba(245, 222, 179, 0.55);
+}
+
+.timeline-container .aggregated-entry .timeline-top-places li.is-clickable {
+    cursor: pointer;
+}
+
+.timeline-container .aggregated-entry .timeline-top-places li.is-clickable:hover span:first-child {
+    text-decoration: underline;
+    text-decoration-color: var(--color-highlight);
+}
+
 .timeline-container .aggregated-entry .stats-bar-label {
     font-size: 0.95rem;
 }
@@ -1246,7 +1268,6 @@ tr:hover {
 
 .timeline-container .aggregated-entry-container {
     position: relative;
-    pointer-events: all;
     margin-left: 24px;
     justify-self: stretch;
 }
@@ -2714,7 +2735,7 @@ button:disabled {
 .timeband-item.selected {
     background-color: unset;
     color: var(--color-highlight);
-    transform: scale(1.05);
+    transform: scale(1.25);
     box-shadow: unset;
 }
 
@@ -2731,19 +2752,14 @@ button:disabled {
     color: white;
 }
 
-.timeband-item.range-start:hover::before, .timeband-item.range-end:hover::before {
-    opacity: 1;
-}
-
 .timeband-item.selected::before {
     content: "\eb47";
     font-family: 'Lineicons';
     font-weight: 900;
     position: absolute;
-    top: 4px;
+    top: 19px;
     left: unset;
     transform: unset;
-    font-size: 1.2rem;
     color: rgba(255, 255, 255, 0.9);
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -2752,11 +2768,20 @@ button:disabled {
     right: 4px;
 }
 
-.timeband-item.locked::before,
-.timeband-item.selected.range-start::before,
-.timeband-item.selected.range-end::before{
+.timeband-item.range-start::before,
+.timeband-item.range-end::before {
+    content: none;
+}
+
+.timeband-item.locked::before {
+    content: "\eb47";
+    opacity: 1;
+}
+
+.timeband-item.locked:hover::before {
     content: "\ec2a";
 }
+
 .timeband-item.selected:hover::before {
     opacity: 1;
 }
