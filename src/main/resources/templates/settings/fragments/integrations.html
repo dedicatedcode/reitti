@@ -57,7 +57,7 @@
                         <li th:utext="#{integrations.gpslogger.step1}">Download GPSLogger from FDroid or directly from GitHub</li>
                         <li th:utext="#{integrations.gpslogger.step2}">Open GPSLogger, open the sidebar and click on <strong>HTTP-File-Upload</strong></li>
                         <li th:utext="#{integrations.gpslogger.step3}">Enable "Allow Auto Sending"</li>
-                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + contextPath + '/api/v2/gpslogger/file'})}">Set the URL to: <code>https://your-domain.com//api/v2/gpslogger/file</code></li>
+                        <li th:utext="#{integrations.gpslogger.step4.with.token(${serverUrl + '/api/v2/gpslogger/file'})}">Set the URL to: <code>https://your-domain.com//api/v2/gpslogger/file</code></li>
                         <li><span th:utext="#{integrations.gpslogger.step5}">Set HTTP Header to:</span>
 <pre>
 Authorization: <span th:text="${selectedToken}">123456</span>
@@ -84,8 +84,8 @@ Authorization: <span th:text="${selectedToken}">123456</span>
                         <li th:text="#{integrations.owntracks.step1}">Download OwnTracks from the App Store or Google Play Store</li>
                         <li th:utext="#{integrations.owntracks.step2}">Open OwnTracks and go to <strong>Settings → Connection</strong></li>
                         <li th:utext="#{integrations.owntracks.step3}">Set Mode to <strong>HTTP</strong></li>
-                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
-                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.owntracks.step4.with.token(${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=' + selectedToken}">https://your-domain.com/api/v1/location-data</code></li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.owntracks.step4.without.token(${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'})}">Set the Endpoint to: <code th:text="${serverUrl + '/api/v1/ingest/owntracks?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/location-data</code></li>
                         <li th:utext="#{integrations.owntracks.step5}">Disable <strong>Authentication</strong> (we use the token in the URL instead)</li>
                         <li th:text="#{integrations.owntracks.step6}">Configure tracking settings as desired. Make sure that Owntracks records a point at least every 30 seconds.</li>
                         <li th:utext="#{integrations.owntracks.step7}">On the map view, set tracking mode to "Movement"</li>
@@ -113,8 +113,8 @@ Authorization: <span th:text="${selectedToken}">123456</span>
                         <li th:utext="#{integrations.overland.step2}">Open Overland and go to the <strong>Settings</strong> tab</li>
                         <li th:utext="#{integrations.overland.step3}"><strong>Important:</strong> Tap the <strong>Request Permission</strong> button to grant location access - Overland will not track anything without this permission</li>
                         <li th:utext="#{integrations.overland.step4}">Tap on <strong>Receiver Endpoint</strong></li>
-                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
-                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + contextPath + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.overland.step5.with.token(${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=' + selectedToken}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.overland.step5.without.token(${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'})}">Set the Endpoint URL to: <code th:text="${serverUrl + '/api/v1/ingest/overland?token=<YOUR TOKEN>'}">https://your-domain.com/api/v1/ingest/overland?token=YOUR_TOKEN</code></li>
                         <li th:utext="#{integrations.overland.step6}">Leave the <strong>Device ID</strong> field empty or set a custom identifier</li>
                         <li th:utext="#{integrations.overland.step7}">Leave the <strong>Access Token</strong> field empty (we use the token in the URL)</li>
                         <li th:utext="#{integrations.overland.step8}">Configure tracking settings:
@@ -149,8 +149,8 @@ Authorization: <span th:text="${selectedToken}">123456</span>
                         <li th:text="#{integrations.colota.step1}">Install Colota</li>
                         <li th:utext="#{integrations.colota.step2}">Open Colota and go to the <strong>Settings > API Settings</strong></li>
                         <li th:utext="#{integrations.colota.step3}">Select the <strong>Reitti template</strong></li>
-                        <li th:if="${hasToken}" th:utext="#{integrations.colota.step4.with.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
-                        <li th:unless="${hasToken}" th:utext="#{integrations.colota.step4.without.token(${serverUrl + contextPath + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li th:if="${hasToken}" th:utext="#{integrations.colota.step4.with.token(${serverUrl + '/api/v1/ingest/gpslogger'})}">URL</li>
+                        <li th:unless="${hasToken}" th:utext="#{integrations.colota.step4.without.token(${serverUrl + '/api/v1/ingest/gpslogger'})}">URL</li>
                         <li><span th:utext="#{integrations.colota.step5}">Set HTTP Header to:</span>
 <pre>
 X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
@@ -888,7 +888,7 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             }
 
             function generateOwnTracksConfig(token, serverUrl) {
-                const url = serverUrl + window.contextPath + '/api/v1/ingest/owntracks?token=' + token;
+                const url = serverUrl + '/api/v1/ingest/owntracks?token=' + token;
                 const json = JSON.stringify({
                     "_type": "configuration",
                     "url": url,
@@ -900,18 +900,18 @@ X-API-TOKEN: <span th:text="${selectedToken}">123456</span>
             }
 
             function generateGpsLoggerPropertiesUrl(token, serverUrl) {
-                return serverUrl + window.contextPath +  '/api/v2/gpslogger/reitti.properties?token=' + token;
+                return serverUrl +  '/api/v2/gpslogger/reitti.properties?token=' + token;
             }
 
             function generateOverlandUrl(token, serverUrl) {
-                const ingestUrl = serverUrl + window.contextPath + '/api/v1/ingest/overland?token=' + token;
+                const ingestUrl = serverUrl + '/api/v1/ingest/overland?token=' + token;
                 const encodedUrl = encodeURIComponent(ingestUrl);
                 return 'overland://setup?url=' + encodedUrl + '&device_id=1&unique_id=yes';
             }
 
             function generateColotaConfig(token, serverUrl) {
                 const json = JSON.stringify({
-                    "endpoint": serverUrl + window.contextPath + '/api/v1/ingest/gpslogger',
+                    "endpoint": serverUrl + '/api/v1/ingest/gpslogger',
                     "apiTemplate": "reitti",
                     "httpMethod": "POST",
                     "customHeaders": {
