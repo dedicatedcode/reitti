@@ -1,5 +1,7 @@
 package com.dedicatedcode.reitti.controller;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
+import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
 import com.dedicatedcode.reitti.dto.PhotoResponse;
 import com.dedicatedcode.reitti.dto.TripDTO;
 import com.dedicatedcode.reitti.dto.VisitDTO;
@@ -11,7 +13,6 @@ import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
 import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
 import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.repository.MemoryTripJdbcService;
 import com.dedicatedcode.reitti.repository.MemoryVisitJdbcService;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
@@ -65,9 +66,10 @@ public class MemoryBlockController {
             @PathVariable Long memoryId,
             @PathVariable Long blockId,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        
-        memoryService.getMemoryById(user, memoryId)
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryBlock block = memoryService.getBlockById(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Block not found"));
@@ -94,6 +96,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryBlock block = memoryService.getBlockById(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Block not found"));
@@ -161,6 +164,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyAccess(memory, user);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, blockId).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
         model.addAttribute("isOwner", isOwner(memory, user));
@@ -182,6 +186,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryClusterBlock block = memoryService.getClusterBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Cluster block not found"));
@@ -261,7 +266,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-
+        verifyEditAccess(memory, user);
         MemoryClusterBlock clusterBlock = memoryService.createClusterBlock(user,memory, title, position, type, selectedParts);
         model.addAttribute("memory", memory);
         model.addAttribute("blocks", List.of(this.memoryService.getBlock(user, timezone, memoryId, clusterBlock.getBlockId()).orElseThrow(() -> new IllegalArgumentException("Block not found"))));
@@ -276,10 +281,11 @@ public class MemoryBlockController {
             @AuthenticationPrincipal User user,
             @PathVariable Long memoryId,
             @RequestParam List<Long> blockIds) {
-        
-        memoryService.getMemoryById(user, memoryId)
+
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+
+        verifyEditAccess(memory, user);
         memoryService.reorderBlocks(user, memoryId, blockIds);
         return "redirect:/memories/" + memoryId;
     }
@@ -296,6 +302,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.TEXT);
         memoryService.addTextBlock(user, block.getId(), headline, content);
@@ -318,6 +325,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryBlockText textBlock = memoryService.getTextBlock(user, blockId)
                 .orElseThrow(() -> new IllegalArgumentException("Text block not found"));
@@ -342,7 +350,8 @@ public class MemoryBlockController {
             Model model) {
 
         Memory memory = memoryService.getMemoryById(user, memoryId).orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+        verifyEditAccess(memory, user);
+
         MemoryBlock block = memoryService.addBlock(user, memoryId, position, BlockType.IMAGE_GALLERY);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
 
@@ -376,6 +385,7 @@ public class MemoryBlockController {
 
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyEditAccess(memory, user);
 
         MemoryBlockImageGallery imageBlock = memoryService.getImagesForBlock(user, blockId);
         List<MemoryBlockImageGallery.GalleryImage> imageBlocks = new ArrayList<>();
@@ -406,9 +416,9 @@ public class MemoryBlockController {
             @RequestParam("files") List<MultipartFile> files,
             Model model) {
 
-        memoryService.getMemoryById(user, memoryId)
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-
+        verifyEditAccess(memory, user);
         List<String> urls = new ArrayList<>();
 
         for (MultipartFile file : files) {
@@ -445,8 +455,9 @@ public class MemoryBlockController {
             @RequestParam String assetId,
             Model model) {
 
-        memoryService.getMemoryById(user, memoryId)
+        Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
+        verifyAccess(memory, user);
 
         String imageUrl;
         if (storageService.exists("memories/" + memoryId + "/" + assetId)) {
@@ -471,7 +482,7 @@ public class MemoryBlockController {
         
         Memory memory = memoryService.getMemoryById(user, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Memory not found"));
-        
+        verifyAccess(memory, user);
         ZoneId zoneId = ZoneId.of(timezone);
         LocalDate startDate = memory.getStartDate().atZone(zoneId).toLocalDate();
         LocalDate endDate = memory.getEndDate() != null ? memory.getEndDate().atZone(zoneId).toLocalDate() : Instant.now().atZone(zoneId).toLocalDate();
@@ -493,6 +504,19 @@ public class MemoryBlockController {
         return "memories/fragments :: immich-photos-grid";
     }
 
+    private void verifyAccess(Memory memory, User user) {
+        if (user instanceof TokenUser tokenUser) {
+            if (!tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId())) {
+                throw new PageNotFoundException("Memory not found");
+            }
+        }
+    }
+
+    private void verifyEditAccess(Memory memory, User user) {
+        if (!canEdit(memory, user)) {
+            throw new ForbiddenException("You are not allowed to edit this memory");
+        }
+    }
 
     private boolean isOwner(Memory memory, User user) {
         if (user.getAuthorities().contains(ADMIN.asAuthority()) || user.getAuthorities().contains(USER.asAuthority())) {
