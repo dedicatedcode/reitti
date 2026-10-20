@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.controller.settings;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.dto.map.MapStyleConfigDTO;
 import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.map.MapStyleDataSource;
@@ -88,6 +89,9 @@ public class MapStylesSettingsController {
         Long id = params.get("id") != null ? Long.parseLong(params.get("id")) : null;
         if (id != null && this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
+        }
+        if (user.getRole() != Role.ADMIN && "on".equals(params.get("shared"))) {
+            throw new ForbiddenException("Only admins can share map styles");
         }
         String mapType = params.get("mapType");
         String name = params.get("name");
