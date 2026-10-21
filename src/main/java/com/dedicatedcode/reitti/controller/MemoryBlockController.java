@@ -17,14 +17,18 @@ import com.dedicatedcode.reitti.repository.MemoryTripJdbcService;
 import com.dedicatedcode.reitti.repository.MemoryVisitJdbcService;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.service.ImageType;
+import com.dedicatedcode.reitti.service.ImageTypeDetector;
 import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.StorageService;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -49,8 +53,9 @@ public class MemoryBlockController {
     private final MemoryVisitJdbcService memoryVisitJdbcService;
     private final MemoryTripJdbcService memoryTripJdbcService;
     private final StorageService storageService;
+    private final ImageTypeDetector imageTypeDetector;
 
-    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, MemoryVisitJdbcService memoryVisitJdbcService, MemoryTripJdbcService memoryTripJdbcService, StorageService storageService) {
+    public MemoryBlockController(MemoryService memoryService, ImmichIntegrationService immichIntegrationService, TripJdbcService tripJdbcService, ProcessedVisitJdbcService processedVisitJdbcService, MemoryVisitJdbcService memoryVisitJdbcService, MemoryTripJdbcService memoryTripJdbcService, StorageService storageService, ImageTypeDetector imageTypeDetector) {
         this.memoryService = memoryService;
         this.immichIntegrationService = immichIntegrationService;
         this.tripJdbcService = tripJdbcService;
@@ -58,6 +63,7 @@ public class MemoryBlockController {
         this.memoryVisitJdbcService = memoryVisitJdbcService;
         this.memoryTripJdbcService = memoryTripJdbcService;
         this.storageService = storageService;
+        this.imageTypeDetector = imageTypeDetector;
     }
 
     @DeleteMapping("/{blockId}")
@@ -427,14 +433,11 @@ public class MemoryBlockController {
             }
 
             try {
-                String originalFilename = file.getOriginalFilename();
-                String extension = "";
-                if (originalFilename != null && originalFilename.contains(".")) {
-                    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                }
-                String filename = UUID.randomUUID() + extension;
+                ImageType imageType = imageTypeDetector.detectImage(file.getInputStream())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported image type"));
+                String filename = UUID.randomUUID() + imageType.extension();
 
-                storageService.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), file.getContentType());
+                storageService.store("memories/" + memoryId + "/" + filename, file.getInputStream(), file.getSize(), imageType.contentType());
 
                 String fileUrl = "/api/v1/photos/reitti/memories/" + memoryId + "/" + filename;
                 urls.add(fileUrl);
