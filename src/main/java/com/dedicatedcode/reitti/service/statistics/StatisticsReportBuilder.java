@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.service.statistics.StatisticsReport.*;
 
 import java.time.*;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
@@ -29,12 +30,17 @@ public class StatisticsReportBuilder {
     private final StatisticsFormatter f;
     private final List<Day> tracked;
     private final Long periodHome;
+    private final int leftoversMinNightsAway;
+    private final double leftoversMinDistanceMeters;
 
-    public StatisticsReportBuilder(StatisticsContext ctx, StatisticsFormatter formatter) {
+    public StatisticsReportBuilder(StatisticsContext ctx, StatisticsFormatter formatter,
+                                   int leftoversMinNightsAway, double leftoversMinDistanceKm) {
         this.ctx = ctx;
         this.f = formatter;
         this.tracked = ctx.days().stream().filter(Day::isTracked).toList();
         this.periodHome = mostFrequent(ctx.days().stream().map(d -> d.homeId).filter(Objects::nonNull).toList());
+        this.leftoversMinNightsAway = leftoversMinNightsAway;
+        this.leftoversMinDistanceMeters = leftoversMinDistanceKm * 1000;
     }
 
     public StatisticsReport build(Navigation navigation) {
@@ -697,11 +703,9 @@ public class StatisticsReportBuilder {
         List<TopPlace> topPlaces = seconds.entrySet().stream()
                 .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
                 .limit(5)
-                .map(e -> {
-                    return new TopPlace(placeName(e.getKey()), f.duration(e.getValue()),
-                                        f.t("statistics.comparison.visits", visits.getOrDefault(e.getKey(), 1)),
-                                        placeHref(e.getKey()));
-                })
+                .map(e -> new TopPlace(placeName(e.getKey()), f.duration(e.getValue()),
+                                   f.t("statistics.comparison.visits", visits.getOrDefault(e.getKey(), 1)),
+                                   placeHref(e.getKey())))
                 .toList();
         List<CompareOption> options = compareOptions();
         if (headline == null && highlights.isEmpty() && topPlaces.isEmpty()) {
@@ -744,7 +748,7 @@ public class StatisticsReportBuilder {
         if (trips > 0 && changed > 0) {
             lines.add(TextLine.of(f.t("statistics.leftovers.mode-change", f.percent(changed / (double) trips))));
         }
-        List<NightCalculator.Night> away = awayNights();
+        List<NightCalculator.Night> away = awayNightsForLeftovers();
         if (!away.isEmpty()) {
             List<LocalDate> withoutMemory = away.stream().filter(n -> {
                 ZoneId zone = n.placeId() != null ? NightCalculator.zoneOf(ctx.places().get(n.placeId()), ctx.zone()) : ctx.zone();
@@ -855,6 +859,55 @@ public class StatisticsReportBuilder {
         return periodNights().stream()
                 .filter(n -> DayCalculator.isAway(n, ctx.homes().homeFor(n.date())))
                 .toList();
+    }
+
+    private List<NightCalculator.Night> awayNightsForLeftovers() {
+        return qualifyingAwayRuns(periodNights(), night -> ctx.homes().homeFor(night.date()), this::distanceBetween,
+                                  leftoversMinNightsAway, leftoversMinDistanceMeters);
+    }
+
+    static List<NightCalculator.Night> qualifyingAwayRuns(List<NightCalculator.Night> nights,
+                                                          Function<NightCalculator.Night, Long> homeForNight,
+                                                          BiFunction<Long, Long, Optional<Double>> distanceMeters,
+                                                          int minNights,
+                                                          double minDistanceMeters) {
+        List<NightCalculator.Night> result = new ArrayList<>();
+        List<NightCalculator.Night> run = new ArrayList<>();
+        for (NightCalculator.Night night : nights) {
+            if (DayCalculator.isAway(night, homeForNight.apply(night))) {
+                if (!run.isEmpty() && !night.date().equals(run.getLast().date().plusDays(1))) {
+                    addQualifyingRun(result, run, homeForNight, distanceMeters, minNights, minDistanceMeters);
+                    run = new ArrayList<>();
+                }
+                run.add(night);
+            } else if (!run.isEmpty()) {
+                addQualifyingRun(result, run, homeForNight, distanceMeters, minNights, minDistanceMeters);
+                run = new ArrayList<>();
+            }
+        }
+        addQualifyingRun(result, run, homeForNight, distanceMeters, minNights, minDistanceMeters);
+        return result;
+    }
+
+    private static void addQualifyingRun(List<NightCalculator.Night> result,
+                                         List<NightCalculator.Night> run,
+                                         Function<NightCalculator.Night, Long> homeForNight,
+                                         BiFunction<Long, Long, Optional<Double>> distanceMeters,
+                                         int minNights,
+                                         double minDistanceMeters) {
+        if (run.size() < minNights) {
+            return;
+        }
+        double farthest = run.stream().mapToDouble(night -> {
+            Long home = homeForNight.apply(night);
+            if (home == null || night.placeId() == null) {
+                return 0;
+            }
+            return distanceMeters.apply(home, night.placeId()).orElse(0.0);
+        }).max().orElse(0);
+        if (farthest >= minDistanceMeters) {
+            result.addAll(run);
+        }
     }
 
     private Set<Long> placesInPeriod() {
