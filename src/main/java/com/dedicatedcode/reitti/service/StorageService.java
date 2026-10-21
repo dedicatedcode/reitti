@@ -13,9 +13,11 @@ import java.util.stream.Stream;
 @Service
 public class StorageService {
     private final String storagePath;
+    private final ImageTypeDetector imageTypeDetector;
 
-    public StorageService(@Value("${reitti.storage.path}") String storagePath) {
+    public StorageService(@Value("${reitti.storage.path}") String storagePath, ImageTypeDetector imageTypeDetector) {
         this.storagePath = storagePath;
+        this.imageTypeDetector = imageTypeDetector;
         Path path = Paths.get(storagePath);
         try {
             // Create directory if it doesn't exist
@@ -42,8 +44,8 @@ public class StorageService {
     public StorageContent read(String itemName) {
         Path filePath = Paths.get(storagePath, itemName);
         try {
+            String contentType = imageTypeDetector.detectContentType(filePath);
             InputStream inputStream = Files.newInputStream(filePath);
-            String contentType = Files.probeContentType(filePath);
             long contentLength = Files.size(filePath);
             return new StorageContent(inputStream, contentType, contentLength);
         } catch (IOException e) {

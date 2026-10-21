@@ -14,11 +14,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.List;
 
@@ -32,8 +35,8 @@ class ReittiPhotoApiControllerTest {
 
     private static final Instant MEMORY_START = Instant.parse("2024-01-01T00:00:00Z");
     private static final Instant MEMORY_END = Instant.parse("2024-01-07T00:00:00Z");
-    private static final String FILENAME = "photo.jpg";
-    private static final byte[] PHOTO = new byte[]{1, 2, 3, 4, 5};
+    private static final String FILENAME = "photo.png";
+    private static final byte[] PHOTO = loadPhoto();
 
     @Autowired
     private MockMvc mockMvc;
@@ -78,13 +81,21 @@ class ReittiPhotoApiControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    private static byte[] loadPhoto() {
+        try {
+            return new ClassPathResource("static/img/logo.png").getInputStream().readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     private Memory createMemory(String title) {
         return memoryJdbcService.create(owner, new Memory(title, "", MEMORY_START, MEMORY_END, HeaderType.MAP, null));
     }
 
     private void storePhoto(Memory memory) {
         storageService.store("memories/" + memory.getId() + "/" + FILENAME,
-                             new ByteArrayInputStream(PHOTO), PHOTO.length, "image/jpeg");
+                             new ByteArrayInputStream(PHOTO), PHOTO.length, "image/png");
     }
 
     private RequestPostProcessor memoryLink(Memory memory) {
