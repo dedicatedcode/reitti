@@ -136,6 +136,12 @@ is created automatically for you, so you can jump straight into connecting your 
 
 ---
 
+## One-Click Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Reitti/)
+
+---
+
 ## Data Import & Integrations
 
 | Source                 | Type        | Docs                                                                                                 |
