@@ -12,6 +12,7 @@ import com.dedicatedcode.reitti.service.TimeUtil;
 import com.dedicatedcode.reitti.service.integration.ImmichIntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,8 @@ public class StatisticsReportService {
     private final ImmichIntegrationService immichIntegrationService;
     private final I18nService i18nService;
     private final CacheManager cacheManager;
+    private final int leftoversMinNightsAway;
+    private final double leftoversMinDistanceKm;
     private final NightCalculator nightCalculator = new NightCalculator();
     private final HomeResolver homeResolver = new HomeResolver();
     private final DayCalculator dayCalculator = new DayCalculator();
@@ -46,13 +49,17 @@ public class StatisticsReportService {
                                    StatisticsDataVersionService dataVersionService,
                                    ImmichIntegrationService immichIntegrationService,
                                    I18nService i18nService,
-                                   CacheManager cacheManager) {
+                                   CacheManager cacheManager,
+                                   @Value("${reitti.statistics.leftovers.min-nights-away:3}") int leftoversMinNightsAway,
+                                   @Value("${reitti.statistics.leftovers.min-distance-km:10}") double leftoversMinDistanceKm) {
         this.statisticsJdbcService = statisticsJdbcService;
         this.userSettingsJdbcService = userSettingsJdbcService;
         this.dataVersionService = dataVersionService;
         this.immichIntegrationService = immichIntegrationService;
         this.i18nService = i18nService;
         this.cacheManager = cacheManager;
+        this.leftoversMinNightsAway = leftoversMinNightsAway;
+        this.leftoversMinDistanceKm = leftoversMinDistanceKm;
     }
 
     public ZoneId effectiveZone(User user, ZoneId requested) {
@@ -121,7 +128,7 @@ public class StatisticsReportService {
         LocalTime dayStart = dayStartTime(user);
         List<YearMonth> months = statisticsJdbcService.findAvailableMonths(user, zone, dayStart);
         StatisticsContext context = loadContext(user, period, compare, zone, dayStart, months);
-        StatisticsReportBuilder builder = new StatisticsReportBuilder(context, formatter);
+        StatisticsReportBuilder builder = new StatisticsReportBuilder(context, formatter, leftoversMinNightsAway, leftoversMinDistanceKm);
         return builder.build(navigation(period, months, builder));
     }
 
