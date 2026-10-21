@@ -86,6 +86,9 @@ public class MapStylesSettingsController {
 
     @PostMapping
     public String saveMapStyle(@AuthenticationPrincipal User user, @RequestParam Map<String, String> params, Model model, HttpServletResponse response) {
+        if (user.getRole() != Role.ADMIN && params.containsKey("shared")) {
+            throw new ForbiddenException("Only admins are allowed to share map styles");
+        }
         Long id = params.get("id") != null ? Long.parseLong(params.get("id")) : null;
         if (id != null && this.userMapStyleJdbcService.findById(user, id).isEmpty()) {
             throw new IllegalStateException("Not allowed to use style with id [" + id + "]");
