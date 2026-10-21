@@ -1,8 +1,13 @@
 package com.dedicatedcode.reitti.controller.api;
 
+import com.dedicatedcode.reitti.controller.error.PageNotFoundException;
+import com.dedicatedcode.reitti.model.memory.Memory;
+import com.dedicatedcode.reitti.model.security.MagicLinkResourceType;
+import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.service.ImageType;
 import com.dedicatedcode.reitti.service.ImageTypeDetector;
+import com.dedicatedcode.reitti.service.MemoryService;
 import com.dedicatedcode.reitti.service.StorageService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import redis.clients.authentication.core.Token;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -24,10 +30,12 @@ public class ReittiPhotoApiController {
 
     private final StorageService storageService;
     private final ImageTypeDetector imageTypeDetector;
+    private final MemoryService memoryService;
 
-    public ReittiPhotoApiController(StorageService storageService, ImageTypeDetector imageTypeDetector) {
+    public ReittiPhotoApiController(StorageService storageService, ImageTypeDetector imageTypeDetector, MemoryService memoryService) {
         this.storageService = storageService;
         this.imageTypeDetector = imageTypeDetector;
+        this.memoryService = memoryService;
     }
 
     @GetMapping("/{filename}")
@@ -45,6 +53,12 @@ public class ReittiPhotoApiController {
                                                                  @PathVariable String filename,
                                                                  @AuthenticationPrincipal User user) {
         try {
+            Memory memory = this.memoryService.getMemoryById(user, Long.valueOf(memoryId)).orElseThrow(() -> new PageNotFoundException("Memory not found"));
+            if (user instanceof TokenUser tokenUser) {
+                if (!tokenUser.grantsAccessTo(MagicLinkResourceType.MEMORY, memory.getId())) {
+                    throw new PageNotFoundException("Access denied");
+                }
+            }
             StorageService.StorageContent result = this.storageService.read("memories/" + memoryId + "/" + filename);
             return imageResponse(result);
         } catch (Exception e) {

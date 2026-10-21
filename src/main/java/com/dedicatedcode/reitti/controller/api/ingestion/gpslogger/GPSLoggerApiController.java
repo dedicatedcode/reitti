@@ -102,7 +102,7 @@ public class GPSLoggerApiController {
     @GetMapping("/reitti.properties")
     public ResponseEntity<String> getGpsLoggerProperties(@RequestParam String token, HttpServletRequest request) {
         String serverUrl = RequestHelper.getBaseUrl(request);
-        String url = serverUrl + contextPathHolder.getContextPath() + "/api/v2/gpslogger/file";
+        String url = serverUrl + "/api/v2/gpslogger/file";
         String properties = "httpfileupload_url=" + url + "\n" +
                 "httpfileupload_method=POST\n" +
                 "autosend_sendzip=false\n" +
