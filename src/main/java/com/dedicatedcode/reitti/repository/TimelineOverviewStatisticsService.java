@@ -278,7 +278,7 @@ SELECT
             entries.add(new GroupedTimelineEntry(UUID.randomUUID(),
                                                  name,
                                                  subheadline,
-                                                 String.format(contextPathHolder.getContextPath() + "/?startDate=%s&endDate=%s", adjustedRangeStart, adjustedRangeEnd),
+                                                 String.format("/?startDate=%s&endDate=%s", adjustedRangeStart, adjustedRangeEnd),
                                                  granularity == Granularity.MONTHLY,
                                                  leadingBlanks,
                                                  overviewEntries,
