@@ -86,9 +86,19 @@ You are no longer locked into a single look. Reitti lets you fully customize how
 
 ![Statistics](.github/screenshots/statistics.png)
 
-*Statistics — distance charts, top places, and transport-mode breakdowns.*
+*Statistics — monthly, yearly, and all-time reports about where your days and nights went.*
 
-Get insights into your movement patterns with summary statistics and visualizations.
+Reitti turns your visits and trips into a detailed report:
+
+- **Distance & time** – spent at home, at other places, and in transit.
+- **Transport-mode breakdowns** – how you move between places.
+- **Usual trips & routines** – recurring journeys and patterns.
+- **Nights away** – the nights you slept away from home and where.
+- **Comparisons** – against earlier periods.
+
+Each section explains itself, and place names and days link back to your timeline so you can check the details.
+
+> See the [Statistics Guide](https://www.dedicatedcode.com/projects/reitti/latest/usage/statistics/) for details.
 
 ### Privacy & Self-Hosting
 
