@@ -1,7 +1,11 @@
 package com.dedicatedcode.reitti.dto.workbench;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class FinalStateDto {
+    @JsonProperty("tStart")
     private long tStart;
+    @JsonProperty("tEnd")
     private long tEnd;
 
 
