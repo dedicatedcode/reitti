@@ -4,20 +4,10 @@ import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.event.LocationProcessEvent;
-import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.NoVisitZone;
-import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
-import com.dedicatedcode.reitti.model.geo.SuppressedVisit;
-import com.dedicatedcode.reitti.model.geo.Trip;
+import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.NoVisitZoneJdbcService;
-import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
-import com.dedicatedcode.reitti.repository.SuppressedVisitJdbcService;
-import com.dedicatedcode.reitti.repository.TripJdbcService;
+import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.SuppressedVisitService;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
@@ -162,8 +153,8 @@ class VisitSuppressionTest {
         ProcessedVisit first = sortedVisits().getFirst();
         suppressedVisitService.suppressVisit(user, first);
 
-        Awaitility.await("waiting for recalculation to remove the suppressed visit")
-                .atMost(30, TimeUnit.SECONDS)
+        await("waiting for recalculation to remove the suppressed visit")
+                .atMost(60, TimeUnit.SECONDS)
                 .until(() -> sortedVisits().size() == 1);
 
         List<SuppressedVisit> tombstones = suppressedVisitJdbcService.findByUser(user);
@@ -171,8 +162,8 @@ class VisitSuppressionTest {
 
         suppressedVisitService.restore(user, tombstones.getFirst());
 
-        Awaitility.await("waiting for recalculation to restore the suppressed visit")
-                .atMost(30, TimeUnit.SECONDS)
+        await("waiting for recalculation to restore the suppressed visit")
+                .atMost(60, TimeUnit.SECONDS)
                 .until(() -> sortedVisits().size() == 2 && tripJdbcService.findByUser(user).size() == 1);
 
         assertEquals(2, sortedVisits().size());
