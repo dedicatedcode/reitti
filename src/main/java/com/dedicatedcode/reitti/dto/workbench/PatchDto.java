@@ -1,8 +1,12 @@
 package com.dedicatedcode.reitti.dto.workbench;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class PatchDto {
     private int seq;
+    @JsonProperty("tStart")
     private long tStart;      // epoch milliseconds
+    @JsonProperty("tEnd")
     private long tEnd;        // epoch milliseconds
     private String deviceId;  // nullable – null for default device, non‑null for specific device IDs
 
