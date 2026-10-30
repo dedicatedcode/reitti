@@ -48,6 +48,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  apprise:
+    image: caronc/apprise:latest
+    ports:
+      - "8000:8000"
+    environment:
+      APPRISE_STATEFUL_MODE: simple
+      APPRISE_WORKER_COUNT: 1
+      APPRISE_DEFAULT_FORMAT: "text"
+    volumes:
+      - apprise-config:/config
+      - apprise-attach:/attach
 #  photon:
 #    image: rtuszik/photon-docker:1.3.0
 #    environment:
@@ -84,3 +95,5 @@ volumes:
   photon-data:
   ot-recorder-data:
   tile-cache-data:
+  apprise-config:
+  apprise-attach:

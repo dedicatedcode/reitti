@@ -1,0 +1,58 @@
+<div th:fragment="inbox-section" id="notification-inbox" class="settings-card">
+    <div class="notification-inbox-header">
+        <h3 th:text="#{notifications.inbox.title}">Inbox</h3>
+        <div class="notification-inbox-actions">
+            <button type="button" class="btn"
+                    th:if="${unreadCount > 0}"
+                    th:hx-post="@{/notifications/read-all}"
+                    hx-target="#notification-inbox"
+                    hx-swap="outerHTML"
+                    th:text="#{notifications.inbox.markAllRead}">Mark all read</button>
+            <button type="button" class="btn btn-danger"
+                    th:if="${!notifications.isEmpty()}"
+                    th:hx-post="@{/notifications/clear-all}"
+                    hx-target="#notification-inbox"
+                    hx-swap="outerHTML"
+                    th:hx-confirm="#{notifications.inbox.clearConfirm}"
+                    th:text="#{notifications.inbox.clearAll}">Clear all</button>
+        </div>
+    </div>
+
+    <div th:if="${notifications.isEmpty()}" class="empty-state">
+        <p th:text="#{notifications.inbox.empty}">There are no notifications.</p>
+    </div>
+
+    <div th:unless="${notifications.isEmpty()}" class="notification-list">
+        <div th:each="notification : ${notifications}" class="notification-item"
+             th:classappend="${notification.unread()} ? 'unread' : ''">
+            <div class="notification-item-main">
+                <div class="notification-item-title">
+                    <span class="notification-severity"
+                          th:classappend="${'severity-' + #strings.toLowerCase(notification.severity().name())}"
+                          th:text="#{${'notifications.severity.' + #strings.toLowerCase(notification.severity().name())}}">Info</span>
+                    <span th:text="${notification.title()}">Title</span>
+                    <span class="notification-item-type"
+                          th:text="${notificationTypeNames.get(notification.typeKey())}">Type</span>
+                </div>
+                <div class="notification-item-message" th:if="${notificationHtmlTypes.contains(notification.typeKey())}" th:utext="${notification.message()}">Message</div>
+                <div class="notification-item-message" th:unless="${notificationHtmlTypes.contains(notification.typeKey())}" th:text="${notification.message()}">Message</div>
+                <div class="notification-item-meta">
+                    <span th:text="${#temporals.format(notification.createdAt(), 'yyyy-MM-dd HH:mm')}">Date</span>
+                </div>
+            </div>
+            <div class="notification-item-actions">
+                <button type="button" class="btn"
+                        th:if="${notification.unread()}"
+                        th:hx-post="@{/notifications/{id}/read(id=${notification.id()})}"
+                        hx-target="#notification-inbox"
+                        hx-swap="outerHTML"
+                        th:text="#{notifications.inbox.markRead}">Mark read</button>
+                <button type="button" class="btn btn-danger"
+                        th:hx-post="@{/notifications/{id}/delete(id=${notification.id()})}"
+                        hx-target="#notification-inbox"
+                        hx-swap="outerHTML"
+                        th:text="#{notifications.inbox.delete}">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
