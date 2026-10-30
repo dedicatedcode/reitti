@@ -126,7 +126,7 @@ class NotificationControllerTest {
                         .with(user(admin))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/settings/about"));
+                .andExpect(redirectedUrl("https://github.com/dedicatedcode/reitti/releases/tag/v9.9.9"));
 
         assertEquals(0, notificationJdbcService.countUnread(admin.getId()));
     }
