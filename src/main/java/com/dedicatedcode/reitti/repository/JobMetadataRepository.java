@@ -170,9 +170,9 @@ public class JobMetadataRepository {
         return query.stream().findFirst();
     }
 
-    public void updateParentJobState(UUID parentJobId, JobState newState) {
+    public Optional<JobState> updateParentJobState(UUID parentJobId, JobState newState) {
         Optional<JobMetadata> parent = findById(parentJobId);
-        if (parent.isEmpty()) return;
+        if (parent.isEmpty()) return Optional.empty();
 
         JobState currentState = parent.get().getState();
 
@@ -181,6 +181,7 @@ public class JobMetadataRepository {
             if (currentState == JobState.AWAITING) {
                 updateState(parentJobId, JobState.RUNNING, Instant.now());
             }
+            return Optional.empty();
         } else if (newState == JobState.COMPLETED || newState == JobState.FAILED) {
             // Check all children before completing
             List<JobMetadata> childJobs = findByParentJobId(parentJobId);
@@ -193,9 +194,14 @@ public class JobMetadataRepository {
                         .anyMatch(j -> j.getState() == JobState.FAILED);
 
                 JobState finalState = anyFailed ? JobState.FAILED : JobState.COMPLETED;
+                if (currentState == finalState) {
+                    return Optional.empty();
+                }
                 updateState(parentJobId, finalState, Instant.now());
+                return Optional.of(finalState);
             }
         }
+        return Optional.empty();
     }
 
     public void delete(UUID jobId) {

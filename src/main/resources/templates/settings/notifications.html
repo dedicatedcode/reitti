@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="notifications" class="settings-section active">
+            <div class="notification-page-header">
+                <h2 th:text="#{notifications.title}">Notifications</h2>
+                <a th:href="@{/notifications}" class="btn" th:text="#{notifications.history.link}">View notifications</a>
+            </div>
+
+            <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                <span th:text="#{${successMessage}}">Success message</span>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                <span th:text="#{${errorMessage}}">Error message</span>
+            </div>
+
+            <div class="settings-card">
+                <h3 th:text="#{notifications.settings.title}">Notification Settings</h3>
+                <p class="form-description" th:text="#{notifications.settings.description}">
+                    Control whether notifications are created for your account and whether the navigation shows an unread badge.
+                </p>
+
+                <form th:action="@{/settings/notifications/settings}" method="post">
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox" name="enabled" id="notifications-enabled"
+                               th:checked="${notificationSettings.enabled()}">
+                        <label for="notifications-enabled" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{notifications.settings.enabled}">Enable notifications</span>
+                        </label>
+                    </div>
+                    <div class="form-group slide-reveal-container">
+                        <input type="checkbox" name="showBadge" id="notifications-show-badge"
+                               th:checked="${notificationSettings.showBadge()}">
+                        <label for="notifications-show-badge" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{notifications.settings.showBadge}">Show unread badge</span>
+                        </label>
+                    </div>
+                    <div class="notification-channel-actions">
+                        <button type="submit" class="btn btn-primary" th:text="#{common.actions.save}">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="settings-card">
+                <h3 th:text="#{notifications.types.title}">Notification Types</h3>
+                <p class="form-description" th:text="#{notifications.types.description}">
+                    Disable a type to stop receiving it on every channel.
+                </p>
+
+                <form th:action="@{/settings/notifications/types}" method="post">
+                    <div th:each="type : ${notificationTypes}" class="form-group slide-reveal-container notification-type">
+                        <input type="checkbox" name="typeKeys" th:value="${type.key()}"
+                               th:id="${'notification-type-' + type.key()}"
+                               th:checked="${notificationTypeEnabled.get(type.key())}">
+                        <label th:for="${'notification-type-' + type.key()}" class="slide-reveal">
+                            <span class="slide-box"></span>
+                            <span class="label-text" th:text="#{${type.nameKey()}}">Type</span>
+                        </label>
+                        <p class="form-description" th:text="#{${type.descriptionKey()}}">Description</p>
+                    </div>
+                    <div class="notification-channel-actions">
+                        <button type="submit" class="btn btn-primary" th:text="#{common.actions.save}">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="settings-card">
+                <h3 th:text="#{notifications.channels.title}">Channels</h3>
+                <p class="form-description" th:text="#{notifications.channels.description}">
+                    Choose how notifications are delivered to you.
+                </p>
+
+                <div th:each="view : ${notificationChannels}" class="notification-channel">
+                    <div class="notification-channel-header">
+                        <strong th:text="#{${view.channel().nameKey()}}">Channel</strong>
+                        <span th:if="${view.channel().builtIn()}" class="notification-channel-badge"
+                              th:text="#{notifications.channels.builtIn}">Always on</span>
+                    </div>
+                    <p class="form-description" th:text="#{${view.channel().descriptionKey()}}">Description</p>
+
+                    <form th:if="${!view.channel().builtIn()}"
+                          th:action="@{/settings/notifications/channels/{key}(key=${view.channel().key()})}"
+                          method="post">
+                        <div class="form-group slide-reveal-container">
+                            <input type="checkbox" name="enabled"
+                                   th:id="${'notification-channel-enabled-' + view.channel().key()}"
+                                   th:checked="${view.enabled()}">
+                            <label th:for="${'notification-channel-enabled-' + view.channel().key()}" class="slide-reveal">
+                                <span class="slide-box"></span>
+                                <span class="label-text" th:text="#{notifications.channels.enabled}">Enabled</span>
+                            </label>
+                        </div>
+
+                        <div th:if="${view.channel().key() == 'NTFY'}" class="notification-channel-fields">
+                            <div class="form-group">
+                                <label for="ntfyServerUrl" th:text="#{notifications.channels.ntfy.serverUrl}">Server URL</label>
+                                <input type="text" id="ntfyServerUrl" name="cfg.serverUrl"
+                                       th:value="${view.value('serverUrl')}" placeholder="https://ntfy.sh">
+                            </div>
+                            <div class="form-group">
+                                <label for="ntfyTopic" th:text="#{notifications.channels.ntfy.topic}">Topic</label>
+                                <input type="text" id="ntfyTopic" name="cfg.topic" th:value="${view.value('topic')}">
+                            </div>
+                            <div class="form-group">
+                                <label for="ntfyToken" th:text="#{notifications.channels.ntfy.token}">Access token</label>
+                                <input type="password" id="ntfyToken" name="cfg.token" th:value="${view.value('token')}">
+                            </div>
+                            <div class="form-group">
+                                <label for="ntfyPriority" th:text="#{notifications.channels.ntfy.priority}">Priority</label>
+                                <select id="ntfyPriority" name="cfg.priority">
+                                    <option value="" th:selected="${view.value('priority') == ''}">Default</option>
+                                    <option value="1" th:selected="${view.value('priority') == '1'}">1</option>
+                                    <option value="2" th:selected="${view.value('priority') == '2'}">2</option>
+                                    <option value="3" th:selected="${view.value('priority') == '3'}">3</option>
+                                    <option value="4" th:selected="${view.value('priority') == '4'}">4</option>
+                                    <option value="5" th:selected="${view.value('priority') == '5'}">5</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div th:if="${view.channel().key() == 'APPRISE'}" class="notification-channel-fields">
+                            <div class="form-group">
+                                <label for="appriseBaseUrl" th:text="#{notifications.channels.apprise.baseUrl}">Apprise base URL</label>
+                                <input type="text" id="appriseBaseUrl" name="cfg.baseUrl"
+                                       th:value="${view.value('baseUrl')}" placeholder="http://localhost:8000">
+                            </div>
+                            <div class="form-group">
+                                <label for="appriseKey" th:text="#{notifications.channels.apprise.key}">Notification key</label>
+                                <input type="text" id="appriseKey" name="cfg.key" th:value="${view.value('key')}">
+                            </div>
+                        </div>
+
+                        <div class="notification-channel-actions">
+                            <button type="submit" class="btn btn-primary" th:text="#{common.actions.save}">Save</button>
+                            <button type="submit"
+                                    class="btn"
+                                    th:attr="formaction=@{/settings/notifications/channels/{key}/test(key=${view.channel().key()})}"
+                                    th:text="#{notifications.channels.test}">Send test</button>
+                        </div>
+                    </form>
+
+                    <form th:if="${view.channel().builtIn()}"
+                          th:action="@{/settings/notifications/channels/{key}/test(key=${view.channel().key()})}"
+                          method="post">
+                        <div class="notification-channel-actions">
+                            <button type="submit" class="btn" th:text="#{notifications.channels.test}">Send test</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    window.userSettings = /*[[${userSettings}]]*/ {}
+</script>
+</body>
+</html>

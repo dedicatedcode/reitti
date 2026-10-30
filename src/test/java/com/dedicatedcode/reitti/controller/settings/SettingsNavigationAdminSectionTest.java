@@ -45,8 +45,7 @@ class SettingsNavigationAdminSectionTest {
     void settingsNav_AsRegularUser_ShouldNotRenderServerSettingsSection() throws Exception {
         mockMvc.perform(get("/settings/places").with(user(testingService.randomUser())))
                 .andExpect(status().isOk())
-                // no dangling header for regular users
-                .andExpect(content().string(not(containsString("settings-nav-separator"))))
+                // no dangling server header for regular users; user sections always have separators
                 .andExpect(content().string(not(containsString("Server Settings"))))
                 .andExpect(content().string(not(containsString("/settings/geocode-services"))))
                 .andExpect(content().string(not(containsString("/settings/logging"))));

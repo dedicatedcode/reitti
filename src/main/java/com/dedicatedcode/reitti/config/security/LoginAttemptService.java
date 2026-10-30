@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.config.security;
 
+import com.dedicatedcode.reitti.service.notification.producer.NotificationProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,18 +26,21 @@ public class LoginAttemptService {
     private final int maxFailures;
     private final Duration window;
     private final Clock clock;
+    private final NotificationProducers notificationProducers;
     private final Map<String, Attempts> attempts = new ConcurrentHashMap<>();
 
     @Autowired
     public LoginAttemptService(@Value("${reitti.security.login.max-failures:10}") int maxFailures,
-                               @Value("${reitti.security.login.lockout-minutes:15}") long lockoutMinutes) {
-        this(maxFailures, Duration.ofMinutes(lockoutMinutes), Clock.systemUTC());
+                               @Value("${reitti.security.login.lockout-minutes:15}") long lockoutMinutes,
+                               NotificationProducers notificationProducers) {
+        this(maxFailures, Duration.ofMinutes(lockoutMinutes), Clock.systemUTC(), notificationProducers);
     }
 
-    LoginAttemptService(int maxFailures, Duration window, Clock clock) {
+    LoginAttemptService(int maxFailures, Duration window, Clock clock, NotificationProducers notificationProducers) {
         this.maxFailures = maxFailures;
         this.window = window;
         this.clock = clock;
+        this.notificationProducers = notificationProducers;
     }
 
     public boolean isBlocked(String username) {
@@ -64,6 +68,7 @@ public class LoginAttemptService {
                 existing == null || existing.expired(now, window) ? new Attempts(1, now) : new Attempts(existing.failures + 1, existing.firstFailure));
         if (updated.failures == maxFailures) {
             log.warn("Too many failed logins for user [{}], blocking further attempts for {} minutes", username, window.toMinutes());
+            notificationProducers.failedLogin(username, updated.firstFailure());
         }
     }
 

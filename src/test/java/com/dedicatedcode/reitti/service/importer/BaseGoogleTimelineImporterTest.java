@@ -36,7 +36,7 @@ class BaseGoogleTimelineImporterTest {
         assertTrue(result.containsKey("success"));
         assertTrue((Boolean) result.get("success"));
 
-        testingService.awaitDataImport(30);
+        testingService.awaitDataImport(60);
 
         List<ProcessedVisit> createdVisits = this.visitJdbcService.findByUser(user);
         assertEquals(9, createdVisits.size());

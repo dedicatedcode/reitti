@@ -2,12 +2,26 @@
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
 <body>
     <div th:fragment="settings-nav(activeSection, dataManagementEnabled, isAdmin)" class="settings-nav">
+        <div class="settings-nav-separator settings-nav-separator-top">
+            <span th:text="#{settings.status.section}">Status</span>
+        </div>
+
         <a th:href="@{/settings/job-status}"
-           class="settings-nav-item" 
+           class="settings-nav-item"
            th:classappend="${activeSection == 'job-status'} ? 'active' : ''"
            th:title="#{settings.job.status.description}"
            th:text="#{settings.job.status}">Job Status</a>
-        
+
+        <a th:href="@{/notifications}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'notifications'} ? 'active' : ''"
+           th:title="#{notifications.title}"
+           th:text="#{settings.notifications}">Notifications</a>
+
+        <div class="settings-nav-separator">
+            <span th:text="#{settings.settings.section}">Settings</span>
+        </div>
+
         <a th:href="@{/settings/import}"
            th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
@@ -39,7 +53,7 @@
            th:classappend="${activeSection == 'user-management'} ? 'active' : ''"
            th:title="#{settings.user.management.description}"
            th:text="#{settings.user.management}">User Management</a>
-        
+
         <a th:href="@{/settings/places}"
            th:unless="${isLiveDataOnly}"
            class="settings-nav-item"
@@ -73,7 +87,7 @@
            th:classappend="${activeSection == 'manage-data'} ? 'active' : ''"
            th:title="#{settings.manage.data.description}"
            th:text="#{settings.manage.data}">Manage Data</a>
-        
+
         <a th:href="@{/settings/integrations}"
            class="settings-nav-item"
            th:classappend="${activeSection == 'integrations'} ? 'active' : ''"
@@ -84,6 +98,7 @@
            th:classappend="${activeSection == 'devices'} ? 'active' : ''"
            th:title="#{settings.devices.description}"
            th:text="#{settings.devices}">Devices</a>
+
         <div th:if="${isAdmin}" class="settings-nav-separator">
             <span th:text="#{settings.server.section}">Server Settings</span>
         </div>
@@ -108,7 +123,7 @@
            th:classappend="${activeSection == 'about'} ? 'active' : ''"
            th:title="#{settings.about.description}"
            th:text="#{settings.about}">About</a>
-        
+
         <script th:inline="javascript">
             function appendTimezoneToLinks() {
                 const timezone = getUserTimezone();
