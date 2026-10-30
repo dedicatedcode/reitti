@@ -3,6 +3,7 @@ package com.dedicatedcode.reitti.service.jobs;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.service.JobContext;
+import com.dedicatedcode.reitti.service.notification.producer.NotificationProducers;
 import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
@@ -26,10 +27,14 @@ public class JobSchedulingService implements JobListener {
     private final Set<UUID> deferredJobs = ConcurrentHashMap.newKeySet();
     private final Scheduler scheduler;
     private final JobMetadataRepository jobMetadataRepository;
+    private final NotificationProducers notificationProducers;
 
-    public JobSchedulingService(Scheduler scheduler, JobMetadataRepository jobMetadataRepository) throws SchedulerException {
+    public JobSchedulingService(Scheduler scheduler,
+                                JobMetadataRepository jobMetadataRepository,
+                                NotificationProducers notificationProducers) throws SchedulerException {
         this.scheduler = scheduler;
         this.jobMetadataRepository = jobMetadataRepository;
+        this.notificationProducers = notificationProducers;
         this.scheduler.getListenerManager().addJobListener(this);
     }
 
@@ -97,9 +102,32 @@ public class JobSchedulingService implements JobListener {
 
             Optional<JobMetadataRepository.JobMetadata> metadata = jobMetadataRepository.findById(id);
             if (metadata.isPresent() && metadata.get().getParentJobId() != null) {
-                jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
+                Optional<JobState> parentState = jobMetadataRepository.updateParentJobState(metadata.get().getParentJobId(), state);
+                parentState.ifPresent(newState -> notifyJobFinished(metadata.get().getParentJobId(), newState));
             }
         });
+    }
+
+    private void notifyJobFinished(UUID parentJobId, JobState state) {
+        try {
+            Optional<JobMetadataRepository.JobMetadata> parent = jobMetadataRepository.findById(parentJobId);
+            if (parent.isEmpty()) {
+                return;
+            }
+            JobMetadataRepository.JobMetadata job = parent.get();
+            Duration duration = job.getEnqueuedAt() != null
+                    ? Duration.between(job.getEnqueuedAt(), Instant.now())
+                    : Duration.ZERO;
+            notificationProducers.jobFinished(
+                    job.getId(),
+                    job.getUserId(),
+                    job.getJobType(),
+                    job.getFriendlyName(),
+                    state,
+                    duration);
+        } catch (Exception e) {
+            log.warn("Could not create job notification for [{}]", parentJobId, e);
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

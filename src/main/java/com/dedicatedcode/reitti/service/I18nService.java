@@ -23,18 +23,22 @@ public class I18nService {
     }
 
     public String humanizeDuration(Duration duration) {
+        return humanizeDuration(duration, LocaleContextHolder.getLocale());
+    }
+
+    public String humanizeDuration(Duration duration, Locale locale) {
         long hours = duration.toHours();
         long minutesPart = duration.toMinutesPart();
 
-        Locale locale = LocaleContextHolder.getLocale();
-        ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
+        Locale effectiveLocale = locale != null ? locale : Locale.ENGLISH;
+        ResourceBundle bundle = ResourceBundle.getBundle("messages", effectiveLocale);
 
         if (hours > 0) {
             // Format for hours and minutes (e.g., "2 hours and 5 minutes")
             String pattern = bundle.getString("format.hours_minutes");
             // Note: The MessageFormat pattern is designed to handle the pluralization
             // and the exclusion of the minutes if minutesPart is 0.
-            return new MessageFormat(pattern, locale).format(new Object[]{hours, minutesPart});
+            return new MessageFormat(pattern, effectiveLocale).format(new Object[]{hours, minutesPart});
 
         } else {
             // Format for minutes only (e.g., "65 minutes")
@@ -43,7 +47,7 @@ public class I18nService {
                 return "Less than a minute"; // Handle very short durations
             }
             String pattern = bundle.getString("format.minutes_only");
-            return new MessageFormat(pattern, locale).format(new Object[]{totalMinutes});
+            return new MessageFormat(pattern, effectiveLocale).format(new Object[]{totalMinutes});
         }
     }
 
@@ -53,5 +57,9 @@ public class I18nService {
 
     public String translate(String messageKey, Object... args) {
         return messageSource.getMessage(messageKey, args, LocaleContextHolder.getLocale());
+    }
+
+    public String translate(String messageKey, Locale locale, Object... args) {
+        return messageSource.getMessage(messageKey, args, locale != null ? locale : Locale.ENGLISH);
     }
 }

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti;
 
+import com.dedicatedcode.reitti.model.Role;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.*;
 import com.dedicatedcode.reitti.model.security.ApiToken;
@@ -87,6 +88,11 @@ public class TestingService {
 
     public User randomUser() {
         return this.userService.createNewUser("test-user_" + UUID.randomUUID(),"Test User", null, null);
+    }
+
+    public User randomAdmin() {
+        User user = this.userService.createNewUser("test-admin_" + UUID.randomUUID(), "Test Admin", null, null);
+        return this.userJdbcService.updateUser(user.withRole(Role.ADMIN).withPassword("test-password"));
     }
 
     public void awaitDataImport(int seconds) {

@@ -9,7 +9,11 @@
         <a id="nav-statistics" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" th:unless="${isLiveDataOnly}" th:href="@{/statistics}" class="nav-link" th:classappend="${activeSection == 'statistics'} ? 'active' : ''" th:title="#{nav.statistics}"><i class="lni lni-bar-chart-4"></i></a>
         <a id="nav-coverage" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" th:if="${userSettings.h3Enabled}" th:unless="${isLiveDataOnly}" th:href="@{/coverage}" class="nav-link" th:classappend="${activeSection == 'coverage'} ? 'active' : ''" th:title="#{nav.coverage}"><i class="lni lni-globe-1"></i></a>
         <a id="nav-workbench" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" th:unless="${isLiveDataOnly}" th:href="@{/workbench}" class="nav-link" th:classappend="${activeSection == 'workbench'} ? 'active' : ''" th:title="#{nav.workbench}"><i class="lni lni-compass-drafting-2"></i></a>
-        <a id="nav-settings" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" th:href="@{/settings}" class="nav-link" th:classappend="${activeSection == 'settings'} ? 'active' : ''" th:title="#{nav.settings.tooltip}"><i class="lni lni-gear-1"></i></a>
+        <a id="nav-settings" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER')" th:href="@{/settings}" class="nav-link" th:classappend="${activeSection == 'settings'} ? 'active' : ''" th:title="#{nav.settings.tooltip}">
+            <i class="lni lni-gear-1"></i>
+            <span id="notification-dot" class="notification-dot"
+                  th:classappend="${notificationIndicator != null && notificationIndicator.hasUnread()} ? 'visible' : ''"></span>
+        </a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" id="auto-update-btn" th:title="#{map.auto-update.enable.title}" title="Auto Update"><i class="lni lni-play"></i></a>
         <a sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:if="${activeSection == 'index'}" type="button" class="nav-link" onclick="toggleFullscreen()" th:title="#{map.fullscreen.toggle.title}" title="Toggle Fullscreen"><i class="lni lni-arrow-all-direction"></i></a>
         <form th:action="@{/logout}" method="post">
@@ -18,6 +22,112 @@
             </button>
         </form>
     </div>
+
+    <div id="notification-presentation"
+         th:attr="data-unread-count=${notificationIndicator != null ? notificationIndicator.unreadCount() : 0}"></div>
+
+    <script th:inline="javascript">
+        (function () {
+            const dot = document.getElementById('notification-dot');
+            const presentationHost = document.getElementById('notification-presentation');
+
+            const rawContextPath = /*[[@{/}]]*/ '/';
+            const contextPath = rawContextPath.replace(/\/$/, '');
+            let eventSource = null;
+            let reconnectTimer = null;
+
+            function render(showBadge, unreadCount) {
+                if (!dot) {
+                    return;
+                }
+                const count = Number(unreadCount) || 0;
+                dot.classList.toggle('visible', Boolean(showBadge) && count > 0);
+            }
+
+            function refreshPresentation() {
+                if (!presentationHost || !window.htmx) {
+                    return;
+                }
+                if (presentationHost.querySelector('.reitti-dialog.open, .notification-toast')) {
+                    return;
+                }
+                window.htmx.ajax('GET', contextPath + '/notifications/pending', {
+                    target: '#notification-presentation',
+                    swap: 'innerHTML',
+                    indicator: '#notification-presentation'
+                });
+            }
+
+            function connect() {
+                if (eventSource) {
+                    return;
+                }
+                eventSource = new EventSource(contextPath + '/events/notifications');
+                eventSource.onmessage = function (event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data && data.type === 'NOTIFICATION') {
+                            render(data.showBadge, data.unreadCount);
+                            if (data.typeKey && data.presentation && data.presentation !== 'INBOX') {
+                                refreshPresentation();
+                            }
+                        }
+                    } catch (ignored) {
+                        // ignore malformed events
+                    }
+                };
+                eventSource.onerror = function () {
+                    if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+                        eventSource = null;
+                        if (!reconnectTimer) {
+                            reconnectTimer = setTimeout(function () {
+                                reconnectTimer = null;
+                                connect();
+                            }, 3000);
+                        }
+                    }
+                };
+            }
+
+            document.body.addEventListener('htmx:afterSwap', function (evt) {
+                if (evt.detail.target && evt.detail.target.id === 'notification-presentation') {
+                    const toast = evt.detail.target.querySelector('.notification-toast[data-autohide="true"]');
+                    if (toast) {
+                        const dismiss = toast.querySelector('.notification-dismiss');
+                        if (dismiss) {
+                            setTimeout(function () {
+                                if (dismiss.isConnected) {
+                                    dismiss.click();
+                                }
+                            }, 8000);
+                        }
+                    }
+                }
+            });
+
+            document.addEventListener('keydown', function (evt) {
+                if (evt.key === 'Escape') {
+                    const dialog = document.querySelector('#notification-presentation .reitti-dialog.open');
+                    if (dialog) {
+                        const dismiss = dialog.querySelector('.notification-dismiss');
+                        if (dismiss) {
+                            dismiss.click();
+                        }
+                    }
+                }
+            });
+
+            if (presentationHost && Number(presentationHost.dataset.unreadCount) > 0) {
+                refreshPresentation();
+            }
+
+            if (document.readyState === 'complete') {
+                connect();
+            } else {
+                window.addEventListener('load', connect);
+            }
+        })();
+    </script>
 </div>
 </body>
 </html>

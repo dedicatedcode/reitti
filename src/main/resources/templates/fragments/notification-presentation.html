@@ -1,0 +1,73 @@
+<th:block th:fragment="presentation" xmlns:th="http://www.thymeleaf.org">
+    <th:block th:if="${pending != null}">
+
+        <!-- Dialog presentation -->
+        <div th:if="${pending.presentation().name() == 'DIALOG'}"
+             class="reitti-dialog open"
+             role="dialog"
+             aria-modal="true"
+             aria-hidden="false">
+            <div class="reitti-dialog-backdrop"
+                 th:hx-post="@{/notifications/{id}/dismiss(id=${pending.notification().id()})}"
+                 hx-target="#notification-presentation"
+                 hx-swap="innerHTML"></div>
+            <div class="reitti-dialog-card">
+                <div class="reitti-dialog-head">
+                    <h3 th:text="${pending.notification().title()}">Title</h3>
+                    <button type="button"
+                            class="reitti-dialog-close notification-dismiss"
+                            th:hx-post="@{/notifications/{id}/dismiss(id=${pending.notification().id()})}"
+                            hx-target="#notification-presentation"
+                            hx-swap="innerHTML"
+                            th:attr="aria-label=#{notifications.presentation.close}">&times;</button>
+                </div>
+                <div class="reitti-dialog-body">
+                    <div th:if="${pending.html()}" th:utext="${pending.notification().message()}"></div>
+                    <div th:unless="${pending.html()}" th:text="${pending.notification().message()}"></div>
+
+                    <div class="notification-presentation-actions">
+                        <form th:if="${pending.notification().actionUrl() != null}"
+                              th:action="@{/notifications/{id}/open(id=${pending.notification().id()})}"
+                              method="post">
+                            <button type="submit" class="btn btn-primary"
+                                    th:text="#{notifications.presentation.viewDetails}">View details</button>
+                        </form>
+                        <button type="button"
+                                class="btn notification-dismiss"
+                                th:hx-post="@{/notifications/{id}/dismiss(id=${pending.notification().id()})}"
+                                hx-target="#notification-presentation"
+                                hx-swap="innerHTML"
+                                th:text="#{notifications.presentation.dismiss}">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast presentation -->
+        <div th:if="${pending.presentation().name() == 'TOAST'}"
+             class="notification-toast"
+             th:classappend="${' severity-' + #strings.toLowerCase(pending.notification().severity().name())}"
+             th:attr="data-autohide=${pending.autoHide()}"
+             role="alert">
+            <div class="notification-toast-content">
+                <div class="notification-toast-title" th:text="${pending.notification().title()}">Title</div>
+                <div th:if="${pending.html()}" th:utext="${pending.notification().message()}"></div>
+                <div th:unless="${pending.html()}" th:text="${pending.notification().message()}"></div>
+                <form th:if="${pending.notification().actionUrl() != null}"
+                      th:action="@{/notifications/{id}/open(id=${pending.notification().id()})}"
+                      method="post"
+                      class="notification-toast-action">
+                    <button type="submit" class="btn"
+                            th:text="#{notifications.presentation.viewDetails}">View details</button>
+                </form>
+            </div>
+            <button type="button"
+                    class="notification-dismiss"
+                    th:hx-post="@{/notifications/{id}/dismiss(id=${pending.notification().id()})}"
+                    hx-target="#notification-presentation"
+                    hx-swap="innerHTML"
+                    th:attr="aria-label=#{notifications.presentation.close}">&times;</button>
+        </div>
+
+    </th:block>
+</th:block>

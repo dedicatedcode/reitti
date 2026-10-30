@@ -21,6 +21,7 @@ public class UserSseEmitterService implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
     private final ReittiIntegrationService reittiIntegrationService;
     private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+    private final Set<SseEmitter> integrationEmitters = ConcurrentHashMap.newKeySet();
     private final LinkedBlockingQueue<TaskData> queue = new LinkedBlockingQueue<>();
     private volatile boolean running;
     private Thread drainThread;
@@ -30,8 +31,15 @@ public class UserSseEmitterService implements SmartLifecycle {
     }
 
     public SseEmitter addEmitter(User user) {
+        return addEmitter(user, true);
+    }
+
+    public SseEmitter addEmitter(User user, boolean integrationSubscribed) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         userEmitters.computeIfAbsent(user.getId(), _ -> new CopyOnWriteArraySet<>()).add(emitter);
+        if (integrationSubscribed) {
+            integrationEmitters.add(emitter);
+        }
         emitter.onCompletion(() -> {
             log.debug("SSE connection completed for user: [{}]", user);
             removeEmitter(user, emitter);
@@ -44,15 +52,21 @@ public class UserSseEmitterService implements SmartLifecycle {
         });
 
         emitter.onError(throwable -> {
-            log.error("SSE connection error for user [{}]: {}", user, throwable.getMessage());
+            log.debug("SSE connection error for user [{}]: {}", user, throwable.getMessage());
             removeEmitter(user, emitter);
         });
         try {
             emitter.send(SseEmitter.event().data(new SSEEvent(SSEType.CONNECTED, null, null, null, null)));
         } catch (IOException e) {
             log.error("Unable to send initial event for user [{}]", user, e);
+            removeEmitter(user, emitter);
+            try {
+                emitter.complete();
+            } catch (Exception ignored) {
+                // already completed or errored
+            }
         }
-        log.info("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
+        log.debug("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
         return emitter;
     }
 
@@ -61,16 +75,27 @@ public class UserSseEmitterService implements SmartLifecycle {
     }
 
     public void sendEventToUser(User user, SSEEvent eventData) {
+        sendEventToUser(user, (Object) eventData);
+    }
+
+    public void sendEventToUser(User user, Object eventData) {
         Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
+                if (!emitters.contains(emitter)) {
+                    continue;
+                }
                 try {
                     emitter.send(SseEmitter.event().data(eventData));
                     log.trace("Sent event to user: {}", user);
-                } catch (IOException e) {
-                    log.error("Error sending event to user {}: {}", user, e.getMessage());
-                    emitter.completeWithError(e);
+                } catch (Exception e) {
+                    log.debug("Error sending event to user {}: {}", user, e.getMessage());
                     removeEmitter(user, emitter);
+                    try {
+                        emitter.completeWithError(e);
+                    } catch (Exception ignored) {
+                        // The AsyncContext may already be in an error state; nothing more to do.
+                    }
                 }
             }
         }
@@ -80,11 +105,15 @@ public class UserSseEmitterService implements SmartLifecycle {
         Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             emitters.remove(emitter);
+            boolean wasIntegrationEmitter = integrationEmitters.remove(emitter);
+            boolean stillIntegrationEmitter = emitters.stream().anyMatch(integrationEmitters::contains);
             if (emitters.isEmpty()) {
                 userEmitters.remove(user.getId());
+            }
+            if (wasIntegrationEmitter && !stillIntegrationEmitter) {
                 reittiIntegrationService.unsubscribeFromIntegrations(user);
             }
-            log.info("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
+            log.debug("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
         }
     }
 
@@ -95,9 +124,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             while (running) {
                 try {
                     TaskData data = queue.take();
-                    if (data != null) {
-                        sendEventToUser(data.user, data.eventData);
-                    }
+                    sendEventToUser(data.user, data.eventData);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;

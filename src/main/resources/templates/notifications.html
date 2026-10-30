@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{notifications.title}">Notifications - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('notifications')}"></div>
+
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="notifications" class="settings-section active">
+            <div class="notification-page-header">
+                <h2 th:text="#{notifications.title}">Notifications</h2>
+                <a th:href="@{/settings/notifications}" class="btn" th:text="#{notifications.settings.link}">Notification settings</a>
+            </div>
+
+            <div th:replace="~{fragments/notification-inbox :: inbox-section}"></div>
+        </div>
+    </div>
+</div>
+<script>
+    window.userSettings = /*[[${userSettings}]]*/ {}
+</script>
+</body>
+</html>
