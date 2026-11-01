@@ -16,8 +16,18 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +39,10 @@ public class MapStylesSettingsController {
     private final UserMapStyleJdbcService userMapStyleJdbcService;
     private final I18nService i18n;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     public MapStylesSettingsController(
             @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
@@ -128,12 +142,19 @@ public class MapStylesSettingsController {
             if ("url-template".equals(rasterSourceInputType)) {
                 String template = params.get("rasterTileTemplate");
                 if (template == null || template.isBlank()) {
-                    errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tile-template-required"));
+                    errors.add(i18n.translate("map.settings.dialog.map-styles.error-tile-template-required"));
                 }
             } else if ("json-url".equals(rasterSourceInputType)) {
                 String tileJsonUrl = params.get("rasterTileJsonUrl");
                 if (tileJsonUrl == null || tileJsonUrl.isBlank()) {
-                    errors.add(i18n.translate("js.map.settings.dialog.map-styles.error-tilejson-required"));
+                    errors.add(i18n.translate("map.settings.dialog.map-styles.error-tilejson-required"));
+                } else {
+                    TileJsonUrlCheck check = checkTileJsonUrl(tileJsonUrl);
+                    if (check == TileJsonUrlCheck.STYLE_JSON) {
+                        errors.add(i18n.translate("map.settings.dialog.map-styles.error-tilejson-is-style-json"));
+                    } else if (check == TileJsonUrlCheck.INVALID) {
+                        errors.add(i18n.translate("map.settings.dialog.map-styles.error-tilejson-invalid"));
+                    }
                 }
             }
         }
@@ -234,7 +255,47 @@ public class MapStylesSettingsController {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 
+    private enum TileJsonUrlCheck {
+        VALID,
+        STYLE_JSON,
+        INVALID
+    }
+
     private boolean hasValue(String value) {
         return value != null && !value.isBlank();
+    }
+
+    /**
+     * Fetches the given URL and checks whether it points to a TileJSON document (a JSON object with a
+     * non-empty "tiles" array). Non-http(s) URLs are not checked and treated as valid.
+     */
+    private TileJsonUrlCheck checkTileJsonUrl(String tileJsonUrl) {
+        if (!tileJsonUrl.startsWith("http://") && !tileJsonUrl.startsWith("https://")) {
+            return TileJsonUrlCheck.VALID;
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(tileJsonUrl))
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return TileJsonUrlCheck.INVALID;
+            }
+            JsonNode json = objectMapper.readTree(response.body());
+            JsonNode tiles = json.get("tiles");
+            if (tiles instanceof ArrayNode tileArray && !tileArray.isEmpty()) {
+                return TileJsonUrlCheck.VALID;
+            }
+            boolean looksLikeStyleJson = json.has("sources") || json.has("layers");
+            return looksLikeStyleJson ? TileJsonUrlCheck.STYLE_JSON : TileJsonUrlCheck.INVALID;
+        } catch (IllegalArgumentException | IOException | JacksonException e) {
+            return TileJsonUrlCheck.INVALID;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return TileJsonUrlCheck.INVALID;
+        }
     }
 }

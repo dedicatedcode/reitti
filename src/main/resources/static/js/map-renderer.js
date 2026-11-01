@@ -66,55 +66,8 @@ class MapRenderer {
                 throw new Error('Invalid vector style input type');
             }
         } else if (mapStyle?.mapType === 'raster') {
-            if (mapStyle?.rasterSourceInputType === 'json-url') {
-                const tileJsonUrl = mapStyle?.dataSource?.tileJsonUrl;
-                if (!tileJsonUrl) {
-                    throw new Error('Raster style missing tileJsonUrl');
-                }
-                return {
-                    version: 8,
-                    name: mapStyle.label || 'Raster',
-                    sources: {
-                        'raster-tiles': {
-                            type: 'raster',
-                            url: tileJsonUrl,
-                            tileSize: mapStyle?.dataSource?.tileSize || 256,
-                            attribution: mapStyle?.dataSource?.attribution || ''
-                        }
-                    },
-                    layers: [{
-                        id: 'raster-layer',
-                        type: 'raster',
-                        source: 'raster-tiles',
-                        minzoom: mapStyle?.dataSource?.minzoom || 0,
-                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
-                    }]
-                };
-            } else if (mapStyle?.rasterSourceInputType === 'url-template') {
-                // Return a complete raster style object
-                const tileUrl = mapStyle?.dataSource?.tileUrlTemplate;
-                if (!tileUrl) {
-                    throw new Error('Raster style missing tile URL template');
-                }
-                return {
-                    version: 8,
-                    name: mapStyle.label || 'Raster',
-                    sources: {
-                        'raster-tiles': {
-                            type: 'raster',
-                            tiles: [tileUrl],
-                            tileSize: mapStyle?.dataSource?.tileSize || 256,
-                            attribution: mapStyle?.dataSource?.attribution || ''
-                        }
-                    },
-                    layers: [{
-                        id: 'raster-layer',
-                        type: 'raster',
-                        source: 'raster-tiles',
-                        minzoom: mapStyle?.dataSource?.minzoom || 0,
-                        maxzoom: mapStyle?.dataSource?.maxzoom || 22
-                    }]
-                };
+            if (mapStyle?.styleInputType === 'url') {
+                return mapStyle?.styleUrl;
             } else {
                 throw new Error('Invalid raster style input type');
             }
