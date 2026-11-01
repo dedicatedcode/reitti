@@ -151,7 +151,7 @@
 
                 <!-- Raster TileJSON URL -->
                 <div id="raster-tilejson-group"
-                     th:classappend="${(style == null || style.rasterSourceInputType() != 'url-template') ? 'hidden' : ''}">
+                     th:classappend="${(style == null || style.rasterSourceInputType() != 'json-url') ? 'hidden' : ''}">
                     <div class="form-group">
                         <label for="custom-map-style-tilejson-url"
                                th:text="#{map.settings.dialog.map-styles.tilejson-url}">TileJSON URL</label>
