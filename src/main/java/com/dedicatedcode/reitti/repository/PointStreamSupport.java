@@ -32,7 +32,7 @@ final class PointStreamSupport {
      */
     static void appendKeysetPredicate(StringBuilder sql, Timestamp afterTimestamp) {
         if (afterTimestamp != null) {
-            sql.append("AND (rlp.timestamp > ? OR (rlp.timestamp = ? AND rlp.id > ?)) ");
+            sql.append("AND (rlp.timestamp, rlp.id) > (?, ?) ");
         }
     }
 }
