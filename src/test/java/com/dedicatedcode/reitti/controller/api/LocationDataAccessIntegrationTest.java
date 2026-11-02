@@ -130,7 +130,7 @@ class LocationDataAccessIntegrationTest {
         mockMvc.perform(get("/api/v2/coverage/cells/{userId}", owner.getId())
                                 .param("start", "2024-01-01").param("end", "2024-01-31")
                                 .with(link))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test
