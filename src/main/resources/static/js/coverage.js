@@ -87,7 +87,7 @@
             interleaved: true,
         });
 
-        const deckOverlay = new deck.MapboxOverlay({ layers: [] });
+        const deckOverlay = new deck.MapLibreOverlay({ layers: [] });
         map.addControl(deckOverlay);
 
         state.map = map;
