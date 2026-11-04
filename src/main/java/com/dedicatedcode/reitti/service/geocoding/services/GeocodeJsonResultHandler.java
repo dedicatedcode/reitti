@@ -13,7 +13,8 @@ import java.util.List;
 public class GeocodeJsonResultHandler implements ResultHandler {
     @Override
     public boolean canHandle(GeocoderType type) {
-        return type == GeocoderType.GEOCODE_JSON;
+        // NOMINATIM services request format=geocodejson, see GeocodeService#getUrlTemplate
+        return type == GeocoderType.GEOCODE_JSON || type == GeocoderType.NOMINATIM;
     }
 
     @Override
