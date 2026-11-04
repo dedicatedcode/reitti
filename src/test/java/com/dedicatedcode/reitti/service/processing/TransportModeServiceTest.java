@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -467,6 +468,75 @@ class TransportModeServiceTest {
 
         assertEquals(1, segments.size());
         assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 480);
+    }
+
+    @Test
+    void reliablySampledSegmentCarriesPositiveConfidence() {
+        // 150 m per 10 s cadence = 54 km/h, comfortably inside the driving band.
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i <= 60; i++) {
+            points.add(pt(i * 10L, (i + 1) * 150.0));
+        }
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(600));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 600);
+        double confidence = segments.getFirst().confidence();
+        assertTrue(confidence > 0.0, "expected confidence > 0 for a dense unambiguous segment but was " + confidence);
+        assertTrue(confidence <= 1.0, "confidence must not exceed 1.0 but was " + confidence);
+    }
+
+    @Test
+    void manualOverrideCarriesFullConfidence() {
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            points.add(pt(i * 15L, (i + 1) * 15.0));
+        }
+        when(transportModeOverrideJdbcService.getTransportModeOverrides(any(User.class), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.CYCLING, T0.plusSeconds(270))));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(300));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.CYCLING, 0, 300);
+        assertEquals(1.0, segments.getFirst().confidence());
+    }
+
+    @Test
+    void unreliableWindowsCarryNoConfidence() {
+        // 700 s gaps leave every classification window with at most one point, so no chunk is reliable
+        // and the decoded segment must report zero confidence instead of a fabricated value.
+        List<TransportModeSegment> segments = service.segmentTrip(user,
+                List.of(pt(0, 0), pt(700, 350), pt(1400, 700)), T0, T0.plusSeconds(1400));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 1400);
+        assertEquals(0.0, segments.getFirst().confidence());
+    }
+
+    @Test
+    void higherSensitivitySuppressesMarginalModeChange() {
+        // 9 km/h sits in the walking/cycling overlap and is only marginally more likely to be cycling.
+        // Low sensitivity makes switching cheap, so the short run is kept; high sensitivity makes the
+        // two transitions more expensive than the emission gain, so the trip stays one walking segment.
+        List<RawLocationPoint> points = trace(5, 5, 9, 9, 5, 5);
+
+        List<TransportModeSegment> responsive = segmentAtSensitivity(1.0, points, 360);
+        assertEquals(3, responsive.size());
+        assertSegment(responsive.get(0), TransportMode.WALKING, 0, 120);
+        assertSegment(responsive.get(1), TransportMode.CYCLING, 120, 120);
+        assertSegment(responsive.get(2), TransportMode.WALKING, 240, 120);
+
+        List<TransportModeSegment> stable = segmentAtSensitivity(4.0, points, 360);
+        assertEquals(1, stable.size());
+        assertSegment(stable.getFirst(), TransportMode.WALKING, 0, 360);
+    }
+
+    private List<TransportModeSegment> segmentAtSensitivity(double sensitivity, List<RawLocationPoint> points,
+                                                            long tripDurationSeconds) {
+        when(transportModeJdbcService.getModeChangeSensitivity(any(User.class))).thenReturn(sensitivity);
+        return service.segmentTrip(user, points, T0, T0.plusSeconds(tripDurationSeconds));
     }
 
     /**
