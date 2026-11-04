@@ -140,7 +140,7 @@ public class TransportModeService {
         TransportModeSegment last = result.getLast();
         long end = last.offsetSeconds() + last.durationSeconds();
         if (last.offsetSeconds() >= tripDuration) {
-            result.remove(result.size() - 1);
+            result.removeLast();
         } else if (end > tripDuration) {
             result.set(result.size() - 1, new TransportModeSegment(
                     last.mode(),
@@ -264,7 +264,7 @@ public class TransportModeService {
 
     /**
      * A slower mode sandwiched between two runs of the same faster mode is almost always a
-     * classification artefact rather than a real mode change (for example leaving the motorway
+     * classification artifact rather than a real mode change (for example leaving the freeway
      * and driving slower for a while). Keep the surrounding mode instead.
      */
     private List<TransportModeSegment> absorbSlowerRunsBetweenSameMode(List<TransportModeSegment> segments,
@@ -312,8 +312,7 @@ public class TransportModeService {
             return segments;
         }
 
-        long maxBoundaryDuration = Math.min(MAX_BOUNDARY_ABSORPTION_SECONDS,
-                Math.max(60, (long) (tripDuration * 0.1)));
+        long maxBoundaryDuration = Math.clamp((long) (tripDuration * 0.1), 60, MAX_BOUNDARY_ABSORPTION_SECONDS);
         List<TransportModeSegment> result = new ArrayList<>(segments);
 
         TransportModeSegment first = result.getFirst();
@@ -322,7 +321,7 @@ public class TransportModeService {
                 && first.durationSeconds() <= maxBoundaryDuration
                 && band(first.mode(), configs) < band(second.mode(), configs)) {
             result.set(1, mergeWithRight(first, second));
-            result.remove(0);
+            result.removeFirst();
         }
 
         if (result.size() >= 2) {
@@ -332,7 +331,7 @@ public class TransportModeService {
                     && last.durationSeconds() <= maxBoundaryDuration
                     && band(last.mode(), configs) < band(previous.mode(), configs)) {
                 result.set(result.size() - 2, mergeWithLeft(previous, last));
-                result.remove(result.size() - 1);
+                result.removeLast();
             }
         }
         return mergeSameModeSegments(result);
