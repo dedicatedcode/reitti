@@ -1,6 +1,7 @@
 package com.dedicatedcode.reitti.config;
 
 import com.dedicatedcode.reitti.service.DataCleanupService;
+import com.dedicatedcode.reitti.service.geocoding.BulkReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.importer.PromotionJobHandler;
 import com.dedicatedcode.reitti.service.integration.IntervalsIcuHistoricalImportTask;
@@ -28,6 +29,14 @@ public class TaskConfig {
     public JobDetail significantPlaceCreatedJobDetail() {
         return JobBuilder.newJob(ReverseGeocodingListener.class)
                 .withIdentity("reverse-geocoding-job")
+                .storeDurably()
+                .build();
+    }
+
+    @Bean("bulkReverseGeocodingJob")
+    public JobDetail bulkReverseGeocodingJobDetail() {
+        return JobBuilder.newJob(BulkReverseGeocodingListener.class)
+                .withIdentity("bulk-reverse-geocoding-job")
                 .storeDurably()
                 .build();
     }

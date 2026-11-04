@@ -10,6 +10,7 @@ import com.dedicatedcode.reitti.model.geocoding.GeocodingResponse;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.*;
+import com.dedicatedcode.reitti.service.geocoding.BulkReverseGeocodingListener;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeResult;
 import com.dedicatedcode.reitti.service.geocoding.GeocodeServiceManager;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
@@ -56,7 +57,7 @@ public class PlacesSettingsController {
     private final PlaceChangeDetectionService placeChangeDetectionService;
     private final JobSchedulingService jobSchedulingService;
     private final JobDetail locationDataCleanupTask;
-    private final JobDetail reverseGeocodingTask;
+    private final JobDetail bulkReverseGeocodingTask;
     private final boolean dataManagementEnabled;
     private final ObjectMapper objectMapper;
     private final SuppressedVisitJdbcService suppressedVisitJdbcService;
@@ -74,7 +75,7 @@ public class PlacesSettingsController {
                                     I18nService i18nService,
                                     PlaceChangeDetectionService placeChangeDetectionService, JobSchedulingService jobSchedulingService,
                                     @Qualifier("polygonUpdateJob") JobDetail locationDataCleanupTask,
-                                    @Qualifier("reverseGeocodingJob") JobDetail reverseGeocodingTask,
+                                    @Qualifier("bulkReverseGeocodingJob") JobDetail bulkReverseGeocodingTask,
                                     @Value("${reitti.data-management.enabled:false}") boolean dataManagementEnabled,
                                     ObjectMapper objectMapper,
                                     SuppressedVisitJdbcService suppressedVisitJdbcService,
@@ -92,7 +93,7 @@ public class PlacesSettingsController {
         this.placeChangeDetectionService = placeChangeDetectionService;
         this.jobSchedulingService = jobSchedulingService;
         this.locationDataCleanupTask = locationDataCleanupTask;
-        this.reverseGeocodingTask = reverseGeocodingTask;
+        this.bulkReverseGeocodingTask = bulkReverseGeocodingTask;
         this.dataManagementEnabled = dataManagementEnabled;
         this.objectMapper = objectMapper;
         this.suppressedVisitJdbcService = suppressedVisitJdbcService;
@@ -462,6 +463,18 @@ public class PlacesSettingsController {
         return "redirect:" + redirectUrl;
     }
 
+    @GetMapping("/clear-and-rerun-dialog")
+    public String getClearAndRerunDialog(@AuthenticationPrincipal User user,
+                                         @RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "") String search,
+                                         Model model) {
+        List<SignificantPlace> allPlaces = placeJdbcService.findAllByUser(user);
+        model.addAttribute("placeCount", allPlaces.size());
+        model.addAttribute("page", page);
+        model.addAttribute("search", search);
+        return "settings/fragments/geocoding :: clear-and-rerun-dialog";
+    }
+
     @PostMapping("/run-geocoding")
     public String runGeocoding(@AuthenticationPrincipal User user,
                                @RequestParam(defaultValue = "0") int page,
@@ -473,9 +486,12 @@ public class PlacesSettingsController {
             if (nonGeocodedPlaces.isEmpty()) {
                 model.addAttribute("successMessage", i18nService.translate("geocoding.no.places"));
             } else {
-                for (SignificantPlace place : nonGeocodedPlaces) {
-                    enqueueReverseGeocoding(user, place);
-                }
+                BulkReverseGeocodingListener.TaskData event = new BulkReverseGeocodingListener.TaskData(user.getUsername(), false);
+                this.jobSchedulingService.enqueueTask(bulkReverseGeocodingTask, event,
+                                                      JobSchedulingService.Metadata.builder()
+                                                              .user(user)
+                                                              .friendlyName("Manual reverse geocoding")
+                                                              .jobType(JobType.REVERSE_GEOCODE).build());
 
                 model.addAttribute("successMessage", i18nService.translate("geocoding.run.success", nonGeocodedPlaces.size()));
             }
@@ -499,15 +515,12 @@ public class PlacesSettingsController {
             if (allPlaces.isEmpty()) {
                 model.addAttribute("successMessage", i18nService.translate("geocoding.no.places"));
             } else {
-                for (SignificantPlace place : allPlaces) {
-                    SignificantPlace clearedPlace = place.withGeocoded(false).withAddress(null);
-                    significantPlaceOverrideJdbcService.clear(user, clearedPlace);
-                    placeJdbcService.update(user, clearedPlace);
-                }
-
-                for (SignificantPlace place : allPlaces) {
-                    enqueueReverseGeocoding(user, place);
-                }
+                BulkReverseGeocodingListener.TaskData event = new BulkReverseGeocodingListener.TaskData(user.getUsername(), true);
+                this.jobSchedulingService.enqueueTask(bulkReverseGeocodingTask, event,
+                                                      JobSchedulingService.Metadata.builder()
+                                                              .user(user)
+                                                              .friendlyName("Clear and re-geocode all places")
+                                                              .jobType(JobType.REVERSE_GEOCODE).build());
 
                 model.addAttribute("successMessage", i18nService.translate("geocoding.clear.success", allPlaces.size()));
             }
@@ -520,21 +533,6 @@ public class PlacesSettingsController {
         return "settings/places :: places-content";
     }
 
-    private void enqueueReverseGeocoding(User user, SignificantPlace place) {
-        ReverseGeocodingListener.TaskData event = new ReverseGeocodingListener.TaskData(
-                user.getUsername(),
-                null,
-                place.getId(),
-                place.getLatitudeCentroid(),
-                place.getLongitudeCentroid(),
-                UUID.randomUUID().toString()
-        );
-        this.jobSchedulingService.enqueueTask(reverseGeocodingTask, event,
-                                              JobSchedulingService.Metadata.builder()
-                                                      .user(user)
-                                                      .friendlyName("Manual reverse geocoding")
-                                                      .jobType(JobType.REVERSE_GEOCODE).build());
-    }
 
     @GetMapping("/nearby")
     @ResponseBody

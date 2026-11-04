@@ -56,6 +56,7 @@ class SettingsNavigationAdminSectionTest {
         mockMvc.perform(get("/settings/places").with(user(testingService.randomUser())))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("/settings/places/run-geocoding")))
-                .andExpect(content().string(containsString("/settings/places/clear-and-rerun")));
+                // the destructive action opens the Reitti confirmation dialog first
+                .andExpect(content().string(containsString("/settings/places/clear-and-rerun-dialog")));
     }
 }

@@ -126,5 +126,31 @@
         <span th:text="${testResult['message']}"></span>
     </div>
 </div>
+
+<div th:fragment="clear-and-rerun-dialog">
+    <p th:text="#{geocoding.clear.dialog.description(${placeCount})}">This will remove the stored address information
+        and request new geocoding data for all places.</p>
+    <div class="alert alert-warning">
+        <strong th:text="#{label.warning}">Warning:</strong>
+        <span th:text="#{geocoding.clear.dialog.duration}">Re-geocoding all places can take a long time.</span>
+    </div>
+    <div class="alert alert-warning">
+        <span th:text="#{geocoding.clear.dialog.limits}">Depending on your configured geocoding services, this run may
+            hit their request limits or quotas.</span>
+    </div>
+    <div class="form-buttons">
+        <button type="button" class="btn btn-danger"
+                th:hx-post="@{/settings/places/clear-and-rerun(page=${page}, search=${search})}"
+                hx-target="#places-management"
+                hx-swap="innerHTML"
+                hx-indicator="#clear-re-geocode-confirm-spinner"
+                hx-on::after-request="if(event.detail.successful) closeClearGeocodeDialog()">
+            <span class="button-text" th:text="#{geocoding.clear.button}">Clear and Re-geocode</span>
+            <span id="clear-re-geocode-confirm-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="closeClearGeocodeDialog()"
+                th:text="#{form.cancel}">Cancel</button>
+    </div>
+</div>
 </body>
 </html>

@@ -151,7 +151,7 @@ public class GeoCodingSettingsController {
                                      @RequestParam(required = false) String url,
                                      @RequestParam GeocoderType type,
                                      @RequestParam(required = false) String apiKey,
-                                     @RequestParam(required = false) String language,
+                                     @RequestParam(required = false, name = "lang") String language,
                                      @RequestParam(required = false) Integer limit,
                                      @RequestParam(required = false) Double radius,
                                      @RequestParam int priority,
