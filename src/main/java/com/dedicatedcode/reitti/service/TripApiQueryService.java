@@ -65,6 +65,7 @@ public class TripApiQueryService {
                             'offsetSeconds', tm.offset_seconds,
                             'durationSeconds', tm.duration_in_seconds,
                             'mode', tm.transportation_mode,
+                            'confidence', COALESCE(tm.confidence, 1.0),
                             'color', c.color,
                             'icon', c.icon
                         ) ORDER BY tm.offset_seconds) as segments

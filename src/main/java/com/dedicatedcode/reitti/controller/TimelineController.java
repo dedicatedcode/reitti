@@ -221,9 +221,16 @@ public class TimelineController {
                                          @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone,
                                          Model model) {
         Trip trip = tripJdbcService.findById(user, id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        List<TransportModeSegmentView> segments = trip.getSegments().stream()
+                .map(segment -> {
+                    Instant segmentStart = trip.getStartTime().plusSeconds(segment.offsetSeconds());
+                    Instant segmentEnd = segmentStart.plusSeconds(segment.durationSeconds());
+                    return new TransportModeSegmentView(segment, transportModeService.isManualOverride(user, segmentStart, segmentEnd));
+                })
+                .toList();
         model.addAttribute("tripId", id);
         model.addAttribute("tripStartTime", TimeUtil.adjustInstant(trip.getStartTime(), timezone));
-        model.addAttribute("transportModeSegments", trip.getSegments());
+        model.addAttribute("transportModeSegments", segments);
         model.addAttribute("transportModesSet", distinctModes(trip.getSegments()));
         model.addAttribute("availableTransportModes", Arrays.stream(TransportMode.values()).filter(t -> t != TransportMode.UNKNOWN).toList());
         model.addAttribute("returnUrl", returnUrl);
@@ -350,6 +357,9 @@ public class TimelineController {
                 .map(Optional::get)
                 .sorted(Comparator.comparing(UserTimelineData::displayName))
                 .toList();
+    }
+
+    public record TransportModeSegmentView(TransportModeSegment segment, boolean manual) {
     }
 
 }

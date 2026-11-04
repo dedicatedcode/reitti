@@ -8,6 +8,7 @@ public record TripSegmentDTO(
         long offsetSeconds,
         long durationSeconds,
         TransportMode mode,
+        double confidence,
         String color,
         String icon
 ) {

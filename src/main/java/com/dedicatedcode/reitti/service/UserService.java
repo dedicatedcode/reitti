@@ -197,10 +197,10 @@ public class UserService {
     private void saveDefaultTransportationModeDetectionParameters(User createdUser) {
         this.transportModeJdbcService.setTransportModeConfigs(createdUser,
                 List.of(
-                        new TransportModeConfig(TransportMode.WALKING, 7.0),
-                        new TransportModeConfig(TransportMode.CYCLING, 20.0),
-                        new TransportModeConfig(TransportMode.DRIVING, 120.0),
-                        new TransportModeConfig(TransportMode.TRANSIT, null)
+                        new TransportModeConfig(TransportMode.WALKING, 0.0, 7.0),
+                        new TransportModeConfig(TransportMode.CYCLING, 5.0, 25.0),
+                        new TransportModeConfig(TransportMode.DRIVING, 20.0, 130.0),
+                        new TransportModeConfig(TransportMode.TRANSIT, 10.0, 200.0, 0.7, true, null, null)
                 ));
     }
 

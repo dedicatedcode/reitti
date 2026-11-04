@@ -61,6 +61,7 @@ class TransportationModesControllerTest {
                 .andExpect(model().attributeExists("configs"))
                 .andExpect(model().attributeExists("availableModes"))
                 .andExpect(model().attributeExists("unitSystem"))
+                .andExpect(model().attributeExists("modeChangeSensitivity"))
                 .andExpect(model().attributeExists("isImperial"));
     }
 
@@ -114,21 +115,18 @@ class TransportationModesControllerTest {
 
     @Test
     void getCreateForm_ShouldReturnCreateFormFragmentWithAvailableModes() throws Exception {
-        // Given: configure user to have only WALKING and CYCLING
         List<TransportModeConfig> userConfigs = List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0),
-                new TransportModeConfig(TransportMode.CYCLING, 20.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0),
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 20.0)
         );
         transportModeJdbcService.setTransportModeConfigs(testUser, userConfigs);
 
-        // When & Then
         mockMvc.perform(get("/settings/transportation-modes/create-form").with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/fragments/transportation-modes :: transportation-mode-edit-form"))
                 .andExpect(model().attributeExists("availableModes", "unitSystem", "isImperial", "defaultColors"))
                 .andExpect(model().attribute("isImperial", false));
 
-        // Verify available modes do not contain WALKING, CYCLING, or UNKNOWN
         @SuppressWarnings("unchecked")
         List<TransportMode> availableModes = (List<TransportMode>) mockMvc.perform(get("/settings/transportation-modes/create-form").with(user(testUser)))
                 .andReturn().getModelAndView().getModel().get("availableModes");
@@ -139,11 +137,9 @@ class TransportationModesControllerTest {
 
     @Test
     void getEditForm_ForExistingMode_ShouldReturnEditFormFragment() throws Exception {
-        // Given: configure user with WALKING mode
-        TransportModeConfig walkingConfig = new TransportModeConfig(TransportMode.WALKING, 5.0, "#ff6b6b", "fa-person-walking");
+        TransportModeConfig walkingConfig = new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0, "#ff6b6b", "fa-person-walking");
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(walkingConfig));
 
-        // When & Then
         mockMvc.perform(get("/settings/transportation-modes/{mode}/edit", TransportMode.WALKING.name()).with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/fragments/transportation-modes :: transportation-mode-edit-form"))
@@ -154,27 +150,26 @@ class TransportationModesControllerTest {
 
     @Test
     void getEditForm_ForNonExistentMode_ShouldThrowException() {
-        // Given: user only has WALKING
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When & Then
         assertThatThrownBy(() -> mockMvc.perform(get("/settings/transportation-modes/{mode}/edit", TransportMode.AIRPLANE.name()).with(user(testUser))))
                 .hasCauseInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void addTransportMode_Metric_ShouldAddNewMode() throws Exception {
-        // Given: user starts with WALKING only
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When
         mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.CYCLING.name())
+                        .param("minSpeed", "5.0")
                         .param("maxSpeed", "25.0")
+                        .param("preferenceWeight", "1.5")
+                        .param("enabled", "true")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .param("color", "#4ecdc4")
                         .param("icon", "fa-bicycle")
@@ -184,25 +179,26 @@ class TransportationModesControllerTest {
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.added"))
                 .andExpect(model().attributeDoesNotExist("errorMessage"));
 
-        // Then
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> cycling = configs.stream().filter(c -> c.mode() == TransportMode.CYCLING).findFirst();
         assertThat(cycling).isPresent();
+        assertThat(cycling.get().minKmh()).isEqualTo(5.0);
         assertThat(cycling.get().maxKmh()).isEqualTo(25.0);
+        assertThat(cycling.get().preferenceWeight()).isEqualTo(1.5);
+        assertThat(cycling.get().enabled()).isTrue();
         assertThat(cycling.get().color()).isEqualTo("#4ecdc4");
         assertThat(cycling.get().icon()).isEqualTo("fa-bicycle");
     }
 
     @Test
-    void addTransportMode_Imperial_ShouldConvertSpeedToKmh() throws Exception {
-        // Given: user starts with WALKING only
+    void addTransportMode_Imperial_ShouldConvertSpeedsToKmh() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When: add DRIVING with 60 mph in IMPERIAL
         mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.DRIVING.name())
+                        .param("minSpeed", "10.0")
                         .param("maxSpeed", "60.0")
                         .param("unitSystem", UnitSystem.IMPERIAL.name())
                         .param("color", "#45b7d1")
@@ -212,21 +208,19 @@ class TransportationModesControllerTest {
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.added"));
 
-        // Then: 60 * 1.60934 = 96.5604 km/h
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> driving = configs.stream().filter(c -> c.mode() == TransportMode.DRIVING).findFirst();
         assertThat(driving).isPresent();
+        assertThat(driving.get().minKmh()).isCloseTo(16.0934, within(0.001));
         assertThat(driving.get().maxKmh()).isCloseTo(96.5604, within(0.001));
     }
 
     @Test
-    void addTransportMode_NullMaxSpeed_ShouldAddConfigWithNullMaxKmh() throws Exception {
-        // Given
+    void addTransportMode_MissingRange_ShouldShowErrorMessage() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When
         mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.TRANSIT.name())
                         .param("color", "#96ceb4")
@@ -234,25 +228,19 @@ class TransportationModesControllerTest {
                         .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
-                .andExpect(model().attribute("successMessage", "transportation.modes.success.added"));
-
-        // Then
-        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
-        Optional<TransportModeConfig> transit = configs.stream().filter(c -> c.mode() == TransportMode.TRANSIT).findFirst();
-        assertThat(transit).isPresent();
-        assertThat(transit.get().maxKmh()).isNull();
+                .andExpect(model().attribute("errorMessage", "transportation.modes.error.range.required"))
+                .andExpect(model().attributeDoesNotExist("successMessage"));
     }
 
     @Test
     void addTransportMode_AlreadyExists_ShouldShowErrorMessage() throws Exception {
-        // Given: WALKING already configured
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When
         mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.WALKING.name())
+                        .param("minSpeed", "5.0")
                         .param("maxSpeed", "10.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .with(user(testUser)))
@@ -261,42 +249,57 @@ class TransportationModesControllerTest {
                 .andExpect(model().attribute("errorMessage", "transportation.modes.error.already.exists"))
                 .andExpect(model().attributeDoesNotExist("successMessage"));
 
-        // Then: count remains 1
         assertThat(transportModeJdbcService.getTransportModeConfigs(testUser)).hasSize(1);
     }
 
     @Test
-    void addTransportMode_DuplicateMaxKmh_ShouldShowErrorMessage() throws Exception {
-        // Given: WALKING configured with maxKmh = 10.0
+    void addTransportMode_InvalidRange_ShouldShowErrorMessage() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 10.0)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0)
         ));
 
-        // When: try adding CYCLING with the same maxSpeed (10.0 km/h)
         mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
                         .param("mode", TransportMode.CYCLING.name())
+                        .param("minSpeed", "20.0")
                         .param("maxSpeed", "10.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
-                .andExpect(model().attribute("errorMessage", "transportation.modes.error.duplicate.max.kmh"))
+                .andExpect(model().attribute("errorMessage", "transportation.modes.error.invalid.range"))
                 .andExpect(model().attributeDoesNotExist("successMessage"));
 
-        // Then: CYCLING was not added
         assertThat(transportModeJdbcService.getTransportModeConfigs(testUser)).hasSize(1);
     }
 
     @Test
-    void updateTransportMode_Metric_ShouldUpdateConfig() throws Exception {
-        // Given
+    void addTransportMode_OverlappingRange_ShouldBeAllowed() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.CYCLING, 20.0, "#111111", "fa-old")
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 8.0)
         ));
 
-        // When
+        mockMvc.perform(post("/settings/transportation-modes/add").with(csrf())
+                        .param("mode", TransportMode.CYCLING.name())
+                        .param("minSpeed", "5.0")
+                        .param("maxSpeed", "25.0")
+                        .param("unitSystem", UnitSystem.METRIC.name())
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("successMessage", "transportation.modes.success.added"));
+
+        assertThat(transportModeJdbcService.getTransportModeConfigs(testUser)).hasSize(2);
+    }
+
+    @Test
+    void updateTransportMode_Metric_ShouldUpdateConfig() throws Exception {
+        transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 20.0, "#111111", "fa-old")
+        ));
+
         mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.CYCLING.name()).with(csrf())
+                        .param("minSpeed", "10.0")
                         .param("maxSpeed", "30.0")
+                        .param("preferenceWeight", "1.2")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .param("color", "#222222")
                         .param("icon", "fa-bicycle-new")
@@ -306,24 +309,24 @@ class TransportationModesControllerTest {
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.updated"))
                 .andExpect(model().attributeDoesNotExist("errorMessage"));
 
-        // Then
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> updated = configs.stream().filter(c -> c.mode() == TransportMode.CYCLING).findFirst();
         assertThat(updated).isPresent();
+        assertThat(updated.get().minKmh()).isEqualTo(10.0);
         assertThat(updated.get().maxKmh()).isEqualTo(30.0);
+        assertThat(updated.get().preferenceWeight()).isEqualTo(1.2);
         assertThat(updated.get().color()).isEqualTo("#222222");
         assertThat(updated.get().icon()).isEqualTo("fa-bicycle-new");
     }
 
     @Test
-    void updateTransportMode_Imperial_ShouldConvertSpeedToKmh() throws Exception {
-        // Given
+    void updateTransportMode_Imperial_ShouldConvertSpeedsToKmh() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.DRIVING, 100.0)
+                new TransportModeConfig(TransportMode.DRIVING, 20.0, 100.0)
         ));
 
-        // When: update with 75 mph in IMPERIAL
         mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.DRIVING.name()).with(csrf())
+                        .param("minSpeed", "10.0")
                         .param("maxSpeed", "75.0")
                         .param("unitSystem", UnitSystem.IMPERIAL.name())
                         .with(user(testUser)))
@@ -331,21 +334,19 @@ class TransportationModesControllerTest {
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.updated"));
 
-        // Then: 75 * 1.60934 = 120.7005 km/h
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> driving = configs.stream().filter(c -> c.mode() == TransportMode.DRIVING).findFirst();
         assertThat(driving).isPresent();
+        assertThat(driving.get().minKmh()).isCloseTo(16.0934, within(0.001));
         assertThat(driving.get().maxKmh()).isCloseTo(120.7005, within(0.001));
     }
 
     @Test
-    void updateTransportMode_NullSpeed_ShouldRetainExistingMaxKmh() throws Exception {
-        // Given
+    void updateTransportMode_NullSpeeds_ShouldRetainExistingRange() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 6.5, "#f1ba63", "fa-person-walking")
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 6.5, "#f1ba63", "fa-person-walking")
         ));
 
-        // When: updating color only, maxSpeed is null
         mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name()).with(csrf())
                         .param("color", "#a29bfe")
                         .with(user(testUser)))
@@ -353,10 +354,10 @@ class TransportationModesControllerTest {
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.updated"));
 
-        // Then
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> walking = configs.stream().filter(c -> c.mode() == TransportMode.WALKING).findFirst();
         assertThat(walking).isPresent();
+        assertThat(walking.get().minKmh()).isEqualTo(0.0);
         assertThat(walking.get().maxKmh()).isEqualTo(6.5);
         assertThat(walking.get().color()).isEqualTo("#a29bfe");
         assertThat(walking.get().icon()).isEqualTo("fa-person-walking");
@@ -364,13 +365,12 @@ class TransportationModesControllerTest {
 
     @Test
     void updateTransportMode_EmptyColorAndIcon_ShouldSetToNull() throws Exception {
-        // Given
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0, "#f1ba63", "fa-person-walking")
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0, "#f1ba63", "fa-person-walking")
         ));
 
-        // When: updating with empty strings for color and icon
         mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.WALKING.name()).with(csrf())
+                        .param("minSpeed", "0.0")
                         .param("maxSpeed", "5.0")
                         .param("unitSystem", UnitSystem.METRIC.name())
                         .param("color", "")
@@ -380,7 +380,6 @@ class TransportationModesControllerTest {
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.updated"));
 
-        // Then
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         Optional<TransportModeConfig> walking = configs.stream().filter(c -> c.mode() == TransportMode.WALKING).findFirst();
         assertThat(walking).isPresent();
@@ -389,14 +388,45 @@ class TransportationModesControllerTest {
     }
 
     @Test
-    void deleteTransportMode_ShouldRemoveModeFromDatabase() throws Exception {
-        // Given: user has WALKING and CYCLING
+    void updateTransportMode_InvalidRange_ShouldShowErrorMessage() throws Exception {
         transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
-                new TransportModeConfig(TransportMode.WALKING, 5.0),
-                new TransportModeConfig(TransportMode.CYCLING, 20.0)
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 20.0)
         ));
 
-        // When: delete CYCLING
+        mockMvc.perform(post("/settings/transportation-modes/{mode}/update", TransportMode.CYCLING.name()).with(csrf())
+                        .param("minSpeed", "25.0")
+                        .param("maxSpeed", "10.0")
+                        .param("unitSystem", UnitSystem.METRIC.name())
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
+                .andExpect(model().attribute("errorMessage", "transportation.modes.error.invalid.range"));
+
+        List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
+        assertThat(configs.getFirst().minKmh()).isEqualTo(5.0);
+        assertThat(configs.getFirst().maxKmh()).isEqualTo(20.0);
+    }
+
+    @Test
+    void updateSensitivity_ShouldStoreValue() throws Exception {
+        mockMvc.perform(post("/settings/transportation-modes/sensitivity").with(csrf())
+                        .param("modeChangeSensitivity", "4.0")
+                        .with(user(testUser)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
+                .andExpect(model().attribute("successMessage", "transportation.modes.success.sensitivity"))
+                .andExpect(model().attribute("modeChangeSensitivity", 4.0));
+
+        assertThat(transportModeJdbcService.getModeChangeSensitivity(testUser)).isEqualTo(4.0);
+    }
+
+    @Test
+    void deleteTransportMode_ShouldRemoveModeFromDatabase() throws Exception {
+        transportModeJdbcService.setTransportModeConfigs(testUser, List.of(
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 5.0),
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 20.0)
+        ));
+
         mockMvc.perform(post("/settings/transportation-modes/{mode}/delete", TransportMode.CYCLING.name()).with(csrf())
                         .with(user(testUser)))
                 .andExpect(status().isOk())
@@ -404,7 +434,6 @@ class TransportationModesControllerTest {
                 .andExpect(model().attribute("successMessage", "transportation.modes.success.deleted"))
                 .andExpect(model().attributeDoesNotExist("errorMessage"));
 
-        // Then: only WALKING remains
         List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(testUser);
         assertThat(configs).hasSize(1);
         assertThat(configs.get(0).mode()).isEqualTo(TransportMode.WALKING);
@@ -415,7 +444,7 @@ class TransportationModesControllerTest {
         mockMvc.perform(post("/settings/transportation-modes/content").with(csrf()).with(user(testUser)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/transportation-modes :: transportation-modes-content"))
-                .andExpect(model().attributeExists("configs", "availableModes", "unitSystem", "isImperial"));
+                .andExpect(model().attributeExists("configs", "availableModes", "unitSystem", "isImperial", "modeChangeSensitivity"));
     }
 
     @Test

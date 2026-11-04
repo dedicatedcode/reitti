@@ -9,20 +9,32 @@
     <h2 th:text="#{timeline.trip.transport.edit.headline}">Edit Transport Modes</h2>
     <form th:action="@{/timeline/trips/{id}/transport-modes(id=${tripId})}" method="POST">
         <input type="hidden" name="returnUrl" th:value="${returnUrl}">
-        <th:block th:each="segment, iterStat : ${transportModeSegments}">
-            <input type="hidden" th:name="${'segments[' + iterStat.index + '].offsetSeconds'}" th:value="${segment.offsetSeconds()}">
-            <div class="form-group">
-                <label>
-                    <span th:text="${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds()), 'HH:mm')}">14:00</span>
-                    <span th:text="'- ' + ${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds() + segment.durationSeconds()), 'HH:mm')}">14:05</span>
-                </label>
-                <select th:name="${'segments[' + iterStat.index + '].transportMode'}" required>
-                    <option th:each="mode : ${availableTransportModes}"
-                            th:value="${mode}"
-                            th:text="#{${'transportation.mode.' + mode + '.name'}}"
-                            th:selected="${mode == segment.mode()}"></option>
-                </select>
-            </div>
+        <th:block th:each="item, iterStat : ${transportModeSegments}">
+            <th:block th:with="segment=${item.segment()}">
+                <input type="hidden" th:name="${'segments[' + iterStat.index + '].offsetSeconds'}" th:value="${segment.offsetSeconds()}">
+                <div class="form-group">
+                    <label>
+                        <span th:text="${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds()), 'HH:mm')}">14:00</span>
+                        <span th:text="'- ' + ${#temporals.format(tripStartTime.plusSeconds(segment.offsetSeconds() + segment.durationSeconds()), 'HH:mm')}">14:05</span>
+                    </label>
+                    <div class="transport-mode-row">
+                        <select th:name="${'segments[' + iterStat.index + '].transportMode'}" required>
+                            <option th:each="mode : ${availableTransportModes}"
+                                    th:value="${mode}"
+                                    th:text="#{${'transportation.mode.' + mode + '.name'}}"
+                                    th:selected="${mode == segment.mode()}"></option>
+                        </select>
+                        <span th:if="${item.manual()}"
+                              class="transport-mode-confidence manual"
+                              th:text="#{timeline.trip.transport.confidence.manual}">Manual</span>
+                        <span th:unless="${item.manual()}"
+                              class="transport-mode-confidence"
+                              th:text="#{timeline.trip.transport.confidence.detected(${#numbers.formatPercent(segment.confidence(), 0, 0)})}">
+                            Detected with 85% confidence
+                        </span>
+                    </div>
+                </div>
+            </th:block>
         </th:block>
         <div class="form-buttons">
             <button type="submit" class="btn btn-primary" th:text="#{form.save.changes}">Save Changes</button>
