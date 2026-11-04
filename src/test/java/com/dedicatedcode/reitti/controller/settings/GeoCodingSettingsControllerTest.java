@@ -74,6 +74,91 @@ class GeoCodingSettingsControllerTest {
     }
 
     @Test
+    void saveService_WithLangParam_ShouldStoreLanguageInAdditionalParameters() throws Exception {
+        String name = "LangTest_" + UUID.randomUUID();
+        long countBefore = geocodeServiceJdbcService.count();
+
+        // When creating a service with the lang form field
+        mockMvc.perform(post("/settings/geocode-services").with(csrf())
+                        .param("name", name)
+                        .param("url", "https://api.paikka.example.com")
+                        .param("type", GeocoderType.PAIKKA.name())
+                        .param("lang", "de")
+                        .param("priority", "3")
+                        .with(user(admin)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/geocode-services :: geocode-services-content"))
+                .andExpect(model().attributeExists("successMessage"))
+                .andExpect(model().attributeDoesNotExist("errorMessage"));
+
+        // Then the lang value is persisted under the "language" key and used in the url template
+        assertThat(geocodeServiceJdbcService.count()).isEqualTo(countBefore + 1);
+        GeocodeService created = geocodeServiceJdbcService.findAllByOrderByPriorityAndNameAsc().stream()
+                .filter(service -> service.getName().equals(name))
+                .findFirst()
+                .orElseThrow();
+        assertThat(created.getAdditionalParameters()).containsEntry("language", "de");
+        assertThat(created.getUrlTemplate()).contains("lang=de");
+    }
+
+    @Test
+    void updateService_WithLangParam_ShouldReplaceStoredLanguage() throws Exception {
+        // Given an existing service with a language set
+        GeocodeService existing = geocodeServiceJdbcService.save(new GeocodeService(
+                "LangUpdateTest_" + UUID.randomUUID(),
+                "https://api.paikka.example.com",
+                true, 0, null, null,
+                GeocoderType.PAIKKA, 4, Map.of("language", "en")
+        ));
+
+        // When updating it with a different lang value
+        mockMvc.perform(post("/settings/geocode-services").with(csrf())
+                        .param("id", existing.getId().toString())
+                        .param("name", existing.getName())
+                        .param("url", "https://api.paikka.example.com")
+                        .param("type", GeocoderType.PAIKKA.name())
+                        .param("lang", "de")
+                        .param("priority", "4")
+                        .with(user(admin)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/geocode-services :: geocode-services-content"))
+                .andExpect(model().attributeExists("successMessage"))
+                .andExpect(model().attributeDoesNotExist("errorMessage"));
+
+        // Then the language is replaced on the existing row
+        GeocodeService updated = geocodeServiceJdbcService.findById(existing.getId()).orElseThrow();
+        assertThat(updated.getAdditionalParameters()).containsEntry("language", "de");
+    }
+
+    @Test
+    void updateService_WithoutLangParam_ShouldReplaceStoredLanguage() throws Exception {
+        // Given an existing service with a language set
+        GeocodeService existing = geocodeServiceJdbcService.save(new GeocodeService(
+                "LangUpdateTest_" + UUID.randomUUID(),
+                "https://api.paikka.example.com",
+                true, 0, null, null,
+                GeocoderType.PAIKKA, 4, Map.of("language", "en")
+        ));
+
+        // When updating it with a different lang value
+        mockMvc.perform(post("/settings/geocode-services").with(csrf())
+                        .param("id", existing.getId().toString())
+                        .param("name", existing.getName())
+                        .param("url", "https://api.paikka.example.com")
+                        .param("type", GeocoderType.PAIKKA.name())
+                        .param("priority", "4")
+                        .with(user(admin)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/geocode-services :: geocode-services-content"))
+                .andExpect(model().attributeExists("successMessage"))
+                .andExpect(model().attributeDoesNotExist("errorMessage"));
+
+        // Then the language is replaced on the existing row
+        GeocodeService updated = geocodeServiceJdbcService.findById(existing.getId()).orElseThrow();
+        assertThat(updated.getAdditionalParameters()).doesNotContainKey("language");
+    }
+
+    @Test
     void typeFields_WhenEditingService_ShouldPreserveHiddenId() throws Exception {
         // Given an existing service
         GeocodeService existing = geocodeServiceJdbcService.save(new GeocodeService(
