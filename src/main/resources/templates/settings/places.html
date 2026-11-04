@@ -105,9 +105,10 @@
                             <strong><span th:text="#{label.warning}">Warning:</span></strong> <span th:text="#{geocoding.clear.warning}">This will clear all existing address information and re-geocode all places</span>
                         </div>
                         <button class="btn btn-danger"
-                                th:attr="hx-post=@{/settings/places/clear-and-rerun(page=${currentPage}, search=${search})}, hx-confirm=#{geocoding.clear.confirm}"
-                                hx-target="#places-management"
+                                th:hx-get="@{/settings/places/clear-and-rerun-dialog(page=${currentPage}, search=${search})}"
+                                hx-target="#clear-geocode-dialog-body"
                                 hx-swap="innerHTML"
+                                hx-on::after-request="if(event.detail.successful) openClearGeocodeDialog()"
                                 hx-indicator="#clear-re-geocode-spinner">
                             <span class="button-text" th:text="#{geocoding.clear.button}">Clear and Re-geocode</span>
                             <span id="clear-re-geocode-spinner" class="htmx-indicator"><i class="lni lni-is-spinning lni-spinner-2-sacle"></i></span>
@@ -119,12 +120,39 @@
     </div>
 </div>
 
+<div id="clear-geocode-dialog" class="reitti-dialog" role="dialog" aria-hidden="true">
+    <div class="reitti-dialog-backdrop" onclick="closeClearGeocodeDialog()"></div>
+    <div class="reitti-dialog-card">
+        <div class="reitti-dialog-head">
+            <h3 th:text="#{geocoding.clear.dialog.title}">Clear and Re-geocode All?</h3>
+            <button type="button" class="reitti-dialog-close" aria-label="Close" onclick="closeClearGeocodeDialog()">&times;</button>
+        </div>
+        <div class="reitti-dialog-body" id="clear-geocode-dialog-body"></div>
+    </div>
+</div>
+
 <script th:inline="javascript">
     window.userSettings = /*[[${userSettings}]]*/ {}
 
     document.addEventListener('DOMContentLoaded', function () {
         initPlaceMaps();
     })
+
+    function openClearGeocodeDialog() {
+        document.getElementById('clear-geocode-dialog').classList.add('open');
+    }
+
+    function closeClearGeocodeDialog() {
+        document.getElementById('clear-geocode-dialog').classList.remove('open');
+        document.getElementById('clear-geocode-dialog-body').innerHTML = '';
+    }
+
+    document.addEventListener('keydown', function (e) {
+        const dialog = document.getElementById('clear-geocode-dialog');
+        if (e.key === 'Escape' && dialog && dialog.classList.contains('open')) {
+            closeClearGeocodeDialog();
+        }
+    });
 
 
     function initPlaceMaps() {

@@ -66,8 +66,13 @@ public class ReverseGeocodingListener implements Job {
         SignificantPlace place = placeOptional.get();
 
         jobMetadataRepository.updateProgress(event.getJobId(), 0, 1, "Reverse geocoding place ...");
+        geocodePlace(user, place, event.previewId(), event.previewId() == null);
+        jobMetadataRepository.updateProgress(event.getJobId(), 1, 1, "Done");
+    }
+
+    public void geocodePlace(User user, SignificantPlace place, String previewId, boolean recordResponse) {
         try {
-            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place, event.previewId() == null);
+            Optional<GeocodeResult> resultOpt = this.geocodeServiceManager.reverseGeocode(place, recordResponse);
 
             if (resultOpt.isPresent()) {
                 GeocodeResult result = resultOpt.get();
@@ -95,12 +100,12 @@ public class ReverseGeocodingListener implements Job {
                     logger.info("Found override for place ID: {} with name: {}, type: {}, timezone: {}", place.getId(), override.get().name(), override.get().category(), override.get().timezone());
                     place = place.withName(override.get().name()).withType(override.get().category()).withTimezone(override.get().timezone());
                 }
-                if (event.previewId() == null) {
+                if (previewId == null) {
                     significantPlaceJdbcService.update(user, place.withGeocoded(true));
                     userNotificationService.placeUpdate(user, place, null);
                 } else {
                     previewSignificantPlaceJdbcService.update(place.withGeocoded(true));
-                    userNotificationService.placeUpdate(user, place, event.previewId());
+                    userNotificationService.placeUpdate(user, place, previewId);
 
                 }
                 logger.info("Updated place ID: {} with geocoding data: {}", place.getId(), label);
@@ -109,8 +114,6 @@ public class ReverseGeocodingListener implements Job {
             }
         } catch (Exception e) {
             logger.error("Error during reverse geocoding for place ID: {}", place.getId(), e);
-        } finally {
-            jobMetadataRepository.updateProgress(event.getJobId(), 1, 1, "Done");
         }
     }
 

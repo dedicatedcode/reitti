@@ -251,7 +251,7 @@ public class SignificantPlaceJdbcService {
                        sp.geocoded,
                        sp.version
                 FROM significant_places sp
-                WHERE sp.user_id = ? AND sp.geocoded = false
+                WHERE sp.user_id = ? AND sp.address IS NULL
                 ORDER BY sp.id
                 """;
         return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId());
