@@ -86,7 +86,7 @@ public class PreviewRawLocationPointJdbcService {
         if (after != null) {
             return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                     user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId,
-                    after, after, afterId, limit);
+                    after, afterId, limit);
         }
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId, limit);
