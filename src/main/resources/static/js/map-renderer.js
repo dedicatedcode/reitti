@@ -56,6 +56,12 @@ class MapRenderer {
         }
     }
 
+    static ensureWorkerUrl() {
+        if (!window.maplibregl?.setWorkerUrl) return;
+        const contextPath = (window.contextPath || '').replace(/\/$/, '');
+        maplibregl.setWorkerUrl(`${window.location.origin}${contextPath}/js/vendor/maplibre-gl-worker.6.16.0.mjs`);
+    }
+
     static getMapStyleValue(mapStyle) {
         if (mapStyle?.mapType === 'vector') {
             if (mapStyle?.styleInputType === 'url') {
@@ -104,6 +110,7 @@ class MapRenderer {
     }
 
     constructor(element, userSettings, initialViewState, viewConfig = {}) {
+        MapRenderer.ensureWorkerUrl();
         MapRenderer.ensureRTLTextPlugin();
         this.userSettings = userSettings;
         this.transitionQueue = Promise.resolve();
@@ -190,7 +197,7 @@ class MapRenderer {
         this.transitionMarkers = [];
 
         this.terrainLayer = null;
-        this.deckOverlay = new deck.MapboxOverlay({
+        this.deckOverlay = new deck.MapLibreOverlay({
             layers: []
         });
         this.map.addControl(this.deckOverlay);
@@ -503,6 +510,10 @@ class MapRenderer {
             allLayers.push(this.terrainLayer);
         }
 
+        // The TerrainExtension must be present from the first build: deck.gl only
+        // calls an extension's initializeState when a layer is first created, and
+        // that is what registers the TerrainEffect. Gating the extension on tile
+        // readiness leaves the effect unregistered and the layers invisible.
         const extensions = this._getTerrainExtensions();
         const terrainDrawMode = this.viewState.renderTerrain ? 'offset' : undefined;
 
@@ -2380,13 +2391,15 @@ class MapRenderer {
         if (style?.sources?.[terrainSourceId]) {
             const sourceDef = style.sources[terrainSourceId];
             const profile = this._detectProfile(sourceDef);
+            const tileSize = sourceDef.tileSize;
+            const maxzoom = sourceDef.maxzoom;
 
             if (sourceDef.tiles && sourceDef.tiles.length > 0) {
-                return { type: 'template', value: sourceDef.tiles[0], profile: profile };
+                return { type: 'template', value: sourceDef.tiles[0], profile: profile, tileSize: tileSize, maxzoom: maxzoom };
             }
 
             if (sourceDef.url) {
-                return { type: 'manifest', value: sourceDef.url, profile: profile };
+                return { type: 'manifest', value: sourceDef.url, profile: profile, tileSize: tileSize, maxzoom: maxzoom };
             }
         }
         return null;
@@ -2433,6 +2446,8 @@ class MapRenderer {
                 const tileJson = await response.json();
                 terrainData.profile = this._detectProfile(tileJson);
                 finalTileUrl = tileJson.tiles[0];
+                terrainData.tileSize = tileJson.tileSize || terrainData.tileSize;
+                terrainData.maxzoom = tileJson.maxzoom || terrainData.maxzoom;
             } else {
                 finalTileUrl = terrainData.value;
             }
@@ -2445,8 +2460,11 @@ class MapRenderer {
                 id: 'terrain-loader',
                 elevationData: finalTileUrl,
                 elevationDecoder: terrainData.profile.decoder,
+                // Use the same DEM tile size as the MapLibre source so both
+                // terrain systems drape data onto the same elevation mesh.
+                tileSize: terrainData.tileSize || 512,
                 minZoom: 0,
-                maxZoom: 14,
+                maxZoom: terrainData.maxzoom || 14,
                 operation: 'terrain',
                 // deck.gl only rebuilds the TerrainExtension height map when the
                 // viewport or the terrain layer identity changes, never when DEM
@@ -2817,3 +2835,4 @@ class MapRenderer {
 }
 
 MapRenderer.rtlTextPluginConfigured = false;
+MapRenderer.ensureWorkerUrl();
