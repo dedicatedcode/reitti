@@ -106,9 +106,9 @@ public class GeoJsonApiController {
 
                 if ((Boolean) result.get("success")) {
                     response.put("success", true);
-                    response.put("pointsScheduled", result.get("pointsImported"));
+                    response.put("pointsScheduled", result.get("pointsReceived"));
                     response.put("message", "Successfully imported GeoJSON file with "
-                            + result.get("pointsImported") + " location points");
+                            + result.get("pointsReceived") + " location points");
                 } else {
                     response.put("success", false);
                     response.put("error", result.get("error"));
