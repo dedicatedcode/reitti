@@ -9,9 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TransportModeJdbcService {
@@ -25,19 +23,21 @@ public class TransportModeJdbcService {
     @Cacheable(value = "transport-mode-configs", key = "#user.id")
     public List<TransportModeConfig> getTransportModeConfigs(User user) {
         String sql = """
-            SELECT transport_mode, max_kmh, color, icon
+            SELECT transport_mode, min_kmh, max_kmh, preference_weight, enabled, color, icon
             FROM transport_mode_detection_configs
-            WHERE user_id = ? 
-            ORDER BY max_kmh NULLS LAST
+            WHERE user_id = ?
+            ORDER BY min_kmh, max_kmh
             """;
-        
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            TransportMode mode = TransportMode.valueOf(rs.getString("transport_mode"));
-            Double maxKmh = Optional.ofNullable(rs.getObject("max_kmh")).map(BigDecimal.class::cast).map(BigDecimal::doubleValue).orElse(null);
-            String color = rs.getString("color");
-            String icon = rs.getString("icon");
-            return new TransportModeConfig(mode, maxKmh, color, icon);
-        }, user.getId());
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new TransportModeConfig(
+                TransportMode.valueOf(rs.getString("transport_mode")),
+                rs.getDouble("min_kmh"),
+                rs.getDouble("max_kmh"),
+                rs.getDouble("preference_weight"),
+                rs.getBoolean("enabled"),
+                rs.getString("color"),
+                rs.getString("icon")
+        ), user.getId());
     }
 
     @Transactional
@@ -47,18 +47,43 @@ public class TransportModeJdbcService {
         jdbcTemplate.update(deleteSql, user.getId());
 
         String insertSql = """
-            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, max_kmh, color, icon)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO transport_mode_detection_configs (user_id, transport_mode, min_kmh, max_kmh, preference_weight, enabled, color, icon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """;
-        
+
         for (TransportModeConfig config : configs) {
-            Double maxKmh = config.maxKmh();
-            jdbcTemplate.update(insertSql, user.getId(), config.mode().name(), maxKmh, config.color(), config.icon());
+            jdbcTemplate.update(insertSql,
+                    user.getId(),
+                    config.mode().name(),
+                    config.minKmh(),
+                    config.maxKmh(),
+                    config.preferenceWeight(),
+                    config.enabled(),
+                    config.color(),
+                    config.icon());
         }
     }
 
-    @CacheEvict(value = "transport-mode-configs", key = "#user.id")
+    @Cacheable(value = "transport-mode-settings", key = "#user.id")
+    public double getModeChangeSensitivity(User user) {
+        List<Double> values = jdbcTemplate.queryForList(
+                "SELECT mode_change_sensitivity FROM transport_mode_detection_settings WHERE user_id = ?",
+                Double.class, user.getId());
+        return values.isEmpty() ? 2.0 : values.getFirst();
+    }
+
+    @CacheEvict(value = "transport-mode-settings", key = "#user.id")
+    public void setModeChangeSensitivity(User user, double modeChangeSensitivity) {
+        jdbcTemplate.update("""
+                INSERT INTO transport_mode_detection_settings (user_id, mode_change_sensitivity)
+                VALUES (?, ?)
+                ON CONFLICT (user_id) DO UPDATE SET mode_change_sensitivity = EXCLUDED.mode_change_sensitivity
+                """, user.getId(), modeChangeSensitivity);
+    }
+
+    @CacheEvict(value = {"transport-mode-configs", "transport-mode-settings"}, key = "#user.id")
     public void deleteAllForUser(User user) {
         this.jdbcTemplate.update("DELETE FROM transport_mode_detection_configs WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM transport_mode_detection_settings WHERE user_id = ?", user.getId());
     }
 }

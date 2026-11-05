@@ -29,7 +29,7 @@ public class TripTransportModeJdbcService {
             return Collections.emptyMap();
         }
         String placeholders = String.join(",", tripIds.stream().map(_ -> "?").toList());
-        String sql = "SELECT tm.trip_id, tm.offset_seconds, tm.duration_in_seconds, tm.transportation_mode, tm.distance_meters " +
+        String sql = "SELECT tm.trip_id, tm.offset_seconds, tm.duration_in_seconds, tm.transportation_mode, tm.distance_meters, tm.confidence " +
                 "FROM trip_transport_modes tm JOIN trips t ON t.id = tm.trip_id " +
                 "WHERE tm.trip_id IN (" + placeholders + ") AND t.user_id = ? ORDER BY tm.trip_id, tm.offset_seconds";
         Map<Long, List<TransportModeSegment>> result = new HashMap<>();
@@ -37,11 +37,13 @@ public class TripTransportModeJdbcService {
         args.add(user.getId());
         jdbcTemplate.query(sql, rs -> {
             Long tripId = rs.getLong("trip_id");
+            Double confidence = rs.getObject("confidence") == null ? null : rs.getDouble("confidence");
             TransportModeSegment segment = new TransportModeSegment(
                     TransportMode.valueOf(rs.getString("transportation_mode")),
                     rs.getLong("offset_seconds"),
                     rs.getLong("duration_in_seconds"),
-                    rs.getDouble("distance_meters")
+                    rs.getDouble("distance_meters"),
+                    confidence == null ? 1.0 : confidence
             );
             result.computeIfAbsent(tripId, _ -> new ArrayList<>()).add(segment);
         }, args.toArray());
@@ -53,12 +55,12 @@ public class TripTransportModeJdbcService {
             return;
         }
         String sql = """
-            INSERT INTO trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters)
-            SELECT ?, ?, ?, ?, ?
+            INSERT INTO trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters, confidence)
+            SELECT ?, ?, ?, ?, ?, ?
             WHERE EXISTS (SELECT 1 FROM trips WHERE id = ? AND user_id = ?)
             """;
         List<Object[]> batchArgs = segments.stream()
-                .map(s -> new Object[]{tripId, s.offsetSeconds(), s.durationSeconds(), s.mode().name(), s.distanceMeters(), tripId, user.getId()})
+                .map(s -> new Object[]{tripId, s.offsetSeconds(), s.durationSeconds(), s.mode().name(), s.distanceMeters(), s.confidence(), tripId, user.getId()})
                 .collect(Collectors.toList());
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }

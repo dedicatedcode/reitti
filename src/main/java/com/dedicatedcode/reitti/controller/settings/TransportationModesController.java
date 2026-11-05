@@ -60,7 +60,7 @@ public class TransportationModesController {
         model.addAttribute("activeSection", "transportation-modes");
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
-        
+
         return "settings/transportation-modes";
     }
 
@@ -95,34 +95,31 @@ public class TransportationModesController {
     @PostMapping("/add")
     public String addTransportMode(@AuthenticationPrincipal User user,
                                    @RequestParam TransportMode mode,
+                                   @RequestParam(required = false) Double minSpeed,
                                    @RequestParam(required = false) Double maxSpeed,
+                                   @RequestParam(required = false) Double preferenceWeight,
+                                   @RequestParam(required = false) Boolean enabled,
                                    @RequestParam(required = false) UnitSystem unitSystem,
                                    @RequestParam(required = false) String color,
                                    @RequestParam(required = false) String icon,
                                    Model model) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-            
-            // Check if mode already exists
+
             boolean exists = configs.stream().anyMatch(config -> config.mode() == mode);
             if (exists) {
                 model.addAttribute("errorMessage", "transportation.modes.error.already.exists");
             } else {
-                // Convert to km/h if input was in mph
-                Double maxKmh;
-                if (maxSpeed != null && unitSystem == UnitSystem.IMPERIAL) {
-                    maxKmh = mphToKmh(maxSpeed);
+                Double minKmh = toKmh(minSpeed, unitSystem);
+                Double maxKmh = toKmh(maxSpeed, unitSystem);
+                if (minKmh == null || maxKmh == null) {
+                    model.addAttribute("errorMessage", "transportation.modes.error.range.required");
+                } else if (minKmh >= maxKmh) {
+                    model.addAttribute("errorMessage", "transportation.modes.error.invalid.range");
                 } else {
-                    maxKmh = maxSpeed;
-                }
-
-                // Check for duplicate maxKmh values (only if maxKmh is not null)
-                boolean duplicateMaxKmh = configs.stream()
-                        .anyMatch(config -> Objects.equals(config.maxKmh(), maxKmh));
-                if (duplicateMaxKmh) {
-                    model.addAttribute("errorMessage", "transportation.modes.error.duplicate.max.kmh");
-                } else {
-                    configs.add(new TransportModeConfig(mode, maxKmh, color, icon));
+                    double preference = preferenceWeight == null ? 1.0 : preferenceWeight;
+                    boolean isEnabled = enabled == null || enabled;
+                    configs.add(new TransportModeConfig(mode, minKmh, maxKmh, preference, isEnabled, color, icon));
                     transportModeJdbcService.setTransportModeConfigs(user, configs);
                     model.addAttribute("successMessage", "transportation.modes.success.added");
                 }
@@ -138,7 +135,10 @@ public class TransportationModesController {
     @PostMapping("/{mode}/update")
     public String updateTransportMode(@AuthenticationPrincipal User user,
                                       @PathVariable TransportMode mode,
+                                      @RequestParam(required = false) Double minSpeed,
                                       @RequestParam(required = false) Double maxSpeed,
+                                      @RequestParam(required = false) Double preferenceWeight,
+                                      @RequestParam(required = false) Boolean enabled,
                                       @RequestParam(required = false) UnitSystem unitSystem,
                                       @RequestParam(required = false) String color,
                                       @RequestParam(required = false) String icon,
@@ -147,12 +147,15 @@ public class TransportationModesController {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
 
             List<TransportModeConfig> updatedConfigs = configs.stream()
-                    .map(config -> config.mode() == mode ? updateConfig(config, maxSpeed, unitSystem, color, icon) : config)
+                    .map(config -> config.mode() == mode
+                            ? updateConfig(config, minSpeed, maxSpeed, preferenceWeight, enabled, unitSystem, color, icon)
+                            : config)
                     .collect(Collectors.toList());
 
             transportModeJdbcService.setTransportModeConfigs(user, updatedConfigs);
-
             model.addAttribute("successMessage", "transportation.modes.success.updated");
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMessage", "transportation.modes.error.invalid.range");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "transportation.modes.error.update");
         }
@@ -161,16 +164,29 @@ public class TransportationModesController {
         return "settings/transportation-modes :: transportation-modes-content";
     }
 
-    private TransportModeConfig updateConfig(TransportModeConfig config, Double maxSpeed, UnitSystem unitSystem, String color, String icon) {
-        Double maxKmh;
-        if (maxSpeed == null) {
-            maxKmh = config.maxKmh();
-        } else {
-            maxKmh = unitSystem == UnitSystem.IMPERIAL ? mphToKmh(maxSpeed) : maxSpeed;
+    private TransportModeConfig updateConfig(TransportModeConfig config, Double minSpeed, Double maxSpeed,
+                                             Double preferenceWeight, Boolean enabled, UnitSystem unitSystem,
+                                             String color, String icon) {
+        double minKmh = minSpeed == null ? config.minKmh() : toKmh(minSpeed, unitSystem);
+        double maxKmh = maxSpeed == null ? config.maxKmh() : toKmh(maxSpeed, unitSystem);
+        if (minKmh >= maxKmh) {
+            throw new IllegalArgumentException("Minimum speed must be lower than maximum speed");
         }
+        double preference = preferenceWeight == null ? config.preferenceWeight() : preferenceWeight;
+        boolean isEnabled = enabled == null ? config.enabled() : enabled;
         String newColor = color == null ? config.color() : (color.isEmpty() ? null : color);
         String newIcon = icon == null ? config.icon() : (icon.isEmpty() ? null : icon);
-        return new TransportModeConfig(config.mode(), maxKmh, newColor, newIcon);
+        return new TransportModeConfig(config.mode(), minKmh, maxKmh, preference, isEnabled, newColor, newIcon);
+    }
+
+    @PostMapping("/sensitivity")
+    public String updateSensitivity(@AuthenticationPrincipal User user,
+                                    @RequestParam double modeChangeSensitivity,
+                                    Model model) {
+        transportModeJdbcService.setModeChangeSensitivity(user, modeChangeSensitivity);
+        model.addAttribute("successMessage", "transportation.modes.success.sensitivity");
+        addConfigsToModel(user, model);
+        return "settings/transportation-modes :: transportation-modes-content";
     }
 
     @PostMapping("/{mode}/delete")
@@ -179,13 +195,13 @@ public class TransportationModesController {
                                       Model model) {
         try {
             List<TransportModeConfig> configs = transportModeJdbcService.getTransportModeConfigs(user);
-            
+
             List<TransportModeConfig> filteredConfigs = configs.stream()
                     .filter(config -> config.mode() != mode)
                     .collect(Collectors.toList());
-            
+
             transportModeJdbcService.setTransportModeConfigs(user, filteredConfigs);
-            
+
             model.addAttribute("successMessage", "transportation.modes.success.deleted");
         } catch (Exception e) {
             model.addAttribute("errorMessage", "transportation.modes.error.delete");
@@ -208,19 +224,27 @@ public class TransportationModesController {
         model.addAttribute("availableModes", getAvailableModesToAdd(configs));
         model.addAttribute("unitSystem", userSettings.getUnitSystem());
         model.addAttribute("isImperial", userSettings.getUnitSystem() == UnitSystem.IMPERIAL);
+        model.addAttribute("modeChangeSensitivity", transportModeJdbcService.getModeChangeSensitivity(user));
     }
 
     private List<TransportMode> getAvailableModesToAdd(List<TransportModeConfig> configs) {
         List<TransportMode> usedModes = configs.stream()
                 .map(TransportModeConfig::mode)
                 .toList();
-        
+
         return Arrays.stream(TransportMode.values())
                 .filter(mode -> !usedModes.contains(mode))
                 .filter(mode -> mode != TransportMode.UNKNOWN)
                 .collect(Collectors.toList());
     }
-    
+
+    private Double toKmh(Double speed, UnitSystem unitSystem) {
+        if (speed == null) {
+            return null;
+        }
+        return unitSystem == UnitSystem.IMPERIAL ? mphToKmh(speed) : speed;
+    }
+
     private Double mphToKmh(Double mph) {
         return mph * 1.60934;
     }
@@ -235,7 +259,7 @@ public class TransportationModesController {
         colors.put("#a29bfe", "Purple");
         return colors;
     }
-    
+
     @PostMapping("/reclassify")
     public String reclassifyTrips(@AuthenticationPrincipal User user, Model model) {
         try {
@@ -247,12 +271,12 @@ public class TransportationModesController {
                                                   .jobType(JobType.DATA_RECALCULATION).build());
             model.addAttribute("reclassifyStatus", "started");
             model.addAttribute("message", "transportation.modes.reclassify.started");
-            
+
         } catch (Exception e) {
             model.addAttribute("reclassifyStatus", "error");
             model.addAttribute("message", "transportation.modes.reclassify.error");
         }
-        
+
         return "settings/transportation-modes :: reclassify-status";
     }
 }

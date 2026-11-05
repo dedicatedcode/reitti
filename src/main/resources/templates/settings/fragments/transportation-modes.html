@@ -20,15 +20,46 @@
                disabled>
     </div>
     <div class="form-group">
-        <label for="maxSpeed" th:text="#{${isImperial ? 'transportation.modes.max.mph.label' : 'transportation.modes.max.kmh.label'}}">Max Speed</label>
+        <label for="minSpeed" th:text="#{${isImperial ? 'transportation.modes.min.mph.label' : 'transportation.modes.min.kmh.label'}}">Minimum Speed</label>
+        <input type="number"
+               id="minSpeed"
+               name="minSpeed"
+               step="0.1"
+               min="0"
+               required
+               th:value="${config != null ? (isImperial ? #numbers.formatDecimal(config.minKmh() / 1.60934, 1, 1) : config.minKmh()) : ''}"
+               th:placeholder="#{${isImperial ? 'transportation.modes.min.mph.placeholder' : 'transportation.modes.min.kmh.placeholder'}}">
+        <small th:text="#{${isImperial ? 'transportation.modes.min.mph.help' : 'transportation.modes.min.kmh.help'}}">Lower end of the typical speed range.</small>
+    </div>
+    <div class="form-group">
+        <label for="maxSpeed" th:text="#{${isImperial ? 'transportation.modes.max.mph.label' : 'transportation.modes.max.kmh.label'}}">Maximum Speed</label>
         <input type="number"
                id="maxSpeed"
                name="maxSpeed"
                step="0.1"
                min="0"
-               th:value="${config != null ? (isImperial and config.maxKmh() != null ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : config.maxKmh()) : ''}"
+               required
+               th:value="${config != null ? (isImperial ? #numbers.formatDecimal(config.maxKmh() / 1.60934, 1, 1) : config.maxKmh()) : ''}"
                th:placeholder="#{${isImperial ? 'transportation.modes.max.mph.placeholder' : 'transportation.modes.max.kmh.placeholder'}}">
-        <small th:text="#{${isImperial ? 'transportation.modes.max.mph.help' : 'transportation.modes.max.kmh.help'}}">Leave empty for no speed limit</small>
+        <small th:text="#{transportation.modes.range.help}">Ranges may overlap or leave gaps; gaps simply make the classifier less certain.</small>
+    </div>
+    <div class="form-group">
+        <label for="preferenceWeight" th:text="#{transportation.modes.preference.label}">Preference</label>
+        <input type="number"
+               id="preferenceWeight"
+               name="preferenceWeight"
+               step="0.1"
+               min="0.1"
+               max="5.0"
+               th:value="${config != null ? #numbers.formatDecimal(config.preferenceWeight(), 1, 1) : '1.0'}">
+        <small th:text="#{transportation.modes.preference.help}">Higher values make this mode more likely when the evidence is ambiguous.</small>
+    </div>
+    <div class="form-group">
+        <label for="enabled" th:text="#{transportation.modes.enabled.label}">Enabled</label>
+        <select id="enabled" name="enabled">
+            <option value="true" th:selected="${config == null || config.enabled()}" th:text="#{transportation.modes.enabled.true}">Enabled</option>
+            <option value="false" th:selected="${config != null && !config.enabled()}" th:text="#{transportation.modes.enabled.false}">Disabled</option>
+        </select>
     </div>
     <div class="form-group">
         <h3 th:text="#{transportation.modes.color.label}">Color</h3>

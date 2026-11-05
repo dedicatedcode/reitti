@@ -12,7 +12,6 @@ import com.dedicatedcode.reitti.repository.TransportModeOverrideJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -21,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -37,19 +37,25 @@ class TransportModeServiceTest {
     private TransportModeJdbcService transportModeJdbcService;
     @Mock
     private TransportModeOverrideJdbcService transportModeOverrideJdbcService;
-    @InjectMocks
+
     private TransportModeService service;
 
     private final User user = new User("tester", "Tester");
 
     @BeforeEach
     void setUp() {
+        ModeEmissionModel emissionModel = new ModeEmissionModel();
+        ViterbiDecoder decoder = new ViterbiDecoder(emissionModel);
+        ChunkFeatureExtractor extractor = new ChunkFeatureExtractor();
+        TransportModeClassifier classifier = new TransportModeClassifier(extractor, decoder);
+        service = new TransportModeService(transportModeJdbcService, transportModeOverrideJdbcService, classifier);
         lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
-                new TransportModeConfig(TransportMode.WALKING, 7.0),
-                new TransportModeConfig(TransportMode.CYCLING, 20.0),
-                new TransportModeConfig(TransportMode.DRIVING, 120.0),
-                new TransportModeConfig(TransportMode.TRANSIT, null)
+                new TransportModeConfig(TransportMode.WALKING, 0.0, 7.0),
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 25.0),
+                new TransportModeConfig(TransportMode.DRIVING, 20.0, 130.0),
+                new TransportModeConfig(TransportMode.TRANSIT, 10.0, 200.0, 0.7, true, null, null)
         ));
+        lenient().when(transportModeJdbcService.getModeChangeSensitivity(any(User.class))).thenReturn(2.0);
     }
 
     @Test
@@ -75,16 +81,16 @@ class TransportModeServiceTest {
             points.add(pt(675 + i * 15L, 3210 + i * 15.0));
         }
 
-        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(840));
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(855));
 
         assertEquals(3, segments.size());
-        assertSegment(segments.get(0), TransportMode.WALKING, 0, 180);
-        assertSegment(segments.get(1), TransportMode.DRIVING, 180, 480);
-        assertSegment(segments.get(2), TransportMode.WALKING, 660, 180);
+        assertSegment(segments.get(0), TransportMode.WALKING, 0, 240);
+        assertSegment(segments.get(1), TransportMode.DRIVING, 240, 240);
+        assertSegment(segments.get(2), TransportMode.WALKING, 480, 375);
     }
 
     @Test
-    void dropsTrailingSparseSpanWithSinglePoint() {
+    void coversTrailingSparseSpanWithSinglePoint() {
         List<RawLocationPoint> points = new ArrayList<>();
         for (int i = 0; i < 13; i++) {
             points.add(pt(i * 15L, (i + 1) * 15.0));
@@ -94,7 +100,7 @@ class TransportModeServiceTest {
         List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(590));
 
         assertEquals(1, segments.size());
-        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 180);
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 590);
     }
 
     @Test
@@ -130,9 +136,9 @@ class TransportModeServiceTest {
     @Test
     void derivesSlowestModeFromUserConfiguration() {
         lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
-                new TransportModeConfig(TransportMode.DRIVING, 120.0),
-                new TransportModeConfig(TransportMode.CYCLING, 20.0),
-                new TransportModeConfig(TransportMode.TRANSIT, null)
+                new TransportModeConfig(TransportMode.DRIVING, 20.0, 130.0),
+                new TransportModeConfig(TransportMode.CYCLING, 5.0, 25.0),
+                new TransportModeConfig(TransportMode.TRANSIT, 10.0, 200.0)
         ));
 
         List<TransportModeSegment> segments = service.segmentTrip(user, List.of(pt(0, 0)), T0, T0.plusSeconds(300));
@@ -142,15 +148,15 @@ class TransportModeServiceTest {
     }
 
     @Test
-    void fallsBackToWalkingWhenNoConfigHasSpeedLimit() {
+    void fallsBackToTheOnlyConfiguredMode() {
         lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
-                new TransportModeConfig(TransportMode.TRANSIT, null)
+                new TransportModeConfig(TransportMode.TRANSIT, 10.0, 200.0)
         ));
 
         List<TransportModeSegment> segments = service.segmentTrip(user, List.of(pt(0, 0)), T0, T0.plusSeconds(300));
 
         assertEquals(1, segments.size());
-        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 300);
+        assertSegment(segments.getFirst(), TransportMode.TRANSIT, 0, 300);
     }
 
     @Test
@@ -225,7 +231,9 @@ class TransportModeServiceTest {
     }
 
     @Test
-    void absorbsRedLightAndTrafficJamInsideCommute() {
+    void absorbsSlowRunBetweenDrivesAndKeepsStops() {
+        // The 0.3 and 0.2 km/h samples are stops and stay with the surrounding drive. The slow
+        // run between two driving runs is treated as a slower part of the drive.
         List<TransportModeSegment> segments = service.segmentTrip(user, trace(
                 4.8, 4.9, 4.6, 4.8, 38, 42, 35, 0.3, 40, 45, 39, 5.2, 6.1, 7.4, 5.5, 0.2, 41, 38, 4.5, 4.2),
                 T0, T0.plusSeconds(1200));
@@ -299,9 +307,53 @@ class TransportModeServiceTest {
     }
 
     @Test
-    void absorbsLongerJamsWithoutDurationBound() {
-        // A 10-minute jam between two driving runs, far beyond any former short-segment threshold. The
-        // driving runs are two windows each so they are not themselves one-minute peaks between walks.
+    void absorbsCyclingRunBetweenDrives() {
+        // Leaving the motorway and driving slower for a while is not a switch to a bicycle.
+        List<TransportModeSegment> segments = service.segmentTrip(user, trace(40, 40, 40, 15, 15, 15, 40, 40, 40),
+                T0, T0.plusSeconds(540));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 540);
+    }
+
+    @Test
+    void absorbsShortCyclingLeadInOnMotorizedTrip() {
+        // The first two minutes of a long fast trip are city traffic, not a bike ride.
+        List<TransportModeSegment> segments = service.segmentTrip(user,
+                trace(15, 15, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60),
+                T0, T0.plusSeconds(1200));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 1200);
+    }
+
+    @Test
+    void keepsWalkingLeadInOnMotorizedTrip() {
+        // A real walk to the car must survive even when the rest of the trip is a drive.
+        List<TransportModeSegment> segments = service.segmentTrip(user,
+                trace(5, 5, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60),
+                T0, T0.plusSeconds(1200));
+
+        assertEquals(2, segments.size());
+        assertSegment(segments.get(0), TransportMode.WALKING, 0, 120);
+        assertSegment(segments.get(1), TransportMode.DRIVING, 120, 1080);
+    }
+
+    @Test
+    void keepsLongCyclingLeadInOnMotorizedTrip() {
+        // A ten minute bike leg before the drive is long enough to be real.
+        List<TransportModeSegment> segments = service.segmentTrip(user,
+                trace(15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60),
+                T0, T0.plusSeconds(1200));
+
+        assertEquals(2, segments.size());
+        assertSegment(segments.get(0), TransportMode.CYCLING, 0, 600);
+        assertSegment(segments.get(1), TransportMode.DRIVING, 600, 600);
+    }
+
+    @Test
+    void absorbsLongInteriorSlowRunBetweenDrives() {
+        // A slow run between two driving runs is treated as a slower part of the drive, not a mode change.
         List<TransportModeSegment> segments = service.segmentTrip(user,
                 trace(5, 5, 40, 40, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 40, 40, 5, 5),
                 T0, T0.plusSeconds(1080));
@@ -406,16 +458,85 @@ class TransportModeServiceTest {
     @Test
     void absorbsUsingCustomUserBands() {
         lenient().when(transportModeJdbcService.getTransportModeConfigs(any(User.class))).thenReturn(List.of(
-                new TransportModeConfig(TransportMode.CYCLING, 10.0),
-                new TransportModeConfig(TransportMode.DRIVING, 120.0)
+                new TransportModeConfig(TransportMode.CYCLING, 0.0, 10.0),
+                new TransportModeConfig(TransportMode.DRIVING, 10.0, 120.0)
         ));
 
-        // Walking is not configured, so CYCLING is the slowest band and the walking-speed run is the valley.
+        // Walking is not configured, so the slow run is a slower part of the surrounding drive.
         List<TransportModeSegment> segments = service.segmentTrip(user, trace(30, 5, 5, 5, 5, 5, 5, 30),
                 T0, T0.plusSeconds(480));
 
         assertEquals(1, segments.size());
         assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 480);
+    }
+
+    @Test
+    void reliablySampledSegmentCarriesPositiveConfidence() {
+        // 150 m per 10 s cadence = 54 km/h, comfortably inside the driving band.
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i <= 60; i++) {
+            points.add(pt(i * 10L, (i + 1) * 150.0));
+        }
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(600));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.DRIVING, 0, 600);
+        double confidence = segments.getFirst().confidence();
+        assertTrue(confidence > 0.0, "expected confidence > 0 for a dense unambiguous segment but was " + confidence);
+        assertTrue(confidence <= 1.0, "confidence must not exceed 1.0 but was " + confidence);
+    }
+
+    @Test
+    void manualOverrideCarriesFullConfidence() {
+        List<RawLocationPoint> points = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            points.add(pt(i * 15L, (i + 1) * 15.0));
+        }
+        when(transportModeOverrideJdbcService.getTransportModeOverrides(any(User.class), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(new TransportModeOverrideJdbcService.TransportModeOverride(TransportMode.CYCLING, T0.plusSeconds(270))));
+
+        List<TransportModeSegment> segments = service.segmentTrip(user, points, T0, T0.plusSeconds(300));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.CYCLING, 0, 300);
+        assertEquals(1.0, segments.getFirst().confidence());
+    }
+
+    @Test
+    void unreliableWindowsCarryNoConfidence() {
+        // 700 s gaps leave every classification window with at most one point, so no chunk is reliable
+        // and the decoded segment must report zero confidence instead of a fabricated value.
+        List<TransportModeSegment> segments = service.segmentTrip(user,
+                List.of(pt(0, 0), pt(700, 350), pt(1400, 700)), T0, T0.plusSeconds(1400));
+
+        assertEquals(1, segments.size());
+        assertSegment(segments.getFirst(), TransportMode.WALKING, 0, 1400);
+        assertEquals(0.0, segments.getFirst().confidence());
+    }
+
+    @Test
+    void higherSensitivitySuppressesMarginalModeChange() {
+        // 9 km/h sits in the walking/cycling overlap and is only marginally more likely to be cycling.
+        // Low sensitivity makes switching cheap, so the short run is kept; high sensitivity makes the
+        // two transitions more expensive than the emission gain, so the trip stays one walking segment.
+        List<RawLocationPoint> points = trace(5, 5, 9, 9, 5, 5);
+
+        List<TransportModeSegment> responsive = segmentAtSensitivity(1.0, points, 360);
+        assertEquals(3, responsive.size());
+        assertSegment(responsive.get(0), TransportMode.WALKING, 0, 120);
+        assertSegment(responsive.get(1), TransportMode.CYCLING, 120, 120);
+        assertSegment(responsive.get(2), TransportMode.WALKING, 240, 120);
+
+        List<TransportModeSegment> stable = segmentAtSensitivity(4.0, points, 360);
+        assertEquals(1, stable.size());
+        assertSegment(stable.getFirst(), TransportMode.WALKING, 0, 360);
+    }
+
+    private List<TransportModeSegment> segmentAtSensitivity(double sensitivity, List<RawLocationPoint> points,
+                                                            long tripDurationSeconds) {
+        when(transportModeJdbcService.getModeChangeSensitivity(any(User.class))).thenReturn(sensitivity);
+        return service.segmentTrip(user, points, T0, T0.plusSeconds(tripDurationSeconds));
     }
 
     /**

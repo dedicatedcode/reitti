@@ -28,15 +28,17 @@ public class PreviewTripTransportModeJdbcService {
             return Collections.emptyMap();
         }
         String placeholders = String.join(",", tripIds.stream().map(id -> "?").toList());
-        String sql = "SELECT trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters FROM preview_trip_transport_modes WHERE trip_id IN (" + placeholders + ") ORDER BY trip_id, offset_seconds";
+        String sql = "SELECT trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters, confidence FROM preview_trip_transport_modes WHERE trip_id IN (" + placeholders + ") ORDER BY trip_id, offset_seconds";
         Map<Long, List<TransportModeSegment>> result = new HashMap<>();
         jdbcTemplate.query(sql, rs -> {
             Long tripId = rs.getLong("trip_id");
+            Double confidence = rs.getObject("confidence") == null ? null : rs.getDouble("confidence");
             TransportModeSegment segment = new TransportModeSegment(
                     TransportMode.valueOf(rs.getString("transportation_mode")),
                     rs.getLong("offset_seconds"),
                     rs.getLong("duration_in_seconds"),
-                    rs.getDouble("distance_meters")
+                    rs.getDouble("distance_meters"),
+                    confidence == null ? 1.0 : confidence
             );
             result.computeIfAbsent(tripId, _ -> new ArrayList<>()).add(segment);
         }, tripIds.toArray());
@@ -48,11 +50,11 @@ public class PreviewTripTransportModeJdbcService {
             return;
         }
         String sql = """
-            INSERT INTO preview_trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO preview_trip_transport_modes (trip_id, offset_seconds, duration_in_seconds, transportation_mode, distance_meters, confidence)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
         List<Object[]> batchArgs = segments.stream()
-                .map(s -> new Object[]{tripId, s.offsetSeconds(), s.durationSeconds(), s.mode().name(), s.distanceMeters()})
+                .map(s -> new Object[]{tripId, s.offsetSeconds(), s.durationSeconds(), s.mode().name(), s.distanceMeters(), s.confidence()})
                 .collect(Collectors.toList());
         jdbcTemplate.batchUpdate(sql, batchArgs);
     }
