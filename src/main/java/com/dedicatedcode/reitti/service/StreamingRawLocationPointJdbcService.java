@@ -29,6 +29,12 @@ public class StreamingRawLocationPointJdbcService {
     private final JdbcTemplate jdbcTemplate;
     private final GeoLocationTimezoneService timezoneService;
 
+    public enum StreamFormat {
+        V2_FLOAT,
+        /** Same 20-byte record as v2, but the timestamp slot holds unsigned epoch seconds. */
+        V3_INT32_SECONDS
+    }
+
     public StreamingRawLocationPointJdbcService(JdbcTemplate jdbcTemplate, GeoLocationTimezoneService timezoneService) {
         this.jdbcTemplate = jdbcTemplate;
         this.timezoneService = timezoneService;
@@ -36,6 +42,11 @@ public class StreamingRawLocationPointJdbcService {
 
     @Transactional(readOnly = true)
     public void streamPoints(User user, Instant start, Instant end, ResponseBodyEmitter emitter) {
+        streamPoints(user, start, end, StreamFormat.V2_FLOAT, emitter);
+    }
+
+    @Transactional(readOnly = true)
+    public void streamPoints(User user, Instant start, Instant end, StreamFormat format, ResponseBodyEmitter emitter) {
         String sql = """
             SELECT
                 ST_X(geom) as lng,
@@ -49,7 +60,7 @@ public class StreamingRawLocationPointJdbcService {
             ORDER BY timestamp
         """;
 
-        streamSql(emitter, sql, ps -> {
+        streamSql(emitter, format, sql, ps -> {
             ps.setLong(1, user.getId());
             ps.setTimestamp(2, Timestamp.from(start));
             ps.setTimestamp(3, Timestamp.from(end));
@@ -59,6 +70,11 @@ public class StreamingRawLocationPointJdbcService {
 
     @Transactional(readOnly = true)
     public void streamPoints(User user, Device device, Instant start, Instant end, ResponseBodyEmitter emitter) {
+        streamPoints(user, device, start, end, StreamFormat.V2_FLOAT, emitter);
+    }
+
+    @Transactional(readOnly = true)
+    public void streamPoints(User user, Device device, Instant start, Instant end, StreamFormat format, ResponseBodyEmitter emitter) {
         String sql = """
                     SELECT
                         ST_X(geom) as lng,
@@ -72,7 +88,7 @@ public class StreamingRawLocationPointJdbcService {
                     ORDER BY timestamp
                 """;
 
-        streamSql(emitter, sql, ps -> {
+        streamSql(emitter, format, sql, ps -> {
             ps.setLong(1, user.getId());
             ps.setLong(2, device.id());
             ps.setTimestamp(3, Timestamp.from(start));
@@ -80,7 +96,7 @@ public class StreamingRawLocationPointJdbcService {
             ps.setFetchSize(POINTS_PER_BATCH);
         });
     }
-    private void streamSql(ResponseBodyEmitter emitter, String sql, PreparedStatementSetter ps) {
+    private void streamSql(ResponseBodyEmitter emitter, StreamFormat format, String sql, PreparedStatementSetter ps) {
         ByteBuffer buffer = ByteBuffer.allocate(POINTS_PER_BATCH * 20);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
 
@@ -89,17 +105,22 @@ public class StreamingRawLocationPointJdbcService {
             float lat = rs.getFloat("lat");
             float lng = rs.getFloat("lng");
             float ts = rs.getFloat("ts");
+            long epochSecond = format == StreamFormat.V3_INT32_SECONDS ? (long) Math.floor(rs.getDouble("ts")) : (long) ts;
             int latRounded = Math.round((float) (lat * 10.0));
             int lngRounded = Math.round((float) (lng * 10.0));
             String cacheKey = latRounded + "," + lngRounded;
             ZoneId zoneId = timezoneCache.computeIfAbsent(cacheKey, _ ->
                     timezoneService.getTimezone(latRounded / 10.0, lngRounded / 10.0).orElse(null));
-            int timezoneOffsetSeconds = (zoneId != null) ? zoneId.getRules().getOffset(Instant.ofEpochSecond((long) ts, 0)).getTotalSeconds() : 0;
+            int timezoneOffsetSeconds = (zoneId != null) ? zoneId.getRules().getOffset(Instant.ofEpochSecond(epochSecond, 0)).getTotalSeconds() : 0;
 
             buffer.putFloat(lat);
             buffer.putFloat(lng);
             buffer.putFloat(rs.getFloat("alt"));
-            buffer.putFloat(ts);
+            if (format == StreamFormat.V3_INT32_SECONDS) {
+                buffer.putInt((int) epochSecond);
+            } else {
+                buffer.putFloat(ts);
+            }
             buffer.putFloat(timezoneOffsetSeconds);
             if (buffer.remaining() < 20) {
                 try {

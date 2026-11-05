@@ -129,7 +129,7 @@ public class MemoryController {
 
         Instant startDate = memory.getStartDate();
         Instant endDate = memory.getEndDate() != null ? memory.getEndDate() : Instant.now();
-        String streamUrl = String.format("/api/v2/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, "UTC");
+        String streamUrl = String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, "UTC");
         String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, "UTC");
         model.addAttribute("streamUrl", streamUrl);
         model.addAttribute("metaDataUrl", metaDataUrl);
