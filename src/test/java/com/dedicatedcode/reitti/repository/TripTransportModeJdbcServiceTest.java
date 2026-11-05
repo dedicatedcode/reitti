@@ -41,8 +41,8 @@ class TripTransportModeJdbcServiceTest {
         // Given
         Trip trip = createTrip();
         List<TransportModeSegment> segments = List.of(
-                new TransportModeSegment(TransportMode.WALKING, 0, 300, 1000.0),
-                new TransportModeSegment(TransportMode.DRIVING, 300, 700, 9000.0)
+                new TransportModeSegment(TransportMode.WALKING, 0, 300, 1000.0, 0.8),
+                new TransportModeSegment(TransportMode.DRIVING, 300, 700, 9000.0, 0.4)
         );
 
         // When
@@ -55,7 +55,9 @@ class TripTransportModeJdbcServiceTest {
         assertThat(reloaded.getSegments().get(0).offsetSeconds()).isEqualTo(0);
         assertThat(reloaded.getSegments().get(0).durationSeconds()).isEqualTo(300);
         assertThat(reloaded.getSegments().get(0).distanceMeters()).isEqualTo(1000.0);
+        assertThat(reloaded.getSegments().get(0).confidence()).isEqualTo(0.8);
         assertThat(reloaded.getSegments().get(1).mode()).isEqualTo(TransportMode.DRIVING);
+        assertThat(reloaded.getSegments().get(1).confidence()).isEqualTo(0.4);
     }
 
     @Test
