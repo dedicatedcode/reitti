@@ -232,6 +232,10 @@ public class UserService {
         this.jdbcTemplate.update("DELETE FROM user_map_styles WHERE user_id = ?", user.getId());
         this.jdbcTemplate.update("DELETE FROM h3_cells_stats WHERE user_id = ?", user.getId());
         this.jdbcTemplate.update("DELETE FROM h3_area_coverage_stats WHERE user_id = ?", user.getId());
+        // These reference devices without ON DELETE CASCADE, so they must go before the devices
+        this.jdbcTemplate.update("DELETE FROM owntracks_recorder_integration WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM intervals_icu_integrations WHERE user_id = ?", user.getId());
+        this.jdbcTemplate.update("DELETE FROM device_avatars WHERE user_id = ?", user.getId());
         this.deviceJdbcService.deleteForUser(user);
         this.userJdbcService.deleteUser(user.getId());
     }
