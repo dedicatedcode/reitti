@@ -337,7 +337,7 @@ public class UserSettingsController {
         }
 
         //make sure at least one admin will remain
-        if (ADMIN == authenticatedUser.getRole() && USER == role) {
+        if (ADMIN == authenticatedUser.getRole() && ADMIN == userToUpdate.getRole() && USER == role) {
             if (this.userJdbcService.findAll().stream().filter(u -> u.getRole() == ADMIN).count() < 2) {
                 model.addAttribute("errorMessage", i18nService.translate("users.role.admin.last.demotion.error"));
                 return getUserContent(model, authenticatedUser);
