@@ -11,6 +11,7 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.geo.TransportModeConfig;
+import com.dedicatedcode.reitti.model.integration.IntervalsIcuIntegration;
 import com.dedicatedcode.reitti.model.integration.OwnTracksRecorderIntegration;
 import com.dedicatedcode.reitti.model.memory.HeaderType;
 import com.dedicatedcode.reitti.model.memory.Memory;
@@ -85,6 +86,12 @@ class UserServiceTest {
 
     @Autowired
     private TestingService testingService;
+
+    @Autowired
+    private IntervalsIcuIntegrationJdbcService intervalsIcuIntegrationJdbcService;
+
+    @Autowired
+    private AvatarService avatarService;
 
     @Test
     void shouldCreateUserWithExternalIdAndDefaultSettings() {
@@ -266,6 +273,34 @@ class UserServiceTest {
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_map_style_settings WHERE user_id = ?", Integer.class, user.getId()));
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM mqtt_integrations WHERE user_id = ?", Integer.class, user.getId()));
         assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM owntracks_recorder_integration WHERE user_id = ?", Integer.class, user.getId()));
+    }
+
+    @Test
+    void shouldDeleteUserWithIntegrationsAndAvatarOnOwnDevice() {
+        // Given
+        User user = testingService.randomUser();
+        Device device = testingService.findDefaultDevice(user);
+
+        this.ownTracksRecorderIntegrationJdbcService.save(user, new OwnTracksRecorderIntegration(
+                "http://localhost",
+                "daniel",
+                "1111",
+                true,
+                null,
+                null,
+                device.id()));
+        this.intervalsIcuIntegrationJdbcService.save(user, new IntervalsIcuIntegration("api-key", device.id(), true));
+        this.avatarService.updateAvatar(user.getId(), device.id(), "image/png", new byte[]{1, 2, 3});
+
+        // When
+        userService.deleteUser(user);
+
+        // Then
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM devices WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM owntracks_recorder_integration WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM intervals_icu_integrations WHERE user_id = ?", Integer.class, user.getId()));
+        assertEquals(0, this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM device_avatars WHERE user_id = ?", Integer.class, user.getId()));
     }
 
     @Test
