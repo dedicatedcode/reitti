@@ -1639,6 +1639,23 @@ body.auto-update-mode .today-fab {
     text-transform: capitalize;
 }
 
+.transport-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.transport-mode-confidence {
+    font-size: 0.85rem;
+    color: var(--color-text-gray);
+    white-space: nowrap;
+}
+
+.transport-mode-confidence.manual {
+    color: var(--color-highlight);
+}
+
 .transportation-modes-table tr i {
     vertical-align: middle;
     font-size: 1.6rem;
