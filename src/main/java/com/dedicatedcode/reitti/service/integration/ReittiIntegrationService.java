@@ -27,11 +27,14 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,6 +46,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReittiIntegrationService {
     private static final Logger log = LoggerFactory.getLogger(ReittiIntegrationService.class);
     private static final List<ReittiIntegration.Status> VALID_INTEGRATION_STATUS = List.of(ReittiIntegration.Status.ACTIVE, ReittiIntegration.Status.RECOVERABLE);
+    private static final int STREAM_RECORD_SIZE = 20;
+    private static final int STREAM_TIMESTAMP_OFFSET = 12;
 
     private final String advertiseUri;
     private final ReittiIntegrationJdbcService jdbcService;
@@ -295,52 +300,12 @@ public class ReittiIntegrationService {
                 .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
                 .ifPresentOrElse(integration -> {
                     try {
-                        RemoteUser remoteUser = handleRemoteUser(integration);
-
-                        String baseUrl = integration.getUrl().endsWith("/") ?
-                                integration.getUrl() + "api/v2/locations/stream/" + remoteUser.getRemoteId() :
-                                integration.getUrl() + "/api/v2/locations/stream/" + remoteUser.getRemoteId();
-
-                        URI uri = UriComponentsBuilder.fromUriString(baseUrl)
-                                .queryParam("start", start)
-                                .queryParam("end", end)
-                                .queryParam("timezone", timezone)
-                                .build()
-                                .toUri();
-
-                        HttpRequest request = HttpRequest.newBuilder()
-                                .uri(uri)
-                                .header("X-API-Token", integration.getToken())
-                                .headers("Accept", "application/octet-stream")
-                                .GET()
-                                .build();
+                        ReittiRemoteInfo remoteInfo = getInfo(integration);
+                        RemoteUser remoteUser = handleRemoteUser(integration, remoteInfo);
+                        boolean useV3 = remoteInfo.serverInfo() != null && remoteInfo.serverInfo().supportsApiVersion(3);
 
                         HttpClient client = HttpClient.newBuilder().build();
-
-                        client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
-                                .thenAccept(response -> {
-                                    if (response.statusCode() >= 400) {
-                                        log.error("Remote server returned error code: {}", response.statusCode());
-                                        try { emitter.complete(); } catch (Exception ignored) {}
-                                        return;
-                                    }
-
-                                    try (InputStream is = response.body()) {
-                                        byte[] buffer = new byte[8192];
-                                        int bytesRead;
-                                        while ((bytesRead = is.read(buffer)) != -1) {
-                                            emitter.send(Arrays.copyOf(buffer, bytesRead), MediaType.APPLICATION_OCTET_STREAM);
-                                        }
-                                        emitter.complete();
-                                    } catch (Exception e) {
-                                        log.debug("Stream ended prematurely or client disconnected: {}", e.getMessage());
-                                    }
-                                })
-                                .exceptionally(e -> {
-                                    log.error("Failed to stream locations for integration [{}]", integrationId, e);
-                                    try { emitter.complete(); } catch (Exception ignored) {}
-                                    return null;
-                                });
+                        streamRemote(client, integration, remoteUser, start, end, timezone, useV3, emitter);
 
                         update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
                     } catch (RequestFailedException e) {
@@ -360,6 +325,110 @@ public class ReittiIntegrationService {
                         emitter.complete();
                     } catch (Exception ignored) {}
                 });
+    }
+
+    private void streamRemote(HttpClient client,
+                              ReittiIntegration integration,
+                              RemoteUser remoteUser,
+                              String start,
+                              String end,
+                              String timezone,
+                              boolean useV3,
+                              ResponseBodyEmitter emitter) {
+        URI uri = buildStreamUri(integration, remoteUser, start, end, timezone, useV3);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("X-API-Token", integration.getToken())
+                .headers("Accept", "application/octet-stream")
+                .GET()
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+                .thenAccept(response -> {
+                    if (useV3 && (response.statusCode() == 404 || response.statusCode() == 405)) {
+                        try (InputStream ignored = response.body()) {
+                            log.info("Remote server does not provide the v3 location stream, falling back to v2");
+                        } catch (IOException ioException) {
+                            log.debug("Failed to close remote error response: {}", ioException.getMessage());
+                        }
+                        streamRemote(client, integration, remoteUser, start, end, timezone, false, emitter);
+                        return;
+                    }
+                    if (response.statusCode() >= 400) {
+                        log.error("Remote server returned error code: {}", response.statusCode());
+                        try { emitter.complete(); } catch (Exception ignored) {}
+                        return;
+                    }
+
+                    try (InputStream is = response.body()) {
+                        copyRemoteStream(is, useV3, emitter);
+                        emitter.complete();
+                    } catch (Exception e) {
+                        log.debug("Stream ended prematurely or client disconnected: {}", e.getMessage());
+                    }
+                })
+                .exceptionally(e -> {
+                    log.error("Failed to stream locations for integration [{}]", integration.getId(), e);
+                    try { emitter.complete(); } catch (Exception ignored) {}
+                    return null;
+                });
+    }
+
+    private URI buildStreamUri(ReittiIntegration integration,
+                               RemoteUser remoteUser,
+                               String start,
+                               String end,
+                               String timezone,
+                               boolean useV3) {
+        String apiVersion = useV3 ? "api/v3" : "api/v2";
+        String baseUrl = integration.getUrl().endsWith("/") ?
+                integration.getUrl() + apiVersion + "/locations/stream/" + remoteUser.getRemoteId() :
+                integration.getUrl() + "/" + apiVersion + "/locations/stream/" + remoteUser.getRemoteId();
+
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .queryParam("start", start)
+                .queryParam("end", end)
+                .queryParam("timezone", timezone)
+                .build()
+                .toUri();
+    }
+
+    private void copyRemoteStream(InputStream is, boolean useV3, ResponseBodyEmitter emitter) throws IOException {
+        if (useV3) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                emitter.send(Arrays.copyOf(buffer, bytesRead), MediaType.APPLICATION_OCTET_STREAM);
+            }
+            return;
+        }
+
+        byte[] buffer = new byte[8192];
+        byte[] leftover = new byte[0];
+        int bytesRead;
+        while ((bytesRead = is.read(buffer)) != -1) {
+            byte[] chunk = new byte[leftover.length + bytesRead];
+            System.arraycopy(leftover, 0, chunk, 0, leftover.length);
+            System.arraycopy(buffer, 0, chunk, leftover.length, bytesRead);
+
+            int completeLength = (chunk.length / STREAM_RECORD_SIZE) * STREAM_RECORD_SIZE;
+            convertV2TimestampsToV3(chunk, completeLength);
+            if (completeLength > 0) {
+                emitter.send(Arrays.copyOf(chunk, completeLength), MediaType.APPLICATION_OCTET_STREAM);
+            }
+            leftover = completeLength == chunk.length ? new byte[0] : Arrays.copyOfRange(chunk, completeLength, chunk.length);
+        }
+        if (leftover.length > 0) {
+            log.warn("Discarding incomplete location stream record with {} bytes", leftover.length);
+        }
+    }
+
+    static void convertV2TimestampsToV3(byte[] chunk, int length) {
+        ByteBuffer buffer = ByteBuffer.wrap(chunk).order(ByteOrder.LITTLE_ENDIAN);
+        for (int offset = 0; offset < length; offset += STREAM_RECORD_SIZE) {
+            float timestamp = buffer.getFloat(offset + STREAM_TIMESTAMP_OFFSET);
+            buffer.putInt(offset + STREAM_TIMESTAMP_OFFSET, (int) Math.floor(timestamp));
+        }
     }
 
     private ReittiIntegration update(User user, ReittiIntegration integration) {
@@ -402,7 +471,10 @@ public class ReittiIntegrationService {
     }
 
     private RemoteUser handleRemoteUser(ReittiIntegration integration) throws RequestFailedException, RequestTemporaryFailedException {
-        ReittiRemoteInfo info = getInfo(integration);
+        return handleRemoteUser(integration, getInfo(integration));
+    }
+
+    private RemoteUser handleRemoteUser(ReittiIntegration integration, ReittiRemoteInfo info) throws RequestFailedException, RequestTemporaryFailedException {
         Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
         if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
             log.debug("Storing new RemoteUser for [{}]", integration);

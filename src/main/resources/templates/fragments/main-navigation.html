@@ -35,6 +35,7 @@
             const contextPath = rawContextPath.replace(/\/$/, '');
             let eventSource = null;
             let reconnectTimer = null;
+            let pageUnloading = false;
 
             function render(showBadge, unreadCount) {
                 if (!dot) {
@@ -59,7 +60,7 @@
             }
 
             function connect() {
-                if (eventSource) {
+                if (pageUnloading || eventSource) {
                     return;
                 }
                 eventSource = new EventSource(contextPath + '/events/notifications');
@@ -77,6 +78,9 @@
                     }
                 };
                 eventSource.onerror = function () {
+                    if (pageUnloading) {
+                        return;
+                    }
                     if (eventSource && eventSource.readyState === EventSource.CLOSED) {
                         eventSource = null;
                         if (!reconnectTimer) {
@@ -88,6 +92,27 @@
                     }
                 };
             }
+
+            function disconnect() {
+                pageUnloading = true;
+                if (reconnectTimer) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = null;
+                }
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+
+            window.addEventListener('pagehide', disconnect);
+            window.addEventListener('beforeunload', disconnect);
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    pageUnloading = false;
+                    connect();
+                }
+            });
 
             document.body.addEventListener('htmx:afterSwap', function (evt) {
                 if (evt.detail.target && evt.detail.target.id === 'notification-presentation') {

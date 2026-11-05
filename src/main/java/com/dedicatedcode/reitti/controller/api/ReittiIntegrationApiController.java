@@ -55,7 +55,7 @@ public class ReittiIntegrationApiController {
     @GetMapping("/info")
     public ResponseEntity<ReittiRemoteInfo> getInfo(@AuthenticationPrincipal User user) {
         ReittiRemoteInfo.RemoteUserInfo userInfo = new ReittiRemoteInfo.RemoteUserInfo(user.getId(), user.getUsername(), user.getDisplayName(), user.getVersion());
-        ReittiRemoteInfo.RemoteServerInfo serverInfo = new ReittiRemoteInfo.RemoteServerInfo("Reitti", this.versionService.getVersion(), LocalDateTime.now());
+        ReittiRemoteInfo.RemoteServerInfo serverInfo = new ReittiRemoteInfo.RemoteServerInfo("Reitti", this.versionService.getVersion(), LocalDateTime.now(), List.of(2, 3));
         return ResponseEntity.ok(new ReittiRemoteInfo(userInfo, serverInfo));
     }
 

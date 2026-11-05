@@ -95,6 +95,21 @@ class LocationDataAccessIntegrationTest {
     }
 
     @Test
+    void v3StreamUsesTheSameAccessRulesAsV2() throws Exception {
+        mockMvc.perform(get("/api/v3/locations/stream/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+
+        shareWith(owner, other);
+
+        mockMvc.perform(get("/api/v3/locations/stream/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void rawPointsOfOtherUserAreReadableWhenShared() throws Exception {
         shareWith(owner, other);
 
