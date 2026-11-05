@@ -5,8 +5,11 @@ import com.dedicatedcode.reitti.model.geocoding.GeocoderType;
 import com.dedicatedcode.reitti.repository.GeocodeServiceJdbcService;
 import com.dedicatedcode.reitti.repository.GeocodingResponseJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
+import com.dedicatedcode.reitti.service.geocoding.services.GeoapifyResultHandler;
+import com.dedicatedcode.reitti.service.geocoding.services.GeocodeJsonResultHandler;
 import com.dedicatedcode.reitti.service.geocoding.services.NominatimRateLimiter;
 import com.dedicatedcode.reitti.service.geocoding.services.PaikkaResultHandler;
+import com.dedicatedcode.reitti.service.geocoding.services.PhotonResultHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -146,5 +149,41 @@ class DefaultGeocodeServiceManagerTest {
         InOrder inOrder = Mockito.inOrder(restTemplate);
         inOrder.verify(restTemplate).exchange(startsWith("http://p1.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
         inOrder.verify(restTemplate).exchange(startsWith("http://p2.com"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class));
+    }
+
+    @Test
+    void shouldParseNominatimReverseResponse() {
+        // Given
+        DefaultGeocodeServiceManager manager = new DefaultGeocodeServiceManager(
+                geocodeServiceJdbcService,
+                geocodingResponseJdbcService,
+                nominatimRateLimiter,
+                restTemplate,
+                new ObjectMapper(),
+                List.of(new GeoapifyResultHandler(), new GeocodeJsonResultHandler(), new PaikkaResultHandler(), new PhotonResultHandler()),
+                i18nService,
+                3
+        );
+        GeocodeService nominatim = new GeocodeService(1L, "Nominatim", "https://nominatim.openstreetmap.org", true, 0, null, null, GeocoderType.NOMINATIM, Map.of(), 3, 1L);
+        when(geocodeServiceJdbcService.findByEnabledTrueOrderByPriority()).thenReturn(List.of(nominatim));
+        when(nominatimRateLimiter.tryAcquire()).thenReturn(true);
+
+        String nominatimJson = """
+                {"type": "FeatureCollection", "geocoding": {"version": "0.1.0"}, "features": [{"type": "Feature",
+                  "properties": {"geocoding": {"type": "house", "label": "Brandenburger Tor, 1, Pariser Platz, Mitte, Berlin, 10117, Deutschland",
+                    "name": "Brandenburger Tor", "housenumber": "1", "postcode": "10117", "street": "Pariser Platz",
+                    "district": "Mitte", "city": "Berlin", "country_code": "de"}},
+                  "geometry": {"type": "Point", "coordinates": [13.3777034, 52.5162699]}}]}
+                """;
+        when(restTemplate.exchange(startsWith("https://nominatim.openstreetmap.org/reverse?format=geocodejson"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok(nominatimJson));
+
+        // When
+        Optional<GeocodeResult> result = manager.reverseGeocode(SignificantPlace.create(52.5163, 13.3777), true);
+
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().label()).isEqualTo("Brandenburger Tor, 1, Pariser Platz, Mitte, Berlin, 10117, Deutschland");
+        assertThat(result.get().city()).isEqualTo("Berlin");
     }
 }
