@@ -383,14 +383,16 @@ class GpsDataManager {
             }
 
             const pointsCount = Math.floor(combinedValue.length / 20);
-            if (pointsCount * 16 < combinedValue.length) {
+            if (pointsCount * 20 < combinedValue.length) {
                 leftover = combinedValue.slice(pointsCount * 20);
             }
 
+            // v3 stream: 20-byte records, timestamp is uint32 epoch seconds at slot 3
             const floatArray = new Float32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 5);
+            const timestampArray = new Uint32Array(combinedValue.buffer, combinedValue.byteOffset, pointsCount * 5);
 
             for (let i = 0; i < floatArray.length; i += 5) {
-                this._addPoint(floatArray[i + 1], floatArray[i], floatArray[i + 2], floatArray[i + 3], floatArray[i + 4]);
+                this._addPoint(floatArray[i + 1], floatArray[i], floatArray[i + 2], timestampArray[i + 3], floatArray[i + 4]);
             }
 
             if (onProgress) {

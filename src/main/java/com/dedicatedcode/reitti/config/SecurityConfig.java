@@ -150,6 +150,10 @@ public class SecurityConfig {
                                                                                    "MAGIC_LINK_FULL_ACCESS",
                                                                                    "MAGIC_LINK_MEMORY_VIEW_ONLY",
                                                                                    "MAGIC_LINK_MEMORY_EDIT_ACCESS")
+                        .requestMatchers("/api/v3/locations/stream/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
+                                                                                   "MAGIC_LINK_FULL_ACCESS",
+                                                                                   "MAGIC_LINK_MEMORY_VIEW_ONLY",
+                                                                                   "MAGIC_LINK_MEMORY_EDIT_ACCESS")
                         .requestMatchers("/api/v2/locations/metadata/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
                                                                                      "MAGIC_LINK_FULL_ACCESS",
                                                                                      "MAGIC_LINK_ONLY_LAST_LOCATION",
