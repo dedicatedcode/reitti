@@ -32,6 +32,16 @@ public class ReittiIntegrationController {
         }).orElse(ResponseEntity.notFound().cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS)).build());
     }
 
+    @GetMapping(value = "/h3/cells/{integrationId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<String> getH3Cells(@AuthenticationPrincipal User user,
+                                             @PathVariable Long integrationId,
+                                             @RequestParam String start,
+                                             @RequestParam String end,
+                                             @RequestParam(required = false, defaultValue = "UTC") String timezone) {
+        return reittiIntegrationService.getH3Cells(user, integrationId, start, end, timezone);
+    }
+
     @GetMapping(value = "/metadata/{integrationId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<MapMetadata> getMetadata(@AuthenticationPrincipal User user,

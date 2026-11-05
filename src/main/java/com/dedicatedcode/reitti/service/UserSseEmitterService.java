@@ -75,10 +75,14 @@ public class UserSseEmitterService implements SmartLifecycle {
     }
 
     public void sendEventToUser(User user, SSEEvent eventData) {
-        sendEventToUser(user, (Object) eventData);
+        queue.add(new TaskData(user, eventData));
     }
 
     public void sendEventToUser(User user, Object eventData) {
+        queue.add(new TaskData(user, eventData));
+    }
+
+    private void sendToEmitters(User user, Object eventData) {
         Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
@@ -124,7 +128,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             while (running) {
                 try {
                     TaskData data = queue.take();
-                    sendEventToUser(data.user, data.eventData);
+                    sendToEmitters(data.user, data.eventData);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -150,5 +154,5 @@ public class UserSseEmitterService implements SmartLifecycle {
         return running;
     }
 
-    public record TaskData(User user, SSEEvent eventData) {}
+    public record TaskData(User user, Object eventData) {}
 }

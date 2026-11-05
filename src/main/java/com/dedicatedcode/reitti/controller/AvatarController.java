@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Controller
-@RequestMapping("/avatars")
+@RequestMapping("/api/avatars")
 public class AvatarController {
 
     private final AvatarService avatarService;

@@ -315,6 +315,7 @@
     const settingsMenu = new SettingsMenu('settings-menu-container');
 
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
+        mapRenderer.setLiveMode(autoUpdateMode);
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
         const bottomBar = document.getElementById('bottom-bar');

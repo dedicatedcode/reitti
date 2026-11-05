@@ -332,7 +332,7 @@ public class DeviceSettingsController {
 
     private String createAvatarUrl(User user, Device device) {
         if (this.avatarService.getInfo(user.getId(), device.id()).isPresent()) {
-            return String.format(contextPathHolder.getContextPath() + "/avatars/%d/%d?ts=%s", user.getId(), device.id(), Instant.now().toEpochMilli());
+            return String.format(contextPathHolder.getContextPath() + "/api/avatars/%d/%d?ts=%s", user.getId(), device.id(), Instant.now().toEpochMilli());
         } else {
             return null;
         }

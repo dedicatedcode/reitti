@@ -84,8 +84,8 @@ public class CoveragePageController {
 
     private UserTimelineData buildUserTimelineData(User user, boolean active) {
         String avatarUrl = avatarService.getInfo(user.getId())
-                .map(info -> String.format("/avatars/%d?ts=%s", user.getId(), info.updatedAt()))
-                .orElse(String.format("/avatars/%d", user.getId()));
+                .map(info -> String.format("/api/avatars/%d?ts=%s", user.getId(), info.updatedAt()))
+                .orElse(String.format("/api/avatars/%d", user.getId()));
         String initials = avatarService.generateInitials(user.getDisplayName());
         String color = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getColor();
 
@@ -98,7 +98,7 @@ public class CoveragePageController {
                             d.id(),
                             d.name(),
                             avatarService.getAvatarDeviceId(user.getId(), d.id())
-                                    .map(data -> "/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt())
+                                    .map(data -> "/api/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt())
                                     .orElse(null),
                             avatarService.generateInitials(d.name()),
                             d.showOnMap(),
