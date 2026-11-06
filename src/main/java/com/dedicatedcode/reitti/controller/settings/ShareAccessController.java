@@ -199,7 +199,7 @@ public class ShareAccessController {
         return userJdbcService.getAllUsers().stream()
                 .filter(u -> !u.getId().equals(user.getId()))
                 .map(u -> {
-                    String currentUserAvatarUrl = this.avatarService.getInfo(u.getId()).map(avatarInfo -> String.format("/avatars/%d?ts=%s", u.getId(), avatarInfo.updatedAt())).orElse(String.format("/avatars/%d", u.getId()));
+                    String currentUserAvatarUrl = this.avatarService.getInfo(u.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", u.getId(), avatarInfo.updatedAt())).orElse(String.format("/api/avatars/%d", u.getId()));
                     String currentUserInitials = this.avatarService.generateInitials(u.getDisplayName());
                     return new UserDto(u.getId(), u.getUsername(), u.getDisplayName(), currentUserAvatarUrl, currentUserInitials);
                 }).toList();
@@ -247,8 +247,8 @@ public class ShareAccessController {
                     User sharingUser = userJdbcService.findById(sharing.getSharingUserId())
                             .orElseThrow(() -> new RuntimeException("User not found: " + sharing.getSharingUserId()));
                     String avatarUrl = avatarService.getInfo(sharingUser.getId())
-                            .map(avatarInfo -> String.format("/avatars/%d?ts=%s", sharingUser.getId(), avatarInfo.updatedAt()))
-                            .orElse(String.format("/avatars/%d", sharingUser.getId()));
+                            .map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", sharingUser.getId(), avatarInfo.updatedAt()))
+                            .orElse(String.format("/api/avatars/%d", sharingUser.getId()));
                     String avatarFallback = avatarService.generateInitials(sharingUser.getDisplayName());
                     UserDto sharingUserDto = new UserDto(sharingUser.getId(), sharingUser.getUsername(), 
                             sharingUser.getDisplayName(), avatarUrl, avatarFallback);

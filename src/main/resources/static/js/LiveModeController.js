@@ -139,10 +139,6 @@ class LiveModeController {
 
     _connect() {
         this.eventSource = new EventSource(window.contextPath + '/events');
-        this.eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this._emit('sseMessageReceived', data);
-        }
 
         this.eventSource.onopen = () => {
             console.log('SSE connection opened.');

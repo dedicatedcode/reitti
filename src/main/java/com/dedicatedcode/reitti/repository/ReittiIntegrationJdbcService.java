@@ -133,8 +133,17 @@ public class ReittiIntegrationJdbcService {
     }
 
     public void store(ReittiIntegration integration, RemoteUser remoteUser, byte[] avatarData, String mimeType) {
-        this.jdbcTemplate.update("DELETE FROM remote_user_info WHERE integration_id = ?", integration.getId());
-        this.jdbcTemplate.update("INSERT INTO remote_user_info(integration_id, remote_id, remote_version, user_name, display_name, binary_data, mime_type) VALUES (?,?,?,?,?,?,?)",
+        this.jdbcTemplate.update("""
+                INSERT INTO remote_user_info(integration_id, remote_id, remote_version, user_name, display_name, binary_data, mime_type)
+                VALUES (?,?,?,?,?,?,?)
+                ON CONFLICT (integration_id) DO UPDATE SET
+                    remote_id = EXCLUDED.remote_id,
+                    remote_version = EXCLUDED.remote_version,
+                    user_name = EXCLUDED.user_name,
+                    display_name = EXCLUDED.display_name,
+                    binary_data = COALESCE(EXCLUDED.binary_data, remote_user_info.binary_data),
+                    mime_type = COALESCE(EXCLUDED.mime_type, remote_user_info.mime_type)
+                """,
                 integration.getId(),
                 remoteUser.getRemoteId(),
                 remoteUser.getRemoteVersion(),
@@ -142,5 +151,13 @@ public class ReittiIntegrationJdbcService {
                 remoteUser.getDisplayName(),
                 avatarData,
                 mimeType);
+    }
+
+    public boolean hasAvatar(ReittiIntegration integration) {
+        List<Boolean> results = this.jdbcTemplate.query(
+                "SELECT binary_data IS NOT NULL FROM remote_user_info WHERE integration_id = ?",
+                (rs, rowNum) -> rs.getBoolean(1),
+                integration.getId());
+        return !results.isEmpty() && results.getFirst();
     }
 }

@@ -315,6 +315,7 @@
     const settingsMenu = new SettingsMenu('settings-menu-container');
 
     liveModeController.on('autoUpdateModeChanged', (autoUpdateMode) => {
+        mapRenderer.setLiveMode(autoUpdateMode);
         const timeline = document.querySelector('.timeline');
         const datePicker = document.getElementById('date-picker-container');
         const bottomBar = document.getElementById('bottom-bar');
@@ -1132,6 +1133,37 @@
         mapRenderer.setSelectedManager(id);
     }
 
+    /**
+     * After a timeline reload, a previously applied selection may have vanished
+     * (e.g. access to a shared user was lost and the server no longer renders
+     * that user). If nothing ended up selected, fall back to the first
+     * available user/device so the timeline stays usable.
+     */
+    function ensureActiveSelectionFallback() {
+        if (!activeId) {
+            return;
+        }
+        const activeHeader = document.querySelector('.user-header.active, .device-header.active');
+        if (activeHeader) {
+            return;
+        }
+        const firstHeader = document.querySelector('.user-header, .device-header');
+        if (firstHeader) {
+            const id = firstHeader.classList.contains('device-header')
+                ? `${firstHeader.getAttribute('data-user-id')}_${firstHeader.getAttribute('data-device-id')}`
+                : firstHeader.getAttribute('data-user-id');
+            activeId = id;
+            applyHistorySelection(id);
+        } else {
+            activeId = null;
+            applyHistorySelection(null);
+        }
+        if (currentDateRange) {
+            updateUrlWithDate(currentDateRange, true);
+        }
+        loadPhotos();
+    }
+
     window.addEventListener('popstate', function () {
         if (!window.datePicker) return;
         const urlParams = new URLSearchParams(window.location.search);
@@ -1386,6 +1418,7 @@
                 restoreDeviceVisibility()
                 mapRenderer.setGpsDataManagers(gpsDataManagers);
                 loadGpsData(params.startDateUtcSeconds, params.endDateUtcSeconds);
+                ensureActiveSelectionFallback();
 
                 // Initialize scroll indicator after timeline is updated
                 if (window.timelineScrollIndicator) {
