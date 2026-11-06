@@ -162,6 +162,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/visits/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(), "MAGIC_LINK_FULL_ACCESS",
                                                                          "MAGIC_LINK_MEMORY_VIEW_ONLY",
                                                                          "MAGIC_LINK_MEMORY_EDIT_ACCESS")
+                        .requestMatchers("/api/v2/memories/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
+                                                                           "MAGIC_LINK_MEMORY_VIEW_ONLY",
+                                                                           "MAGIC_LINK_MEMORY_EDIT_ACCESS")
                         .requestMatchers("/panoramax/**", "/api/v1/panoramax/**").hasAnyRole(Role.ADMIN.name(),
                                 Role.USER.name(),
                                 "MAGIC_LINK_FULL_ACCESS",
