@@ -70,10 +70,6 @@ public class UserSseEmitterService implements SmartLifecycle {
         return emitter;
     }
 
-    public void enqueue(TaskData data) {
-        queue.add(data);
-    }
-
     public void sendEventToUser(User user, SSEEvent eventData) {
         queue.add(new TaskData(user, eventData));
     }
@@ -154,5 +150,5 @@ public class UserSseEmitterService implements SmartLifecycle {
         return running;
     }
 
-    public record TaskData(User user, Object eventData) {}
+    private record TaskData(User user, Object eventData) {}
 }

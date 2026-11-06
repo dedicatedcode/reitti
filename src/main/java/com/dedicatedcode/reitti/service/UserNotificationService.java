@@ -111,17 +111,17 @@ public class UserNotificationService {
 
     public void sendToQueue(User user, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId)));
+            this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), date, previewId));
         }
     }
     public void sendToQueue(User user, User changedUser, Set<LocalDate> dates, SSEType eventType, String previewId) {
         for (LocalDate date : dates) {
-            this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId)));
+            this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), changedUser.getId(), date, previewId));
         }
     }
 
     private void sendToQueue(User user, SSEType eventType, String previewId) {
-        this.userSseEmitterService.enqueue(new UserSseEmitterService.TaskData(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId)));
+        this.userSseEmitterService.sendEventToUser(user, new SSEEvent(eventType, user.getId(), user.getId(), null, previewId));
     }
 
     private void notifyOtherUsers(User user, SSEType eventType, Set<LocalDate> dates) {
