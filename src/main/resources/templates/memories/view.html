@@ -434,43 +434,51 @@
     const memory = /*[[${memory}]]*/ {};
     const streamUrl = /*[[${streamUrl}]]*/ '';
     const metaDataUrl = /*[[${metaDataUrl}]]*/ '';
-    let memoryMap = null;
+    const mapRegistry = new Map();
+    const loadTimeouts = new Map();
 
     function initializeMemoryMap() {
-        if (memory.headerType === 'MAP' && document.getElementById('memory-map')) {
-            if (memoryMap && typeof memoryMap.getContainer === 'function') {
-                memoryMap.remove();
-            }
-            const viewState = {
-                is3d: true,
-                renderTerrain: true,
-                renderBuildings: false,
-                renderSatelliteView: false,
-                renderGlobe: false,
-                aggregated: false,
-                viewMode: 'LINEAR',
-                currentTime: 0,
-                animating: false,
-                showPhotos: false,
-                fixed: true
-            };
-            const mapRenderer = new MapRenderer('memory-map', userSettings, viewState);
-            const gpsDataManager = new GpsDataManager({
-                color: '#F5DEB3FF',
-                map: {
-                    streamUrl: streamUrl,
-                    metaDataUrl: metaDataUrl
-                },
-                continuous: true
-            }, window.userSettings, getUserTimezone());
-            mapRenderer.setGpsDataManagers([gpsDataManager]);
-            gpsDataManager.loadFixed((current, total, stage) => {
-                if (stage === 'complete') {
-                    mapRenderer.updateViewState(viewState)
-                    mapRenderer.finishedLoading();
-                }
-            })
+        const container = document.getElementById('memory-map');
+        if (memory.headerType !== 'MAP' || !container) {
+            return;
         }
+        const registered = mapRegistry.get('memory-map');
+        if (registered) {
+            if (registered.element === container) {
+                return;
+            }
+            destroyRegisteredMap('memory-map');
+        }
+        const viewState = {
+            is3d: true,
+            renderTerrain: true,
+            renderBuildings: false,
+            renderSatelliteView: false,
+            renderGlobe: false,
+            aggregated: false,
+            viewMode: 'LINEAR',
+            currentTime: 0,
+            animating: false,
+            showPhotos: false,
+            fixed: true
+        };
+        const mapRenderer = new MapRenderer('memory-map', userSettings, viewState);
+        const gpsDataManager = new GpsDataManager({
+            color: '#F5DEB3FF',
+            map: {
+                streamUrl: streamUrl,
+                metaDataUrl: metaDataUrl
+            },
+            continuous: true
+        }, window.userSettings, getUserTimezone());
+        mapRenderer.setGpsDataManagers([gpsDataManager]);
+        gpsDataManager.loadFixed((current, total, stage) => {
+            if (stage === 'complete') {
+                mapRenderer.updateViewState(viewState)
+                mapRenderer.finishedLoading();
+            }
+        })
+        mapRegistry.set('memory-map', mapRenderer);
     }
 
     // Lazy loading for images using Intersection Observer
@@ -508,15 +516,7 @@
         }
     }
 
-    initializeMemoryMap();
     initializeLazyLoading();
-
-    document.body.addEventListener('htmx:afterSwap', function (event) {
-        if (event.detail.target.classList.contains('memory-header')) {
-            initializeMemoryMap()
-        }
-        initializeLazyLoading();
-    });
 </script>
 
 
@@ -562,14 +562,35 @@
 
 
 <script th:inline="javascript">
-    const mapRegistry = new Map();
-    const loadTimeouts = new Map();
-
     const observerOptions = {
         root: null,
         rootMargin: '500px',
         threshold: 0.01
     };
+
+    function destroyRegisteredMap(elementId, container = null) {
+        const timeout = loadTimeouts.get(elementId);
+        if (timeout) {
+            clearTimeout(timeout);
+            loadTimeouts.delete(elementId);
+        }
+
+        const renderer = mapRegistry.get(elementId);
+        if (!renderer || (container && renderer.element !== container)) {
+            return;
+        }
+
+        console.log(`Destroying Map: ${elementId}`);
+        renderer.destroy();
+        mapRegistry.delete(elementId);
+
+        const mapContainer = renderer.element;
+        if (mapContainer) {
+            mapContainer.classList.remove('is-loading');
+            mapContainer.classList.remove('is-loaded');
+            mapContainer.innerHTML = '';
+        }
+    }
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -577,35 +598,55 @@
             const elementId = container.id;
 
             if (entry.isIntersecting) {
+                const registered = mapRegistry.get(elementId);
+                if (registered && registered.element === container) {
+                    return;
+                }
+                const existingTimeout = loadTimeouts.get(elementId);
+                if (existingTimeout) {
+                    clearTimeout(existingTimeout);
+                }
                 const timeout = setTimeout(() => {
-                    if (!mapRegistry.has(elementId)) {
-                        initializeMapForBlock(entry.target, elementId);
+                    if (elementId === 'memory-map') {
+                        initializeMemoryMap();
+                    } else {
+                        initializeMapForBlock(container, elementId);
                     }
                 }, 150); // 150ms delay
                 loadTimeouts.set(elementId, timeout);
             } else {
-                if (loadTimeouts.has(elementId)) {
-                    clearTimeout(loadTimeouts.get(elementId));
-                    loadTimeouts.delete(elementId);
-                }
-                if (mapRegistry.has(elementId)) {
-                    console.log(`Destroying Map: ${elementId}`);
-                    const renderer = mapRegistry.get(elementId);
-                    container.classList.remove('is-loading');
-                    container.classList.remove('is-loaded');
-
-                    renderer.destroy();
-                    mapRegistry.delete(elementId);
-                    const elementById = document.getElementById(elementId);
-                    if (elementById) {
-                        elementById.innerHTML = '';
-                    }
-                }
+                destroyRegisteredMap(elementId, container);
             }
         });
     }, observerOptions);
 
+    // Chrome may discard the backing store of offscreen canvases. Repaint the map
+    // as soon as it is visible again, even if it stayed within the lazy-load margin.
+    const visibilityObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) {
+                return;
+            }
+            const renderer = mapRegistry.get(entry.target.id);
+            if (renderer && renderer.element === entry.target && renderer.map) {
+                renderer.map.resize();
+                renderer.map.triggerRepaint();
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0
+    });
+
     function initializeMapForBlock(container, elementId) {
+        const registered = mapRegistry.get(elementId);
+        if (registered) {
+            if (registered.element === container) {
+                return;
+            }
+            destroyRegisteredMap(elementId);
+        }
         const rawLocationUrl = container.dataset.streamUrl;
         const visitsUrl = container.dataset.visitsUrl;
         const tripsUrl = container.dataset.tripsUrl;
@@ -676,8 +717,29 @@
         mapRegistry.set(elementId, mapRenderer);
     }
 
+    function observeMapContainer(container) {
+        observer.observe(container);
+        visibilityObserver.observe(container);
+    }
+
     // Start watching all map containers
-    document.querySelectorAll('.cluster-map').forEach(el => observer.observe(el));
+    document.querySelectorAll('.cluster-map').forEach(observeMapContainer);
+    const headerMapContainer = document.getElementById('memory-map');
+    if (headerMapContainer && memory.headerType === 'MAP') {
+        observeMapContainer(headerMapContainer);
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.classList.contains('memory-header')) {
+            destroyRegisteredMap('memory-map');
+            const newHeaderMap = document.getElementById('memory-map');
+            if (newHeaderMap && memory.headerType === 'MAP') {
+                observeMapContainer(newHeaderMap);
+            }
+        }
+        document.querySelectorAll('.cluster-map').forEach(observeMapContainer);
+        initializeLazyLoading();
+    });
     // Memory processing animation
     document.addEventListener('htmx:beforeRequest', function (event) {
         if (event.detail.target.id === 'memory-processing-overlay' ||
