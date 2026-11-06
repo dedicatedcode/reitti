@@ -791,6 +791,35 @@ tr:hover {
     background-color: var(--color-background-dark-light);
 }
 
+.table-plain {
+    background-color: transparent;
+    margin-bottom: 0;
+    width: initial;
+}
+
+.table-plain th,
+.table-plain td {
+    padding: 6px 12px 6px 0;
+    border-bottom: none;
+    vertical-align: middle;
+}
+
+.table-plain th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-gray);
+}
+
+.table-plain th:last-child,
+.table-plain td:last-child {
+    padding-right: 0;
+}
+
+.table-plain tr:hover {
+    color: inherit;
+    background-color: transparent;
+}
+
 /* Tags */
 
 .tags-chips {
@@ -3044,6 +3073,29 @@ input.date-jump-buffer {
 
 .notification-type:last-of-type {
     border-bottom: none;
+}
+
+.device-inactivity-settings {
+    margin-top: 12px;
+    margin-left: 26px;
+}
+
+.device-inactivity-settings .table-plain th:nth-child(2),
+.device-inactivity-settings .table-plain td:nth-child(2) {
+    width: 160px;
+}
+
+.device-inactivity-settings .table-plain th:last-child,
+.device-inactivity-settings .table-plain td:last-child {
+    width: 110px;
+}
+
+.device-inactivity-settings input[type="number"] {
+    width: 90px;
+}
+
+.device-inactivity-toggle:not(:checked) ~ .device-inactivity-settings {
+    display: none;
 }
 
 

@@ -2,12 +2,15 @@ package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
+import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.notification.NotificationChannelConfig;
 import com.dedicatedcode.reitti.model.notification.NotificationSettings;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceInactivityJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationChannelJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationTypePreferenceJdbcService;
+import com.dedicatedcode.reitti.service.notification.type.DeviceInactivityNotificationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +51,9 @@ class NotificationSettingsControllerTest {
     @Autowired
     private NotificationChannelJdbcService channelJdbcService;
 
+    @Autowired
+    private DeviceInactivityJdbcService deviceInactivityJdbcService;
+
     private User user;
 
     @BeforeEach
@@ -61,6 +67,7 @@ class NotificationSettingsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Notifications")))
                 .andExpect(content().string(containsString("Notification Settings")))
+                .andExpect(content().string(containsString("Device inactivity")))
                 .andExpect(content().string(containsString("Notification Types")))
                 .andExpect(content().string(containsString("Channels")))
                 .andExpect(content().string(containsString("ntfy")))
@@ -101,6 +108,56 @@ class NotificationSettingsControllerTest {
 
         assertTrue(preferenceJdbcService.isEnabled(user.getId(), "JOB_FAILED", false));
         assertFalse(preferenceJdbcService.isEnabled(user.getId(), "JOB_COMPLETED", true));
+    }
+
+    @Test
+    void shouldSaveAndRemoveDeviceInactivitySettings() throws Exception {
+        Device device = testingService.findDefaultDevice(user);
+
+        mockMvc.perform(post("/settings/notifications/types")
+                        .with(user(user))
+                        .with(csrf())
+                        .param("typeKeys", DeviceInactivityNotificationType.KEY)
+                        .param("deviceEnabled-" + device.id(), "on")
+                        .param("deviceHours-" + device.id(), "12"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/settings/notifications"));
+
+        assertTrue(preferenceJdbcService.isEnabled(user.getId(), DeviceInactivityNotificationType.KEY, false));
+        assertEquals(12, deviceInactivityJdbcService
+                .findByUserAndDevice(user.getId(), device.id())
+                .orElseThrow()
+                .hours());
+
+        mockMvc.perform(post("/settings/notifications/types")
+                        .with(user(user))
+                        .with(csrf())
+                        .param("typeKeys", DeviceInactivityNotificationType.KEY))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/settings/notifications"));
+
+        assertTrue(deviceInactivityJdbcService
+                .findByUserAndDevice(user.getId(), device.id())
+                .isEmpty());
+    }
+
+    @Test
+    void shouldRejectInvalidDeviceInactivityHours() throws Exception {
+        Device device = testingService.findDefaultDevice(user);
+
+        mockMvc.perform(post("/settings/notifications/types")
+                        .with(user(user))
+                        .with(csrf())
+                        .param("typeKeys", DeviceInactivityNotificationType.KEY)
+                        .param("deviceEnabled-" + device.id(), "on")
+                        .param("deviceHours-" + device.id(), "0"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/settings/notifications"))
+                .andExpect(flash().attribute("errorMessage", "notifications.device-inactivity.invalid-hours"));
+
+        assertTrue(deviceInactivityJdbcService
+                .findByUserAndDevice(user.getId(), device.id())
+                .isEmpty());
     }
 
     @Test

@@ -157,6 +157,10 @@ public class NotificationJdbcService {
         return jdbcTemplate.update("DELETE FROM notifications WHERE user_id = ?", userId);
     }
 
+    public int deleteAllForUser(Long userId) {
+        return clearAll(userId);
+    }
+
     public int deleteOlderThan(Instant cutoff) {
         return jdbcTemplate.update(
                 "DELETE FROM notifications WHERE created_at < ?",

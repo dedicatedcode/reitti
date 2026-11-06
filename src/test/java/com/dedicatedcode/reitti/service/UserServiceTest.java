@@ -276,6 +276,34 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldDeleteAllNotificationDataWithUser() {
+        User user = testingService.randomUser();
+        Device device = testingService.findDefaultDevice(user);
+
+        jdbcTemplate.update("INSERT INTO notification_settings (user_id) VALUES (?)", user.getId());
+        jdbcTemplate.update("INSERT INTO notification_type_preferences (user_id, type_key, enabled) VALUES (?, ?, ?)",
+                user.getId(), "TEST", true);
+        jdbcTemplate.update("INSERT INTO notification_channels (user_id, channel_key) VALUES (?, ?)",
+                user.getId(), "NTFY");
+        jdbcTemplate.update("INSERT INTO notifications (user_id, type_key, severity, title, message) VALUES (?, ?, ?, ?, ?)",
+                user.getId(), "TEST", "INFO", "title", "message");
+        jdbcTemplate.update("INSERT INTO device_inactivity_notifications (user_id, device_id, hours) VALUES (?, ?, ?)",
+                user.getId(), device.id(), 24);
+
+        userService.deleteUser(user);
+
+        assertEquals(0, countForUser("notification_settings", user.getId()));
+        assertEquals(0, countForUser("notification_type_preferences", user.getId()));
+        assertEquals(0, countForUser("notification_channels", user.getId()));
+        assertEquals(0, countForUser("notifications", user.getId()));
+        assertEquals(0, countForUser("device_inactivity_notifications", user.getId()));
+    }
+
+    private int countForUser(String table, Long userId) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE user_id = ?", Integer.class, userId);
+    }
+
+    @Test
     void shouldDeleteUserWithIntegrationsAndAvatarOnOwnDevice() {
         // Given
         User user = testingService.randomUser();
