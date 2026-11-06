@@ -100,12 +100,12 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login", "/access", "/error").permitAll()
-                        .requestMatchers("/", "/avatars/**", "/user-css/**", "/manifest.json", "/events/**")
+                        .requestMatchers("/", "/user-css/**", "/manifest.json", "/events/**")
                                         .hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
                                                     "MAGIC_LINK_FULL_ACCESS", "MAGIC_LINK_ONLY_LIVE",
                                                     "MAGIC_LINK_ONLY_LAST_LOCATION", "MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")
                         .requestMatchers(HttpMethod.GET, "/timeline/content/range", "/timeline/user-selection",
-                                         "/api/v2/trips/**", "/api/v2/coverage/cells/**", "/notifications/pending")
+                                         "/api/v2/trips/**", "/api/v2/coverage/cells/**", "/api/avatars/**", "/notifications/pending")
                                         .hasAnyRole(Role.ADMIN.name(), Role.USER.name(),
                                                     "MAGIC_LINK_FULL_ACCESS", "MAGIC_LINK_ONLY_LIVE",
                                                     "MAGIC_LINK_ONLY_LAST_LOCATION", "MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")

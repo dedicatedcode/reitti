@@ -143,6 +143,13 @@ class MapRenderer {
         }
 
         this.selectedManager = null;
+        this.liveMode = false;
+        this.liveFitConfig = {
+            padding: { top: 80, right: 80, bottom: 160, left: 80 },
+            maxZoom: 16,
+            duration: 1000,
+            essential: true
+        };
         this.viewConfig = {
             ...defaultViewConfig,
             ...viewConfig,
@@ -1310,14 +1317,25 @@ class MapRenderer {
         this._cachedFilteredPolygons.clear();
     }
 
-    fitMapToBounds(bounds) {
+    fitMapToBounds(bounds, fitConfig = null) {
         this.map.stop();
         const containerWidth = this.map.getContainer().clientWidth;
-        const config = { ...this.viewConfig.fitConfig };
+        const config = { ...(fitConfig || this.viewConfig.fitConfig) };
         if (containerWidth < 600) {
             config.padding = { top: 20, bottom: 20, right: 20, left: 20 };
         }
         this.map.fitBounds(bounds, config);
+    }
+
+    setLiveMode(active) {
+        this.liveMode = active;
+        if (active
+            && this.element.classList.contains('is-loaded')
+            && this.gpsDataManagers.length > 0) {
+            // No data reload happens when live mode starts (e.g. the selected
+            // date is already today), so force the latest-location fit here.
+            this._doRefitBounds({ forceLatestFit: true });
+        }
     }
 
     flyTo(config) {
@@ -1342,26 +1360,98 @@ class MapRenderer {
         return performFit();
     }
 
-    _doRefitBounds() {
-        this.bounds = [];
-        console.log('Attempting to fit bounds...');
-        this.gpsDataManagers
-            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
-            .forEach(manager => this._extendBounds(manager.bounds));
-        console.log('Bounds calculated:', this.bounds);
+    _doRefitBounds(options = {}) {
+        const visibleManagers = this._getVisibleManagers();
+        const forceLatestFit = options.forceLatestFit === true;
 
-        if (this.bounds.length === 0) {
-            this._flyToHomeLocation();
-        } else {
-            this.fitMapToBounds(this.bounds);
+        let cameraHandled = false;
+        if (this.liveMode) {
+            const latestPoints = this._collectLatestPoints(visibleManagers);
+            cameraHandled = this._fitToLatestLocations(latestPoints, { force: forceLatestFit });
         }
 
-        this.map.once('idle', () => {
-            console.log('Idle after fit, rebuilding layers...');
+        if (!cameraHandled) {
+            this.bounds = [];
+            console.log('Attempting to fit bounds...');
+            visibleManagers.forEach(manager => this._extendBounds(manager.bounds));
+            console.log('Bounds calculated:', this.bounds);
 
+            if (this.bounds.length === 0) {
+                this._flyToHomeLocation();
+            } else {
+                this.fitMapToBounds(this.bounds);
+            }
+        }
+
+        if (this.map.isMoving()) {
+            this.map.once('idle', () => {
+                console.log('Idle after fit, rebuilding layers...');
+
+                this._layerContextKey = null;
+                this._buildLayers();
+            });
+        } else {
             this._layerContextKey = null;
             this._buildLayers();
+        }
+    }
+
+    _getVisibleManagers() {
+        return this.gpsDataManagers
+            .filter(manager => this.selectedManager == null || manager.id === this.selectedManager);
+    }
+
+    _collectLatestPoints(managers) {
+        const points = [];
+        const seen = new Set();
+        managers.forEach(manager => {
+            const latest = manager.lastLocation;
+            if (!latest || typeof latest.latitude !== 'number' || typeof latest.longitude !== 'number') return;
+            const key = `${latest.latitude.toFixed(5)},${latest.longitude.toFixed(5)}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            points.push(latest);
         });
+        return points;
+    }
+
+    _fitToLatestLocations(points, { force = false } = {}) {
+        if (!points || points.length === 0) return false;
+
+        if (points.length === 1) {
+            const point = points[0];
+            if (!force) {
+                const bounds = this.map.getBounds();
+                if (bounds && bounds.contains([point.longitude, point.latitude])) {
+                    return true; // Latest point already in view, leave the camera alone
+                }
+            }
+            this.map.stop();
+            this.map.easeTo({
+                center: [point.longitude, point.latitude],
+                zoom: this.liveFitConfig.maxZoom,
+                duration: this.liveFitConfig.duration,
+                essential: this.liveFitConfig.essential
+            });
+            return true;
+        }
+
+        let anyOutside = false;
+        const currentBounds = this.map.getBounds();
+        const lngLatBounds = new maplibregl.LngLatBounds();
+        points.forEach(point => {
+            lngLatBounds.extend([point.longitude, point.latitude]);
+            if (currentBounds && !currentBounds.contains([point.longitude, point.latitude])) {
+                anyOutside = true;
+            }
+        });
+
+        if (!force && !anyOutside) {
+            return true; // All latest points already in view, leave the camera alone
+        }
+
+        this.fitMapToBounds(lngLatBounds, this.liveFitConfig);
+        return true;
     }
 
     reset() {
@@ -1525,7 +1615,18 @@ class MapRenderer {
 
     enableAvatars(todayStart = null, todayEnd = null) {
         this.showAvatars = true;
-        this.gpsDataManagers.forEach(manager => {
+        const visibleManagers = this._getVisibleManagers();
+        const visibleIds = new Set(visibleManagers.map(manager => manager.id));
+
+        // Remove markers for managers that are no longer visible
+        for (const [managerId, marker] of this.avatarMarkers) {
+            if (!visibleIds.has(managerId)) {
+                marker.remove();
+                this.avatarMarkers.delete(managerId);
+            }
+        }
+
+        visibleManagers.forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
             if (todayStart !== null && todayEnd !== null) {
@@ -2671,7 +2772,7 @@ class MapRenderer {
     updateAvatarPositions() {
         const activeUserIds = new Set();
         // Update existing markers or create new ones
-        this.gpsDataManagers.forEach(manager => {
+        this._getVisibleManagers().forEach(manager => {
             const userConfig = manager.config;
             const latestLocation = manager.lastLocation;
 
@@ -2829,7 +2930,10 @@ class MapRenderer {
         // Invalidate context so next _buildLayers does a full rebuild
         this._layerContextKey = null;
         if (this.element.classList.contains('is-loaded') && this.gpsDataManagers.length > 0) {
-            this._doRefitBounds();
+            this._doRefitBounds({ forceLatestFit: true });
+        }
+        if (this.showAvatars) {
+            this.updateAvatarPositions();
         }
     }
 }

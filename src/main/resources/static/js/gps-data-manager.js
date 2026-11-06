@@ -101,7 +101,9 @@ class GpsDataManager {
                 requests.push(fetch(window.contextPath + this.config.map.visitsUrl, {signal}))
             }
             const h3Promise = this.config.map.h3CellUrl
-                ? fetch(window.contextPath + this.config.map.h3CellUrl, {signal}).then(r => r.json())
+                ? fetch(window.contextPath + this.config.map.h3CellUrl, {signal})
+                    .then(r => r.ok ? r.json() : null)
+                    .catch(() => null)
                 : Promise.resolve(null);
 
             const tripsPromise = this.config.map.tripsUrl

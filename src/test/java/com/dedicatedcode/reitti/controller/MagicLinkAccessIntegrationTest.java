@@ -56,7 +56,7 @@ class MagicLinkAccessIntegrationTest {
                         .session(session))
                 .andExpect(status().isOk());
         // 404 proves the request passed authorization; the owner simply has no avatar
-        mockMvc.perform(get("/avatars/{userId}", owner.getId()).session(session))
+        mockMvc.perform(get("/api/avatars/{userId}", owner.getId()).session(session))
                 .andExpect(status().isNotFound());
     }
 

@@ -164,6 +164,9 @@ public class ReittiIntegrationService {
 
         String contentType = (String) result.get("mime_type");
         byte[] imageData = (byte[]) result.get("binary_data");
+        if (contentType == null || imageData == null) {
+            return Optional.empty();
+        }
 
         return Optional.of(new AvatarService.AvatarData(contentType,imageData, -1));
 
@@ -293,6 +296,46 @@ public class ReittiIntegrationService {
                     }
                     return null;
                 }).orElse(null);
+    }
+
+    public ResponseEntity<String> getH3Cells(User user, Long integrationId, String start, String end, String timezone) {
+        return this.jdbcService.findByIdAndUser(integrationId, user)
+                .filter(integration -> integration.isEnabled() && VALID_INTEGRATION_STATUS.contains(integration.getStatus()))
+                .map(integration -> {
+                    try {
+                        RemoteUser remoteUser = handleRemoteUser(integration);
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.set("X-API-TOKEN", integration.getToken());
+                        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+                        String remoteUrl = integration.getUrl().endsWith("/") ?
+                                integration.getUrl() + "api/v2/coverage/cells/" + remoteUser.getRemoteId() + "?start={start}&end={end}&timezone={timezone}" :
+                                integration.getUrl() + "/api/v2/coverage/cells/" + remoteUser.getRemoteId() + "?start={start}&end={end}&timezone={timezone}";
+
+                        ResponseEntity<String> response = restTemplate.exchange(
+                                remoteUrl, HttpMethod.GET, entity, String.class, start, end, timezone);
+
+                        if (response.getStatusCode().is2xxSuccessful()) {
+                            update(user, integration.withStatus(ReittiIntegration.Status.ACTIVE).withLastUsed(LocalDateTime.now()));
+                            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response.getBody());
+                        }
+                        return ResponseEntity.status(response.getStatusCode())
+                                .headers(response.getHeaders())
+                                .body(response.getBody());
+                    } catch (RequestFailedException e) {
+                        log.error("couldn't fetch user info for [{}]", integration, e);
+                        update(user, integration.withStatus(ReittiIntegration.Status.FAILED).withLastUsed(LocalDateTime.now()).withEnabled(false));
+                    } catch (RequestTemporaryFailedException e) {
+                        log.warn("couldn't temporarily fetch user info for [{}]", integration, e);
+                        update(user, integration.withStatus(ReittiIntegration.Status.RECOVERABLE).withLastUsed(LocalDateTime.now()));
+                    } catch (Exception e) {
+                        log.error("Failed to fetch h3 cells for integration [{}]", integrationId, e);
+                    }
+                    return ResponseEntity.notFound().<String>build();
+                }).orElseGet(() -> {
+                    log.debug("H3 cells not accessible for integration [{}]", integrationId);
+                    return ResponseEntity.notFound().<String>build();
+                });
     }
 
     public void streamLocations(User user, Long integrationId, String start, String end, String timezone, ResponseBodyEmitter emitter) {
@@ -476,35 +519,41 @@ public class ReittiIntegrationService {
 
     private RemoteUser handleRemoteUser(ReittiIntegration integration, ReittiRemoteInfo info) throws RequestFailedException, RequestTemporaryFailedException {
         Optional<RemoteUser> persisted = this.jdbcService.findByIntegration(integration);
-        if (persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version())) {
-            log.debug("Storing new RemoteUser for [{}]", integration);
+        boolean versionChanged = persisted.isEmpty() || !persisted.get().getRemoteVersion().equals(info.userInfo().version());
+        boolean avatarMissing = persisted.isPresent() && !this.jdbcService.hasAvatar(integration);
 
-            String avatarUrl = integration.getUrl().endsWith("/") ?
-                    integration.getUrl() + "avatars/" + info.userInfo().id() :
-                    integration.getUrl() + "/avatars/" + info.userInfo().id();
+        if (versionChanged || avatarMissing) {
+            RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
 
-            try (HttpClient httpClient = HttpClient.newHttpClient()) {
-                HttpRequest avatarRequest = HttpRequest.newBuilder()
-                        .uri(new URI(avatarUrl))
-                        .header("X-API-TOKEN", integration.getToken())
-                        .GET()
-                        .build();
-                HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
+            byte[] avatarData = null;
+            String mimeType = null;
+            // Avatar is optional - a failed fetch must never fail the data request or disable the integration.
+            try {
+                String avatarUrl = integration.getUrl().endsWith("/") ?
+                        integration.getUrl() + "api/avatars/" + info.userInfo().id() :
+                        integration.getUrl() + "/api/avatars/" + info.userInfo().id();
+                try (HttpClient httpClient = HttpClient.newHttpClient()) {
+                    HttpRequest avatarRequest = HttpRequest.newBuilder()
+                            .uri(new URI(avatarUrl))
+                            .header("X-API-TOKEN", integration.getToken())
+                            .GET()
+                            .build();
+                    HttpResponse<byte[]> avatarResponse = httpClient.send(avatarRequest, HttpResponse.BodyHandlers.ofByteArray());
 
-                RemoteUser remoteUser = new RemoteUser(info.userInfo().id(), info.userInfo().displayName(), info.userInfo().username(), info.userInfo().version());
-                if (avatarResponse.statusCode() == 200) {
-                    byte[] avatarData = avatarResponse.body();
-                    String mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
-
-                    log.debug("Stored avatar for remote user [{}] with MIME type [{}]", info.userInfo().id(), mimeType);
-                    this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
+                    if (avatarResponse.statusCode() == 200) {
+                        avatarData = avatarResponse.body();
+                        mimeType = avatarResponse.headers().firstValue("Content-Type").orElse("image/jpeg");
+                        log.debug("Stored avatar for remote user [{}]", info.userInfo().id());
+                    } else {
+                        log.warn("Remote instance returned status [{}] for avatar of remote user [{}]", avatarResponse.statusCode(), info.userInfo().id());
+                    }
                 }
-
-                persisted = Optional.of(remoteUser);
             } catch (Exception e) {
                 log.warn("Failed to fetch avatar for remote user [{}]", info.userInfo().id(), e);
-                throw new RequestFailedException(avatarUrl, HttpStatusCode.valueOf(500), "");
             }
+
+            this.jdbcService.store(integration, remoteUser, avatarData, mimeType);
+            persisted = Optional.of(remoteUser);
         }
         return persisted.get();
     }
@@ -741,7 +790,13 @@ public class ReittiIntegrationService {
         LocationPoint locationPoint = new LocationPoint();
         locationPoint.setLatitude(getDoubleValue(locationMap, "latitude"));
         locationPoint.setLongitude(getDoubleValue(locationMap, "longitude"));
-        locationPoint.setTimestamp((Instant) locationMap.get("timestamp"));
+
+        Object timestamp = locationMap.get("timestamp");
+        if (timestamp instanceof Instant) {
+            locationPoint.setTimestamp((Instant) timestamp);
+        } else if (timestamp instanceof String) {
+            locationPoint.setTimestamp(Instant.parse((String) timestamp));
+        }
         locationPoint.setAccuracyMeters(getDoubleValue(locationMap, "accuracyMeters"));
 
         if (locationMap.containsKey("elevationMeters")) {

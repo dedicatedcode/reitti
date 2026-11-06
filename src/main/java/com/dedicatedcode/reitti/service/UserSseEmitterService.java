@@ -14,17 +14,23 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserSseEmitterService implements SmartLifecycle {
     private static final Logger log = LoggerFactory.getLogger(UserSseEmitterService.class);
+    private static final long HEARTBEAT_INTERVAL_SECONDS = 30;
     private final ReittiIntegrationService reittiIntegrationService;
     private final Map<Long, Set<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
+    private final Map<SseEmitter, User> emitterOwners = new ConcurrentHashMap<>();
     private final Set<SseEmitter> integrationEmitters = ConcurrentHashMap.newKeySet();
     private final LinkedBlockingQueue<TaskData> queue = new LinkedBlockingQueue<>();
     private volatile boolean running;
     private Thread drainThread;
+    private ScheduledExecutorService heartbeatExecutor;
 
     public UserSseEmitterService(ReittiIntegrationService reittiIntegrationService) {
         this.reittiIntegrationService = reittiIntegrationService;
@@ -37,6 +43,7 @@ public class UserSseEmitterService implements SmartLifecycle {
     public SseEmitter addEmitter(User user, boolean integrationSubscribed) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         userEmitters.computeIfAbsent(user.getId(), _ -> new CopyOnWriteArraySet<>()).add(emitter);
+        emitterOwners.put(emitter, user);
         if (integrationSubscribed) {
             integrationEmitters.add(emitter);
         }
@@ -70,15 +77,15 @@ public class UserSseEmitterService implements SmartLifecycle {
         return emitter;
     }
 
-    public void enqueue(TaskData data) {
-        queue.add(data);
-    }
-
     public void sendEventToUser(User user, SSEEvent eventData) {
-        sendEventToUser(user, (Object) eventData);
+        queue.add(new TaskData(user, eventData));
     }
 
     public void sendEventToUser(User user, Object eventData) {
+        queue.add(new TaskData(user, eventData));
+    }
+
+    private void sendToEmitters(User user, Object eventData) {
         Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             for (SseEmitter emitter : new CopyOnWriteArraySet<>(emitters)) {
@@ -101,7 +108,26 @@ public class UserSseEmitterService implements SmartLifecycle {
         }
     }
 
+    private void sendHeartbeats() {
+        for (Map.Entry<SseEmitter, User> entry : emitterOwners.entrySet()) {
+            SseEmitter emitter = entry.getKey();
+            User user = entry.getValue();
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception e) {
+                log.debug("SSE heartbeat failed for user [{}]: {}", user, e.getMessage());
+                removeEmitter(user, emitter);
+                try {
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {
+                    // already completed or errored
+                }
+            }
+        }
+    }
+
     private void removeEmitter(User user, SseEmitter emitter) {
+        emitterOwners.remove(emitter);
         Set<SseEmitter> emitters = userEmitters.get(user.getId());
         if (emitters != null) {
             emitters.remove(emitter);
@@ -124,7 +150,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             while (running) {
                 try {
                     TaskData data = queue.take();
-                    sendEventToUser(data.user, data.eventData);
+                    sendToEmitters(data.user, data.eventData);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -134,15 +160,28 @@ public class UserSseEmitterService implements SmartLifecycle {
         }, "sse-drain");
         drainThread.setDaemon(true);
         drainThread.start();
+
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "sse-heartbeat");
+            thread.setDaemon(true);
+            return thread;
+        });
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats,
+                HEARTBEAT_INTERVAL_SECONDS, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     @Override
     public void stop() {
         running = false;
+        if (heartbeatExecutor != null) {
+            heartbeatExecutor.shutdownNow();
+            heartbeatExecutor = null;
+        }
         if (drainThread != null) {
             drainThread.interrupt();
         }
         userEmitters.values().forEach(sseEmitters -> sseEmitters.forEach(SseEmitter::complete));
+        emitterOwners.clear();
     }
 
     @Override
@@ -150,5 +189,5 @@ public class UserSseEmitterService implements SmartLifecycle {
         return running;
     }
 
-    public record TaskData(User user, SSEEvent eventData) {}
+    private record TaskData(User user, Object eventData) {}
 }
