@@ -526,6 +526,35 @@ public class UserSettingsControllerTest {
     }
 
     @Test
+    void updateUser_AsLastAdmin_ShouldUpdateRegularUser() throws Exception {
+        User adminUser = userJdbcService.updateUser(createTestUser(randomUsername(), "Admin User", "password").withRole(Role.ADMIN));
+        User regularUser = createTestUser(randomUsername(), "Regular User", "password");
+        // temporarily make this the only admin
+        List<User> otherAdmins = userJdbcService.getAllUsers().stream().filter(u -> u.getRole() == Role.ADMIN && !u.getId().equals(adminUser.getId())).toList();
+        otherAdmins.forEach(a -> userJdbcService.updateUser(a.withRole(Role.USER)));
+        try {
+            mockMvc.perform(post("/settings/users/update")
+                                    .param("userId", regularUser.getId().toString())
+                                    .param("username", regularUser.getUsername())
+                                    .param("displayName", "Renamed User")
+                                    .param("role", "USER")
+                                    .param("preferred_language", "EN")
+                                    .param("unit_system", "METRIC")
+                                    .param("color", "#dcae4a")
+                                    .with(csrf())
+                                    .with(user(adminUser)))
+                    .andExpectAll(
+                            status().isOk(),
+                            model().attributeExists("successMessage")
+                    );
+
+            assertThat(userJdbcService.findById(regularUser.getId()).orElseThrow().getDisplayName()).isEqualTo("Renamed User");
+        } finally {
+            otherAdmins.forEach(a -> userJdbcService.findById(a.getId()).ifPresent(current -> userJdbcService.updateUser(current.withRole(Role.ADMIN))));
+        }
+    }
+
+    @Test
     void updateUser_AsAdmin_ShouldDemoteAnotherAdminWhileAnAdminRemains() throws Exception {
         User adminUser = userJdbcService.updateUser(createTestUser(randomUsername(), "Admin User", "password").withRole(Role.ADMIN));
         User otherAdmin = userJdbcService.updateUser(createTestUser(randomUsername(), "Other Admin", "password").withRole(Role.ADMIN));
