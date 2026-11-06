@@ -59,4 +59,8 @@ public class NotificationSettingsJdbcService {
     public boolean isBadgeVisible(Long userId) {
         return findByUserId(userId).map(NotificationSettings::showBadge).orElse(true);
     }
+
+    public void deleteAllForUser(Long userId) {
+        jdbcTemplate.update("DELETE FROM notification_settings WHERE user_id = ?", userId);
+    }
 }

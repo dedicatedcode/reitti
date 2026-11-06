@@ -110,4 +110,8 @@ public class NotificationChannelJdbcService {
                 "DELETE FROM notification_channels WHERE user_id = ? AND channel_key = ?",
                 userId, channelKey);
     }
+
+    public void deleteAllForUser(Long userId) {
+        jdbcTemplate.update("DELETE FROM notification_channels WHERE user_id = ?", userId);
+    }
 }

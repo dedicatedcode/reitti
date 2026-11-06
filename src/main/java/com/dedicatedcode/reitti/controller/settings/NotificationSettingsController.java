@@ -1,23 +1,29 @@
 package com.dedicatedcode.reitti.controller.settings;
 
 import com.dedicatedcode.reitti.model.Role;
+import com.dedicatedcode.reitti.model.devices.Device;
+import com.dedicatedcode.reitti.model.notification.DeviceInactivitySetting;
 import com.dedicatedcode.reitti.model.notification.NotificationChannel;
 import com.dedicatedcode.reitti.model.notification.NotificationChannelConfig;
 import com.dedicatedcode.reitti.model.notification.NotificationSettings;
 import com.dedicatedcode.reitti.model.notification.NotificationType;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.repository.DeviceInactivityJdbcService;
+import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationChannelJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.NotificationTypePreferenceJdbcService;
 import com.dedicatedcode.reitti.service.notification.NotificationChannelRegistry;
 import com.dedicatedcode.reitti.service.notification.NotificationService;
 import com.dedicatedcode.reitti.service.notification.NotificationTypeRegistry;
+import com.dedicatedcode.reitti.service.notification.type.DeviceInactivityNotificationType;
 import com.dedicatedcode.reitti.service.notification.type.TestNotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -32,10 +38,15 @@ import java.util.Map;
 @RequestMapping("/settings/notifications")
 public class NotificationSettingsController {
     private static final Logger log = LoggerFactory.getLogger(NotificationSettingsController.class);
+    private static final int MAX_INACTIVITY_HOURS = 8760;
+    private static final String DEVICE_ENABLED_PREFIX = "deviceEnabled-";
+    private static final String DEVICE_HOURS_PREFIX = "deviceHours-";
 
     private final NotificationSettingsJdbcService settingsJdbcService;
     private final NotificationTypePreferenceJdbcService typePreferenceJdbcService;
     private final NotificationChannelJdbcService channelJdbcService;
+    private final DeviceInactivityJdbcService deviceInactivityJdbcService;
+    private final DeviceJdbcService deviceJdbcService;
     private final NotificationTypeRegistry typeRegistry;
     private final NotificationChannelRegistry channelRegistry;
     private final NotificationService notificationService;
@@ -44,6 +55,8 @@ public class NotificationSettingsController {
     public NotificationSettingsController(NotificationSettingsJdbcService settingsJdbcService,
                                           NotificationTypePreferenceJdbcService typePreferenceJdbcService,
                                           NotificationChannelJdbcService channelJdbcService,
+                                          DeviceInactivityJdbcService deviceInactivityJdbcService,
+                                          DeviceJdbcService deviceJdbcService,
                                           NotificationTypeRegistry typeRegistry,
                                           NotificationChannelRegistry channelRegistry,
                                           NotificationService notificationService,
@@ -51,6 +64,8 @@ public class NotificationSettingsController {
         this.settingsJdbcService = settingsJdbcService;
         this.typePreferenceJdbcService = typePreferenceJdbcService;
         this.channelJdbcService = channelJdbcService;
+        this.deviceInactivityJdbcService = deviceInactivityJdbcService;
+        this.deviceJdbcService = deviceJdbcService;
         this.typeRegistry = typeRegistry;
         this.channelRegistry = channelRegistry;
         this.notificationService = notificationService;
@@ -63,6 +78,7 @@ public class NotificationSettingsController {
         model.addAttribute("isAdmin", user.getRole() == Role.ADMIN);
         model.addAttribute("dataManagementEnabled", dataManagementEnabled);
         addSettingsToModel(user, model);
+        addDeviceInactivityToModel(user, model);
         addChannelsToModel(user, model);
         return "settings/notifications";
     }
@@ -79,15 +95,42 @@ public class NotificationSettingsController {
     }
 
     @PostMapping("/types")
+    @Transactional
     public String saveTypes(@AuthenticationPrincipal User user,
                             @RequestParam(value = "typeKeys", required = false) List<String> enabledTypeKeys,
+                            @RequestParam Map<String, String> params,
                             RedirectAttributes redirectAttributes) {
         List<String> enabled = enabledTypeKeys == null ? List.of() : enabledTypeKeys;
+        if (enabled.contains(DeviceInactivityNotificationType.KEY)
+                && !saveDeviceInactivitySettings(user, params)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "notifications.device-inactivity.invalid-hours");
+            return "redirect:/settings/notifications";
+        }
         for (NotificationType type : typeRegistry.forUser(user)) {
             typePreferenceJdbcService.save(user.getId(), type.key(), enabled.contains(type.key()));
         }
         redirectAttributes.addFlashAttribute("successMessage", "notifications.types.saved");
         return "redirect:/settings/notifications";
+    }
+
+    private boolean saveDeviceInactivitySettings(User user, Map<String, String> params) {
+        Map<Long, Integer> configured = new LinkedHashMap<>();
+        List<Long> disabled = new ArrayList<>();
+        for (Device device : deviceJdbcService.getAll(user)) {
+            if (!params.containsKey(DEVICE_ENABLED_PREFIX + device.id())) {
+                disabled.add(device.id());
+                continue;
+            }
+            Integer hours = parseHours(params.get(DEVICE_HOURS_PREFIX + device.id()));
+            if (hours == null) {
+                return false;
+            }
+            configured.put(device.id(), hours);
+        }
+
+        disabled.forEach(deviceId -> deviceInactivityJdbcService.delete(user.getId(), deviceId));
+        configured.forEach((deviceId, hours) -> deviceInactivityJdbcService.save(user.getId(), deviceId, hours));
+        return true;
     }
 
     @PostMapping("/channels/{key}")
@@ -170,6 +213,29 @@ public class NotificationSettingsController {
         model.addAttribute("notificationTypeEnabled", effective);
     }
 
+    private void addDeviceInactivityToModel(User user, Model model) {
+        Map<Long, DeviceInactivitySetting> settings = new LinkedHashMap<>();
+        deviceInactivityJdbcService.findAllForUser(user.getId())
+                .forEach(setting -> settings.put(setting.deviceId(), setting));
+        List<DeviceInactivityView> views = deviceJdbcService.getAll(user).stream()
+                .map(device -> new DeviceInactivityView(device, settings.get(device.id())))
+                .toList();
+        model.addAttribute("deviceInactivityViews", views);
+        model.addAttribute("deviceInactivityMaxHours", MAX_INACTIVITY_HOURS);
+    }
+
+    private Integer parseHours(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            int hours = Integer.parseInt(value.trim());
+            return hours >= 1 && hours <= MAX_INACTIVITY_HOURS ? hours : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private void addChannelsToModel(User user, Model model) {
         List<ChannelView> channels = new ArrayList<>();
         for (NotificationChannel channel : channelRegistry.all()) {
@@ -201,6 +267,16 @@ public class NotificationSettingsController {
 
         public String value(String key) {
             return config.value(key, "");
+        }
+    }
+
+    public record DeviceInactivityView(Device device, DeviceInactivitySetting setting) {
+        public boolean enabled() {
+            return setting != null;
+        }
+
+        public int hours() {
+            return setting != null ? setting.hours() : DeviceInactivitySetting.DEFAULT_HOURS;
         }
     }
 }
