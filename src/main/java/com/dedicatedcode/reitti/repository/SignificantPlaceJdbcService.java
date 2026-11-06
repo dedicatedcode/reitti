@@ -156,8 +156,8 @@ public class SignificantPlaceJdbcService {
 
     public SignificantPlace create(User user, SignificantPlace place) {
 
-        String sql = "INSERT INTO significant_places (user_id, name, latitude_centroid, longitude_centroid, timezone, geom, polygon) " +
-                "VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
+        String sql = "INSERT INTO significant_places (user_id, name, type, latitude_centroid, longitude_centroid, timezone, geom, polygon) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ST_GeomFromText(?, '4326'), " +
                 "CASE WHEN ?::text IS NOT NULL THEN ST_GeomFromText(?, '4326')  END) RETURNING id";
 
 
@@ -166,6 +166,7 @@ public class SignificantPlaceJdbcService {
         Long id = jdbcTemplate.queryForObject(sql, Long.class,
                 user.getId(),
                 place.getName(),
+                place.getType().name(),
                 place.getLatitudeCentroid(),
                 place.getLongitudeCentroid(),
                 place.getTimezone().getId(),

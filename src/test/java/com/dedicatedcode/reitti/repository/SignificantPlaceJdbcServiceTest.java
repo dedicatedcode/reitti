@@ -120,6 +120,15 @@ class SignificantPlaceJdbcServiceTest {
     }
 
     @Test
+    void create_shouldPersistType() {
+        SignificantPlace newPlace = createTestPlace("Home", 53.863149, 10.700927).withType(SignificantPlace.PlaceType.HOME);
+
+        SignificantPlace created = significantPlaceJdbcService.create(testUser, newPlace);
+
+        assertThat(created.getType()).isEqualTo(SignificantPlace.PlaceType.HOME);
+    }
+
+    @Test
     void update_shouldModifyExistingPlace() {
         // Given
         SignificantPlace originalPlace = createTestPlace("Original", 53.863149, 10.700927);
