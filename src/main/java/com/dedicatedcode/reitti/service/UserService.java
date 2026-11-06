@@ -44,6 +44,11 @@ public class UserService {
     private final MemoryJdbcService memoryJdbcService;
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final TripJdbcService tripJdbcService;
+    private final NotificationJdbcService notificationJdbcService;
+    private final NotificationSettingsJdbcService notificationSettingsJdbcService;
+    private final NotificationTypePreferenceJdbcService notificationTypePreferenceJdbcService;
+    private final NotificationChannelJdbcService notificationChannelJdbcService;
+    private final DeviceInactivityJdbcService deviceInactivityJdbcService;
 
     public UserService(UserJdbcService userJdbcService,
                        UserSettingsJdbcService userSettingsJdbcService,
@@ -58,6 +63,11 @@ public class UserService {
                        MemoryJdbcService memoryJdbcService,
                        SourceLocationPointJdbcService sourceLocationPointJdbcService,
                        TripJdbcService tripJdbcService,
+                       NotificationJdbcService notificationJdbcService,
+                       NotificationSettingsJdbcService notificationSettingsJdbcService,
+                       NotificationTypePreferenceJdbcService notificationTypePreferenceJdbcService,
+                       NotificationChannelJdbcService notificationChannelJdbcService,
+                       DeviceInactivityJdbcService deviceInactivityJdbcService,
                        PasswordEncoder passwordEncoder, UserMapStyleJdbcService userMapStyleJdbcService, DeviceJdbcService deviceJdbcService, ApiTokenService apiTokenService,
                        JdbcTemplate jdbcTemplate) {
         this.userJdbcService = userJdbcService;
@@ -74,6 +84,11 @@ public class UserService {
         this.memoryJdbcService = memoryJdbcService;
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.tripJdbcService = tripJdbcService;
+        this.notificationJdbcService = notificationJdbcService;
+        this.notificationSettingsJdbcService = notificationSettingsJdbcService;
+        this.notificationTypePreferenceJdbcService = notificationTypePreferenceJdbcService;
+        this.notificationChannelJdbcService = notificationChannelJdbcService;
+        this.deviceInactivityJdbcService = deviceInactivityJdbcService;
         this.passwordEncoder = passwordEncoder;
         this.userMapStyleJdbcService = userMapStyleJdbcService;
         this.deviceJdbcService = deviceJdbcService;
@@ -216,6 +231,11 @@ public class UserService {
 
     @Transactional
     public void deleteUser(User user) {
+        this.notificationJdbcService.deleteAllForUser(user.getId());
+        this.notificationSettingsJdbcService.deleteAllForUser(user.getId());
+        this.notificationTypePreferenceJdbcService.deleteAllForUser(user.getId());
+        this.notificationChannelJdbcService.deleteAllForUser(user.getId());
+        this.deviceInactivityJdbcService.deleteAllForUser(user.getId());
         this.visitDetectionParametersJdbcService.findAllConfigurationsForUser(user).forEach(detectionParameter -> this.visitDetectionParametersJdbcService.delete(user, detectionParameter.getId()));
         this.transportModeJdbcService.deleteAllForUser(user);
         this.userSettingsJdbcService.deleteFor(user);

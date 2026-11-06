@@ -90,6 +90,14 @@ public class SourceLocationPointJdbcService {
        return findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startTime, endTime, includeIgnored, includeInvalid, NO_PAGING, NO_PAGING);
     }
 
+    public Optional<Instant> findLatestTimestamp(User user, Device device) {
+        Timestamp latest = jdbcTemplate.queryForObject(
+                "SELECT MAX(timestamp) FROM raw_source_points WHERE user_id = ? AND device_id IS NOT DISTINCT FROM ?",
+                Timestamp.class,
+                user.getId(), device != null ? device.id() : null);
+        return Optional.ofNullable(latest).map(Timestamp::toInstant);
+    }
+
     /**
      * @return the timestamp of the n-th valid (non-ignored) point before the given instant,
      * or the oldest point before it if fewer than n exist. Empty if no point exists before.

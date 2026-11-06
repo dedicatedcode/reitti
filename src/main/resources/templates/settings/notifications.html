@@ -72,12 +72,47 @@
                     <div th:each="type : ${notificationTypes}" class="form-group slide-reveal-container notification-type">
                         <input type="checkbox" name="typeKeys" th:value="${type.key()}"
                                th:id="${'notification-type-' + type.key()}"
+                               th:classappend="${type.key() == 'DEVICE_INACTIVITY'} ? 'device-inactivity-toggle' : ''"
                                th:checked="${notificationTypeEnabled.get(type.key())}">
                         <label th:for="${'notification-type-' + type.key()}" class="slide-reveal">
                             <span class="slide-box"></span>
                             <span class="label-text" th:text="#{${type.nameKey()}}">Type</span>
                         </label>
                         <p class="form-description" th:text="#{${type.descriptionKey()}}">Description</p>
+
+                        <div th:if="${type.key() == 'DEVICE_INACTIVITY'}" class="device-inactivity-settings">
+                            <table class="table-plain">
+                                <thead>
+                                <tr>
+                                    <th th:text="#{notifications.device-inactivity.device}">Device</th>
+                                    <th th:text="#{notifications.device-inactivity.hours}">Hours without data</th>
+                                    <th th:text="#{notifications.device-inactivity.enabled}">Notify</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="view : ${deviceInactivityViews}">
+                                    <td th:text="${view.device().name()}">Device</td>
+                                    <td>
+                                        <input type="number" min="1" th:max="${deviceInactivityMaxHours}"
+                                               th:name="${'deviceHours-' + view.device().id()}"
+                                               th:value="${view.hours()}">
+                                    </td>
+                                    <td>
+                                        <div class="slide-reveal-container">
+                                            <input type="checkbox"
+                                                   th:name="${'deviceEnabled-' + view.device().id()}"
+                                                   th:id="${'device-inactivity-' + view.device().id()}"
+                                                   th:checked="${view.enabled()}">
+                                            <label th:for="${'device-inactivity-' + view.device().id()}" class="slide-reveal">
+                                                <span class="slide-box"></span>
+                                                <span class="label-text" th:text="#{notifications.device-inactivity.enabled}">Notify</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="notification-channel-actions">
                         <button type="submit" class="btn btn-primary" th:text="#{common.actions.save}">Save</button>
