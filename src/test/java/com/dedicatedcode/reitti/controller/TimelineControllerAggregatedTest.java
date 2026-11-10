@@ -11,6 +11,8 @@ import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.geo.TransportMode;
 import com.dedicatedcode.reitti.model.security.User;
+import com.dedicatedcode.reitti.model.security.UserSharing;
+import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import com.dedicatedcode.reitti.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
@@ -47,6 +50,9 @@ class TimelineControllerAggregatedTest {
 
     @Autowired
     private NamedParameterJdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private UserSharingJdbcService userSharingJdbcService;
 
     private User user;
 
@@ -124,5 +130,36 @@ class TimelineControllerAggregatedTest {
                 .andExpect(content().string(containsString("level-4")))
                 .andExpect(content().string(containsString("mode-CYCLING")))
                 .andExpect(content().string(not(containsString("timeline-activity-hourly"))));
+    }
+
+    @Test
+    void aggregatedTimelineShowsSharedUserData() throws Exception {
+        ZoneId tz = ZoneId.of("Europe/Berlin");
+        LocalDate startDate = LocalDate.of(2025, 2, 3);
+        String sharingUsername = "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        User sharingUser = this.userService.createNewUser(sharingUsername, "Sharing User", "password", Role.USER, UnitSystem.METRIC, Language.EN, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, "#ff0000");
+        userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), user.getId(), null, "#ff0000", false, null)));
+
+        createVisits(user, testingService.newSignificantPlace(user, "Viewer Place"), startDate, tz);
+        createVisits(sharingUser, testingService.newSignificantPlace(sharingUser, "Sharing User Place"), startDate, tz);
+
+        mockMvc.perform(get("/timeline/content/range")
+                                .param("startDate", startDate.toString())
+                                .param("endDate", startDate.plusDays(15).toString())
+                                .param("timezone", tz.toString())
+                                .with(user(user)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Viewer Place")))
+                .andExpect(content().string(containsString("Sharing User Place")))
+                .andExpect(content().string(containsString("/api/v2/coverage/cells/" + sharingUser.getId() + "?")));
+    }
+
+    private void createVisits(User owner, SignificantPlace place, LocalDate startDate, ZoneId tz) {
+        for (int day = 0; day < 16; day++) {
+            Instant dayStart = startDate.plusDays(day).atStartOfDay(tz).toInstant();
+            ProcessedVisit visit1 = testingService.createVisit(owner, place, dayStart.plus(5, ChronoUnit.HOURS), dayStart.plus(7, ChronoUnit.HOURS));
+            ProcessedVisit visit2 = testingService.createVisit(owner, place, dayStart.plus(16, ChronoUnit.HOURS), dayStart.plus(18, ChronoUnit.HOURS));
+            testingService.createTrip(owner, visit1, visit2, TransportMode.WALKING);
+        }
     }
 }
