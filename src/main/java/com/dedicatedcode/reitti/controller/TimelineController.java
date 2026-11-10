@@ -317,7 +317,7 @@ public class TimelineController {
 
                         if (loadTimeline) {
                             if (shouldAggregate) {
-                                userTimelineEntries = this.timelineOverviewStatisticsService.load(user, startOfRange, endOfRange, userTimezone, dayStartTime, viewerSettings.getUnitSystem());
+                                userTimelineEntries = this.timelineOverviewStatisticsService.load(sharedWithUser, startOfRange, endOfRange, userTimezone, dayStartTime, viewerSettings.getUnitSystem());
                             } else {
                                 userTimelineEntries = this.timelineService.buildTimelineEntries(sharedWithUser, userTimezone, startDate, startOfRange, endOfRange, false);
                             }
@@ -333,7 +333,7 @@ public class TimelineController {
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
                         String mapStreamDataUrl = String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
                         String mapTripsUrl = String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
-                        String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, userTimezone.getId()) : null;
+                        String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId()) : null;
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/api/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
