@@ -78,6 +78,32 @@ public class SignificantPlaceJdbcService {
         return new Page<>(content, pageable, total != null ? total : 0);
     }
 
+    public List<SignificantPlace> findWithin(User user, byte[] areaWkb) {
+        if (areaWkb == null || areaWkb.length == 0) {
+            return List.of();
+        }
+        String sql = """
+                SELECT sp.id,
+                       sp.address,
+                       sp.country_code,
+                       sp.city,
+                       sp.type,
+                       sp.latitude_centroid,
+                       sp.longitude_centroid,
+                       sp.name,
+                       sp.user_id,
+                       ST_AsText(sp.geom) as geom,
+                       ST_AsText(sp.polygon) as polygon,
+                       sp.timezone,
+                       sp.geocoded,
+                       sp.version
+                  FROM significant_places sp
+                 WHERE sp.user_id = ?
+                   AND ST_Contains(ST_GeomFromWKB(?, 4326), sp.geom)
+                """;
+        return jdbcTemplate.query(sql, significantPlaceRowMapper, user.getId(), areaWkb);
+    }
+
     public Page<SignificantPlace> findByUserWithSearch(User user, PageRequest pageable, String search) {
         String searchCondition = (search != null && !search.trim().isEmpty()) ? "AND (name ILIKE ? OR address ILIKE ?)" : "";
         String countSql = "SELECT COUNT(*) FROM significant_places WHERE user_id = ? " + searchCondition;

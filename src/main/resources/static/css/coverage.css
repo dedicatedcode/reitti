@@ -119,6 +119,10 @@
 .tree-header {
     position: sticky;
     top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     background: var(--color-background-dark);
     padding: 10px 14px;
     color: var(--color-highlight);
@@ -128,6 +132,22 @@
     text-transform: uppercase;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 1;
+}
+
+.tree-header .tree-show-all {
+    color: var(--color-highlight);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    border: 1px solid var(--color-highlight);
+    border-radius: 4px;
+    padding: 2px 7px;
+    white-space: nowrap;
+}
+
+.tree-header .tree-show-all:hover {
+    background: rgba(245, 222, 179, 0.12);
 }
 
 .tree-section {

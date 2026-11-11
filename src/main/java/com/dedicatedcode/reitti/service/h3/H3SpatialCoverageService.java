@@ -14,9 +14,14 @@ import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.uber.h3core.H3Core;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.io.WKBReader;
+import org.locationtech.jts.operation.union.UnaryUnionOp;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -392,7 +397,7 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
             return cached.getFirst();
         }
 
-        byte[] wkb = rocksDBService.getBoundaryGeometry(osmId);
+        byte[] wkb = readBoundaryWkb(osmId);
         if (wkb == null || wkb.length == 0) {
             return null;
         }
@@ -415,8 +420,12 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         }
     }
 
+    public byte[] getBoundaryWkb(long osmId) {
+        return readBoundaryWkb(osmId);
+    }
+
     public String getBoundaryGeoJson(long osmId) {
-        byte[] wkb = rocksDBService.getBoundaryGeometry(osmId);
+        byte[] wkb = readBoundaryWkb(osmId);
         if (wkb == null || wkb.length == 0) {
             return null;
         }
@@ -429,6 +438,119 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
             log.warn("Failed to convert geometry for OSM ID {}: {}", osmId, e.getMessage());
             return null;
         }
+    }
+
+    private byte[] readBoundaryWkb(long osmId) {
+        if (osmId < 0) {
+            return ContinentGeometry.wkb(osmId);
+        }
+        return rocksDBService.getBoundaryGeometry(osmId);
+    }
+
+    public String getBoundarySvg(List<Long> osmIds, int width, int height) {
+        List<Geometry> geometries = new ArrayList<>();
+        for (Long osmId : osmIds) {
+            byte[] wkb = readBoundaryWkb(osmId);
+            if (wkb == null || wkb.length == 0) {
+                continue;
+            }
+            try {
+                geometries.add(new WKBReader(new GeometryFactory()).read(wkb));
+            } catch (Exception e) {
+                log.warn("Failed to read boundary for OSM ID {}: {}", osmId, e.getMessage());
+            }
+        }
+
+        Geometry geometry = null;
+        if (!geometries.isEmpty()) {
+            if (geometries.size() == 1) {
+                geometry = geometries.getFirst();
+            } else {
+                try {
+                    geometry = UnaryUnionOp.union(geometries);
+                } catch (Exception e) {
+                    log.warn("Failed to union boundaries {}: {}", osmIds, e.getMessage());
+                    geometry = geometries.getFirst();
+                }
+            }
+        }
+        return buildBoundarySvg(geometry, width, height);
+    }
+
+    private String buildBoundarySvg(Geometry geometry, int width, int height) {
+        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + width + "\" height=\"" + height
+                + "\" viewBox=\"0 0 " + width + " " + height + "\">"
+                + "<defs><linearGradient id=\"bg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
+                + "<stop offset=\"0%\" stop-color=\"#16283f\"/>"
+                + "<stop offset=\"100%\" stop-color=\"#060b14\"/>"
+                + "</linearGradient></defs>"
+                + "<rect width=\"100%\" height=\"100%\" fill=\"url(#bg)\"/>"
+                + "<g stroke=\"rgba(245,222,179,0.10)\" stroke-width=\"1\">"
+                + "<line x1=\"25%\" y1=\"0\" x2=\"25%\" y2=\"100%\"/>"
+                + "<line x1=\"50%\" y1=\"0\" x2=\"50%\" y2=\"100%\"/>"
+                + "<line x1=\"75%\" y1=\"0\" x2=\"75%\" y2=\"100%\"/>"
+                + "<line x1=\"0\" y1=\"25%\" x2=\"100%\" y2=\"25%\"/>"
+                + "<line x1=\"0\" y1=\"50%\" x2=\"100%\" y2=\"50%\"/>"
+                + "<line x1=\"0\" y1=\"75%\" x2=\"100%\" y2=\"75%\"/>"
+                + "</g>";
+
+        if (geometry != null && !geometry.isEmpty()) {
+            Envelope envelope = geometry.getEnvelopeInternal();
+            double pad = Math.max(3, Math.min(width, height) * 0.06);
+            double availableWidth = width - pad * 2;
+            double availableHeight = height - pad * 2;
+            double envelopeWidth = Math.max(envelope.getWidth(), 1e-9);
+            double envelopeHeight = Math.max(envelope.getHeight(), 1e-9);
+            double scale = Math.min(availableWidth / envelopeWidth, availableHeight / envelopeHeight);
+            double offsetX = pad + (availableWidth - envelopeWidth * scale) / 2;
+            double offsetY = pad + (availableHeight - envelopeHeight * scale) / 2;
+            double tolerance = Math.max(envelopeWidth, envelopeHeight) / 200.0;
+            Geometry simplified = geometry;
+            if (tolerance > 0) {
+                try {
+                    simplified = TopologyPreservingSimplifier.simplify(geometry, tolerance);
+                } catch (Exception e) {
+                    log.warn("Failed to simplify boundary geometry: {}", e.getMessage());
+                }
+            }
+
+            StringBuilder path = new StringBuilder();
+            appendSvgPath(path, simplified, envelope.getMinX(), envelope.getMinY(), scale, offsetX, offsetY, height);
+            if (!path.isEmpty()) {
+                svg += "<path d=\"" + path + "\" fill=\"rgba(245,222,179,0.32)\" fill-rule=\"evenodd\""
+                        + " stroke=\"#f5deb3\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/>";
+            }
+        }
+
+        return svg + "</svg>";
+    }
+
+    private void appendSvgPath(StringBuilder path, Geometry geometry, double minX, double minY,
+                               double scale, double offsetX, double offsetY, int height) {
+        for (int i = 0; i < geometry.getNumGeometries(); i++) {
+            Geometry part = geometry.getGeometryN(i);
+            if (part instanceof Polygon polygon) {
+                appendSvgRing(path, polygon.getExteriorRing(), minX, minY, scale, offsetX, offsetY, height);
+                for (int hole = 0; hole < polygon.getNumInteriorRing(); hole++) {
+                    appendSvgRing(path, polygon.getInteriorRingN(hole), minX, minY, scale, offsetX, offsetY, height);
+                }
+            }
+        }
+    }
+
+    private void appendSvgRing(StringBuilder path, LineString ring, double minX, double minY,
+                               double scale, double offsetX, double offsetY, int height) {
+        Coordinate[] coordinates = ring.getCoordinates();
+        if (coordinates.length < 3) {
+            return;
+        }
+        for (int i = 0; i < coordinates.length; i++) {
+            path.append(i == 0 ? 'M' : 'L');
+            double x = offsetX + (coordinates[i].x - minX) * scale;
+            double y = height - offsetY - (coordinates[i].y - minY) * scale;
+            path.append(String.format(Locale.ROOT, "%.2f %.2f", x, y));
+        }
+        path.append('Z');
     }
 
     private String geometryToGeoJson(Geometry geom) {

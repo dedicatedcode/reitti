@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{page.title}">Reitti - Coverage</title>
+
+    <link rel="apple-touch-icon" th:href="@{/img/logo-192x192.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/img/logo-180x180.png}">
+    <link rel="icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="/css/lineicons.css">
+    <link rel="stylesheet" th:href="@{/css/main.css}" href="/css/main.css">
+    <link rel="stylesheet" th:href="@{/css/coverage.css}" href="/css/coverage.css">
+    <link rel="stylesheet" th:href="@{/css/coverage-hierarchy.css}" href="/css/coverage-hierarchy.css">
+
+    <link th:if="${userSettings.customCssUrl}" rel="stylesheet" th:href="@{${userSettings.customCssUrl}}">
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+</head>
+<body class="coverage-hierarchy-page">
+
+<div th:replace="~{fragments/main-navigation :: main-navigation('coverage')}"></div>
+
+<div id="coverage-ui" class="coverage-ui">
+    <div id="coverage-browser" class="coverage-browser">
+        <div class="coverage-browser-header">
+            <div class="coverage-browser-heading">
+                <h1 th:text="#{coverage.hierarchy.title}">All-time exploration</h1>
+                <p th:text="#{coverage.hierarchy.subtitle}">An area counts as visited when its H3 cell contains at least 10 recorded points.</p>
+            </div>
+
+            <div class="coverage-browser-users">
+                <a th:each="userData : ${users}"
+                   th:href="@{/coverage/all(userId=${userData.userId}, path=${path})}"
+                   th:hx-get="@{/coverage/all(userId=${userData.userId}, path=${path})}"
+                   hx-target="#coverage-ui"
+                   hx-select="#coverage-ui"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   class="browser-user-chip"
+                   th:classappend="${userData.userId() == selectedUserId} ? 'active'"
+                   th:title="${userData.displayName()}">
+                    <img class="avatar small" th:src="@{${userData.userAvatarUrl()}}" th:alt="${userData.avatarFallback()}">
+                    <span th:text="${userData.displayName()}">User</span>
+                </a>
+            </div>
+
+            <div class="coverage-browser-devices" th:if="${showDeviceSelection}">
+                <a th:href="@{/coverage/all(userId=${selectedUserId}, path=${path})}"
+                   th:hx-get="@{/coverage/all(userId=${selectedUserId}, path=${path})}"
+                   hx-target="#coverage-ui"
+                   hx-select="#coverage-ui"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   class="browser-device-chip"
+                   th:classappend="${selectedDeviceId == null} ? 'active'"
+                   th:text="#{coverage.hierarchy.all-devices}">All devices</a>
+                <a th:each="device : ${selectedUserData.devices()}"
+                   th:href="@{/coverage/all(userId=${selectedUserId}, deviceId=${device.id()}, path=${path})}"
+                   th:hx-get="@{/coverage/all(userId=${selectedUserId}, deviceId=${device.id()}, path=${path})}"
+                   hx-target="#coverage-ui"
+                   hx-select="#coverage-ui"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   class="browser-device-chip"
+                   th:classappend="${selectedDeviceId != null and device.id().equals(selectedDeviceId)} ? 'active'"
+                   th:title="${device.name()}">
+                    <img th:if="${device.avatarUrl()}" class="avatar small" th:src="@{${device.avatarUrl()}}" th:alt="${device.avatarFallback()}">
+                    <span th:text="${device.name()}">Device</span>
+                </a>
+            </div>
+
+            <a class="coverage-browser-back" th:href="@{/coverage}" th:text="#{coverage.hierarchy.back}">Back to map</a>
+        </div>
+
+        <div class="hierarchy-columns-wrapper">
+            <div th:replace="~{fragments/coverage-hierarchy :: columns}"></div>
+        </div>
+    </div>
+
+    <div id="coverage-details" class="coverage-tree-panel coverage-details-panel">
+        <div class="tree-header">
+            <span th:text="#{coverage.hierarchy.details}">Details</span>
+        </div>
+
+        <div th:if="${selectedAreaDetails == null}" class="coverage-details-empty">
+            <p th:text="#{coverage.hierarchy.details.empty}">Select an area to see details.</p>
+        </div>
+
+        <div th:if="${selectedAreaDetails != null}" class="coverage-details-content">
+            <h2 th:text="${selectedAreaDetails.name}">Area</h2>
+
+            <img class="coverage-details-map"
+                 th:src="@{/coverage/all/preview(osmId=${selectedAreaDetails.osmId()}, width=300, height=170)}"
+                 alt="" loading="lazy" decoding="async">
+
+            <div class="coverage-details-meta">
+                <span class="coverage-details-percentage" th:text="${selectedAreaDetails.percentageLabel}">0.0%</span>
+                <span class="coverage-details-badge"
+                      th:classappend="${selectedAreaDetails.explored} ? ' explored' : ' not-explored'"
+                      th:text="${selectedAreaDetails.explored} ? #{coverage.hierarchy.explored} : #{coverage.hierarchy.not-explored}">Explored</span>
+            </div>
+
+            <dl class="coverage-details-stats">
+                <div>
+                    <dt th:text="#{coverage.hierarchy.first-visited}">First visited</dt>
+                    <dd th:text="${selectedAreaDetails.firstVisited() != null ? #temporals.format(selectedAreaDetails.firstVisited(), 'yyyy-MM-dd HH:mm', timeZone) : '–'}">–</dd>
+                </div>
+                <div>
+                    <dt th:text="#{coverage.hierarchy.last-visited}">Last visited</dt>
+                    <dd th:text="${selectedAreaDetails.lastVisited() != null ? #temporals.format(selectedAreaDetails.lastVisited(), 'yyyy-MM-dd HH:mm', timeZone) : '–'}">–</dd>
+                </div>
+                <div>
+                    <dt th:text="#{coverage.hierarchy.points}">Points</dt>
+                    <dd th:text="${selectedAreaDetails.pointCount()}">0</dd>
+                </div>
+            </dl>
+
+            <div class="coverage-details-places" th:if="${not #lists.isEmpty(selectedAreaDetails.places())}">
+                <h3 th:text="#{coverage.hierarchy.places}">Places</h3>
+                <ul>
+                    <li th:each="place : ${selectedAreaDetails.places()}">
+                        <span class="coverage-details-place-name" th:text="${place.name()}">Place</span>
+                        <span class="coverage-details-place-type" th:text="${place.typeLabel()}">Type</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    window.contextPath = /*[[@{/}]]*/ "/";
+    window.contextPath = window.contextPath.replace(/\/$/, '');
+</script>
+<script th:src="@{/js/coverage-hierarchy.js}"></script>
+</body>
+</html>
