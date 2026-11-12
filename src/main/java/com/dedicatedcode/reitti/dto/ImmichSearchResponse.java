@@ -23,6 +23,13 @@ public class ImmichSearchResponse {
         @JsonProperty("total")
         private int total;
 
+        @JsonProperty("nextPage")
+        private String nextPage;
+
+        public String getNextPage() {
+            return nextPage;
+        }
+
         public List<ImmichAsset> getItems() {
             return items;
         }
