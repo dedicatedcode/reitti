@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="results" class="coverage-search-results-inner">
+    <div th:if="${#lists.isEmpty(results)}" class="coverage-search-empty" th:text="#{coverage.search.no-results}">
+        No regions found.
+    </div>
+    <a th:each="result : ${results}"
+       class="coverage-search-result"
+       th:href="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${result.path()})}"
+       th:hx-get="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${result.path()})}"
+       hx-target="#coverage-ui"
+       hx-select="#coverage-ui"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+        <span class="coverage-search-result-name" th:text="${result.name()}">Area</span>
+        <span class="coverage-search-result-context" th:if="${!#strings.isEmpty(result.context())}"
+              th:text="${result.context()}">Parent</span>
+    </a>
+</div>
+
+</body>
+</html>

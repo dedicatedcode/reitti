@@ -19,4 +19,5 @@ public enum JobType {
     TIMELINE_STITCHING,
     H3_RECALCULATION,
     H3_CELL_UPDATE,
+    H3_HIERARCHY_INGEST,
 }

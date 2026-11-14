@@ -6,6 +6,7 @@ import jakarta.annotation.PreDestroy;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,10 +16,12 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -83,7 +86,11 @@ public class RocksDBH3Service {
     }
 
     public Set<Long> getParentCells(long h3Cell) {
-        return SUPPORTED_RESOLUTIONS.stream().map(r -> h3.cellToParent(h3Cell,r)).collect(Collectors.toSet());
+        int cellResolution = h3.getResolution(h3Cell);
+        return SUPPORTED_RESOLUTIONS.stream()
+                .filter(resolution -> resolution <= cellResolution)
+                .map(resolution -> h3.cellToParent(h3Cell, resolution))
+                .collect(Collectors.toSet());
     }
 
     public Set<Long> getCellsForPoint(double lat, double lng) {
@@ -126,8 +133,85 @@ public class RocksDBH3Service {
         return h3ToOsmDb != null && regionMetadataDb != null;
     }
 
+    public String getActiveVersion() {
+        rwLock.readLock().lock();
+        try {
+            if (activeDbPath == null) {
+                return null;
+            }
+            String name = activeDbPath.getFileName().toString();
+            return name.startsWith("version_") ? name.substring("version_".length()) : name;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public Path getActiveDbPath() {
+        rwLock.readLock().lock();
+        try {
+            return activeDbPath;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
     public int getResolution(long h3Cell) {
         return h3.getResolution(h3Cell);
+    }
+
+    public List<Long> getNeighborCells(long h3Cell) {
+        return getNeighborCells(h3Cell, 1);
+    }
+
+    public List<Long> getNeighborCells(long h3Cell, int k) {
+        return h3.gridDisk(h3Cell, k);
+    }
+
+    public List<RegionMetadata> getAllRegionMetadata() {
+        rwLock.readLock().lock();
+        try {
+            if (regionMetadataDb == null) {
+                return List.of();
+            }
+            List<RegionMetadata> result = new ArrayList<>();
+            try (RocksIterator iterator = regionMetadataDb.newIterator()) {
+                iterator.seekToFirst();
+                while (iterator.isValid()) {
+                    long osmId = ByteBuffer.wrap(iterator.key()).order(ByteOrder.BIG_ENDIAN).getLong();
+                    byte[] value = iterator.value();
+                    if (value.length >= 12) {
+                        ByteBuffer buffer = ByteBuffer.wrap(value).order(ByteOrder.BIG_ENDIAN);
+                        long totalCells = buffer.getLong();
+                        int resolution = buffer.getInt();
+                        int adminLevel = value.length >= 16 ? buffer.getInt() : -1;
+                        result.add(new RegionMetadata(osmId, totalCells, resolution, adminLevel));
+                    }
+                    iterator.next();
+                }
+            }
+            return result;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public void forEachCellMapping(Consumer<CellMapping> consumer) {
+        rwLock.readLock().lock();
+        try {
+            if (h3ToOsmDb == null) {
+                throw new IllegalStateException("H3 Database is currently offline or updating.");
+            }
+            try (RocksIterator iterator = h3ToOsmDb.newIterator()) {
+                iterator.seekToFirst();
+                while (iterator.isValid()) {
+                    long cellId = ByteBuffer.wrap(iterator.key()).order(ByteOrder.BIG_ENDIAN).getLong();
+                    consumer.accept(new CellMapping(cellId, decodeOsmIds(iterator.value())));
+                    iterator.next();
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
+        }
     }
 
     public Set<Long> getOsmIds(long cellId) {
@@ -139,23 +223,26 @@ public class RocksDBH3Service {
         byte[] key = ByteBuffer.allocate(8).putLong(cellId).array();
         try {
             byte[] value = h3ToOsmDb.get(key);
-            if (value == null || value.length == 0) {
-                return Set.of();
-            }
-
-            int count = value.length / 8;
-            Set<Long> osmIds = new HashSet<>(count);
-            ByteBuffer buffer = ByteBuffer.wrap(value);
-            for (int i = 0; i < count; i++) {
-                osmIds.add(buffer.getLong());
-            }
-            return osmIds;
+            return decodeOsmIds(value);
         } catch (RocksDBException e) {
             log.error("Failed to lookup OSM IDs for cell {}: {}", cellId, e.getMessage());
             return Set.of();
         } finally {
             rwLock.readLock().unlock();
         }
+    }
+
+    private Set<Long> decodeOsmIds(byte[] value) {
+        if (value == null || value.length == 0) {
+            return Set.of();
+        }
+        int count = value.length / 8;
+        Set<Long> osmIds = new HashSet<>(count);
+        ByteBuffer buffer = ByteBuffer.wrap(value).order(ByteOrder.BIG_ENDIAN);
+        for (int i = 0; i < count; i++) {
+            osmIds.add(buffer.getLong());
+        }
+        return osmIds;
     }
 
     public byte[] getBoundaryGeometry(long osmId) {
@@ -393,5 +480,11 @@ public class RocksDBH3Service {
     }
 
     public record CellWithBoundaries(long cellId, int resolution, Set<Long> osmIds) {
+    }
+
+    public record CellMapping(long cellId, Set<Long> osmIds) {
+    }
+
+    public record RegionMetadata(long osmId, long totalCells, int resolution, int adminLevel) {
     }
 }

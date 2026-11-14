@@ -48,18 +48,18 @@ public class UserSseEmitterService implements SmartLifecycle {
             integrationEmitters.add(emitter);
         }
         emitter.onCompletion(() -> {
-            log.debug("SSE connection completed for user: [{}]", user);
+            log.trace("SSE connection completed for user: [{}]", user);
             removeEmitter(user, emitter);
         });
 
         emitter.onTimeout(() -> {
-            log.debug("SSE connection timed out for user: [{}]", user);
+            log.trace("SSE connection timed out for user: [{}]", user);
             emitter.complete();
             removeEmitter(user, emitter);
         });
 
         emitter.onError(throwable -> {
-            log.debug("SSE connection error for user [{}]: {}", user, throwable.getMessage());
+            log.trace("SSE connection error for user [{}]: {}", user, throwable.getMessage());
             removeEmitter(user, emitter);
         });
         try {
@@ -73,7 +73,7 @@ public class UserSseEmitterService implements SmartLifecycle {
                 // already completed or errored
             }
         }
-        log.debug("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
+        log.trace("Emitter added for user: {}. Total emitters for user: {}", user, userEmitters.get(user.getId()).size());
         return emitter;
     }
 
@@ -115,7 +115,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             try {
                 emitter.send(SseEmitter.event().comment("keepalive"));
             } catch (Exception e) {
-                log.debug("SSE heartbeat failed for user [{}]: {}", user, e.getMessage());
+                log.trace("SSE heartbeat failed for user [{}]: {}", user, e.getMessage());
                 removeEmitter(user, emitter);
                 try {
                     emitter.completeWithError(e);
@@ -139,7 +139,7 @@ public class UserSseEmitterService implements SmartLifecycle {
             if (wasIntegrationEmitter && !stillIntegrationEmitter) {
                 reittiIntegrationService.unsubscribeFromIntegrations(user);
             }
-            log.debug("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
+            log.trace("Emitter removed for user: {}. Remaining emitters for user: {}", user, userEmitters.getOrDefault(user.getId(), Collections.emptySet()).size());
         }
     }
 

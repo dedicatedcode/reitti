@@ -1,13 +1,11 @@
 package com.dedicatedcode.reitti.controller;
 
-import com.dedicatedcode.reitti.dto.timeline.DeviceTimelineData;
 import com.dedicatedcode.reitti.dto.timeline.TimelineData;
 import com.dedicatedcode.reitti.dto.timeline.UserTimelineData;
 import com.dedicatedcode.reitti.model.UserType;
-import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.*;
-import com.dedicatedcode.reitti.service.AvatarService;
+import com.dedicatedcode.reitti.repository.UserJdbcService;
+import com.dedicatedcode.reitti.service.CoverageContextService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,28 +13,19 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.util.*;
+import java.util.List;
 
 @Controller
 @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
 public class CoveragePageController {
 
     private final UserJdbcService userJdbcService;
-    private final UserSharingJdbcService userSharingJdbcService;
-    private final DeviceJdbcService deviceJdbcService;
-    private final UserSettingsJdbcService userSettingsJdbcService;
-    private final AvatarService avatarService;
+    private final CoverageContextService coverageContextService;
 
     public CoveragePageController(UserJdbcService userJdbcService,
-                                  UserSharingJdbcService userSharingJdbcService,
-                                  DeviceJdbcService deviceJdbcService,
-                                  UserSettingsJdbcService userSettingsJdbcService,
-                                  AvatarService avatarService) {
+                                  CoverageContextService coverageContextService) {
         this.userJdbcService = userJdbcService;
-        this.userSharingJdbcService = userSharingJdbcService;
-        this.deviceJdbcService = deviceJdbcService;
-        this.userSettingsJdbcService = userSettingsJdbcService;
-        this.avatarService = avatarService;
+        this.coverageContextService = coverageContextService;
     }
 
     @GetMapping("/coverage")
@@ -60,18 +49,7 @@ public class CoveragePageController {
                 .map(GrantedAuthority::getAuthority).toList();
         boolean canSeeOthers = authorities.contains("ROLE_USER") || authorities.contains("ROLE_ADMIN");
 
-        List<UserTimelineData> allUsers = new ArrayList<>();
-        allUsers.add(buildUserTimelineData(user, true));
-
-        if (canSeeOthers) {
-            userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
-                    .map(us -> userJdbcService.findById(us.getSharingUserId()))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .map(u -> buildUserTimelineData(u, false))
-                    .sorted(Comparator.comparing(UserTimelineData::displayName))
-                    .forEach(allUsers::add);
-        }
+        List<UserTimelineData> allUsers = coverageContextService.buildUsers(user, canSeeOthers);
 
         TimelineData timelineData = new TimelineData(allUsers);
         model.addAttribute("timelineData", timelineData);
@@ -80,42 +58,5 @@ public class CoveragePageController {
                         || timelineData.users().stream().anyMatch(d -> d.devices().size() > 1));
 
         return "coverage";
-    }
-
-    private UserTimelineData buildUserTimelineData(User user, boolean active) {
-        String avatarUrl = avatarService.getInfo(user.getId())
-                .map(info -> String.format("/api/avatars/%d?ts=%s", user.getId(), info.updatedAt()))
-                .orElse(String.format("/api/avatars/%d", user.getId()));
-        String initials = avatarService.generateInitials(user.getDisplayName());
-        String color = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getColor();
-
-        List<DeviceTimelineData> devices = Collections.emptyList();
-        List<Device> enabledDevices = deviceJdbcService.getAllEnabled(user).stream()
-                .filter(Device::showOnMap).toList();
-        if (enabledDevices.size() >= 2) {
-            devices = enabledDevices.stream()
-                    .map(d -> new DeviceTimelineData(
-                            d.id(),
-                            d.name(),
-                            avatarService.getAvatarDeviceId(user.getId(), d.id())
-                                    .map(data -> "/api/avatars/" + user.getId() + "/" + d.id() + "?ts=" + data.updatedAt())
-                                    .orElse(null),
-                            avatarService.generateInitials(d.name()),
-                            d.showOnMap(),
-                            d.color(),
-                            null, null, false))
-                    .toList();
-        }
-
-        return new UserTimelineData(
-                user.getId() + "",
-                user.getDisplayName(),
-                initials,
-                avatarUrl,
-                color,
-                Collections.emptyList(),
-                null, null, null, null, null, null,
-                devices,
-                active);
     }
 }
