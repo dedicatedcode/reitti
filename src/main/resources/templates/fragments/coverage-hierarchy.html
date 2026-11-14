@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="columns" id="hierarchy-columns" class="hierarchy-columns">
+    <div th:if="${#lists.isEmpty(columns)}" class="hierarchy-empty" th:text="#{coverage.hierarchy.empty}">
+        No areas available yet.
+    </div>
+
+    <section th:each="column : ${columns}" class="hierarchy-column">
+        <div class="hierarchy-column-header">
+            <span class="hierarchy-column-label" th:text="${column.label()}">Countries</span>
+            <span class="hierarchy-column-count" th:text="${column.totalCount()}">12</span>
+        </div>
+
+        <div class="hierarchy-column-items">
+            <a th:each="item : ${column.items()}"
+               class="hierarchy-item"
+               th:classappend="${(item.selected() ? ' selected' : '') + (item.discovered() ? '' : ' undiscovered') + (item.continent() ? ' continent' : '')}"
+               th:href="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${item.pathValue()})}"
+               th:hx-get="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${item.pathValue()})}"
+               hx-target="#coverage-ui"
+               hx-select="#coverage-ui"
+               hx-swap="outerHTML"
+               hx-push-url="true"
+               th:title="${item.name()}">
+                <img class="hierarchy-item-map"
+                     th:src="@{/coverage/all/preview(osmId=${item.osmId()}, width=128, height=88)}"
+                     alt="" loading="lazy" decoding="async">
+                <span class="hierarchy-item-text">
+                    <span class="hierarchy-item-name" th:text="${item.name()}">Area</span>
+                    <span class="hierarchy-item-meta">
+                        <span class="hierarchy-item-bar">
+                            <span class="hierarchy-item-bar-fill"
+                                  th:style="|width:${item.percentage() == null ? 0 : item.percentage()}%|"></span>
+                        </span>
+                        <span class="hierarchy-item-pct" th:text="${item.percentageLabel()}">0.0%</span>
+                        <span class="hierarchy-item-badge"
+                              th:classappend="${item.discovered()} ? ' discovered' : ' not-discovered'"
+                              th:text="${item.discovered()} ? #{coverage.hierarchy.discovered} : #{coverage.hierarchy.not-discovered}">Discovered</span>
+                    </span>
+                </span>
+                <span class="hierarchy-item-chevron" th:if="${item.hasChildren()}">›</span>
+            </a>
+        </div>
+
+        <a th:if="${column.truncated()}"
+           class="hierarchy-show-all"
+           th:href="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${path}, expand=${column.expandableParentId()})}"
+           th:hx-get="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${path}, expand=${column.expandableParentId()})}"
+           hx-target="#coverage-ui"
+           hx-select="#coverage-ui"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           th:text="#{coverage.hierarchy.show-all(${column.totalCount()})}">Show all</a>
+    </section>
+</div>
+
+</body>
+</html>

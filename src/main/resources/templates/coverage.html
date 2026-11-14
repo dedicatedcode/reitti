@@ -55,7 +55,10 @@
     </div>
 
 <div id="coverage-tree-panel" class="coverage-tree-panel">
-    <div class="tree-header" th:text="#{coverage.tree.header}">Coverage</div>
+    <div class="tree-header">
+        <span th:text="#{coverage.tree.header}">Coverage</span>
+        <a id="coverage-show-all" class="tree-show-all" th:href="@{/coverage/all}" th:text="#{coverage.tree.show-all}">Show all</a>
+    </div>
     <div id="tree-content">
         <div class="tree-empty" th:text="#{coverage.tree.usage}">Pan and zoom to see areas</div>
     </div>

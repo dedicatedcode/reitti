@@ -62,6 +62,17 @@
         initUserSelection();
 
         setSliderToToday();
+        updateShowAllLink();
+    }
+
+    function updateShowAllLink() {
+        const link = document.getElementById('coverage-show-all');
+        if (!link) return;
+        const params = new URLSearchParams();
+        params.set('userId', getSelectedUserId());
+        const deviceId = getSelectedDeviceId();
+        if (deviceId) params.set('deviceId', deviceId);
+        link.href = window.contextPath + '/coverage/all?' + params.toString();
     }
 
     function createTooltipElement() {
@@ -825,6 +836,7 @@
         if (el.dataset.baseColor) {
             state.userColor = hexToRgb(el.dataset.baseColor);
         }
+        updateShowAllLink();
         loadCoverageData();
     }
 
@@ -846,6 +858,7 @@
         if (el.dataset.deviceColor) {
             state.userColor = hexToRgb(el.dataset.deviceColor);
         }
+        updateShowAllLink();
         loadCoverageData();
     }
 

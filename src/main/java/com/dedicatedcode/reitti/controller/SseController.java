@@ -27,14 +27,14 @@ public class SseController {
     public SseEmitter handleSseForUser(@AuthenticationPrincipal User user) {
         SseEmitter emitter = emitterService.addEmitter(user);
         reittiIntegrationService.registerSubscriptionsForUser(user);
-        log.info("New SSE connection from user: [{}]", user.getId());
+        log.trace("New SSE connection from user: [{}]", user.getId());
         return emitter;
     }
 
     @GetMapping(path = "/events/notifications", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter handleNotificationSse(@AuthenticationPrincipal User user) {
         SseEmitter emitter = emitterService.addEmitter(user, false);
-        log.debug("New notification SSE connection from user: [{}]", user.getId());
+        log.trace("New notification SSE connection from user: [{}]", user.getId());
         return emitter;
     }
 }
