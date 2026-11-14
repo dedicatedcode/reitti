@@ -108,15 +108,14 @@ public class LocationDataApiController {
             }
 
 
-            boolean includeRawLocationPath = true;
+            User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+            boolean includeRawLocationPath = !dataAccessGuard.isLatestLocationOnlySharing(user, userToFetchDataFrom);
             if (user instanceof TokenUser) {
-                includeRawLocationPath = user.getAuthorities().stream().anyMatch(a ->
+                includeRawLocationPath = includeRawLocationPath && user.getAuthorities().stream().anyMatch(a ->
                         a.equals(MagicLinkAccessLevel.FULL_ACCESS.asAuthority()) ||
                         a.equals(MagicLinkAccessLevel.ONLY_LIVE.asAuthority()) ||
                         a.equals(MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS.asAuthority()));
             }
-            // Get the user from the repository by userId
-            User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
 
             long start = System.nanoTime();
             List<RawLocationDataResponse.Segment> result;

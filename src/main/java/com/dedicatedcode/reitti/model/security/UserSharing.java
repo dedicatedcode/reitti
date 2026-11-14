@@ -9,19 +9,25 @@ public class UserSharing {
     private final Instant createdAt;
     private final String color;
     private final boolean sharePhotos;
+    private final boolean latestLocationOnly;
     private final Long version;
 
     public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, Long version) {
-        this(id, sharingUserId, sharedWithUserId, createdAt, color, false, version);
+        this(id, sharingUserId, sharedWithUserId, createdAt, color, false, false, version);
     }
 
     public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, boolean sharePhotos, Long version) {
+        this(id, sharingUserId, sharedWithUserId, createdAt, color, sharePhotos, false, version);
+    }
+
+    public UserSharing(Long id, Long sharingUserId, Long sharedWithUserId, Instant createdAt, String color, boolean sharePhotos, boolean latestLocationOnly, Long version) {
         this.id = id;
         this.sharingUserId = sharingUserId;
         this.sharedWithUserId = sharedWithUserId;
         this.createdAt = createdAt;
         this.color = color;
         this.sharePhotos = sharePhotos;
+        this.latestLocationOnly = latestLocationOnly;
         this.version = version;
     }
 
@@ -47,6 +53,10 @@ public class UserSharing {
 
     public boolean isSharePhotos() {
         return sharePhotos;
+    }
+
+    public boolean isLatestLocationOnly() {
+        return latestLocationOnly;
     }
 
     public Long getVersion() {

@@ -66,7 +66,8 @@ public class LocationApiController {
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
 
         MapMetadata metadata = this.jdbcService.getMetadata(userToFetchDataFrom, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS));
-        return cleanUpByAccessLevel(user, metadata);
+        boolean latestLocationOnly = this.dataAccessGuard.isLatestLocationOnlySharing(user, userToFetchDataFrom);
+        return cleanUpByAccessLevel(user, latestLocationOnly, metadata);
     }
 
     @GetMapping("/metadata/{userId}/device/{deviceId}")
@@ -84,7 +85,7 @@ public class LocationApiController {
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         MapMetadata metadata = this.sourceLocationPointJdbcService.getMetadata(userToFetchDataFrom, device, timeRange.start(), timeRange.end().plus(1, ChronoUnit.SECONDS));
-        return cleanUpByAccessLevel(user, metadata);
+        return cleanUpByAccessLevel(user, false, metadata);
     }
 
     @GetMapping(value = "/stream/{userId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -95,6 +96,7 @@ public class LocationApiController {
             @RequestParam String end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
         User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        this.dataAccessGuard.requireHistoryAccess(user, userToFetchDataFrom);
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
@@ -125,6 +127,7 @@ public class LocationApiController {
             @RequestParam String end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        this.dataAccessGuard.requireHistoryAccess(user, userToFetchDataFrom);
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
 
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
@@ -223,9 +226,9 @@ public class LocationApiController {
         }
     }
 
-    private static MapMetadata cleanUpByAccessLevel(User user, MapMetadata metadata) {
+    private static MapMetadata cleanUpByAccessLevel(User user, boolean latestLocationOnly, MapMetadata metadata) {
         Collection<? extends GrantedAuthority> authorities = user.getAuthorities();
-        if (authorities.contains(MagicLinkAccessLevel.ONLY_LAST_LOCATION.asAuthority())) {
+        if (latestLocationOnly || authorities.contains(MagicLinkAccessLevel.ONLY_LAST_LOCATION.asAuthority())) {
             return new MapMetadata(0, 0, 0, 0, 0, 0, 0, metadata.latestLocation());
         } else if (authorities.contains(MagicLinkAccessLevel.MEMORY_VIEW_ONLY.asAuthority()) || authorities.contains(MagicLinkAccessLevel.MEMORY_EDIT_ACCESS.asAuthority())) {
             return new MapMetadata(metadata.minTimestamp(), metadata.maxTimestamp(), metadata.totalPoints(), metadata.minLat(), metadata.maxLat(), metadata.minLng(), metadata.maxLng(), Optional.empty());

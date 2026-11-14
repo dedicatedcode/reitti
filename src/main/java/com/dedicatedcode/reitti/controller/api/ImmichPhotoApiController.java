@@ -114,6 +114,7 @@ public class ImmichPhotoApiController {
         Optional<UserSharing> sharing = userSharingJdbcService.findBySharedWithUser(currentUser.getId()).stream()
                 .filter(s -> userId.equals(s.getSharingUserId()))
                 .filter(UserSharing::isSharePhotos)
+                .filter(s -> !s.isLatestLocationOnly())
                 .findFirst();
         if (sharing.isEmpty()) {
             return null;
