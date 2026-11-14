@@ -33,7 +33,7 @@ public class TripController {
         User userToFetchDataFrom = dataAccessGuard.loadUserToFetchDataFrom(user, userId);
         ZoneId userTimezone = ZoneId.of(timezone);
         TimeRange timeRange = dataAccessGuard.loadTimeRange(user, startDate, endDate, userTimezone);
-        dataAccessGuard.hasAccessLevel(user, MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.MEMORY_VIEW_ONLY, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS);
+        dataAccessGuard.hasAccessLevel(user, userToFetchDataFrom, MagicLinkAccessLevel.FULL_ACCESS, MagicLinkAccessLevel.MEMORY_VIEW_ONLY, MagicLinkAccessLevel.MEMORY_EDIT_ACCESS);
         if (startDate == null || endDate == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "'startDate' and 'endDate' must be provided"

@@ -181,17 +181,32 @@
                                             </div>
                                         </div>
                                     </label>
-                                    <div class="photos-toggle slide-reveal-container" th:title="#{share-with.photos.toggle.description}">
-                                        <input type="checkbox"
-                                               th:id="'photosToggle' + ${user.id()}"
-                                               th:name="'photoUserIds'"
-                                               th:value="${user.id()}"
-                                               th:checked="${photoSharedUserIds.contains(user.id())}"
-                                               onchange="this.form.requestSubmit()">
-                                        <label th:for="'photosToggle' + ${user.id()}" class="slide-reveal">
-                                            <span class="slide-box"></span>
-                                            <span class="label-text" th:text="#{share-with.photos.toggle}">Share my photos</span>
-                                        </label>
+                                    <div class="share-option-toggles">
+                                        <div class="share-option-toggle slide-reveal-container" th:title="#{share-with.photos.toggle.description}">
+                                            <input type="checkbox"
+                                                   th:id="'photosToggle' + ${user.id()}"
+                                                   th:name="'photoUserIds'"
+                                                   th:value="${user.id()}"
+                                                   th:checked="${photoSharedUserIds.contains(user.id())}"
+                                                   th:disabled="${latestLocationSharedUserIds.contains(user.id())}"
+                                                   onchange="this.form.requestSubmit()">
+                                            <label th:for="'photosToggle' + ${user.id()}" class="slide-reveal">
+                                                <span class="slide-box"></span>
+                                                <span class="label-text" th:text="#{share-with.photos.toggle}">Share my photos</span>
+                                            </label>
+                                        </div>
+                                        <div class="share-option-toggle slide-reveal-container" th:title="#{share-with.latest-location.toggle.description}">
+                                            <input type="checkbox"
+                                                   th:id="'latestLocationToggle' + ${user.id()}"
+                                                   th:name="'latestLocationUserIds'"
+                                                   th:value="${user.id()}"
+                                                   th:checked="${latestLocationSharedUserIds.contains(user.id())}"
+                                                   onchange="this.form.requestSubmit()">
+                                            <label th:for="'latestLocationToggle' + ${user.id()}" class="slide-reveal">
+                                                <span class="slide-box"></span>
+                                                <span class="label-text" th:text="#{share-with.latest-location.toggle}">Latest location only</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 </div>
@@ -208,6 +223,7 @@
                             <li th:text="#{share-with.info.permissions.places}">Your significant places and visits</li>
                             <li th:text="#{share-with.info.permissions.trips}">Your trips and movement patterns</li>
                             <li th:text="#{share-with.info.permissions.photos}">Your photos, if you enabled photo sharing for that user</li>
+                            <li th:text="#{share-with.info.permissions.latest-location}">If you enable "Latest location only" for a user, they will only see your latest location on the map - no timeline, places, trips or photos</li>
                         </ul>
 
                         <h4 th:text="#{share-with.info.privacy.title}">Privacy Notes</h4>

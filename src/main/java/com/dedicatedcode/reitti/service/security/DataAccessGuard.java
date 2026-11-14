@@ -101,7 +101,35 @@ public class DataAccessGuard {
         };
     }
 
+    /**
+     * Returns whether the given user is only allowed to see the latest location of the target user.
+     * This is the case when the caller is not the target user and the sharing was configured as latest-location-only.
+     */
+    public boolean isLatestLocationOnlySharing(User user, User targetUser) {
+        if (user instanceof TokenUser || Objects.equals(user.getId(), targetUser.getId())) {
+            return false;
+        }
+        return this.userSharingJdbcService.findBySharedWithUser(user.getId()).stream()
+                .anyMatch(sharing -> Objects.equals(sharing.getSharingUserId(), targetUser.getId())
+                        && sharing.isLatestLocationOnly());
+    }
+
+    /**
+     * Rejects access to historical data (paths, visits, trips, coverage) when the target user only shares their
+     * latest location.
+     */
+    public void requireHistoryAccess(User user, User targetUser) {
+        if (isLatestLocationOnlySharing(user, targetUser)) {
+            throw new ForbiddenException("User only shares their latest location");
+        }
+    }
+
     public void hasAccessLevel(User user, MagicLinkAccessLevel... level) {
+        hasAccessLevel(user, user, level);
+    }
+
+    public void hasAccessLevel(User user, User targetUser, MagicLinkAccessLevel... level) {
+        requireHistoryAccess(user, targetUser);
         if (!(user instanceof TokenUser)) {
             return; // Normal users have implicit access to all of their data
         }

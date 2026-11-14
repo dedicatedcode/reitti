@@ -46,6 +46,7 @@ public class LocationStreamApiController {
             @RequestParam String end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) throws IllegalAccessException {
         User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        this.dataAccessGuard.requireHistoryAccess(user, userToFetchDataFrom);
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(0L);
 
@@ -69,6 +70,7 @@ public class LocationStreamApiController {
             @RequestParam String end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        this.dataAccessGuard.requireHistoryAccess(user, userToFetchDataFrom);
         TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
 
         Device device = deviceJdbcService.find(userToFetchDataFrom, deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));

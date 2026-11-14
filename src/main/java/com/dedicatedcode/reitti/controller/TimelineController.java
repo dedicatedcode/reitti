@@ -309,13 +309,14 @@ public class TimelineController {
                 .map(u -> {
                     Optional<User> sharedWithUserOpt = this.userJdbcService.findById(u.getSharingUserId());
                     return sharedWithUserOpt.map(sharedWithUser -> {
+                        boolean latestLocationOnly = u.isLatestLocationOnly();
                         LocalTime dayStartTime = viewerSettings.getDayStartTime();
                         Instant startOfRange = TimeUtil.startOfDay(startDate, userTimezone, dayStartTime);
                         Instant endOfRange = TimeUtil.endOfDay(endDate, userTimezone, dayStartTime);
                         boolean shouldAggregate = Duration.between(startOfRange, endOfRange).toDays() > 14;
                         List<? extends TimelineEntry> userTimelineEntries;
 
-                        if (loadTimeline) {
+                        if (loadTimeline && !latestLocationOnly) {
                             if (shouldAggregate) {
                                 userTimelineEntries = this.timelineOverviewStatisticsService.load(sharedWithUser, startOfRange, endOfRange, userTimezone, dayStartTime, viewerSettings.getUnitSystem());
                             } else {
@@ -328,12 +329,12 @@ public class TimelineController {
                         LocalDateTime rangeEndInclusive = endOfRange.atZone(userTimezone).toLocalDateTime();
                         LocalDateTime rangeEndExclusive = endOfRange.plusMillis(1).minusSeconds(1).atZone(userTimezone).toLocalDateTime();
                         LocalDateTime rangeEndNextDay = endOfRange.plusMillis(1).atZone(userTimezone).toLocalDateTime();
-                        String currentUserRawLocationPointsUrl = String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndNextDay, userTimezone.getId());
-                        String currentUserProcessedVisitsUrl = String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
+                        String currentUserRawLocationPointsUrl = latestLocationOnly ? null : String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndNextDay, userTimezone.getId());
+                        String currentUserProcessedVisitsUrl = latestLocationOnly ? null : String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
-                        String mapStreamDataUrl = String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
-                        String mapTripsUrl = String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
-                        String h3CellUrl = h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId()) : null;
+                        String mapStreamDataUrl = latestLocationOnly ? null : String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
+                        String mapTripsUrl = latestLocationOnly ? null : String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
+                        String h3CellUrl = latestLocationOnly || !h3Enabled ? null : String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
                         String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/api/avatars/%d", sharedWithUser.getId()));
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 

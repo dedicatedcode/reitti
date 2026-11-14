@@ -1371,15 +1371,26 @@ tr:hover {
     gap: 6px;
 }
 
-.photos-toggle {
+.share-option-toggles {
     display: none;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
     padding-left: 8px;
     font-size: 0.85rem;
 }
 
-.user-sharing-btn.active + .photos-toggle {
-    display: block;
+.user-sharing-btn.active + .share-option-toggles {
+    display: flex;
+}
+
+.share-option-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.share-option-toggle input[type="checkbox"]:disabled + .slide-reveal {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .language-btn {

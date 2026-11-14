@@ -131,6 +131,75 @@ class ShareAccessControllerTest {
     }
 
     @Test
+    void shouldCreateShareWithLatestLocationOnly() throws Exception {
+        User sharer = testingService.randomUser();
+        User recipient = testingService.randomUser();
+        authenticate(sharer);
+
+        mockMvc.perform(post("/settings/share-access/users")
+                        .param("sharedUserIds", recipient.getId().toString())
+                        .param("latestLocationUserIds", recipient.getId().toString())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        List<UserSharing> shares = userSharingJdbcService.findBySharingUser(sharer.getId());
+        assertThat(shares).hasSize(1);
+        assertThat(shares.get(0).getSharedWithUserId()).isEqualTo(recipient.getId());
+        assertThat(shares.get(0).isLatestLocationOnly()).isTrue();
+        assertThat(shares.get(0).isSharePhotos()).isFalse();
+    }
+
+    @Test
+    void shouldUpdateLatestLocationOnlyFlagOnExistingShare() throws Exception {
+        User sharer = testingService.randomUser();
+        User recipient = testingService.randomUser();
+        authenticate(sharer);
+
+        mockMvc.perform(post("/settings/share-access/users")
+                        .param("sharedUserIds", recipient.getId().toString())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/settings/share-access/users")
+                        .param("sharedUserIds", recipient.getId().toString())
+                        .param("latestLocationUserIds", recipient.getId().toString())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        List<UserSharing> shares = userSharingJdbcService.findBySharingUser(sharer.getId());
+        assertThat(shares).hasSize(1);
+        assertThat(shares.get(0).isLatestLocationOnly()).isTrue();
+
+        mockMvc.perform(post("/settings/share-access/users")
+                        .param("sharedUserIds", recipient.getId().toString())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        shares = userSharingJdbcService.findBySharingUser(sharer.getId());
+        assertThat(shares).hasSize(1);
+        assertThat(shares.get(0).isLatestLocationOnly()).isFalse();
+    }
+
+    @Test
+    void shouldDisablePhotoSharingWhenLatestLocationOnlyIsEnabled() throws Exception {
+        User sharer = testingService.randomUser();
+        User recipient = testingService.randomUser();
+        authenticate(sharer);
+
+        mockMvc.perform(post("/settings/share-access/users")
+                        .param("sharedUserIds", recipient.getId().toString())
+                        .param("photoUserIds", recipient.getId().toString())
+                        .param("latestLocationUserIds", recipient.getId().toString())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        List<UserSharing> shares = userSharingJdbcService.findBySharingUser(sharer.getId());
+        assertThat(shares).hasSize(1);
+        assertThat(shares.get(0).isLatestLocationOnly()).isTrue();
+        assertThat(shares.get(0).isSharePhotos()).isFalse();
+    }
+
+    @Test
     void shouldDeleteShareWhenUserUnchecked() throws Exception {
         User sharer = testingService.randomUser();
         User recipient = testingService.randomUser();

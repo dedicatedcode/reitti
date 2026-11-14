@@ -6,7 +6,6 @@ import com.dedicatedcode.reitti.dto.ProcessedVisitResponse;
 import com.dedicatedcode.reitti.model.geo.ProcessedVisit;
 import com.dedicatedcode.reitti.model.geo.SignificantPlace;
 import com.dedicatedcode.reitti.model.security.MagicLinkAccessLevel;
-import com.dedicatedcode.reitti.model.security.TokenUser;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.ProcessedVisitJdbcService;
 import com.dedicatedcode.reitti.service.security.DataAccessGuard;
@@ -93,14 +92,11 @@ public class ProcessedVisitApiController {
             }
 
             // Check access permissions
-            if (user instanceof TokenUser) {
-                this.dataAccessGuard.hasAccessLevel(user,
-                                                    MagicLinkAccessLevel.FULL_ACCESS,
-                                                    MagicLinkAccessLevel.ONLY_LIVE,
-                                                    MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS);
-            }
-
             User userToFetchDataFrom = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+            this.dataAccessGuard.hasAccessLevel(user, userToFetchDataFrom,
+                                                MagicLinkAccessLevel.FULL_ACCESS,
+                                                MagicLinkAccessLevel.ONLY_LIVE,
+                                                MagicLinkAccessLevel.ONLY_LIVE_WITH_PHOTOS);
 
             // Fetch processed visits in the time range
             List<ProcessedVisit> visits = processedVisitJdbcService.findByUserAndTimeOverlap(
