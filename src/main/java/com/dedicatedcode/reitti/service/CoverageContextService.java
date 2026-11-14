@@ -42,6 +42,7 @@ public class CoverageContextService {
         allUsers.add(buildUserTimelineData(currentUser, true));
         if (canSeeOthers) {
             userSharingJdbcService.findBySharedWithUser(currentUser.getId()).stream()
+                    .filter(sharing -> !sharing.isLatestLocationOnly())
                     .map(sharing -> userJdbcService.findById(sharing.getSharingUserId()))
                     .filter(Optional::isPresent)
                     .map(Optional::get)

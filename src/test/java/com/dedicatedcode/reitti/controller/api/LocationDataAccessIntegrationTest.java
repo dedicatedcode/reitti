@@ -215,6 +215,44 @@ class LocationDataAccessIntegrationTest {
     }
 
     @Test
+    void latestLocationOnlyShareOnlyExposesTheLatestLocation() throws Exception {
+        shareLatestLocationOnlyWith(owner, other);
+
+        mockMvc.perform(get("/api/v2/locations/metadata/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPoints").value(0))
+                .andExpect(jsonPath("$.latestLocation.latitude").exists());
+        mockMvc.perform(get("/api/v2/locations/stream/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v3/locations/stream/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v2/trips/{userId}", owner.getId())
+                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/visits/{userId}", owner.getId())
+                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v2/coverage/cells/{userId}", owner.getId())
+                                .param("start", "2024-01-01").param("end", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", owner.getId())
+                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
+                                .with(user(other)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.segments").isEmpty())
+                .andExpect(jsonPath("$.latest").exists());
+    }
+
+    @Test
     void memoryLinkOnlyReadsTheRangeOfItsMemory() throws Exception {
         Memory memory = memoryJdbcService.create(owner, new Memory("Trip", "", MEMORY_START, MEMORY_END, HeaderType.MAP, null));
         RequestPostProcessor link = memoryLink(owner, memory, MagicLinkAccessLevel.MEMORY_VIEW_ONLY);
@@ -261,6 +299,10 @@ class LocationDataAccessIntegrationTest {
 
     private void shareWith(User sharingUser, User sharedWith) {
         userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), sharedWith.getId(), null, "#ff0000", false, null)));
+    }
+
+    private void shareLatestLocationOnlyWith(User sharingUser, User sharedWith) {
+        userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), sharedWith.getId(), null, "#ff0000", false, true, null)));
     }
 
     private static RequestPostProcessor magicLink(User owner, MagicLinkAccessLevel level) {

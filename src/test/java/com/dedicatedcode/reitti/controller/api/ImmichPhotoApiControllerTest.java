@@ -84,7 +84,11 @@ class ImmichPhotoApiControllerTest {
     }
 
     private void shareWith(User sharingUser, User sharedWithUser, boolean sharePhotos) {
-        userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), sharedWithUser.getId(), null, "#FF0000", sharePhotos, null)));
+        shareWith(sharingUser, sharedWithUser, sharePhotos, false);
+    }
+
+    private void shareWith(User sharingUser, User sharedWithUser, boolean sharePhotos, boolean latestLocationOnly) {
+        userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), sharedWithUser.getId(), null, "#FF0000", sharePhotos, latestLocationOnly, null)));
     }
 
     @Test
@@ -148,6 +152,22 @@ class ImmichPhotoApiControllerTest {
                 .andExpect(jsonPath("$[0].thumbnailUrl").value("/api/v1/photos/immich/proxy/photo-1/thumbnail?userId=" + owner.getId()));
 
         mockServer.verify();
+    }
+
+    @Test
+    void shouldRejectPhotosWhenLatestLocationOnlyIsEnabled() throws Exception {
+        shareWith(owner, viewer, true, true);
+        authenticate(viewer);
+
+        mockMvc.perform(get("/api/v1/photos/immich/range")
+                        .param("startDate", "2024-01-01")
+                        .param("endDate", "2024-01-02")
+                        .param("timezone", "UTC")
+                        .param("userId", owner.getId().toString()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/photos/immich/proxy/photo-1/thumbnail")
+                        .param("userId", owner.getId().toString()))
+                .andExpect(status().isForbidden());
     }
 
     @Test

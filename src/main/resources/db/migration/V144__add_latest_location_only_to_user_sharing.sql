@@ -1,0 +1,1 @@
+ALTER TABLE user_sharing ADD COLUMN latest_location_only BOOLEAN NOT NULL DEFAULT FALSE;

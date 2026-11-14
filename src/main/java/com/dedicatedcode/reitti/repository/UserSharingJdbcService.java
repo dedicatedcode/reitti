@@ -34,24 +34,24 @@ public class UserSharingJdbcService {
 
     @Transactional(readOnly = true)
     public List<UserSharing> findBySharingUser(Long sharingUserId) {
-        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, share_photos, version FROM user_sharing WHERE sharing_user_id = ?";
+        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, share_photos, latest_location_only, version FROM user_sharing WHERE sharing_user_id = ?";
         return jdbcTemplate.query(sql, this::mapRowToUserSharing, sharingUserId);
     }
 
     @Transactional(readOnly = true)
     public List<UserSharing> findBySharedWithUser(Long sharedWithUserId) {
-        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, share_photos, version FROM user_sharing WHERE shared_with_user_id = ?";
+        String sql = "SELECT id, sharing_user_id, shared_with_user_id, created_at, color, share_photos, latest_location_only, version FROM user_sharing WHERE shared_with_user_id = ?";
         return jdbcTemplate.query(sql, this::mapRowToUserSharing, sharedWithUserId);
     }
 
-    private void createSharing(Long sharingUserId, Long sharedWithUserId, String color, boolean sharePhotos) {
-        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, color, share_photos, version) VALUES (?, ?, now(), ?, ?, 1)";
-        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId, color, sharePhotos);
+    private void createSharing(Long sharingUserId, Long sharedWithUserId, String color, boolean sharePhotos, boolean latestLocationOnly) {
+        String sql = "INSERT INTO user_sharing (sharing_user_id, shared_with_user_id, created_at, color, share_photos, latest_location_only, version) VALUES (?, ?, now(), ?, ?, ?, 1)";
+        jdbcTemplate.update(sql, sharingUserId, sharedWithUserId, color, sharePhotos, latestLocationOnly);
     }
 
     public void create(User user, Set<UserSharing> toCreate) {
         for (UserSharing userSharing : toCreate) {
-            createSharing(user.getId(), userSharing.getSharedWithUserId(), userSharing.getColor(), userSharing.isSharePhotos());
+            createSharing(user.getId(), userSharing.getSharedWithUserId(), userSharing.getColor(), userSharing.isSharePhotos(), userSharing.isLatestLocationOnly());
         }
     }
     private UserSharing mapRowToUserSharing(ResultSet rs, int rowNum) throws SQLException {
@@ -62,6 +62,7 @@ public class UserSharingJdbcService {
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getString("color"),
                 rs.getBoolean("share_photos"),
+                rs.getBoolean("latest_location_only"),
                 rs.getLong("version")
         );
     }
@@ -92,6 +93,11 @@ public class UserSharingJdbcService {
     public void updateSharePhotos(Long sharingUserId, Long sharedWithUserId, boolean sharePhotos) {
         String sql = "UPDATE user_sharing SET share_photos = ?, version = version + 1 WHERE sharing_user_id = ? AND shared_with_user_id = ?";
         jdbcTemplate.update(sql, sharePhotos, sharingUserId, sharedWithUserId);
+    }
+
+    public void updateLatestLocationOnly(Long sharingUserId, Long sharedWithUserId, boolean latestLocationOnly) {
+        String sql = "UPDATE user_sharing SET latest_location_only = ?, version = version + 1 WHERE sharing_user_id = ? AND shared_with_user_id = ?";
+        jdbcTemplate.update(sql, latestLocationOnly, sharingUserId, sharedWithUserId);
     }
 
 }

@@ -107,6 +107,7 @@ public class CoverageController {
             @RequestParam LocalDate end,
             @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         User userToFetchData = this.dataAccessGuard.loadUserToFetchDataFrom(user, userId);
+        this.dataAccessGuard.requireHistoryAccess(user, userToFetchData);
         this.dataAccessGuard.loadTimeRange(user, start.toString(), end.toString(), timezone);
         Instant startOfRange = start.atStartOfDay(timezone).toInstant();
         Instant endOfRange = end.plusDays(1).atStartOfDay(timezone).toInstant();

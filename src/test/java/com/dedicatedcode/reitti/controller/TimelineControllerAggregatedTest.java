@@ -154,6 +154,31 @@ class TimelineControllerAggregatedTest {
                 .andExpect(content().string(containsString("/api/v2/coverage/cells/" + sharingUser.getId() + "?")));
     }
 
+    @Test
+    void latestLocationOnlyShareIsRenderedWithoutTimelineOrPath() throws Exception {
+        ZoneId tz = ZoneId.of("Europe/Berlin");
+        LocalDate startDate = LocalDate.of(2025, 2, 3);
+        String sharingUsername = "user_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        User sharingUser = this.userService.createNewUser(sharingUsername, "Sharing User", "password", Role.USER, UnitSystem.METRIC, Language.EN, null, null, null, TimeDisplayMode.DEFAULT, TimeMode.TWENTY_FOUR_HOUR, "#ff0000");
+        userSharingJdbcService.create(sharingUser, Set.of(new UserSharing(null, sharingUser.getId(), user.getId(), null, "#ff0000", false, true, null)));
+
+        createVisits(user, testingService.newSignificantPlace(user, "Viewer Place"), startDate, tz);
+        createVisits(sharingUser, testingService.newSignificantPlace(sharingUser, "Sharing User Place"), startDate, tz);
+
+        mockMvc.perform(get("/timeline/content/range")
+                                .param("startDate", startDate.toString())
+                                .param("endDate", startDate.plusDays(15).toString())
+                                .param("timezone", tz.toString())
+                                .with(user(user)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/api/v2/locations/metadata/" + sharingUser.getId() + "?")))
+                .andExpect(content().string(not(containsString("Sharing User Place"))))
+                .andExpect(content().string(not(containsString("/api/v1/visits/" + sharingUser.getId()))))
+                .andExpect(content().string(not(containsString("/api/v3/locations/stream/" + sharingUser.getId()))))
+                .andExpect(content().string(not(containsString("/api/v2/trips/" + sharingUser.getId()))))
+                .andExpect(content().string(not(containsString("/api/v2/coverage/cells/" + sharingUser.getId()))));
+    }
+
     private void createVisits(User owner, SignificantPlace place, LocalDate startDate, ZoneId tz) {
         for (int day = 0; day < 16; day++) {
             Instant dayStart = startDate.plusDays(day).atStartOfDay(tz).toInstant();

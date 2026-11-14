@@ -77,6 +77,7 @@ public class CoverageHierarchyController {
 
         long targetUserId = userId == null ? user.getId() : userId;
         User targetUser = dataAccessGuard.loadUserToFetchDataFrom(user, targetUserId);
+        dataAccessGuard.requireHistoryAccess(user, targetUser);
         Device selectedDevice = deviceId == null ? null : deviceJdbcService.find(targetUser, deviceId).orElse(null);
 
         List<String> authorities = authentication == null
