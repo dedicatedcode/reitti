@@ -24,6 +24,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -147,6 +149,14 @@ public class ImmichIntegrationService {
     }
 
     public List<PhotoResponse> searchPhotosForRange(User user, Instant start, Instant end) {
+        try {
+            return searchPhotosForRangeStrict(user, start, end);
+        } catch (IllegalStateException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<PhotoResponse> searchPhotosForRangeStrict(User user, Instant start, Instant end) {
         Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
 
         if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
@@ -172,22 +182,39 @@ public class ImmichIntegrationService {
             
             HttpEntity<ImmichSearchRequest> entity = new HttpEntity<>(searchRequest, headers);
             
-            ResponseEntity<ImmichSearchResponse> response = restTemplate.exchange(
-                searchUrl,
-                HttpMethod.POST,
-                entity,
-                ImmichSearchResponse.class
-            );
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return convertToPhotoResponses(user, integration, response.getBody());
+            Map<String, PhotoResponse> photos = new LinkedHashMap<>();
+            while (true) {
+                ResponseEntity<ImmichSearchResponse> response = restTemplate.exchange(
+                    searchUrl,
+                    HttpMethod.POST,
+                    entity,
+                    ImmichSearchResponse.class
+                );
+                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().getAssets() == null || response.getBody().getAssets().getItems() == null) {
+                    throw new IllegalStateException("Immich photo search returned an incomplete response");
+                }
+                ImmichSearchResponse body = response.getBody();
+                for (PhotoResponse photo : convertToPhotoResponses(user, integration, body)) {
+                    if (photo.getId() == null || photo.getId().isBlank()) {
+                        throw new IllegalStateException("Immich photo search returned a photo without an ID");
+                    }
+                    photos.putIfAbsent(photo.getId(), photo);
+                }
+                String nextPage = body.getAssets().getNextPage();
+                if (nextPage == null) {
+                    return new ArrayList<>(photos.values());
+                }
+                int next = Integer.parseInt(nextPage);
+                if (next != searchRequest.getPage() + 1) {
+                    throw new IllegalStateException("Immich photo search returned an invalid next page");
+                }
+                searchRequest.setPage(next);
             }
             
         } catch (Exception e) {
-            log.error("Unable to search immich data:", e);
+            log.error("Unable to search Immich photo data");
+            throw new IllegalStateException("Immich photo search failed");
         }
-        
-        return new ArrayList<>();
     }
 
     private List<PhotoResponse> convertToPhotoResponses(User user, ImmichIntegration integration, ImmichSearchResponse searchResponse) {
