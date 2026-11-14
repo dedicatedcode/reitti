@@ -33,6 +33,7 @@ public class H3DatabaseLifecycleManager implements Job {
     private static final Logger log = LoggerFactory.getLogger(H3DatabaseLifecycleManager.class);
     private static final String HIERARCHY_VERSION_PROPERTY = "h3.hierarchy.version";
     private static final String HIERARCHY_INGESTED_PROPERTY = "h3.hierarchy.ingested";
+    private static final String OSM_NAMES_VERSION_PROPERTY = "h3.osm_names.version";
     private static final String STAGING_TABLE = "coverage_region_ingest";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -97,6 +98,7 @@ public class H3DatabaseLifecycleManager implements Job {
 
             if (Files.exists(targetVersionDir)) {
                 log.info("H3 database is up to date at version: {}. Will load it now.", remoteVersion);
+                loadOsmNamesIfNeeded(targetVersionDir, remoteVersion);
                 rocksDbService.hotSwapDatabase(targetVersionDir);
                 ingestRegionHierarchy(targetVersionDir, remoteVersion);
                 rocksDbService.deleteOldVersions();
@@ -114,7 +116,7 @@ public class H3DatabaseLifecycleManager implements Job {
 
                 Files.move(tempExtractionDir, targetVersionDir);
 
-                loadOsmNames(targetVersionDir.resolve("osm_names.tsv"));
+                loadOsmNamesIfNeeded(targetVersionDir, remoteVersion);
 
                 rocksDbService.hotSwapDatabase(targetVersionDir);
                 ingestRegionHierarchy(targetVersionDir, remoteVersion);
@@ -139,6 +141,32 @@ public class H3DatabaseLifecycleManager implements Job {
 
     private void saveLocalManifest(H3Manifest manifest) throws IOException {
         objectMapper.writeValue(localManifestPath.toFile(), manifest);
+    }
+
+    private void loadOsmNamesIfNeeded(Path versionDir, String version) {
+        Path tsvFilePath = versionDir.resolve("osm_names.tsv");
+        if (!Files.isRegularFile(tsvFilePath)) {
+            log.warn("Bundle {} has no osm_names.tsv; region names will stay unavailable", version);
+            return;
+        }
+        boolean alreadyLoaded = propertyService.getProperty(OSM_NAMES_VERSION_PROPERTY)
+                .filter(version::equals)
+                .isPresent();
+        if (alreadyLoaded && osmNamesCount() > 0) {
+            log.debug("osm_names already loaded for bundle version {}", version);
+            return;
+        }
+        loadOsmNames(tsvFilePath);
+        propertyService.setProperty(OSM_NAMES_VERSION_PROPERTY, version);
+    }
+
+    private long osmNamesCount() {
+        try {
+            Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM osm_names", Long.class);
+            return count == null ? 0 : count;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void ingestRegionHierarchy(Path versionDir, String version) {
@@ -291,6 +319,11 @@ public class H3DatabaseLifecycleManager implements Job {
                 ON osm_names USING gin (all_names);
                 """;
 
+        String createTrigramIndexSql = """
+                CREATE INDEX IF NOT EXISTS idx_osm_names_all_names_trgm
+                ON osm_names USING gin (lower(all_names::text) gin_trgm_ops);
+                """;
+
         String copySql = "COPY osm_names (osm_id, osm_type, all_names) FROM STDIN WITH (FORMAT text, DELIMITER '\t', NULL '')";
 
         log.info("Ensuring target table exists...");
@@ -314,6 +347,13 @@ public class H3DatabaseLifecycleManager implements Job {
 
         log.info("Building GIN index on jsonb names (this may take a moment)...");
         jdbcTemplate.execute(createGinIndexSql);
+
+        log.info("Building trigram index for name search...");
+        try {
+            jdbcTemplate.execute(createTrigramIndexSql);
+        } catch (Exception e) {
+            log.warn("Could not create trigram index for name search (pg_trgm missing?): {}", e.getMessage());
+        }
 
         log.info("Bulk data ingestion and indexing completed successfully.");
 

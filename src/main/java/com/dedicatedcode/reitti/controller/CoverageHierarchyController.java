@@ -5,6 +5,7 @@ import com.dedicatedcode.reitti.model.UserType;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.model.security.UserSettings;
+import com.dedicatedcode.reitti.repository.CoverageRegionJdbcService;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.service.CoverageContextService;
@@ -12,6 +13,7 @@ import com.dedicatedcode.reitti.service.h3.CoverageHierarchyService;
 import com.dedicatedcode.reitti.service.h3.H3SpatialCoverageService;
 import com.dedicatedcode.reitti.service.security.DataAccessGuard;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.Duration;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -38,6 +42,9 @@ public class CoverageHierarchyController {
     private final DeviceJdbcService deviceJdbcService;
     private final H3SpatialCoverageService coverageService;
     private final UserSettingsJdbcService userSettingsJdbcService;
+
+    public record SearchResult(long osmId, String name, String context, String path) {
+    }
 
     public CoverageHierarchyController(CoverageContextService coverageContextService,
                                        CoverageHierarchyService hierarchyService,
@@ -88,6 +95,9 @@ public class CoverageHierarchyController {
         model.addAttribute("selectedUserData", selectedUserData);
         model.addAttribute("selectedDeviceId", selectedDevice == null ? null : selectedDevice.id());
         model.addAttribute("selectedDeviceName", selectedDevice == null ? null : selectedDevice.name());
+        boolean showUserSelection = users.size() > 1
+                || users.stream().anyMatch(candidate -> candidate.devices().size() > 1);
+        model.addAttribute("showUserSelection", showUserSelection);
         model.addAttribute("showDeviceSelection", selectedUserData.devices().size() >= 2);
         model.addAttribute("path", path);
         model.addAttribute("expand", expand);
@@ -98,6 +108,39 @@ public class CoverageHierarchyController {
                 ? settings.getTimeZoneOverride()
                 : ZoneId.systemDefault());
         return "coverage-all";
+    }
+
+    @GetMapping("/coverage/all/search")
+    public String search(@AuthenticationPrincipal User user,
+                         Authentication authentication,
+                         @RequestParam(name = "q", required = false) String query,
+                         @RequestParam(required = false) Long userId,
+                         @RequestParam(required = false) Long deviceId,
+                         Model model) {
+        if (user == null) {
+            return "fragments/coverage-search-results :: results";
+        }
+        long targetUserId = userId == null ? user.getId() : userId;
+        User targetUser = dataAccessGuard.loadUserToFetchDataFrom(user, targetUserId);
+        List<CoverageRegionJdbcService.RegionSearchHit> hits =
+                hierarchyService.search(query, 20);
+
+        Locale locale = LocaleContextHolder.getLocale();
+        List<SearchResult> results = hits.stream()
+                .map(hit -> {
+                    List<Long> path = hierarchyService.pathTo(hit.osmId());
+                    String context = path.size() > 1
+                            ? hierarchyService.regionName(path.get(path.size() - 2), locale)
+                            : "";
+                    return new SearchResult(hit.osmId(), hit.label(), context,
+                            path.stream().map(String::valueOf).collect(Collectors.joining(",")));
+                })
+                .toList();
+
+        model.addAttribute("results", results);
+        model.addAttribute("selectedUserId", targetUser.getId());
+        model.addAttribute("selectedDeviceId", deviceId);
+        return "fragments/coverage-search-results :: results";
     }
 
     @GetMapping("/coverage/all/preview")

@@ -19,6 +19,8 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.geom.CoordinateArrays;
 import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
@@ -577,17 +579,33 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         }
     }
 
+    /**
+     * Emits one polygon as [exterior, hole1, hole2…]. Each ring MUST be emitted separately:
+     * Polygon.getCoordinates() concatenates shell and holes into a single sequence, which makes
+     * the boundary jump into every enclave and back — MapLibre then renders the area between
+     * those jumps as missing wedges.
+     * Winding is normalized to RFC 7946 (exterior counterclockwise, holes clockwise).
+     */
     private void appendPolygonCoordinates(StringBuilder sb, Geometry polygon) {
         sb.append("[");
-        for (int i = 0; i < polygon.getNumGeometries(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append("[");
-            Coordinate[] coords = polygon.getGeometryN(i).getCoordinates();
-            for (int j = 0; j < coords.length; j++) {
-                if (j > 0) sb.append(",");
-                sb.append("[").append(coords[j].x).append(",").append(coords[j].y).append("]");
-            }
-            sb.append("]");
+        Polygon p = (Polygon) polygon;
+        appendRing(sb, p.getExteriorRing(), true);
+        for (int h = 0; h < p.getNumInteriorRing(); h++) {
+            sb.append(",");
+            appendRing(sb, p.getInteriorRingN(h), false);
+        }
+        sb.append("]");
+    }
+
+    private void appendRing(StringBuilder sb, LineString ring, boolean counterclockwise) {
+        Coordinate[] coords = ring.getCoordinates();
+        if (Orientation.isCCW(coords) != counterclockwise) {
+            CoordinateArrays.reverse(coords);
+        }
+        sb.append("[");
+        for (int j = 0; j < coords.length; j++) {
+            if (j > 0) sb.append(",");
+            sb.append("[").append(coords[j].x).append(",").append(coords[j].y).append("]");
         }
         sb.append("]");
     }

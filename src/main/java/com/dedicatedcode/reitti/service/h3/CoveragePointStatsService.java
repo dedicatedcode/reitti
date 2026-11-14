@@ -2,6 +2,7 @@ package com.dedicatedcode.reitti.service.h3;
 
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -17,16 +18,22 @@ import java.util.concurrent.ConcurrentHashMap;
 @ConditionalOnProperty(name = "reitti.h3.enabled", havingValue = "true")
 public class CoveragePointStatsService {
 
-    private static final int VISITED_CELL_THRESHOLD = 10;
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
     private final JdbcTemplate jdbcTemplate;
     private final RocksDBH3Service rocksDBService;
+    private final int visitedCellMinPoints;
+    private final Duration visitedCellMinDwell;
     private final Map<CacheKey, CachedStats> cache = new ConcurrentHashMap<>();
 
-    public CoveragePointStatsService(JdbcTemplate jdbcTemplate, RocksDBH3Service rocksDBService) {
+    public CoveragePointStatsService(JdbcTemplate jdbcTemplate,
+                                     RocksDBH3Service rocksDBService,
+                                     @Value("${reitti.coverage.visited-cell.min-points:10}") int visitedCellMinPoints,
+                                     @Value("${reitti.coverage.visited-cell.min-dwell:PT10M}") Duration visitedCellMinDwell) {
         this.jdbcTemplate = jdbcTemplate;
         this.rocksDBService = rocksDBService;
+        this.visitedCellMinPoints = Math.max(1, visitedCellMinPoints);
+        this.visitedCellMinDwell = visitedCellMinDwell == null ? Duration.ofMinutes(10) : visitedCellMinDwell;
     }
 
     public AreaPointStats getStats(User user, Device device) {
@@ -77,9 +84,10 @@ public class CoveragePointStatsService {
         Map<Long, Instant> lastVisited = new HashMap<>();
         for (Map.Entry<Long, CellStats> entry : cellStats.entrySet()) {
             CellStats stats = entry.getValue();
+            boolean visited = stats.visitedChildren() > 0;
             for (Long osmId : rocksDBService.getOsmIds(entry.getKey())) {
                 totalPoints.merge(osmId, stats.count(), Long::sum);
-                if (stats.count() >= VISITED_CELL_THRESHOLD) {
+                if (visited) {
                     visitedCells.merge(osmId, 1L, Long::sum);
                 }
                 if (stats.first() != null) {
@@ -93,11 +101,21 @@ public class CoveragePointStatsService {
         return new AreaPointStats(visitedCells, totalPoints, firstVisited, lastVisited);
     }
 
+    /**
+     * A source cell counts as visited when the user spent enough time there (minimum number of
+     * points and minimum dwell). Parent cells inherit visitedness from their children, which makes
+     * exploration bubble up: being somewhere in a city also marks its district, state, country
+     * and continent as discovered.
+     */
     private void addParentCellCounts(long cellId, long pointCount, Instant first, Instant last,
                                      Map<Long, CellStats> target) {
+        boolean sourceVisited = pointCount >= visitedCellMinPoints
+                && first != null && last != null
+                && !Duration.between(first, last).minus(visitedCellMinDwell).isNegative();
         for (Long parentCell : rocksDBService.getParentCells(cellId)) {
-            target.merge(parentCell, new CellStats(pointCount, first, last),
-                    (a, b) -> new CellStats(a.count() + b.count(), min(a.first(), b.first()), max(a.last(), b.last())));
+            target.merge(parentCell, new CellStats(pointCount, first, last, sourceVisited ? 1 : 0),
+                    (a, b) -> new CellStats(a.count() + b.count(), min(a.first(), b.first()), max(a.last(), b.last()),
+                            a.visitedChildren() + b.visitedChildren()));
         }
     }
 
@@ -113,7 +131,7 @@ public class CoveragePointStatsService {
         return a.isAfter(b) ? a : b;
     }
 
-    private record CellStats(long count, Instant first, Instant last) {
+    private record CellStats(long count, Instant first, Instant last, int visitedChildren) {
     }
 
     private record CacheKey(long userId, Long deviceId, String packVersion) {

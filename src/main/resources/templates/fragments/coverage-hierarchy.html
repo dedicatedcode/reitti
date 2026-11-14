@@ -16,7 +16,7 @@
         <div class="hierarchy-column-items">
             <a th:each="item : ${column.items()}"
                class="hierarchy-item"
-               th:classappend="${(item.selected() ? ' selected' : '') + (item.explored() ? '' : ' unexplored') + (item.continent() ? ' continent' : '')}"
+               th:classappend="${(item.selected() ? ' selected' : '') + (item.discovered() ? '' : ' undiscovered') + (item.continent() ? ' continent' : '')}"
                th:href="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${item.pathValue()})}"
                th:hx-get="@{/coverage/all(userId=${selectedUserId}, deviceId=${selectedDeviceId}, path=${item.pathValue()})}"
                hx-target="#coverage-ui"
@@ -30,17 +30,14 @@
                 <span class="hierarchy-item-text">
                     <span class="hierarchy-item-name" th:text="${item.name()}">Area</span>
                     <span class="hierarchy-item-meta">
-                        <th:block th:if="${item.hasChildren()}">
-                            <span class="hierarchy-item-bar">
-                                <span class="hierarchy-item-bar-fill"
-                                      th:style="|width:${item.percentage() == null ? 0 : item.percentage()}%|"></span>
-                            </span>
-                            <span class="hierarchy-item-pct" th:text="${item.percentageLabel()}">0.0%</span>
-                        </th:block>
-                        <span th:unless="${item.hasChildren()}"
-                              class="hierarchy-item-badge"
-                              th:classappend="${item.explored()} ? ' explored' : ' not-explored'"
-                              th:text="${item.explored()} ? #{coverage.hierarchy.explored} : #{coverage.hierarchy.not-explored}">Explored</span>
+                        <span class="hierarchy-item-bar">
+                            <span class="hierarchy-item-bar-fill"
+                                  th:style="|width:${item.percentage() == null ? 0 : item.percentage()}%|"></span>
+                        </span>
+                        <span class="hierarchy-item-pct" th:text="${item.percentageLabel()}">0.0%</span>
+                        <span class="hierarchy-item-badge"
+                              th:classappend="${item.discovered()} ? ' discovered' : ' not-discovered'"
+                              th:text="${item.discovered()} ? #{coverage.hierarchy.discovered} : #{coverage.hierarchy.not-discovered}">Discovered</span>
                     </span>
                 </span>
                 <span class="hierarchy-item-chevron" th:if="${item.hasChildren()}">›</span>

@@ -1,5 +1,6 @@
 package com.dedicatedcode.reitti.service.h3;
 
+import com.dedicatedcode.reitti.model.CoverageContinent;
 import com.dedicatedcode.reitti.model.CoverageRegion;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
@@ -28,7 +29,7 @@ public class CoverageHierarchyService {
     private static final int DEFAULT_COLUMN_LIMIT = 250;
     private static final int EXPANDED_COLUMN_LIMIT = 5000;
     private static final int MAX_PATH_DEPTH = 12;
-    private static final int EXPLORED_POINT_THRESHOLD = 10;
+    private static final int MAX_DETAIL_PLACES = 50;
 
     private final CoverageRegionJdbcService regionService;
     private final CoveragePointStatsService pointStatsService;
@@ -48,12 +49,31 @@ public class CoverageHierarchyService {
         this.messageSource = messageSource;
     }
 
+    public List<CoverageRegionJdbcService.RegionSearchHit> search(String query, int limit) {
+        return regionService.search(query, LocaleContextHolder.getLocale(), limit);
+    }
+
+    public List<Long> pathTo(long osmId) {
+        return regionService.findPathTo(osmId);
+    }
+
+    public String regionName(long osmId, Locale locale) {
+        return regionService.findById(osmId)
+                .map(region -> region.isContinent()
+                        ? messageSource.getMessage(region.nameKey(), null, region.nameKey(), locale)
+                        : regionService.findLocalizedNames(List.of(osmId), locale)
+                                .getOrDefault(osmId, "Area #" + osmId))
+                .orElse("");
+    }
+
     public List<HierarchyColumn> buildPath(User user, Device device, String pathParam, Long expandedParentId) {
         Locale locale = LocaleContextHolder.getLocale();
         List<Long> path = parsePath(pathParam);
         CoveragePointStatsService.AreaPointStats stats = pointStatsService.getStats(user, device);
 
-        List<CoverageRegion> current = regionService.findRoots();
+        List<CoverageRegion> current = regionService.findRoots().stream()
+                .filter(region -> !CoverageContinent.OTHER.code().equals(region.continent()))
+                .toList();
         if (current.stream().noneMatch(CoverageRegion::isContinent)) {
             int rootLevel = current.stream()
                     .mapToInt(CoverageRegion::adminLevel)
@@ -88,7 +108,7 @@ public class CoverageHierarchyService {
             List<HierarchyItem> items = new ArrayList<>(current.size());
             for (CoverageRegion region : current) {
                 RegionMetrics regionMetrics = metrics.get(region.osmId());
-                boolean explored = regionMetrics.totalPoints() >= EXPLORED_POINT_THRESHOLD;
+                boolean discovered = regionMetrics.visitedCells() > 0;
                 Double percentage = regionMetrics.totalCells() > 0
                         ? Math.min(100.0, regionMetrics.visitedCells() * 100.0 / regionMetrics.totalCells())
                         : null;
@@ -99,9 +119,9 @@ public class CoverageHierarchyService {
                 items.add(new HierarchyItem(
                         region.osmId(),
                         name,
-                        percentage == null ? "–" : String.format(locale, "%.1f%%", percentage),
+                        percentage == null ? "–" : formatPercentage(percentage, locale),
                         percentage,
-                        explored,
+                        discovered,
                         region.childCount() > 0,
                         selectedId != null && selectedId == region.osmId(),
                         region.isContinent(),
@@ -112,7 +132,7 @@ public class CoverageHierarchyService {
 
             Collator collator = Collator.getInstance(locale);
             items.sort(Comparator
-                    .comparing(HierarchyItem::explored).reversed()
+                    .comparing(HierarchyItem::discovered).reversed()
                     .thenComparing(item -> item.percentage() == null ? -1.0 : item.percentage(), Comparator.reverseOrder())
                     .thenComparing(HierarchyItem::name, collator));
 
@@ -196,12 +216,13 @@ public class CoverageHierarchyService {
         double percentage = metrics.totalCells() > 0
                 ? Math.min(100.0, metrics.visitedCells() * 100.0 / metrics.totalCells())
                 : 0.0;
-        boolean explored = metrics.totalPoints() >= EXPLORED_POINT_THRESHOLD;
+        boolean discovered = metrics.visitedCells() > 0;
         List<PlaceSummary> places = List.of();
         if (!region.isContinent()) {
             byte[] wkb = coverageService.getBoundaryWkb(region.osmId());
             if (wkb != null && wkb.length > 0) {
                 places = placeService.findWithin(user, wkb).stream()
+                        .limit(MAX_DETAIL_PLACES)
                         .map(place -> new PlaceSummary(
                                 place.getName(),
                                 messageSource.getMessage(place.getType().getMessageKey(), null,
@@ -212,14 +233,29 @@ public class CoverageHierarchyService {
         }
         return new AreaDetails(region.osmId(),
                 name,
-                String.format(locale, "%.1f%%", percentage),
+                formatPercentage(percentage, locale),
                 percentage,
-                explored,
+                discovered,
                 region.childCount() > 0,
                 metrics.firstVisited(),
                 metrics.lastVisited(),
                 metrics.totalPoints(),
                 places);
+    }
+
+    /**
+     * Keeps small shares readable: a continent's share of all its countries' cells is easily
+     * below 0.1 % even when some countries are heavily discovered, and rounding that to "0.0%"
+     * while showing the discovered badge looks contradictory.
+     */
+    private static String formatPercentage(double percentage, Locale locale) {
+        if (percentage <= 0) {
+            return String.format(locale, "%.1f%%", 0.0);
+        }
+        if (percentage < 1.0) {
+            return String.format(locale, "%.2f%%", percentage);
+        }
+        return String.format(locale, "%.1f%%", percentage);
     }
 
     private String labelFor(List<CoverageRegion> regions, boolean root, Locale locale) {
@@ -298,7 +334,7 @@ public class CoverageHierarchyService {
                               String name,
                               String percentageLabel,
                               Double percentage,
-                              boolean explored,
+                              boolean discovered,
                               boolean hasChildren,
                               Instant firstVisited,
                               Instant lastVisited,
@@ -313,7 +349,7 @@ public class CoverageHierarchyService {
                                 String name,
                                 String percentageLabel,
                                 Double percentage,
-                                boolean explored,
+                                boolean discovered,
                                 boolean hasChildren,
                                 boolean selected,
                                 boolean continent,
