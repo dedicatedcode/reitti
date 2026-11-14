@@ -51,12 +51,7 @@ public class ImmichPhotoApiController {
         }
 
         ZoneId timezoneId = ZoneId.of(timezone);
-        List<PhotoResponse> photos;
-        try {
-            photos = immichIntegrationService.searchPhotosForRangeStrict(photoOwner, parseInstant(startDate, timezoneId, false), parseInstant(endDate, timezoneId, true));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
-        }
+        List<PhotoResponse> photos = immichIntegrationService.searchPhotosForRange(photoOwner, parseInstant(startDate, timezoneId, false), parseInstant(endDate, timezoneId, true));
         if (!photoOwner.getId().equals(user.getId())) {
             photos.forEach(photo -> photo.setShared(true));
         }

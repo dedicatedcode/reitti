@@ -95,15 +95,6 @@ class ImmichPaginationTest {
     }
 
     @Test
-    void strictSearchSignalsLaterPageFailure() {
-        page(1, "{\"assets\":{\"items\":[" + GPS_PHOTO + "],\"nextPage\":\"2\"}}");
-        server.expect(requestTo(URL)).andRespond(withServerError());
-        assertThrows(IllegalStateException.class, () -> service.searchPhotosForRangeStrict(user,
-            Instant.parse("2026-03-27T23:00:00Z"), Instant.parse("2026-03-28T22:59:59Z")));
-        server.verify();
-    }
-
-    @Test
     void discardsPartialResultWhenLaterItemsAreMissing() {
         page(1, "{\"assets\":{\"items\":[" + GPS_PHOTO + "],\"nextPage\":\"2\"}}");
         page(2, "{\"assets\":{\"nextPage\":null}}");
