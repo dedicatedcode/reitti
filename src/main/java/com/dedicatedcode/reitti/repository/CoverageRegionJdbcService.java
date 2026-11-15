@@ -94,6 +94,7 @@ public class CoverageRegionJdbcService {
     /**
      * Searches all name values of a region (including alternate names) for the given query.
      * Only regions that are part of the coverage hierarchy are returned.
+     * Matching is a plain {@code LIKE} scan so no PostgreSQL extension is required.
      */
     public List<RegionSearchHit> search(String query, Locale locale, int limit) {
         if (query == null) {

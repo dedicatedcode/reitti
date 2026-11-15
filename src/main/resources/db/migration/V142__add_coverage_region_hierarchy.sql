@@ -13,7 +13,3 @@ CREATE TABLE coverage_region
 );
 
 CREATE INDEX idx_coverage_region_parent ON coverage_region (parent_osm_id);
-
-CREATE INDEX idx_raw_source_points_user_device_h3
-    ON raw_source_points (user_id, device_id, h3_cell)
-    WHERE status != 1 AND invalid IS FALSE AND h3_cell IS NOT NULL;
