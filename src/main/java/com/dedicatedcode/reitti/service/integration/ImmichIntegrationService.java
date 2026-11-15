@@ -150,70 +150,66 @@ public class ImmichIntegrationService {
 
     public List<PhotoResponse> searchPhotosForRange(User user, Instant start, Instant end) {
         try {
-            return searchPhotosForRangeStrict(user, start, end);
+            Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
+
+            if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
+                return new ArrayList<>();
+            }
+
+            ImmichIntegration integration = integrationOpt.get();
+
+            try {
+                String baseUrl = integration.getServerUrl().endsWith("/") ?
+                    integration.getServerUrl() : integration.getServerUrl() + "/";
+                String searchUrl = baseUrl + "api/search/metadata";
+
+                ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(start), DateTimeFormatter.ISO_INSTANT.format(end));
+                if (integration.getAlbumId() != null && !integration.getAlbumId().isBlank()) {
+                    searchRequest.setAlbumIds(List.of(integration.getAlbumId()));
+                }
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("x-api-key", integration.getApiToken());
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+                HttpEntity<ImmichSearchRequest> entity = new HttpEntity<>(searchRequest, headers);
+
+                Map<String, PhotoResponse> photos = new LinkedHashMap<>();
+                while (true) {
+                    ResponseEntity<ImmichSearchResponse> response = restTemplate.exchange(
+                        searchUrl,
+                        HttpMethod.POST,
+                        entity,
+                        ImmichSearchResponse.class
+                    );
+                    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().getAssets() == null || response.getBody().getAssets().getItems() == null) {
+                        throw new IllegalStateException("Immich photo search returned an incomplete response");
+                    }
+                    ImmichSearchResponse body = response.getBody();
+                    for (PhotoResponse photo : convertToPhotoResponses(user, integration, body)) {
+                        if (photo.getId() == null || photo.getId().isBlank()) {
+                            throw new IllegalStateException("Immich photo search returned a photo without an ID");
+                        }
+                        photos.putIfAbsent(photo.getId(), photo);
+                    }
+                    String nextPage = body.getAssets().getNextPage();
+                    if (nextPage == null) {
+                        return new ArrayList<>(photos.values());
+                    }
+                    int next = Integer.parseInt(nextPage);
+                    if (next != searchRequest.getPage() + 1) {
+                        throw new IllegalStateException("Immich photo search returned an invalid next page");
+                    }
+                    searchRequest.setPage(next);
+                }
+
+            } catch (Exception e) {
+                log.error("Unable to search Immich photo data");
+                throw new IllegalStateException("Immich photo search failed");
+            }
         } catch (IllegalStateException e) {
             return new ArrayList<>();
-        }
-    }
-
-    public List<PhotoResponse> searchPhotosForRangeStrict(User user, Instant start, Instant end) {
-        Optional<ImmichIntegration> integrationOpt = getIntegrationForUser(user);
-
-        if (integrationOpt.isEmpty() || !integrationOpt.get().isEnabled()) {
-            return new ArrayList<>();
-        }
-
-        ImmichIntegration integration = integrationOpt.get();
-
-        try {
-            String baseUrl = integration.getServerUrl().endsWith("/") ?
-                integration.getServerUrl() : integration.getServerUrl() + "/";
-            String searchUrl = baseUrl + "api/search/metadata";
-
-            ImmichSearchRequest searchRequest = new ImmichSearchRequest(DateTimeFormatter.ISO_INSTANT.format(start), DateTimeFormatter.ISO_INSTANT.format(end));
-            if (integration.getAlbumId() != null && !integration.getAlbumId().isBlank()) {
-                searchRequest.setAlbumIds(List.of(integration.getAlbumId()));
-            }
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("x-api-key", integration.getApiToken());
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-            
-            HttpEntity<ImmichSearchRequest> entity = new HttpEntity<>(searchRequest, headers);
-            
-            Map<String, PhotoResponse> photos = new LinkedHashMap<>();
-            while (true) {
-                ResponseEntity<ImmichSearchResponse> response = restTemplate.exchange(
-                    searchUrl,
-                    HttpMethod.POST,
-                    entity,
-                    ImmichSearchResponse.class
-                );
-                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().getAssets() == null || response.getBody().getAssets().getItems() == null) {
-                    throw new IllegalStateException("Immich photo search returned an incomplete response");
-                }
-                ImmichSearchResponse body = response.getBody();
-                for (PhotoResponse photo : convertToPhotoResponses(user, integration, body)) {
-                    if (photo.getId() == null || photo.getId().isBlank()) {
-                        throw new IllegalStateException("Immich photo search returned a photo without an ID");
-                    }
-                    photos.putIfAbsent(photo.getId(), photo);
-                }
-                String nextPage = body.getAssets().getNextPage();
-                if (nextPage == null) {
-                    return new ArrayList<>(photos.values());
-                }
-                int next = Integer.parseInt(nextPage);
-                if (next != searchRequest.getPage() + 1) {
-                    throw new IllegalStateException("Immich photo search returned an invalid next page");
-                }
-                searchRequest.setPage(next);
-            }
-            
-        } catch (Exception e) {
-            log.error("Unable to search Immich photo data");
-            throw new IllegalStateException("Immich photo search failed");
         }
     }
 
