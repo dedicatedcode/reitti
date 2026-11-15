@@ -82,26 +82,6 @@ public class DataAccessGuard {
     }
 
     /**
-     * Returns the time window the caller may read data from. Empty means unrestricted, which is the case for
-     * regular sessions, API tokens and FULL_ACCESS magic links. Magic links with one of the given levels are
-     * restricted to "today" (live links) or the time range of their memory, all other magic links are rejected.
-     */
-    public Optional<TimeRange> readableWindow(User user, ZoneId timezone, MagicLinkAccessLevel... allowedLinkLevels) {
-        if (!(user instanceof TokenUser tokenUser)) {
-            return Optional.empty();
-        }
-        MagicLinkAccessLevel level = accessLevel(tokenUser).orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
-        if (!Arrays.asList(allowedLinkLevels).contains(level)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        return switch (level) {
-            case FULL_ACCESS -> Optional.empty();
-            case ONLY_LIVE, ONLY_LIVE_WITH_PHOTOS, ONLY_LAST_LOCATION -> Optional.of(today(tokenUser, timezone));
-            case MEMORY_VIEW_ONLY, MEMORY_EDIT_ACCESS -> Optional.of(memoryRange(tokenUser));
-        };
-    }
-
-    /**
      * Returns whether the given user is only allowed to see the latest location of the target user.
      * This is the case when the caller is not the target user and the sharing was configured as latest-location-only.
      */

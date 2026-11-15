@@ -319,11 +319,6 @@ public class H3DatabaseLifecycleManager implements Job {
                 ON osm_names USING gin (all_names);
                 """;
 
-        String createTrigramIndexSql = """
-                CREATE INDEX IF NOT EXISTS idx_osm_names_all_names_trgm
-                ON osm_names USING gin (lower(all_names::text) gin_trgm_ops);
-                """;
-
         String copySql = "COPY osm_names (osm_id, osm_type, all_names) FROM STDIN WITH (FORMAT text, DELIMITER '\t', NULL '')";
 
         log.info("Ensuring target table exists...");
@@ -347,13 +342,6 @@ public class H3DatabaseLifecycleManager implements Job {
 
         log.info("Building GIN index on jsonb names (this may take a moment)...");
         jdbcTemplate.execute(createGinIndexSql);
-
-        log.info("Building trigram index for name search...");
-        try {
-            jdbcTemplate.execute(createTrigramIndexSql);
-        } catch (Exception e) {
-            log.warn("Could not create trigram index for name search (pg_trgm missing?): {}", e.getMessage());
-        }
 
         log.info("Bulk data ingestion and indexing completed successfully.");
 
