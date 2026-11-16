@@ -36,10 +36,8 @@ public class H3RecalculationJob implements Job {
     private static final String CREATE_POINTS_H3_INDEX = "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_points_h3_time ON raw_location_points (h3_cell, timestamp) WHERE h3_cell IS NOT NULL";
     private static final String CREATE_SOURCE_H3_INDEX = "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_source_points_h3_cell ON raw_source_points (h3_cell) WHERE h3_cell IS NOT NULL";
 
-    private static final String DROP_USER_TIME_SYNTHETIC_INDEX = "DROP INDEX CONCURRENTLY IF EXISTS idx_raw_location_points_user_time_synthetic";
     private static final String DROP_COVERING_USER_TIME_INDEX = "DROP INDEX CONCURRENTLY IF EXISTS idx_covering_user_time";
     private static final String DROP_ACTIVE_USERS_INDEX = "DROP INDEX CONCURRENTLY IF EXISTS idx_rlp_active_users";
-    private static final String CREATE_USER_TIME_SYNTHETIC_INDEX = "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_raw_location_points_user_time_synthetic ON raw_location_points (user_id, timestamp, synthetic)";
     private static final String CREATE_COVERING_USER_TIME_INDEX = "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_covering_user_time ON raw_location_points (user_id, timestamp) INCLUDE (geom)";
     private static final String CREATE_ACTIVE_USERS_INDEX = "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_rlp_active_users ON raw_location_points (user_id, timestamp) WHERE processed = false";
 
@@ -76,7 +74,6 @@ public class H3RecalculationJob implements Job {
             log.info("Dropping H3 and non-unique secondary indexes for faster bulk update...");
             jdbcTemplate.execute(DROP_POINTS_H3_INDEX);
             jdbcTemplate.execute(DROP_SOURCE_H3_INDEX);
-            jdbcTemplate.execute(DROP_USER_TIME_SYNTHETIC_INDEX);
             jdbcTemplate.execute(DROP_COVERING_USER_TIME_INDEX);
             jdbcTemplate.execute(DROP_ACTIVE_USERS_INDEX);
 
@@ -93,7 +90,6 @@ public class H3RecalculationJob implements Job {
                 log.info("Rebuilding dropped indexes concurrently...");
                 recreateIndex(CREATE_POINTS_H3_INDEX);
                 recreateIndex(CREATE_SOURCE_H3_INDEX);
-                recreateIndex(CREATE_USER_TIME_SYNTHETIC_INDEX);
                 recreateIndex(CREATE_COVERING_USER_TIME_INDEX);
                 recreateIndex(CREATE_ACTIVE_USERS_INDEX);
                 log.info("Indexes rebuilt.");

@@ -388,7 +388,7 @@ class UserServiceTest {
         testingService.createTrip(user, startVisit, endVisit);
 
         RawLocationPoint point = new RawLocationPoint(null, null, Instant.now(),
-                new GeoPoint(52.52, 13.40), 5.0, 10.0, false, false, 1L);
+                new GeoPoint(52.52, 13.40), 5.0, 10.0, false, 1L);
         rawLocationPointJdbcService.create(user, point);
 
         Device device = testingService.findDefaultDevice(user);

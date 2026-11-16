@@ -94,7 +94,7 @@ class RawLocationPointStreamIntegrationTest {
 
     private RawLocationPoint createPoint(User user, Instant timestamp) {
         return rawLocationPointJdbcService.create(user, new RawLocationPoint(
-                null, null, timestamp, new GeoPoint(53.863149, 10.700927), 10.0, null, false, false, 1L));
+                null, null, timestamp, new GeoPoint(53.863149, 10.700927), 10.0, null, false, 1L));
     }
 
     private long createPreviewPoint(User user, String previewId, Instant timestamp) {

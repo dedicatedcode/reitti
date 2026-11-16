@@ -4,7 +4,7 @@ import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.TransportModeSegment;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.JobMetadataRepository;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.TimelinePointService;
 import com.dedicatedcode.reitti.repository.TripJdbcService;
 import com.dedicatedcode.reitti.repository.UserJdbcService;
 import com.dedicatedcode.reitti.service.JobContext;
@@ -31,15 +31,15 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TransportModeRecalculationTask implements Job {
     private static final Logger log = LoggerFactory.getLogger(TransportModeRecalculationTask.class);
     private final TripJdbcService tripJdbcService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final TimelinePointService timelinePointService;
     private final UserJdbcService userJdbcService;
     private final TransportModeService transportModeService;
     private final JobMetadataRepository metadataRepository;
     private final UserProcessingLock userProcessingLock;
 
-    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, RawLocationPointJdbcService rawLocationPointJdbcService, UserJdbcService userJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository, UserProcessingLock userProcessingLock) {
+    public TransportModeRecalculationTask(TripJdbcService tripJdbcService, TimelinePointService timelinePointService, UserJdbcService userJdbcService, TransportModeService transportModeService, JobMetadataRepository metadataRepository, UserProcessingLock userProcessingLock) {
         this.tripJdbcService = tripJdbcService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.timelinePointService = timelinePointService;
         this.userJdbcService = userJdbcService;
         this.transportModeService = transportModeService;
         this.metadataRepository = metadataRepository;
@@ -60,7 +60,7 @@ public class TransportModeRecalculationTask implements Job {
                 tripJdbcService.findByUser(user).forEach(trip -> {
                     Instant startTime = trip.getStartTime();
                     Instant endTime = trip.getEndTime();
-                    List<RawLocationPoint> tripPoints = this.rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startTime, endTime.plus(1, ChronoUnit.MILLIS));
+                    List<RawLocationPoint> tripPoints = this.timelinePointService.list(user, startTime, endTime.plus(1, ChronoUnit.MILLIS), true, true);
                     List<TransportModeSegment> segments = this.transportModeService.segmentTrip(user, tripPoints, startTime, endTime);
                     if (!segments.equals(trip.getSegments())) {
                         log.trace("Reclassified trip {} from {} to {} to segments {}", trip.getId(), trip.getSegments(), endTime, segments);

@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.*;
 import com.dedicatedcode.reitti.service.GeoLocationTimezoneService;
 import com.dedicatedcode.reitti.service.MetadataOverrideService;
+import com.dedicatedcode.reitti.service.TimelinePointService;
 import com.dedicatedcode.reitti.service.UserNotificationService;
 import com.dedicatedcode.reitti.service.VisitDetectionParametersService;
 import com.dedicatedcode.reitti.service.geocoding.ReverseGeocodingListener;
@@ -47,8 +48,7 @@ public class UnifiedLocationProcessingService {
     private static final int BUFFER_COMPACT_THRESHOLD = 10_000;
 
     private final UserJdbcService userJdbcService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
-    private final PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService;
+    private final TimelinePointService timelinePointService;
     private final ProcessedVisitJdbcService processedVisitJdbcService;
     private final PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService;
     private final TripJdbcService tripJdbcService;
@@ -72,8 +72,7 @@ public class UnifiedLocationProcessingService {
 
     public UnifiedLocationProcessingService(
             UserJdbcService userJdbcService,
-            RawLocationPointJdbcService rawLocationPointJdbcService,
-            PreviewRawLocationPointJdbcService previewRawLocationPointJdbcService,
+            TimelinePointService timelinePointService,
             ProcessedVisitJdbcService processedVisitJdbcService,
             PreviewProcessedVisitJdbcService previewProcessedVisitJdbcService,
             TripJdbcService tripJdbcService,
@@ -94,8 +93,7 @@ public class UnifiedLocationProcessingService {
             @Value("${reitti.processing.max-trip-duration-hours}") int maxTripDurationInHours,
             @Value("${reitti.processing.max-untracked-merge-gap-hours}") int maxUntrackedMergeGapHours) {
         this.userJdbcService = userJdbcService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
-        this.previewRawLocationPointJdbcService = previewRawLocationPointJdbcService;
+        this.timelinePointService = timelinePointService;
         this.processedVisitJdbcService = processedVisitJdbcService;
         this.previewProcessedVisitJdbcService = previewProcessedVisitJdbcService;
         this.tripJdbcService = tripJdbcService;
@@ -283,12 +281,12 @@ public class UnifiedLocationProcessingService {
 
         Iterator<RawLocationPoint> pointStream;
         if (previewId == null) {
-            pointStream = rawLocationPointJdbcService
-                    .streamByUserAndTimestampBetween(user, windowStart, windowEnd, true, false)
+            pointStream = timelinePointService
+                    .stream(user, windowStart, windowEnd, true, false)
                     .iterator();
         } else {
-            pointStream = previewRawLocationPointJdbcService
-                    .streamByUserAndTimestampBetween(user, previewId, windowStart, windowEnd)
+            pointStream = timelinePointService
+                    .streamPreview(user, previewId, windowStart, windowEnd, true)
                     .iterator();
         }
 
@@ -552,11 +550,11 @@ public class UnifiedLocationProcessingService {
             if (samePlace && !withinTimeThreshold) {
                 RawLocationPointStream pointsBetweenVisits;
                 if (previewId == null) {
-                    pointsBetweenVisits = this.rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, currentEndTime, nextVisit.getStartTime(), true, false);
+                    pointsBetweenVisits = this.timelinePointService.stream(user, currentEndTime, nextVisit.getStartTime(), true, false);
                 } else {
-                    pointsBetweenVisits = this.previewRawLocationPointJdbcService.streamByUserAndTimestampBetween(user, previewId, currentEndTime, nextVisit.getStartTime());
+                    pointsBetweenVisits = this.timelinePointService.streamPreview(user, previewId, currentEndTime, nextVisit.getStartTime(), true);
                 }
-                if (pointsBetweenVisits.getCount() > 2) {
+                if (pointsBetweenVisits.hasAtLeast(3)) {
                     double travelledDistanceInMeters = GeoUtils.calculateTripDistance(pointsBetweenVisits.iterator());
                     shouldMergeWithNextVisit = travelledDistanceInMeters <= mergeConfiguration.getPlaceRadiusMeters();
                 } else if (gap.compareTo(maxUntrackedMergeGapHours) <= 0) {
@@ -807,14 +805,14 @@ public class UnifiedLocationProcessingService {
         // Get location points between the two visits
         RawLocationPointStream tripPoints;
         if (previewId == null) {
-            tripPoints = rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, tripStartTime, tripEndTime.plusMillis(1));
+            tripPoints = timelinePointService.stream(user, tripStartTime, tripEndTime.plusMillis(1), true, true);
         } else {
-            tripPoints = previewRawLocationPointJdbcService.streamByUserAndTimestampBetween(user, previewId, tripStartTime, tripEndTime.plusMillis(1));
+            tripPoints = timelinePointService.streamPreview(user, previewId, tripStartTime, tripEndTime.plusMillis(1), true);
         }
 
-        if (tripPoints.getCount() < 2) {
-            logger.warn("Unable to create Trip for user [{}] between [{}] and [{}]: only [{}] point(s) available",
-                    user.getUsername(), tripStartTime, tripEndTime, tripPoints.getCount());
+        if (!tripPoints.hasAtLeast(2)) {
+            logger.warn("Unable to create Trip for user [{}] between [{}] and [{}]: fewer than 2 points available",
+                    user.getUsername(), tripStartTime, tripEndTime);
             return null;
         }
         double estimatedDistanceInMeters = calculateDistanceBetweenPlaces(startVisit.getPlace(), endVisit.getPlace());

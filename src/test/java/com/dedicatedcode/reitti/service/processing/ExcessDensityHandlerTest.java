@@ -3,7 +3,6 @@ package com.dedicatedcode.reitti.service.processing;
 import com.dedicatedcode.reitti.IntegrationTest;
 import com.dedicatedcode.reitti.TestingService;
 import com.dedicatedcode.reitti.model.geo.GeoPoint;
-import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
@@ -65,12 +64,4 @@ class ExcessDensityHandlerTest {
         return rawLocationPointService.create(testUser, null, point);
     }
 
-    // Sorter as used by the normalizer (stable ordering)
-    private java.util.Comparator<RawLocationPoint> pointComparator() {
-        return java.util.Comparator
-                .comparing(RawLocationPoint::getTimestamp)
-                .thenComparing(p -> p.getGeom().latitude())
-                .thenComparing(p -> p.getGeom().longitude())
-                .thenComparing(RawLocationPoint::isSynthetic);
-    }
 }

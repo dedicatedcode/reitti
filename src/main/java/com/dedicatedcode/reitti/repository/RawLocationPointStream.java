@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.UnaryOperator;
 /**
  * A read-only view over the points of a time range that knows its count and
  * time bounds upfront (via an aggregate query) and streams the points
@@ -28,11 +29,23 @@ public class RawLocationPointStream implements Iterable<RawLocationPoint> {
     private final Stats stats;
     private final ChunkFetcher fetcher;
     private final int chunkSize;
+    private final UnaryOperator<Iterator<RawLocationPoint>> decorator;
 
     public RawLocationPointStream(Stats stats, ChunkFetcher fetcher, int chunkSize) {
+        this(stats, fetcher, chunkSize, UnaryOperator.identity());
+    }
+
+    public RawLocationPointStream(Stats stats, ChunkFetcher fetcher, int chunkSize,
+                                  UnaryOperator<Iterator<RawLocationPoint>> decorator) {
         this.stats = stats;
         this.fetcher = fetcher;
         this.chunkSize = chunkSize;
+        this.decorator = decorator;
+    }
+
+    public RawLocationPointStream withDecorator(UnaryOperator<Iterator<RawLocationPoint>> additionalDecorator) {
+        return new RawLocationPointStream(stats, fetcher, chunkSize,
+                iterator -> additionalDecorator.apply(this.decorator.apply(iterator)));
     }
 
     public long getCount() {
@@ -49,7 +62,24 @@ public class RawLocationPointStream implements Iterable<RawLocationPoint> {
 
     @Override
     public Iterator<RawLocationPoint> iterator() {
-        return new KeysetIterator();
+        return decorator.apply(new KeysetIterator());
+    }
+
+    /**
+     * Returns {@code true} when this stream yields at least {@code n} points.
+     * Unlike {@link #getCount()}, this includes points injected by decorators
+     * and never materializes more than {@code n} points.
+     */
+    public boolean hasAtLeast(int n) {
+        int seen = 0;
+        Iterator<RawLocationPoint> iterator = iterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            if (++seen >= n) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -253,7 +253,7 @@ class DynamicMqttProviderIntegrationTest {
                 testUser,
                 Instant.ofEpochSecond(1672574400),
                 Instant.ofEpochSecond(1672574460).plusSeconds(1)
-        ).stream().filter(point -> !point.isSynthetic()).toList();
+        ).stream().filter(point -> !point.isGenerated()).toList();
 
         assertEquals(2, points.size(), "Should have exactly two location points");
         assertEquals(53.863149, points.get(0).getLatitude(), 0.0001);
