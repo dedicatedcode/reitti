@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,7 +34,6 @@ public class PreviewRawLocationPointJdbcService {
                 rs.getDouble("accuracy_meters"),
                 rs.getObject("elevation_meters", Double.class),
                 rs.getBoolean("processed"),
-                rs.getBoolean("synthetic"),
                 rs.getLong("version")
         );
         this.pointChunkSize = pointChunkSize;
@@ -41,7 +41,7 @@ public class PreviewRawLocationPointJdbcService {
 
     public List<RawLocationPoint> findByUserAndTimestampBetweenOrderByTimestampAsc(
             User user, String previewId, Instant startTime, Instant endTime) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM preview_raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ? " +
                 "ORDER BY rlp.timestamp";
@@ -50,7 +50,7 @@ public class PreviewRawLocationPointJdbcService {
     }
 
     public List<RawLocationPoint> findByUserAndProcessedIsFalseOrderByTimestampWithLimit(User user, String previewId, int limit, int offset) {
-        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version " +
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
                 "FROM preview_raw_location_points rlp " +
                 "WHERE rlp.user_id = ? AND rlp.processed = false AND preview_id = ? " +
                 "ORDER BY rlp.timestamp " +
@@ -78,7 +78,7 @@ public class PreviewRawLocationPointJdbcService {
                                                    Instant afterTimestamp, Long afterId, int limit) {
         Timestamp after = afterTimestamp != null ? Timestamp.from(afterTimestamp) : null;
         StringBuilder sql = new StringBuilder()
-                .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.synthetic, rlp.version ")
+                .append("SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version ")
                 .append("FROM preview_raw_location_points rlp ")
                 .append("WHERE rlp.user_id = ? AND rlp.timestamp BETWEEN ? AND ? AND preview_id = ? ");
         PointStreamSupport.appendKeysetPredicate(sql, after);
@@ -90,6 +90,26 @@ public class PreviewRawLocationPointJdbcService {
         }
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                 user.getId(), Timestamp.from(startTime), Timestamp.from(endTime), previewId, limit);
+    }
+
+    public Optional<RawLocationPoint> findLastBefore(User user, String previewId, Instant instant) {
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
+                "FROM preview_raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.preview_id = ? AND rlp.timestamp < ? " +
+                "ORDER BY rlp.timestamp DESC LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                user.getId(), previewId, Timestamp.from(instant));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
+    }
+
+    public Optional<RawLocationPoint> findFirstAtOrAfter(User user, String previewId, Instant instant) {
+        String sql = "SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id, ST_AsText(rlp.geom) as geom, rlp.processed, rlp.version " +
+                "FROM preview_raw_location_points rlp " +
+                "WHERE rlp.user_id = ? AND rlp.preview_id = ? AND rlp.timestamp >= ? " +
+                "ORDER BY rlp.timestamp ASC LIMIT 1";
+        List<RawLocationPoint> results = jdbcTemplate.query(sql, rawLocationPointRowMapper,
+                user.getId(), previewId, Timestamp.from(instant));
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
     public void bulkUpdateProcessedStatus(List<RawLocationPoint> points) {

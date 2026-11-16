@@ -104,9 +104,9 @@ public class ExportDataController {
         List<DataLine> paginatedData;
         long totalElements;
         if (TIMELINE_DEVICE_ID.equals(deviceId) && dataManagementEnabled) {
-            // The consolidated timeline (raw_location_points) with synthetic points, excluding ignored ones
-            List<RawLocationPoint> timelinePoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), true, false, page, size);
-            totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetween(user, startDateTime.toInstant(), endDateTime.toInstant(), true, false);
+            // The consolidated timeline (raw_location_points), real points only
+            List<RawLocationPoint> timelinePoints = rawLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, startDateTime.toInstant(), endDateTime.toInstant(), false, page, size);
+            totalElements = rawLocationPointJdbcService.countByUserAndTimestampBetween(user, startDateTime.toInstant(), endDateTime.toInstant(), false);
             paginatedData = timelinePoints.stream()
                     .map(p -> new DataLine(TimeUtil.adjustInstant(p.getTimestamp(), timezone),
                             p.getLatitude(), p.getLongitude(), p.getAccuracyMeters()))

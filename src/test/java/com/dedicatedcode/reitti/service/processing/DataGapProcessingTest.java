@@ -6,9 +6,11 @@ import com.dedicatedcode.reitti.dto.LocationPoint;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
+import com.dedicatedcode.reitti.service.JobContext;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.quartz.JobDetail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,7 +32,6 @@ import static org.mockito.Mockito.verify;
 class DataGapProcessingTest {
 
     private static final Instant FIRST_POINT = Instant.parse("2026-08-25T10:00:00Z");
-    private static final Instant LAST_POINT_BEFORE_OUTAGE = Instant.parse("2026-08-25T10:08:00Z");
     private static final Instant RESUME = Instant.parse("2026-08-25T14:00:00Z");
     private static final Instant LAST_POINT = Instant.parse("2026-08-25T14:08:00Z");
 
@@ -65,15 +66,8 @@ class DataGapProcessingTest {
         // the resume flush [14:00, 14:08] is promoted and cleaned up
         locationDataCleanupTask.execute(new LocationDataCleanupTask.TaskData(user.getId(), device.id(), RESUME, LAST_POINT, UUID.randomUUID(), null));
 
-        // real reseed + gap filling, exactly what UpdateCuratedTimelineTask does
         updateCuratedTimelineTask.execute(capturedEnqueueOf(UpdateCuratedTimelineTask.TaskData.class));
 
-        Long syntheticBridges = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM raw_location_points WHERE user_id = ? AND synthetic AND timestamp > ? AND timestamp < ?",
-                Long.class, user.getId(), Timestamp.from(LAST_POINT_BEFORE_OUTAGE), Timestamp.from(RESUME));
-        assertTrue(syntheticBridges > 500, "expected the outage gap to be bridged with synthetic points, got " + syntheticBridges);
-
-        // the pipeline processes the reseeded and bridged timeline (second enqueue)
         processingPipelineTask.execute(capturedEnqueueOf(ProcessingPipelineTask.TaskData.class));
 
         Long visits = jdbcTemplate.queryForObject(
@@ -92,7 +86,7 @@ class DataGapProcessingTest {
      */
     @SuppressWarnings("unchecked")
     private <T extends com.dedicatedcode.reitti.service.JobContext<?>> T capturedEnqueueOf(Class<T> type) {
-        ArgumentCaptor<com.dedicatedcode.reitti.service.JobContext> captor = ArgumentCaptor.forClass(com.dedicatedcode.reitti.service.JobContext.class);
+        ArgumentCaptor<JobContext> captor = ArgumentCaptor.forClass(JobContext.class);
         verify(jobSchedulingService, atLeast(1)).enqueueTask(any(), captor.capture(), any());
         List<T> matches = captor.getAllValues().stream()
                 .filter(value -> value != null && type.isAssignableFrom(value.getClass()))

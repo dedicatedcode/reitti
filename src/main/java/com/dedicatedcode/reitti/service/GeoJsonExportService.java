@@ -44,7 +44,6 @@ public class GeoJsonExportService {
                 user,
                 start,
                 end,
-                false,
                 true);
 
         FeatureCollection collection = new FeatureCollection();

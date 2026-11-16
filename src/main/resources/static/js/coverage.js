@@ -16,6 +16,50 @@
         t('month.12')
     ];
 
+    const H3_STYLE = {
+        // Zoom thresholds
+        fillBoostZoom: 9,   // stronger/saturated fill; still only the normal user-colour outline
+        borderZoom: 12,     // switch to the white border
+        strongZoom: 14,     // thicker border / more opaque fill
+
+        // Fill opacity
+        baseAlphaFloor: 60,
+        baseAlphaGain: 8,
+        boostedAlphaFloor: 190,
+        boostedAlphaGain: 14,
+        strongAlphaFloor: 215,
+        strongAlphaGain: 15,
+
+        // Outline
+        baseLineWidth: 1.5,
+        baseMinPixels: 0.5,
+        borderLineWidth: 2,
+        borderMinPixels: 1,
+        strongLineWidth: 3,
+        strongMinPixels: 1.5,
+        borderLineColor: [255, 255, 255, 235],
+
+        // Saturation boost (preserves hue/lightness for pale user colours)
+        baseSaturation: 1.0,
+        boostedSaturation: 1.8,
+        strongSaturation: 2.2,
+        boostedLineSaturation: 1.5,
+
+        // Fill coverage and layer opacity
+        baseCoverage: 0.90,
+        borderCoverage: 0.94,
+        strongCoverage: 0.97,
+        baseLayerOpacity: 0.9,
+        boostedLayerOpacity: 1.0,
+        borderLayerOpacity: 1.0,
+    };
+
+    const COVERAGE_MAP = {
+        useGlobe: true,
+        globeMaxZoom: 5,
+        useTerrain: false,
+    };
+
     const state = {
         map: null,
         deckOverlay: null,
@@ -36,6 +80,7 @@
         boundaryCache: new Map(),
         tooltipEl: null,
         currentZoom: 3,
+        mapProjection: null,
         h3AggregationCache: new Map(),
         zoomDebounceId: null,
         viewportDebounceId: null,
@@ -49,6 +94,13 @@
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         return [r, g, b];
+    }
+
+    function saturateColor(rgb, factor) {
+        if (factor == null || factor === 1) return rgb;
+        const average = (rgb[0] + rgb[1] + rgb[2]) / 3;
+        return rgb.map(channel => Math.max(0, Math.min(255,
+            Math.round(average + (channel - average) * factor))));
     }
 
     function initCoverage() {
@@ -110,14 +162,31 @@
                 state.currentZoom = zoom;
                 if (state.zoomDebounceId) clearTimeout(state.zoomDebounceId);
                 state.zoomDebounceId = setTimeout(() => renderLayers(), 100);
+                if (COVERAGE_MAP.useGlobe) {
+                    const desired = zoom < COVERAGE_MAP.globeMaxZoom ? 'globe' : 'mercator';
+                    if (state.mapProjection !== desired) {
+                        state.mapProjection = desired;
+                        map.setProjection({ type: desired });
+                    }
+                }
             }
         });
 
         map.on('load', () => {
-            try {
-                map.setProjection({ type: 'globe' });
-            } catch (e) {
-                console.warn('Could not enable globe projection:', e);
+            if (COVERAGE_MAP.useGlobe) {
+                state.mapProjection = 'globe';
+                try {
+                    map.setProjection({ type: 'globe' });
+                } catch (e) {
+                    console.warn('Could not enable globe projection:', e);
+                }
+            }
+            if (!COVERAGE_MAP.useTerrain) {
+                try {
+                    map.setTerrain(null);
+                } catch (e) {
+                    console.warn('Could not disable terrain:', e);
+                }
             }
             loadCoverageData();
         });
@@ -443,6 +512,28 @@
             state.aggregatedCells = aggregatedCells;
             const hexagons = Array.from(aggregatedCells.keys());
 
+            const zoom = state.currentZoom;
+            const hasBorder = zoom >= H3_STYLE.borderZoom;
+            const isStrong = zoom >= H3_STYLE.strongZoom;
+            const hasFillBoost = zoom >= H3_STYLE.fillBoostZoom;
+            const fillAlphaFloor = isStrong ? H3_STYLE.strongAlphaFloor
+                    : hasFillBoost ? H3_STYLE.boostedAlphaFloor : H3_STYLE.baseAlphaFloor;
+            const fillAlphaGain = isStrong ? H3_STYLE.strongAlphaGain
+                    : hasFillBoost ? H3_STYLE.boostedAlphaGain : H3_STYLE.baseAlphaGain;
+            const fillSaturation = isStrong ? H3_STYLE.strongSaturation
+                    : hasFillBoost ? H3_STYLE.boostedSaturation : H3_STYLE.baseSaturation;
+            const fillColor = saturateColor(state.userColor, fillSaturation);
+            const lineColor = hasBorder ? H3_STYLE.borderLineColor
+                    : [...saturateColor(state.userColor, hasFillBoost ? H3_STYLE.boostedLineSaturation : 1.0), 255];
+            const lineWidth = isStrong ? H3_STYLE.strongLineWidth
+                    : hasBorder ? H3_STYLE.borderLineWidth : H3_STYLE.baseLineWidth;
+            const lineWidthMinPixels = isStrong ? H3_STYLE.strongMinPixels
+                    : hasBorder ? H3_STYLE.borderMinPixels : H3_STYLE.baseMinPixels;
+            const coverage = isStrong ? H3_STYLE.strongCoverage
+                    : hasBorder ? H3_STYLE.borderCoverage : H3_STYLE.baseCoverage;
+            const layerOpacity = hasBorder ? H3_STYLE.borderLayerOpacity
+                    : hasFillBoost ? H3_STYLE.boostedLayerOpacity : H3_STYLE.baseLayerOpacity;
+
             const h3Layer = new deck.H3HexagonLayer({
                 id: 'coverage-h3',
                 data: hexagons,
@@ -451,18 +542,20 @@
                 getFillColor: hex => {
                     const entry = aggregatedCells.get(hex);
                     const count = entry ? entry.count : 0;
-                    const alpha = Math.min(255, count * 2.5);
-                    return [...state.userColor, alpha];
+                    const alpha = Math.min(255, fillAlphaFloor + Math.sqrt(Math.max(count, 1)) * fillAlphaGain);
+                    return [...fillColor, alpha];
                 },
                 stroked: true,
-                getLineColor: [...state.userColor, 255],
-                getLineWidth: 1.5,
-                lineWidthMinPixels: 0.5,
+                getLineColor: lineColor,
+                getLineWidth: lineWidth,
+                lineWidthMinPixels: lineWidthMinPixels,
                 pickable: true,
-                coverage: 0.90,
-                opacity: 0.9,
+                coverage: coverage,
+                opacity: layerOpacity,
                 updateTriggers: {
-                    getFillColor: [state.currentZoom, state.currentSliderIndex, state.selectedUserId, state.selectedDeviceId, state.userColor],
+                    getFillColor: [zoom, state.currentSliderIndex, state.selectedUserId, state.selectedDeviceId, state.userColor],
+                    getLineColor: [zoom, state.userColor],
+                    getLineWidth: [zoom],
                 },
                 onHover: (info) => {
                     handleCellHover(info);
@@ -664,7 +757,24 @@
         });
     }
 
-        async function showHoverBoundary(osmId) {
+    function parseBoundaryFeature(data) {
+        if (!data || !data.geojson) return null;
+        try {
+            const geometry = JSON.parse(data.geojson);
+            if (!geometry || !geometry.type || !Array.isArray(geometry.coordinates) || geometry.coordinates.length === 0) {
+                return null;
+            }
+            if (geometry.type !== 'Polygon' && geometry.type !== 'MultiPolygon') {
+                return null;
+            }
+            return { type: 'Feature', geometry, properties: {} };
+        } catch (e) {
+            console.warn('Invalid boundary geometry:', e);
+            return null;
+        }
+    }
+
+    async function showHoverBoundary(osmId) {
         if (osmId === state.selectedOsmId) return;
 
         state.hoveredOsmId = osmId;
@@ -683,7 +793,8 @@
             const data = await resp.json();
             if (!data.geojson || state.hoveredOsmId !== osmId) return;
 
-            const feature = { type: 'Feature', geometry: JSON.parse(data.geojson) };
+            const feature = parseBoundaryFeature(data);
+            if (!feature || state.hoveredOsmId !== osmId) return;
             const layer = new deck.GeoJsonLayer({
                 id: 'coverage-hover-boundary',
                 data: { type: 'FeatureCollection', features: [feature] },
@@ -748,7 +859,8 @@
                 }
                 const data = await resp.json();
                 if (!data.geojson) return;
-                feature = { type: 'Feature', geometry: JSON.parse(data.geojson) };
+                feature = parseBoundaryFeature(data);
+                if (!feature) return;
                 bbox = data.bbox;
                 state.boundaryCache.set(osmId, { layer: null, feature, bbox });
             }

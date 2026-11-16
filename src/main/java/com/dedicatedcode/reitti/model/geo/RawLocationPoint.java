@@ -12,23 +12,22 @@ public class RawLocationPoint {
     private final Double elevationMeters;
     private final GeoPoint geom;
     private final boolean processed;
-    private final boolean synthetic;
 
     private final Long version;
 
     public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters) {
-        this(null, null, timestamp, geom, accuracyMeters, null, false, false, null);
+        this(null, null, timestamp, geom, accuracyMeters, null, false, null);
     }
-    
+
     public RawLocationPoint(Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters) {
-        this(null, null, timestamp, geom, accuracyMeters, elevationMeters, false, false, null);
+        this(null, null, timestamp, geom, accuracyMeters, elevationMeters, false, null);
     }
-    
+
     public RawLocationPoint(Long id, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
-        this(id, null, timestamp, geom, accuracyMeters, elevationMeters, processed, false, version);
+        this(id, null, timestamp, geom, accuracyMeters, elevationMeters, processed, version);
     }
-    
-    public RawLocationPoint(Long id, Long sourceId, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, boolean synthetic, Long version) {
+
+    public RawLocationPoint(Long id, Long sourceId, Instant timestamp, GeoPoint geom, Double accuracyMeters, Double elevationMeters, boolean processed, Long version) {
         this.id = id;
         this.sourceId = sourceId;
         this.timestamp = timestamp;
@@ -36,7 +35,6 @@ public class RawLocationPoint {
         this.accuracyMeters = accuracyMeters;
         this.elevationMeters = elevationMeters;
         this.processed = processed;
-        this.synthetic = synthetic;
         this.version = version;
     }
 
@@ -75,21 +73,21 @@ public class RawLocationPoint {
     public boolean isProcessed() {
         return processed;
     }
-    
-    public boolean isSynthetic() {
-        return synthetic;
+
+    /**
+     * Generated (in-memory) points carry a negative id derived from their timestamp,
+     * while persisted points always have a positive database id.
+     */
+    public boolean isGenerated() {
+        return id != null && id < 0;
     }
 
     public RawLocationPoint markProcessed() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, true, synthetic, version);
+        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, true, version);
     }
-    
-    public RawLocationPoint markAsSynthetic() {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, true, version);
-    }
-    
+
     public RawLocationPoint withId(Long id) {
-        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, synthetic, version);
+        return new RawLocationPoint(id, sourceId, timestamp, geom, accuracyMeters, elevationMeters, processed, version);
     }
 
     public Long getVersion() {

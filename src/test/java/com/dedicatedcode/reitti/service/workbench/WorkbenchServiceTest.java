@@ -157,7 +157,7 @@ class WorkbenchServiceTest {
         assertEquals(5, processedVisits.size());
 
         assertVisit(processedVisits.get(0), "2025-06-16T22:00:09Z", "2025-06-17T05:40:05Z", MOLTKESTR);
-        assertVisit(processedVisits.get(1), "2025-06-17T05:44:39Z", "2025-06-17T05:54:32Z", ST_THOMAS);
+        assertVisit(processedVisits.get(1), "2025-06-17T05:44:08Z", "2025-06-17T05:54:32Z", ST_THOMAS);
         assertVisit(processedVisits.get(2), "2025-06-17T05:58:10Z", "2025-06-17T13:08:53Z", MOLTKESTR);
         assertVisit(processedVisits.get(3), "2025-06-17T13:12:31Z", "2025-06-17T13:18:20Z", ST_THOMAS);
         assertVisit(processedVisits.get(4), "2025-06-17T13:21:28Z", "2025-06-17T21:59:44Z", MOLTKESTR);
