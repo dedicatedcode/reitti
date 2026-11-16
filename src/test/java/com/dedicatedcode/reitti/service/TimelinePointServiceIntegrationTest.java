@@ -54,7 +54,7 @@ class TimelinePointServiceIntegrationTest {
 
         List<RawLocationPoint> points = toList(stream);
         assertTrue(points.size() > 2, "expected generated points between the real points");
-        assertTrue(points.stream().anyMatch(RawLocationPoint::isSynthetic));
+        assertTrue(points.stream().anyMatch(p -> p.getId() < 0));
         assertOrdered(points);
     }
 
@@ -67,7 +67,7 @@ class TimelinePointServiceIntegrationTest {
                 user, START, START.plus(3, ChronoUnit.MINUTES), false, false));
 
         assertEquals(2, points.size());
-        assertTrue(points.stream().noneMatch(RawLocationPoint::isSynthetic));
+        assertTrue(points.stream().noneMatch(RawLocationPoint::isGenerated));
     }
 
     @Test
@@ -79,19 +79,19 @@ class TimelinePointServiceIntegrationTest {
 
         List<RawLocationPoint> filtered = toList(timelinePointService.stream(
                 user, START, START.plus(5, ChronoUnit.MINUTES), true, false));
-        assertFalse(filtered.stream().anyMatch(p -> p.getTimestamp().equals(ignored.getTimestamp()) && !p.isSynthetic()),
+        assertFalse(filtered.stream().anyMatch(p -> p.getTimestamp().equals(ignored.getTimestamp()) && !p.isGenerated()),
                 "ignored real point must not be emitted");
-        assertTrue(filtered.stream().filter(RawLocationPoint::isSynthetic)
+        assertTrue(filtered.stream().filter(RawLocationPoint::isGenerated)
                 .anyMatch(p -> p.getTimestamp().isAfter(first.getTimestamp())
                         && p.getTimestamp().isBefore(ignored.getTimestamp())),
                 "gap before the ignored point must be filled");
-        assertTrue(filtered.stream().filter(RawLocationPoint::isSynthetic)
+        assertTrue(filtered.stream().filter(RawLocationPoint::isGenerated)
                 .anyMatch(p -> p.getTimestamp().isAfter(ignored.getTimestamp())),
                 "gap after the ignored point must be filled");
 
         List<RawLocationPoint> included = toList(timelinePointService.stream(
                 user, START, START.plus(5, ChronoUnit.MINUTES), true, true));
-        assertTrue(included.stream().anyMatch(p -> p.getTimestamp().equals(ignored.getTimestamp()) && !p.isSynthetic()),
+        assertTrue(included.stream().anyMatch(p -> p.getTimestamp().equals(ignored.getTimestamp()) && !p.isGenerated()),
                 "ignored real point must be emitted when requested");
     }
 
@@ -105,10 +105,10 @@ class TimelinePointServiceIntegrationTest {
         List<RawLocationPoint> points = toList(timelinePointService.stream(
                 user, START, START.plus(10, ChronoUnit.MINUTES), true, false));
 
-        assertTrue(points.stream().filter(RawLocationPoint::isSynthetic)
+        assertTrue(points.stream().filter(RawLocationPoint::isGenerated)
                 .anyMatch(p -> p.getTimestamp().isBefore(START.plus(1, ChronoUnit.MINUTES))),
                 "left edge gap should be filled");
-        assertTrue(points.stream().filter(RawLocationPoint::isSynthetic)
+        assertTrue(points.stream().filter(RawLocationPoint::isGenerated)
                 .anyMatch(p -> p.getTimestamp().isAfter(START.plus(9, ChronoUnit.MINUTES))),
                 "right edge gap should be filled");
         assertTrue(points.stream().allMatch(p -> !p.getTimestamp().isBefore(START)
@@ -124,7 +124,7 @@ class TimelinePointServiceIntegrationTest {
         List<RawLocationPoint> points = toList(timelinePointService.stream(
                 user, START, START.plus(3, ChronoUnit.MINUTES), true, false));
 
-        assertTrue(points.stream().noneMatch(RawLocationPoint::isSynthetic),
+        assertTrue(points.stream().noneMatch(RawLocationPoint::isGenerated),
                 "a gap containing a manual wall must not be filled");
     }
 
@@ -141,14 +141,14 @@ class TimelinePointServiceIntegrationTest {
         assertOrdered(points);
         for (RawLocationPoint point : real) {
             assertTrue(points.stream().anyMatch(p -> p.getId().equals(point.getId())
-                    && !p.isSynthetic()), "real point " + point.getTimestamp() + " must be present");
+                    && !p.isGenerated()), "real point " + point.getTimestamp() + " must be present");
         }
-        assertTrue(points.stream().anyMatch(RawLocationPoint::isSynthetic));
+        assertTrue(points.stream().anyMatch(RawLocationPoint::isGenerated));
     }
 
     private RawLocationPoint createPoint(Instant timestamp, double lat, double lon) {
         return rawLocationPointJdbcService.create(user, new RawLocationPoint(
-                null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, true, false, 1L));
+                null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, true, 1L));
     }
 
     private void insertWall(Instant timestamp) {

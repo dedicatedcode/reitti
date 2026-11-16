@@ -115,7 +115,7 @@ class SyntheticPointGeneratorServiceTest {
     }
 
     private static RawLocationPoint point(Instant timestamp, double lat, double lon) {
-        return new RawLocationPoint(null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, true, false, 1L);
+        return new RawLocationPoint(null, null, timestamp, new GeoPoint(lat, lon), 10.0, 100.0, true, 1L);
     }
 
     private static NavigableSet<Instant> walls(Instant... walls) {

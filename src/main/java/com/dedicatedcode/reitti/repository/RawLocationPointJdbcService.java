@@ -42,7 +42,6 @@ public class RawLocationPointJdbcService {
                 rs.getDouble("accuracy_meters"),
                 rs.getObject("elevation_meters", Double.class),
                 rs.getBoolean("processed"),
-                false,
                 rs.getLong("version")
         );
 

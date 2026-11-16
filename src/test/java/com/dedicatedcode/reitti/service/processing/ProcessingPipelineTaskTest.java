@@ -23,12 +23,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -206,7 +202,7 @@ class ProcessingPipelineTaskTest {
     }
 
     private RawLocationPoint pt(long offsetSeconds) {
-        return new RawLocationPoint((long) offsetSeconds + 1, null, T0.plusSeconds(offsetSeconds),
-                new GeoPoint(52.5, 13.4), 10.0, null, false, false, 0L);
+        return new RawLocationPoint(offsetSeconds + 1, null, T0.plusSeconds(offsetSeconds),
+                                    new GeoPoint(52.5, 13.4), 10.0, null, false, 0L);
     }
 }

@@ -74,7 +74,6 @@ public class SyntheticPointGeneratorService {
                 new GeoPoint(point.getLatitude(), point.getLongitude()),
                 point.getAccuracyMeters(),
                 point.getElevationMeters(),
-                false,
                 true,
                 0L
         );
