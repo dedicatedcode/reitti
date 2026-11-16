@@ -4,7 +4,6 @@ import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +17,12 @@ import java.util.List;
 public class GpxExportService {
 
     private final SourceLocationPointJdbcService locationPointJdbcService;
-    private final RawLocationPointJdbcService rawLocationPointJdbcService;
+    private final TimelinePointService timelinePointService;
 
     public GpxExportService(SourceLocationPointJdbcService locationPointJdbcService,
-                            RawLocationPointJdbcService rawLocationPointJdbcService) {
+                            TimelinePointService timelinePointService) {
         this.locationPointJdbcService = locationPointJdbcService;
-        this.rawLocationPointJdbcService = rawLocationPointJdbcService;
+        this.timelinePointService = timelinePointService;
     }
 
     /**
@@ -95,7 +94,7 @@ public class GpxExportService {
         writer.write("    <name>Location Track</name>\n");
         writer.write("    <trkseg>\n");
 
-        for (RawLocationPoint point : rawLocationPointJdbcService.streamByUserAndTimestampBetween(user, start, end, true, false)) {
+        for (RawLocationPoint point : timelinePointService.stream(user, start, end, true, false)) {
             writePoint(writer, point.getLatitude(), point.getLongitude(), point.getElevationMeters(), point.getTimestamp(), point.getAccuracyMeters());
         }
 

@@ -435,6 +435,14 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
         try {
             WKBReader reader = new WKBReader(new GeometryFactory());
             Geometry geom = reader.read(wkb);
+            if (geom == null || geom.isEmpty()) {
+                return null;
+            }
+            String type = geom.getGeometryType();
+            if (!"Polygon".equals(type) && !"MultiPolygon".equals(type)) {
+                log.debug("Skipping boundary for OSM ID {}: unsupported geometry type {}", osmId, type);
+                return null;
+            }
             return geometryToGeoJson(geom);
         } catch (Exception e) {
             log.warn("Failed to convert geometry for OSM ID {}: {}", osmId, e.getMessage());
@@ -720,7 +728,6 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
                                SELECT ST_Y(geom) AS lat, ST_X(geom) AS lng, h3_cell
                                FROM raw_location_points
                                WHERE user_id = ? AND timestamp >= ? AND timestamp < ?
-                                 AND synthetic IS FALSE
                                ORDER BY timestamp
                                """, rs -> {
                 double lat = rs.getDouble("lat");
