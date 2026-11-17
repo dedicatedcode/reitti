@@ -160,14 +160,14 @@ public class LocationApiController {
                                                                @RequestParam(required = false, defaultValue = "UTC") ZoneId timezone) {
         try {
             TimeRange timeRange = this.dataAccessGuard.loadTimeRange(user, start, end, timezone);
-
+            Device device = this.deviceJdbcService.find(user, deviceId).orElse(this.deviceJdbcService.getDefaultDevice(user));
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     geoJsonExportService.generateGeoJsonContentStreaming(
                             user,
                             timeRange.start(),
                             timeRange.end().plus(1, ChronoUnit.SECONDS),
-                            deviceId,
+                            device,
                             writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GeoJSON file", e);

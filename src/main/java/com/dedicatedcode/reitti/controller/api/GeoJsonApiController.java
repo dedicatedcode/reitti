@@ -41,19 +41,23 @@ public class GeoJsonApiController {
 
     @GetMapping(value = "/export", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StreamingResponseBody> exportGeoJson(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal DeviceTokenUser user,
             @RequestParam("start") LocalDate start,
             @RequestParam("end") LocalDate end,
             @RequestParam(value = "device", required = false) Long deviceId) {
 
         try {
+            Device requestedDevice = deviceId == null ? user.getDevice().orElse(null) : this.deviceJdbcService.find(user, deviceId).orElseThrow(IllegalArgumentException::new);
+            if (requestedDevice == null) {
+                throw new IllegalArgumentException("Token has no device attached. Please use another token or attach a device to it.");
+            }
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
                     geoJsonExportService.generateGeoJsonContentStreaming(
                             user,
                             ZonedDateTime.of(start.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
                             ZonedDateTime.of(end.atStartOfDay(), ZoneId.of("UTC")).toInstant(),
-                            deviceId,
+                            requestedDevice,
                             writer);
                 } catch (Exception e) {
                     throw new RuntimeException("Error generating GeoJSON file", e);
