@@ -80,8 +80,9 @@
         (function() {
             let previewId = /*[[${previewId}]]*/ '';
             let previewDate = /*[[${previewDate}]]*/ '';
-            let currentMap = null;
-            let previewMap = null;
+            let userId = /*[[${userId}]]*/ null;
+            let currentEntry = null;
+            let previewEntry = null;
             let currentMapInitialized = false;
             let previewMapInitialized = false;
             let previewReady = false;
@@ -90,160 +91,386 @@
             let statusPollTimeoutId = null;
             let statusPollCount = 0;
             const MAX_STATUS_POLLS = 60;
-            
+
+            // Maps from a previous fragment instance must be destroyed before
+            // new ones are created, otherwise WebGL contexts pile up.
+            if (typeof window.__destroyPreviewMaps === 'function') {
+                window.__destroyPreviewMaps();
+            }
+            window.__previewMapEntries = [];
+            window.__destroyPreviewMaps = function() {
+                (window.__previewMapEntries || []).forEach(entry => destroyPreviewMapEntry(entry));
+                window.__previewMapEntries = [];
+            };
+            if (!window.__previewBeforeSwapHooked) {
+                window.__previewBeforeSwapHooked = true;
+                document.body.addEventListener('htmx:beforeSwap', function(event) {
+                    const target = event.detail?.target;
+                    if (!target) return;
+                    if (target.id === 'preview-area' || target.tagName === 'BODY'
+                        || (target.closest && target.closest('#preview-area'))) {
+                        window.__destroyPreviewMaps?.();
+                    }
+                });
+            }
+
             window.showCurrentData = function() {
                 document.getElementById('current-data-btn').classList.add('active');
                 document.getElementById('preview-data-btn').classList.remove('active');
                 document.getElementById('current-map-container').classList.add('active');
                 document.getElementById('preview-map-container').classList.remove('active');
-                
+
                 if (!currentMapInitialized) {
                     initCurrentMap();
+                } else if (currentEntry) {
+                    refitEntry(currentEntry);
                 }
             };
-            
+
             window.showPreviewData = function() {
                 document.getElementById('current-data-btn').classList.remove('active');
                 document.getElementById('preview-data-btn').classList.add('active');
                 document.getElementById('current-map-container').classList.remove('active');
                 document.getElementById('preview-map-container').classList.add('active');
-                
+
                 if (!previewMapInitialized && previewReady) {
                     initPreviewMap();
                 } else if (previewMapInitialized && previewReady) {
                     // Reload data in case it was updated while tab was inactive
+                    if (previewEntry) {
+                        refitEntry(previewEntry);
+                    }
                     loadPreviewMapData();
                 }
             };
             
+            function resolvePreviewStyle() {
+                const styles = Array.isArray(window.reittiCustomMapStyles) ? window.reittiCustomMapStyles : [];
+                const activeId = window.reittiActiveMapStyleId || window.localStorage?.getItem('mapStyleId');
+                const style = styles.find(candidate => candidate.id === activeId) || styles[0];
+                if (style) {
+                    if (style.mapType === 'raster' && style.styleInputType === 'url') {
+                        return style.styleUrl;
+                    }
+                    if (style.mapType === 'vector') {
+                        if (style.styleInputType === 'url') {
+                            return style.styleUrl;
+                        }
+                        if (style.styleInputType === 'json') {
+                            try {
+                                const definition = typeof style.styleInput === 'string' ? JSON.parse(style.styleInput) : style.styleInput;
+                                // The preview is a small 2D map: strip terrain and
+                                // 3D content so the first render stays fast.
+                                if (definition && typeof definition === 'object') {
+                                    delete definition.terrain;
+                                    if (Array.isArray(definition.layers)) {
+                                        definition.layers = definition.layers.filter(layer =>
+                                            layer.type !== 'hillshade' && layer.type !== 'fill-extrusion');
+                                    }
+                                }
+                                return definition;
+                            } catch (error) {
+                                console.warn('Unable to parse map style', error);
+                            }
+                        }
+                    }
+                }
+                // Fallback: build a raster style from the configured tile service
+                const tiles = window.userSettings?.tiles;
+                if (tiles?.service) {
+                    return {
+                        version: 8,
+                        sources: {
+                            preview: {
+                                type: 'raster',
+                                tiles: [tiles.service],
+                                tileSize: 256,
+                                attribution: tiles.attribution || ''
+                            }
+                        },
+                        layers: [
+                            {id: 'background', type: 'background', paint: {'background-color': '#1a1a1a'}},
+                            {id: 'tiles', type: 'raster', source: 'preview'}
+                        ]
+                    };
+                }
+                return null;
+            }
+
+            function configureMapWorker() {
+                if (!window.maplibregl?.setWorkerUrl) return;
+                const contextPath = (window.contextPath || '').replace(/\/$/, '');
+                window.maplibregl.setWorkerUrl(`${window.location.origin}${contextPath}/js/vendor/maplibre-gl-worker.6.16.0.mjs`);
+            }
+
+            function destroyPreviewMapEntry(entry) {
+                if (!entry) return;
+                try {
+                    entry.map.remove();
+                } catch (error) {
+                    console.warn('Could not dispose preview map', error);
+                }
+            }
+
+            function emptyFeatureCollection() {
+                return {type: 'FeatureCollection', features: []};
+            }
+
+            function createPreviewMap(containerId, color) {
+                const style = resolvePreviewStyle();
+                if (!style || !window.maplibregl) {
+                    console.warn('No map style available for the preview map');
+                    return null;
+                }
+                configureMapWorker();
+                const map = new maplibregl.Map({
+                    container: containerId,
+                    style: style,
+                    center: [window.userSettings?.homeLongitude || 24.9384, window.userSettings?.homeLatitude || 60.1699],
+                    zoom: 12,
+                    attributionControl: false,
+                    dragRotate: false,
+                    pitchWithRotate: false
+                });
+                const entry = {map, color, ready: false, needsRender: false, needsFit: false, timelineData: null, points: null};
+                window.__previewMapEntries.push(entry);
+                map.on('load', () => {
+                    strip3DContent(map);
+                    setupPreviewLayers(map, entry.color);
+                    // map.css fades the canvas/controls in only once the
+                    // container carries the is-loaded class.
+                    map.getContainer().classList.add('is-loaded');
+                    entry.ready = true;
+                    if (entry.needsRender) {
+                        renderEntryData(entry);
+                    }
+                });
+                map.on('error', event => console.warn('Preview map error', event?.error?.message || event));
+                return entry;
+            }
+
+            function strip3DContent(map) {
+                // The preview is a small 2D view. Extruded buildings are
+                // depth-tested and would hide the ground-level path and visit
+                // layers, so switch all 3D content off regardless of whether
+                // the style was configured as URL or JSON.
+                map.getStyle()?.layers?.forEach(layer => {
+                    if (layer.type === 'fill-extrusion' || layer.type === 'hillshade') {
+                        map.setLayoutProperty(layer.id, 'visibility', 'none');
+                    }
+                });
+                if (map.getTerrain()) {
+                    map.setTerrain(null);
+                }
+            }
+
+            function setupPreviewLayers(map, color) {
+                map.addSource('preview-path', {type: 'geojson', data: emptyFeatureCollection()});
+                map.addSource('preview-visit-areas', {type: 'geojson', data: emptyFeatureCollection()});
+                map.addSource('preview-visit-dots', {type: 'geojson', data: emptyFeatureCollection()});
+
+                map.addLayer({
+                    id: 'preview-path-line',
+                    type: 'line',
+                    source: 'preview-path',
+                    layout: {'line-join': 'round', 'line-cap': 'round'},
+                    paint: {'line-color': color, 'line-width': 2, 'line-opacity': 0.9}
+                });
+                map.addLayer({
+                    id: 'preview-visit-area-fill',
+                    type: 'fill',
+                    source: 'preview-visit-areas',
+                    paint: {'fill-color': color, 'fill-opacity': 0.1}
+                });
+                map.addLayer({
+                    id: 'preview-visit-area-outline',
+                    type: 'line',
+                    source: 'preview-visit-areas',
+                    paint: {'line-color': color, 'line-width': 1, 'line-opacity': 0.9}
+                });
+                map.addLayer({
+                    id: 'preview-visit-dot',
+                    type: 'circle',
+                    source: 'preview-visit-dots',
+                    paint: {
+                        'circle-radius': 5,
+                        'circle-color': color,
+                        'circle-opacity': 0.8,
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+
+                const showVisitPopup = (event) => showVisitTooltip(map, event);
+                const hideVisitPopup = () => {
+                    if (window.__previewPopup) {
+                        window.__previewPopup.remove();
+                        window.__previewPopup = null;
+                    }
+                };
+                ['preview-visit-areas', 'preview-visit-dots'].forEach(layerId => {
+                    map.on('mousemove', layerId, showVisitPopup);
+                    map.on('mouseleave', layerId, hideVisitPopup);
+                });
+            }
+
+            function showVisitTooltip(map, event) {
+                const properties = event.features?.[0]?.properties;
+                if (!properties) return;
+                if (window.__previewPopup) {
+                    window.__previewPopup.remove();
+                }
+                const visitCount = properties.count;
+                const visitText = visitCount === 1 ? 'visit' : 'visits';
+                const totalDurationText = humanizeDuration(properties.durationMs, {units: ["h", "m"], round: true});
+                window.__previewPopup = new maplibregl.Popup({closeButton: false, closeOnClick: false, offset: 8})
+                    .setLngLat(event.lngLat)
+                    .setHTML(`<div class="preview-popup">
+                                 <div class="preview-popup-title">${properties.name || 'Unknown Place'}</div>
+                                 <div class="preview-popup-body">${visitCount} ${visitText} - Total: ${totalDurationText}</div>
+                              </div>`)
+                    .addTo(map);
+            }
+
             function initCurrentMap() {
                 if (currentMapInitialized) return;
-                
-                // Initialize Leaflet map for current data
-                currentMap = L.map('current-map', {zoomControl: false, attributionControl: false})
-                    .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
-                
-                // Add tile layer
-                const tilesUrl = window.userSettings.tiles.service;
-                const tilesAttribution = window.userSettings.tiles.attribution;
-                
-                const tileLayer = L.tileLayer.grayscale;
-                tileLayer(tilesUrl, {
-                    maxZoom: 19,
-                    attribution: tilesAttribution
-                }).addTo(currentMap);
-                
-                // Load current data for the selected date
-                loadCurrentMapData();
+                currentEntry = createPreviewMap('current-map', '#ff6c00');
                 currentMapInitialized = true;
+                loadCurrentMapData();
             }
-            
+
             function initPreviewMap() {
                 if (previewMapInitialized) return;
-                
-                // Initialize Leaflet map for preview data
-                previewMap = L.map('preview-map', {zoomControl: false, attributionControl: false})
-                    .setView([window.userSettings?.homeLatitude || 60.1699, window.userSettings?.homeLongitude || 24.9384], 12);
-                
-                // Add tile layer
-                const tilesUrl = window.userSettings.tiles.service;
-                const tilesAttribution = window.userSettings.tiles.attribution;
-                
-                const tileLayer = L.tileLayer.grayscale;
-                tileLayer(tilesUrl, {
-                    maxZoom: 19,
-                    attribution: tilesAttribution
-                }).addTo(previewMap);
-                
-                // Load preview data
-                loadPreviewMapData();
+                previewEntry = createPreviewMap('preview-map', '#4CAF50');
                 previewMapInitialized = true;
+                loadPreviewMapData();
             }
             
             function loadCurrentMapData() {
-                if (!currentMap) return;
-                
+                if (!currentEntry) return;
+
                 // Fetch current processed visits/trips for the selected date
-                fetch(window.contextPath + `/api/v1/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(window.contextPath + `/api/v1/timeline?date=${previewDate}&timezone=${encodeURIComponent(getUserTimezone())}`)
                     .then(response => response.json())
                     .then(data => {
                         updateTimelineContent('current-timeline-content', data);
-                        updateMapWithData(currentMap, data, '#ff6c00');
-                        loadRawLocationData(currentMap, data, '#ff6c00');
+                        currentEntry.timelineData = data;
+                        renderEntryData(currentEntry);
                     })
                     .catch(error => {
                         console.error('Error loading current map data:', error);
                         document.getElementById('current-timeline-content').innerHTML = '<div class="error">Error loading timeline</div>';
                     });
+                loadLocationPath(currentEntry);
             }
-            
+
             function loadPreviewMapData() {
-                if (!previewMap || !previewReady) return;
-                
+                if (!previewEntry || !previewReady) return;
+
                 // Fetch preview processed visits/trips
-                fetch(window.contextPath + `/api/v1/preview/${previewId}/timeline?date=${previewDate}&timezone=${getUserTimezone()}`)
+                fetch(window.contextPath + `/api/v1/preview/${previewId}/timeline?date=${previewDate}&timezone=${encodeURIComponent(getUserTimezone())}`)
                     .then(response => response.json())
                     .then(data => {
                         updateTimelineContent('preview-timeline-content', data);
-                        updateMapWithData(previewMap, data, '#4CAF50');
-                        loadRawLocationData(previewMap, data, '#4CAF50');
+                        previewEntry.timelineData = data;
+                        renderEntryData(previewEntry);
                     })
                     .catch(error => {
                         console.error('Error loading preview map data:', error);
                         document.getElementById('preview-timeline-content').innerHTML = '<div class="error">Error loading preview</div>';
                     });
+                loadLocationPath(previewEntry);
             }
-            
-            function updateMapWithData(map, data, color) {
-                // Clear existing layers (except tile layer)
-                map.eachLayer(layer => {
-                    if (!layer._url) {
-                        map.removeLayer(layer);
-                    }
-                });
-                
-                const bounds = L.latLngBounds();
-                let hasValidCoords = false;
-                
+
+            function loadLocationPath(entry) {
+                if (!entry) return;
+                const streamUrl = `/api/v3/locations/stream/${userId}?start=${encodeURIComponent(previewDate)}&end=${encodeURIComponent(previewDate)}&timezone=${encodeURIComponent(getUserTimezone())}`;
+                LocationStream.fetchPoints(window.contextPath + streamUrl)
+                    .then(points => {
+                        entry.points = points;
+                        renderEntryData(entry);
+                    })
+                    .catch(error => {
+                        console.warn('Error fetching location path:', error);
+                    });
+            }
+
+            function renderEntryData(entry) {
+                if (!entry.ready) {
+                    entry.needsRender = true;
+                    return;
+                }
+                const bounds = new maplibregl.LngLatBounds();
+                extendBounds(bounds, renderVisits(entry));
+                extendBounds(bounds, renderPath(entry));
+                if (bounds.isEmpty()) {
+                    return;
+                }
+                // Fitting a hidden container produces a broken viewport; defer
+                // until the tab becomes visible again.
+                const container = entry.map.getContainer();
+                if (container.clientWidth === 0 || container.clientHeight === 0) {
+                    entry.needsFit = true;
+                    return;
+                }
+                entry.needsFit = false;
+                entry.map.fitBounds(bounds, {padding: 20, maxZoom: 15, duration: 0});
+            }
+
+            function refitEntry(entry) {
+                entry.map.resize();
+                if (entry.needsFit) {
+                    renderEntryData(entry);
+                }
+            }
+
+            function extendBounds(target, source) {
+                if (!source || source.isEmpty()) return;
+                target.extend([source.getWest(), source.getSouth()]);
+                target.extend([source.getEast(), source.getNorth()]);
+            }
+
+            function renderVisits(entry) {
+                const data = entry.timelineData;
+                const areaFeatures = [];
+                const dotFeatures = [];
+                const bounds = new maplibregl.LngLatBounds();
+
                 // Group places by coordinates to avoid duplicate markers
                 const placeGroups = new Map();
 
-                // Process timeline data (similar to index.html)
                 if (data && data.length > 0) {
                     data.forEach(element => {
                         if (element.type === 'VISIT') {
-                            const visit = element;
-                            const lat = visit.place?.latitudeCentroid;
-                            const lng = visit.place?.longitudeCentroid;
-                            
+                            const lat = element.place?.latitudeCentroid;
+                            const lng = element.place?.longitudeCentroid;
+
                             if (lat && lng) {
                                 const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-                                
+
                                 if (!placeGroups.has(coordKey)) {
                                     placeGroups.set(coordKey, {
                                         lat: lat,
                                         lng: lng,
                                         totalDurationMs: 0,
                                         visits: [],
-                                        place: visit.place
+                                        place: element.place
                                     });
                                 }
                                 const group = placeGroups.get(coordKey);
                                 group.totalDurationMs += parseDurationText(element.formattedDuration);
-                                group.visits.push(visit);
-                                
-                                bounds.extend([lat, lng]);
-                                hasValidCoords = true;
+                                group.visits.push(element);
+
+                                bounds.extend([lng, lat]);
                             }
                         }
                     });
                 }
-                
-                // Draw markers for grouped places
+
                 placeGroups.forEach((group) => {
-                    const { lat, lng, totalDurationMs, visits, place } = group;
-                    
-                    // Calculate radius using logarithmic scale
+                    const {lat, lng, totalDurationMs, visits, place} = group;
+
+                    // Calculate radius using logarithmic scale (meters)
                     const durationHours = totalDurationMs / (1000 * 60 * 60);
                     const baseRadius = 15;
                     const maxRadius = 100;
@@ -251,45 +478,71 @@
 
                     const logScale = Math.log(1 + durationHours) / Math.log(1 + 24);
                     const radius = Math.min(maxRadius, Math.max(minRadius, baseRadius + (logScale * (maxRadius - baseRadius))));
-                    
-                    // Create marker
-                    L.circleMarker([lat, lng], {
-                        radius: 5,
-                        fillColor: color,
-                        color: '#fff',
-                        weight: 1,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).addTo(map);
-                    
-                    // Create circle with calculated radius
-                    const circle = L.circle([lat, lng], {
-                        color: color,
-                        fillColor: color,
-                        fillOpacity: 0.1,
-                        radius: radius
-                    }).addTo(map);
-                    
-                    const totalDurationText = humanizeDuration(totalDurationMs, {units: ["h", "m"], round: true});
-                    const visitCount = visits.length;
-                    const visitText = visitCount === 1 ? 'visit' : 'visits';
-                    
-                    const tooltip = L.tooltip([lat, lng], {
-                        content: `<div">${place.name || 'Unknown Place'}</div>
-                         <div style="margin-top: 4px; font-weight: bold;">
-                             ${visitCount} ${visitText} - Total: ${totalDurationText}
-                         </div>`,
-                        className: 'visit-popup',
-                        permanent: false
+
+                    const properties = {
+                        name: place?.name || 'Unknown Place',
+                        count: visits.length,
+                        durationMs: totalDurationMs
+                    };
+
+                    areaFeatures.push({
+                        type: 'Feature',
+                        properties: properties,
+                        geometry: {type: 'Polygon', coordinates: [circleRing(lng, lat, radius)]}
                     });
-                    
-                    circle.bindTooltip(tooltip);
+                    dotFeatures.push({
+                        type: 'Feature',
+                        properties: properties,
+                        geometry: {type: 'Point', coordinates: [lng, lat]}
+                    });
                 });
-                
-                // Store bounds for later use
-                if (hasValidCoords && bounds.isValid()) {
-                    map._previewBounds = bounds;
+
+                entry.map.getSource('preview-visit-areas')?.setData({type: 'FeatureCollection', features: areaFeatures});
+                entry.map.getSource('preview-visit-dots')?.setData({type: 'FeatureCollection', features: dotFeatures});
+                return bounds;
+            }
+
+            function renderPath(entry) {
+                const points = entry.points || [];
+                const bounds = new maplibregl.LngLatBounds();
+                const features = [];
+                let segment = [];
+
+                const flushSegment = () => {
+                    if (segment.length >= 2) {
+                        features.push({
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {type: 'LineString', coordinates: segment}
+                        });
+                        segment.forEach(coordinate => bounds.extend(coordinate));
+                    }
+                    segment = [];
+                };
+
+                for (let i = 0; i < points.length; i++) {
+                    const point = points[i];
+                    if (i > 0 && point.timestamp - points[i - 1].timestamp > 300) {
+                        flushSegment();
+                    }
+                    segment.push([point.lng, point.lat]);
                 }
+                flushSegment();
+
+                entry.map.getSource('preview-path')?.setData({type: 'FeatureCollection', features: features});
+                return bounds;
+            }
+
+            function circleRing(lng, lat, radiusMeters, steps = 40) {
+                const ring = [];
+                const latRad = lat * Math.PI / 180;
+                const latDistance = radiusMeters / 111320;
+                const lngDistance = radiusMeters / (111320 * Math.max(Math.cos(latRad), 0.01));
+                for (let i = 0; i <= steps; i++) {
+                    const theta = (i / steps) * 2 * Math.PI;
+                    ring.push([lng + lngDistance * Math.cos(theta), lat + latDistance * Math.sin(theta)]);
+                }
+                return ring;
             }
             
             function updateTimelineContent(containerId, data) {
@@ -340,77 +593,6 @@
                 }
                 
                 container.innerHTML = html;
-            }
-            
-            function loadRawLocationData(map, timelineData, color) {
-                // Extract raw location points URL from timeline data
-                let rawLocationPointsUrl = null;
-                // Look for raw location points URL in the timeline data
-                if (timelineData && timelineData.length > 0) {
-                    const firstUserSection = timelineData.find(item => item.rawLocationPointsUrl);
-                    if (firstUserSection) {
-                        rawLocationPointsUrl = firstUserSection.rawLocationPointsUrl;
-                    }
-                }
-                
-                if (!rawLocationPointsUrl) {
-                    // Construct URL based on current date and user
-                    rawLocationPointsUrl = `/api/v1/raw-location-points?date=${previewDate}&timezone=${getUserTimezone()}`;
-                }
-                
-                // Fetch and display raw location points
-                fetch(window.contextPath + rawLocationPointsUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            console.warn('Could not fetch raw location points');
-                            return { points: [] };
-                        }
-                        return response.json();
-                    })
-                    .then(rawPointsData => {
-                        updateMapWithRawPoints(map, rawPointsData, color);
-                    })
-                    .catch(error => {
-                        console.warn('Error fetching raw location points:', error);
-                    });
-            }
-            
-            function updateMapWithRawPoints(map, rawPointsData, color) {
-                const bounds = L.latLngBounds();
-                
-                const rawPointsPath = L.geodesic([], {
-                    color: color,
-                    weight: 2,
-                    opacity: 0.9,
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    steps: 2
-                });
-
-                if (rawPointsData && rawPointsData.segments && rawPointsData.segments.length > 0) {
-                    for (const segment of rawPointsData.segments) {
-                        const rawPointsCoords = segment.points.map(point => [point.latitude, point.longitude]);
-                        bounds.extend(rawPointsCoords);
-                        rawPointsPath.setLatLngs(rawPointsCoords);
-                        rawPointsPath.addTo(map);
-
-                        // Combine with existing bounds if they exist
-                        if (map._previewBounds && map._previewBounds.isValid()) {
-                            bounds.extend(map._previewBounds);
-                        }
-
-                        // Fit map to combined bounds
-                        if (bounds.isValid()) {
-                            map.fitBounds(bounds, {
-                                paddingTopLeft: [20, 20],
-                                paddingBottomRight: [20, 20],
-                                maxZoom: 15
-                            });
-                        }
-                    }
-
-                }
-
             }
             
             function getUserTimezone() {
@@ -730,6 +912,19 @@
         
         .error {
             color: #d32f2f;
+        }
+
+        .preview-popup {
+            font-size: 0.9em;
+        }
+
+        .preview-popup-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .preview-popup-body {
+            color: #555;
         }
     </style>
 </div>

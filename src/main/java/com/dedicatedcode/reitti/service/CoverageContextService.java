@@ -10,11 +10,7 @@ import com.dedicatedcode.reitti.repository.UserSettingsJdbcService;
 import com.dedicatedcode.reitti.repository.UserSharingJdbcService;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class CoverageContextService {
@@ -85,7 +81,7 @@ public class CoverageContextService {
                 avatarUrl,
                 color,
                 Collections.emptyList(),
-                null, null, null, null, null, null,
+                null, null, null, null, null,
                 devices,
                 active);
     }

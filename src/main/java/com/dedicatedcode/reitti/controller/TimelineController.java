@@ -180,7 +180,6 @@ public class TimelineController {
                                     currentUserAvatarUrl,
                                     viewerSettings.getColor(),
                                     currentUserEntries,
-                                    null,
                                     currentUserProcessedVisitsUrl,
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
@@ -328,8 +327,6 @@ public class TimelineController {
                         LocalDateTime rangeStart = startOfRange.atZone(userTimezone).toLocalDateTime();
                         LocalDateTime rangeEndInclusive = endOfRange.atZone(userTimezone).toLocalDateTime();
                         LocalDateTime rangeEndExclusive = endOfRange.plusMillis(1).minusSeconds(1).atZone(userTimezone).toLocalDateTime();
-                        LocalDateTime rangeEndNextDay = endOfRange.plusMillis(1).atZone(userTimezone).toLocalDateTime();
-                        String currentUserRawLocationPointsUrl = latestLocationOnly ? null : String.format("/api/v1/raw-location-points/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndNextDay, userTimezone.getId());
                         String currentUserProcessedVisitsUrl = latestLocationOnly ? null : String.format("/api/v1/visits/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
                         String mapMetaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
                         String mapStreamDataUrl = latestLocationOnly ? null : String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
@@ -344,7 +341,6 @@ public class TimelineController {
                                                     currentUserAvatarUrl,
                                                     u.getColor(),
                                                     userTimelineEntries,
-                                                    currentUserRawLocationPointsUrl,
                                                     currentUserProcessedVisitsUrl,
                                                     mapMetaDataUrl,
                                                     mapStreamDataUrl,

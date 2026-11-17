@@ -821,7 +821,6 @@ public class ReittiIntegrationService {
                                     "/reitti-integration/avatar/" + integration.getId(),
                                     integration.getColor(),
                                     timelineEntries,
-                                    null,
                                     String.format("/reitti-integration/visits/%d?startDate=%s&endDate=%s&timezone=%s", integration.getId(), startDate, endDate, userTimezone),
                                     mapMetaDataUrl,
                                     mapStreamDataUrl,
