@@ -104,7 +104,6 @@ public class TestingService {
         final int requiredStableChecks = 5;
 
         Awaitility.await()
-                .logging()
                 .pollInterval(Math.max(1, seconds / 300), TimeUnit.SECONDS)
                 .atMost(seconds, TimeUnit.SECONDS)
                 .alias("Wait for processing to complete")
