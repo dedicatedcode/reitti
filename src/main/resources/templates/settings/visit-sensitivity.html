@@ -7,16 +7,15 @@
     <link rel="icon" th:href="@{/img/logo-64x64.png}">
     <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
-    <link rel="stylesheet" th:href="@{/css/leaflet.css}">
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.6.16.0.min.css}">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
-    <script th:src="@{/js/vendor/leaflet.js}"></script>
-    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
-    <script th:src="@{/js/vendor/leaflet.geodesic.2.7.2.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.6.16.0.min.js}"></script>
+    <script th:src="@{/js/location-stream.js}"></script>
     <script th:src="@{/js/util.js}"></script>
 </head>
 <body class="settings-page">
@@ -82,6 +81,8 @@
     window.contextPath = /*[[@{/}]]*/ "/";
     window.contextPath = window.contextPath.replace(/\/$/, '');
     window.userSettings = /*[[${userSettings}]]*/ {}
+    window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+    window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
 </script>
 </body>
 </html>

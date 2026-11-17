@@ -350,7 +350,9 @@
 
     <div class="memories-grid" th:unless="${memories.isEmpty()}">
         <div th:each="memory : ${memories}" class="memory-card">
-            <div class="memory-card-map-container" th:attr="data-raw-location-url=${memory.rawLocationUrl}">
+            <div class="memory-card-map-container"
+                 th:id="${'memory-card-map-' + memory.memory.id}"
+                 th:attr="data-stream-url=${memory.streamUrl}, data-meta-data-url=${memory.metaDataUrl}">
             </div>
             <div class="memory-card-details">
                 <div class="memory-card-info">
@@ -381,42 +383,6 @@
             const timezone = getUserTimezone();
             window.location.href = window.contextPath + `/memories/${memoryId}?timezone=${timezone}`;
         }
-
-        (function () {
-            const mapContainers = document.querySelectorAll('.memory-card-map-container');
-            for (const mapContainer of mapContainers) {
-                const memoryMap = L.map(mapContainer, {
-                    zoomControl: false,
-                    attributionControl: false,
-                    boxZoom: false,
-                    doubleClickZoom: false,
-                    dragging: false,
-                    keyboard: false,
-                    scrollWheelZoom: false,
-                    tap: false,
-                    touchZoom: false
-                }).setView([51.505, -0.09], 13);
-                L.tileLayer.grayscale(window.userSettings.tiles.service, {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(memoryMap);
-                const  rawLocationLoader = new RawLocationLoader(memoryMap, window.userSettings);
-                const userConfigs = [{
-                    url: mapContainer.attributes['data-raw-location-url'].value,
-                    color: '#f1ba63',
-                    avatarUrl: null,
-                    avatarFallback: null,
-                    displayName: 'Memory Location Data'
-                }];
-                rawLocationLoader.init(userConfigs);
-
-                // Load location data for the memory date range without bounds filtering
-                rawLocationLoader.loadForDateRange(
-                    false, // autoUpdateMode
-                    false  // withBounds - don't filter by current map bounds
-                );
-            }
-        })()
     </script>
 </div>
 

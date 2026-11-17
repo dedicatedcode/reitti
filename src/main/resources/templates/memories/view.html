@@ -18,10 +18,6 @@
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
-    <script th:src="@{/js/vendor/leaflet.js}"></script>
-    <script th:src="@{/js/vendor/leaflet.geodesic.2.7.2.js}"></script>
-    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
-    <script th:src="@{/js/raw-location-loader.js}"></script>
     <script th:src="@{/js/HumanizeDuration.js}"></script>
     <script th:src="@{/js/datetime-picker.js}"></script>
     <script th:src="@{/js/util.js}"></script>
@@ -306,7 +302,7 @@
                                 <div th:unless="${block.trips.isEmpty()}" class="cluster-map"
                                      th:id="${'map_cluster_' + block.blockId}"
                                      th:data-type="trips"
-                                     th:data-stream-url="${block.rawLocationPointsUrl}"
+                                     th:data-stream-url="${block.streamUrl}"
                                      th:data-meta-data-url="${block.metaDataUrl}"
                                      th:data-trips-url="${block.tripsUrl}"></div>
                             </div>
@@ -356,7 +352,7 @@
                                 <div class="cluster-map"
                                      th:id="${'map_cluster_' + block.blockId}"
                                      th:data-type="visits"
-                                     th:data-stream-url="${block.rawLocationPointsUrl}"
+                                     th:data-stream-url="${block.streamUrl}"
                                      th:data-meta-data-url="${block.metaDataUrl}"
                                      th:data-visits-url="${block.visitsUrl}"></div>
 

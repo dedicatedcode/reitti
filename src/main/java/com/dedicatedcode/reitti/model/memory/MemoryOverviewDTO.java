@@ -2,18 +2,24 @@ package com.dedicatedcode.reitti.model.memory;
 
 public class MemoryOverviewDTO {
     private final MemoryDTO memory;
-    private final String rawLocationUrl;
+    private final String streamUrl;
+    private final String metaDataUrl;
 
-    public MemoryOverviewDTO(MemoryDTO memory, String rawLocationUrl) {
+    public MemoryOverviewDTO(MemoryDTO memory, String streamUrl, String metaDataUrl) {
         this.memory = memory;
-        this.rawLocationUrl = rawLocationUrl;
+        this.streamUrl = streamUrl;
+        this.metaDataUrl = metaDataUrl;
     }
 
     public MemoryDTO getMemory() {
         return memory;
     }
 
-    public String getRawLocationUrl() {
-        return rawLocationUrl;
+    public String getStreamUrl() {
+        return streamUrl;
+    }
+
+    public String getMetaDataUrl() {
+        return metaDataUrl;
     }
 }
