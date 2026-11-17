@@ -67,11 +67,7 @@ class LocationDataAccessIntegrationTest {
     }
 
     @Test
-    void rawPointsOfOtherUserAreForbiddenWithoutSharing() throws Exception {
-        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", owner.getId())
-                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
-                                .with(user(other)))
-                .andExpect(status().isForbidden());
+    void dataOfOtherUserIsForbiddenWithoutSharing() throws Exception {
         mockMvc.perform(get("/api/v2/locations/metadata/{userId}", owner.getId())
                                 .param("start", "2024-01-01").param("end", "2024-01-31")
                                 .with(user(other)))
@@ -110,14 +106,9 @@ class LocationDataAccessIntegrationTest {
     }
 
     @Test
-    void rawPointsOfOtherUserAreReadableWhenShared() throws Exception {
+    void sharedUserDataIsReadable() throws Exception {
         shareWith(owner, other);
 
-        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", owner.getId())
-                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
-                                .with(user(other)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.latest").exists());
         mockMvc.perform(get("/api/v2/locations/metadata/{userId}", owner.getId())
                                 .param("start", "2024-01-01").param("end", "2024-01-31")
                                 .with(user(other)))
@@ -130,10 +121,6 @@ class LocationDataAccessIntegrationTest {
         shareWith(other, owner);
         RequestPostProcessor link = magicLink(owner, MagicLinkAccessLevel.FULL_ACCESS);
 
-        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", other.getId())
-                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
-                                .with(link))
-                .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v2/locations/metadata/{userId}", other.getId())
                                 .param("start", "2024-01-01").param("end", "2024-01-31")
                                 .with(link))
@@ -244,12 +231,6 @@ class LocationDataAccessIntegrationTest {
                                 .param("start", "2024-01-01").param("end", "2024-01-31")
                                 .with(user(other)))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", owner.getId())
-                                .param("startDate", "2024-01-01").param("endDate", "2024-01-31")
-                                .with(user(other)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.segments").isEmpty())
-                .andExpect(jsonPath("$.latest").exists());
     }
 
     @Test
@@ -269,10 +250,6 @@ class LocationDataAccessIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v2/locations/stream/{userId}", owner.getId())
                                 .param("start", "2024-01-08").param("end", "2024-01-31")
-                                .with(link))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/raw-location-points/{userId}", owner.getId())
-                                .param("startDate", "2024-01-01").param("endDate", "2024-01-07")
                                 .with(link))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/latest-location").with(link))

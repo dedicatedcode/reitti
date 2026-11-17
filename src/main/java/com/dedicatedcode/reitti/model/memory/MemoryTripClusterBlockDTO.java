@@ -11,7 +11,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
 
     private final MemoryClusterBlock clusterBlock;
     private final List<MemoryTrip> trips;
-    private final String rawLocationPointsUrl;
+    private final String streamUrl;
     private final String metaDataUrl;
     private final String tripsUrl;
     private final LocalDateTime adjustedStartTime;
@@ -21,7 +21,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
 
     public MemoryTripClusterBlockDTO(MemoryClusterBlock clusterBlock,
                                      List<MemoryTrip> trips,
-                                     String rawLocationPointsUrl,
+                                     String streamUrl,
                                      String metaDataUrl,
                                      String tripsUrl,
                                      LocalDateTime adjustedStartTime,
@@ -30,7 +30,7 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
                                      Long movingDuration) {
         this.clusterBlock = clusterBlock;
         this.trips = trips != null ? List.copyOf(trips) : List.of();
-        this.rawLocationPointsUrl = rawLocationPointsUrl;
+        this.streamUrl = streamUrl;
         this.metaDataUrl = metaDataUrl;
         this.tripsUrl = tripsUrl;
         this.adjustedStartTime = adjustedStartTime;
@@ -68,8 +68,8 @@ public class MemoryTripClusterBlockDTO implements MemoryBlockPart, Serializable 
         return movingDuration;
     }
 
-    public String getRawLocationPointsUrl() {
-        return rawLocationPointsUrl;
+    public String getStreamUrl() {
+        return streamUrl;
     }
 
     public String getMetaDataUrl() {

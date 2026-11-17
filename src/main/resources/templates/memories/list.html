@@ -9,17 +9,22 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
     <link rel="stylesheet" th:href="@{/css/main.css}" href="../../static/css/main.css">
     <link rel="stylesheet" th:href="@{/css/lineicons.css}" href="../../static/css/lineicons.css">
-    <link rel="stylesheet" th:href="@{/css/leaflet.css}" href="../../static/css/leaflet.css">
+    <link rel="stylesheet" th:href="@{/css/maplibre-gl.6.16.0.min.css}" href="/css/maplibre-gl.6.16.0.min.css">
     <link rel="stylesheet" th:href="@{/css/datetime-picker.css}" href="../../static/css/datetime-picker.css">
     <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}"></script>
     <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
-    <script th:src="@{/js/vendor/leaflet.js}"></script>
-    <script th:src="@{/js/vendor/leaflet.geodesic.2.7.2.js}"></script>
-    <script th:src="@{/js/vendor/TileLayer.Grayscale.js}"></script>
-    <script th:src="@{/js/raw-location-loader.js}"></script>
+    <script th:src="@{/js/vendor/deckgl.9.4.1.min.js}"></script>
+    <script th:src="@{/js/vendor/maplibre-gl.6.16.0.min.js}"></script>
+    <script th:src="@{/js/gps-data-manager.js}"></script>
+    <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/memory-overview-maps.js}"></script>
     <script th:src="@{/js/datetime-picker.js}"></script>
     <script th:src="@{/js/util.js}"></script>
+    <script type="application/javascript" th:inline="javascript">
+        window.reittiCustomMapStyles = /*[(${mapStylesJson})]*/ [];
+        window.reittiActiveMapStyleId = /*[[${activeMapStyleId}]]*/ null;
+    </script>
 </head>
 <body class="memories-page settings-page">
     <div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('memories')}"></div>

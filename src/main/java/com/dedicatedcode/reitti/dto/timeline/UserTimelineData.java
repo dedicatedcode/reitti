@@ -9,7 +9,6 @@ public record UserTimelineData(
         String userAvatarUrl,
         String baseColor,
         List<? extends TimelineEntry> entries,
-        String rawLocationPointsUrl,
         String processedVisitsUrl,
         String mapMetaDataUrl,
         String mapStreamDataUrl,

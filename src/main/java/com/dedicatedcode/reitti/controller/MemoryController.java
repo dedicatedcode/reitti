@@ -81,12 +81,8 @@ public class MemoryController {
                          @RequestParam(defaultValue = "startDate") String sortBy,
                          @RequestParam(defaultValue = "desc") String sortOrder,
                          Model model) {
-        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user, sortBy, sortOrder).stream().map(m -> {
-            String endDateLocal = m.getEndDate() != null ? m.getEndDate().toString() : Instant.now().toString();
-
-            String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + m.getStartDate() + "&endDate=" + endDateLocal;
-            return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
-        }).toList());
+        model.addAttribute("memories", this.memoryService.getMemoriesForUser(user, sortBy, sortOrder).stream()
+                .map(m -> toOverviewDTO(m, timezone, user.getId())).toList());
         model.addAttribute("year", "all");
         model.addAttribute("sortBy", sortBy);
         model.addAttribute("sortOrder", sortOrder);
@@ -101,17 +97,18 @@ public class MemoryController {
                           @RequestParam(defaultValue = "desc") String sortOrder,
                           Model model) {
         model.addAttribute("memories", this.memoryService.getMemoriesForUserAndYear(user, year, sortBy, sortOrder)
-                .stream().map(m -> {
-                    String startDateLocal = m.getStartDate().toString();
-                    String endDateLocal = m.getEndDate() != null ? m.getEndDate().toString() : Instant.now().toString();
-
-                    String rawLocationUrl = "/api/v1/raw-location-points?startDate=" + startDateLocal + "&endDate=" + endDateLocal;
-                    return new MemoryOverviewDTO(new MemoryDTO(m, timezone), rawLocationUrl);
-                }).toList());
+                .stream().map(m -> toOverviewDTO(m, timezone, user.getId())).toList());
         model.addAttribute("year", year);
         model.addAttribute("sortBy", sortBy);
         model.addAttribute("sortOrder", sortOrder);
         return "memories/fragments :: memories-list";
+    }
+
+    private MemoryOverviewDTO toOverviewDTO(Memory memory, ZoneId timezone, Long userId) {
+        Instant endDate = memory.getEndDate() != null ? memory.getEndDate() : Instant.now();
+        String streamUrl = String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=UTC", userId, memory.getStartDate(), endDate);
+        String metaDataUrl = String.format("/api/v2/locations/metadata/%d?start=%s&end=%s&timezone=UTC", userId, memory.getStartDate(), endDate);
+        return new MemoryOverviewDTO(new MemoryDTO(memory, timezone), streamUrl, metaDataUrl);
     }
 
     @GetMapping("/{id}")

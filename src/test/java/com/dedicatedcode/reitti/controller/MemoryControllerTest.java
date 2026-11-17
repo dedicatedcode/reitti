@@ -25,12 +25,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -224,5 +227,32 @@ class MemoryControllerTest {
                 .andExpectAll(
                         status().isOk(),
                         model().attributeExists("availableVisits"));
+    }
+
+    @Test
+    void memoriesOverviewRendersStreamUrls() throws Exception {
+        mockMvc.perform(post("/memories")
+                                .param("title", "Overview Memory")
+                                .param("description", "Description")
+                                .param("startDate", "2023-01-01")
+                                .param("startTime", "00:00")
+                                .param("openEnded", "true")
+                                .with(csrf())
+                                .with(user(user)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/memories/all").with(user(user)))
+                .andExpectAll(
+                        status().isOk(),
+                        content().string(containsString("/api/v3/locations/stream/" + user.getId())),
+                        content().string(containsString("/api/v2/locations/metadata/" + user.getId())),
+                        content().string(not(containsString("raw-location-points"))));
+
+        mockMvc.perform(get("/memories/year/2023").with(user(user)))
+                .andExpectAll(
+                        status().isOk(),
+                        content().string(containsString("/api/v3/locations/stream/" + user.getId())),
+                        content().string(containsString("/api/v2/locations/metadata/" + user.getId())),
+                        content().string(not(containsString("raw-location-points"))));
     }
 }
