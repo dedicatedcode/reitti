@@ -306,7 +306,16 @@ details.maplibregl-ctrl-attrib[open] {
     overflow-y: auto;
 }
 
+/* Outer element is positioned by MapLibre, which also writes inline opacity
+   on it — keep it visually neutral so the fade below is not overridden. */
 .mode-transition-pill {
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 200;
+}
+
+.mode-transition-pill-body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -317,15 +326,20 @@ details.maplibregl-ctrl-attrib[open] {
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 9999px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-    z-index: 200;
+    transition: opacity 200ms ease;
 }
 
-.mode-transition-pill:hover {
+.mode-transition-pill:hover .mode-transition-pill-body {
     transform: scale(1.1);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.mode-transition-pill.is-dimmed {
+    pointer-events: none;
+}
+
+.mode-transition-pill.is-dimmed .mode-transition-pill-body {
+    opacity: 0;
 }
 
 .mode-transition-pill .mode-icon {

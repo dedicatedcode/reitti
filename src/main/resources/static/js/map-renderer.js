@@ -202,6 +202,8 @@ class MapRenderer {
         this.onPanoramaxMapClick = null;
         this._panoramaxHighlightRaf = null;
         this.transitionMarkers = [];
+        this._tripTransitionFilter = null;
+        this._transitionSignature = null;
 
         this.terrainLayer = null;
         this.deckOverlay = new deck.MapLibreOverlay({
@@ -1459,6 +1461,8 @@ class MapRenderer {
         this._layerInstances = [];
         this._layerContextKey = null;
         this.deckOverlay.setProps({layers: []});
+        this._tripTransitionFilter = null;
+        this._transitionSignature = null;
         this._clearTransitionMarkers();
     }
     setBearing(number) {
@@ -1495,11 +1499,33 @@ class MapRenderer {
         this.transitionMarkers = [];
     }
 
-    _syncTransitionMarkers() {
-        this._clearTransitionMarkers();
-        console.log('Syncing transition markers...');
-        if (!this.showTransportModes || this.viewState.aggregated || this._currentZoom < 12) return;
+    setTripTransitionFilter(filter) {
+        this._tripTransitionFilter = filter || null;
+        this._applyTransitionFilter();
+    }
 
+    _applyTransitionFilter() {
+        const filter = this._tripTransitionFilter;
+        this.transitionMarkers.forEach(marker => {
+            const el = marker.getElement();
+            if (!el) return;
+            const matches = !filter
+                || (String(el.dataset.managerId) === String(filter.managerId)
+                    && Number(el.dataset.time) >= filter.startTime
+                    && Number(el.dataset.time) <= filter.endTime);
+            el.classList.toggle('is-dimmed', !matches);
+        });
+    }
+
+    _syncTransitionMarkers() {
+        console.log('Syncing transition markers...');
+        if (!this.showTransportModes || this.viewState.aggregated || this._currentZoom < 12) {
+            this._clearTransitionMarkers();
+            this._transitionSignature = null;
+            return;
+        }
+
+        const desired = [];
         this.gpsDataManagers
             .filter(manager => this.selectedManager == null || manager.id === this.selectedManager)
             .forEach(manager => {
@@ -1507,21 +1533,46 @@ class MapRenderer {
                 if (totalSpan > 7 * 86400) return;
 
                 const transitions = manager.getTransitions ? manager.getTransitions() : [];
-                transitions.forEach(t => {
-                    this.transitionMarkers.push(this._createTransitionMarker(t));
-                });
+                transitions.forEach(t => desired.push({transition: t, managerId: manager.id}));
             });
+
+        const signature = desired
+            .map(d => `${d.managerId}:${d.transition.time}:${d.transition.lng},${d.transition.lat}:${d.transition.from.mode}>${d.transition.to.mode}`)
+            .join('|');
+        if (signature === this._transitionSignature) {
+            this._applyTransitionFilter();
+            return;
+        }
+        this._transitionSignature = signature;
+
+        this._clearTransitionMarkers();
+        desired.forEach(d => {
+            this.transitionMarkers.push(this._createTransitionMarker(d.transition, d.managerId));
+        });
+        if (this._tripTransitionFilter && this.transitionMarkers.length > 0) {
+            // Flush pending styles so the filter toggle below animates on
+            // freshly created elements instead of popping to the final state.
+            void this.transitionMarkers[0].getElement().offsetWidth;
+        }
+        this._applyTransitionFilter();
     }
 
-    _createTransitionMarker(transition) {
+    _createTransitionMarker(transition, managerId) {
         const el = document.createElement('div');
         el.className = 'mode-transition-pill';
+        el.dataset.managerId = managerId;
+        el.dataset.time = transition.time;
 
-        el.innerHTML = `
+        // Visual pill lives in an inner element: MapLibre writes inline
+        // opacity on the marker element, which would override the CSS fade.
+        const body = document.createElement('div');
+        body.className = 'mode-transition-pill-body';
+        body.innerHTML = `
             <span class="mode-icon">${this._iconHtml(transition.from)}</span>
             <span class="transition-arrow">›</span>
             <span class="mode-icon">${this._iconHtml(transition.to)}</span>
         `;
+        el.appendChild(body);
 
         const marker = new maplibregl.Marker({element: el, anchor: 'center'})
             .setLngLat([transition.lng, transition.lat])

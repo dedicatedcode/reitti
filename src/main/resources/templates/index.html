@@ -1450,12 +1450,14 @@
                 });
                 mapRenderer.clearHighlight();
             }
+            mapRenderer.setTripTransitionFilter(null);
         }
 
         function onTripClick(trip) {
             const deselect = activeFocus && activeFocus.type === 'trip' && activeFocus.id === trip.id;
             if (deselect) {
                 mapRenderer.clearHighlight();
+                mapRenderer.setTripTransitionFilter(null);
                 if (previousCameraState) {
                     mapRenderer.flyTo(previousCameraState);
                 }
@@ -1477,6 +1479,7 @@
 
                 if (isNaN(startTimeSeconds) || isNaN(endTimeSeconds)) {
                     console.error("Could not parse trip timestamps:", trip.startTime, trip.endTime);
+                    mapRenderer.setTripTransitionFilter(null);
                     previousCameraState = null;
                     return;
                 }
@@ -1489,8 +1492,14 @@
 
                 if (tripBounds) {
                     activeFocus = {type: 'trip', id: trip.id, data: trip};
+                    mapRenderer.setTripTransitionFilter({
+                        managerId: trip.managerId,
+                        startTime: startTimeSeconds,
+                        endTime: endTimeSeconds
+                    });
                     mapRenderer.fitMapToBounds(tripBounds);
                 } else {
+                    mapRenderer.setTripTransitionFilter(null);
                     previousCameraState = null;
                 }
             }
