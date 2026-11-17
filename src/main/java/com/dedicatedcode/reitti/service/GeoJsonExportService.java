@@ -5,7 +5,6 @@ import com.dedicatedcode.reitti.model.geo.GeoPoint;
 import com.dedicatedcode.reitti.model.geo.RawLocationPoint;
 import com.dedicatedcode.reitti.model.geo.SourceLocationPoint;
 import com.dedicatedcode.reitti.model.security.User;
-import com.dedicatedcode.reitti.repository.DeviceJdbcService;
 import com.dedicatedcode.reitti.repository.RawLocationPointJdbcService;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.springframework.stereotype.Service;
@@ -24,15 +23,12 @@ public class GeoJsonExportService {
 
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final RawLocationPointJdbcService rawLocationPointRepository;
-    private final DeviceJdbcService deviceJdbcService;
     private final ObjectMapper objectMapper;
 
     public GeoJsonExportService(SourceLocationPointJdbcService sourceLocationPointJdbcService, RawLocationPointJdbcService rawLocationPointRepository,
-                                DeviceJdbcService deviceJdbcService,
                                 ObjectMapper objectMapper) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.rawLocationPointRepository = rawLocationPointRepository;
-        this.deviceJdbcService = deviceJdbcService;
         this.objectMapper = objectMapper;
     }
 
@@ -60,9 +56,8 @@ public class GeoJsonExportService {
     public void generateGeoJsonContentStreaming(User user,
                                                 Instant start,
                                                 Instant end,
-                                                Long deviceId,
+                                                Device device,
                                                 Writer writer) throws IOException {
-        Device device = this.deviceJdbcService.find(user, deviceId).orElse(null);
         List<SourceLocationPoint> points = sourceLocationPointJdbcService.findByUserAndTimestampBetweenOrderByTimestampAsc(
                 user,
                 device,
