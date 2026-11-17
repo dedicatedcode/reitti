@@ -173,7 +173,10 @@ public class LocationDataApiController {
             
             return ResponseEntity.ok(Map.of(
                 "hasLocation", true,
-                "point", point
+                "point", point,
+                "measurements", Map.of(
+                            "timestampMs", latestPoint.getTimestamp().toEpochMilli(),
+                            "ageMs", System.currentTimeMillis() - latestPoint.getTimestamp().toEpochMilli())
             ));
             
         } catch (Exception e) {
