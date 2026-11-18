@@ -60,6 +60,8 @@
         useTerrain: false,
     };
 
+    const LABEL_MIN_WIDTH = 54;
+
     const state = {
         map: null,
         deckOverlay: null,
@@ -112,6 +114,7 @@
         initFabButtons();
         initTimeSlider(settings);
         initUserSelection();
+        initTreePanel();
 
         setSliderToToday();
         updateShowAllLink();
@@ -302,23 +305,45 @@
 
     function renderSliderLabels() {
         const labelsEl = document.getElementById('time-slider-labels');
-        labelsEl.innerHTML = '';
+        if (!labelsEl) return;
         const months = state.sliderMonths;
+        let labels;
         if (months.length <= 12) {
-            months.forEach(m => {
-                const span = document.createElement('span');
-                span.textContent = MONTH_NAMES[m.month].substring(0, 3) + " '" + String(m.year).slice(-2);
-                labelsEl.appendChild(span);
-            });
+            labels = months.map(m => MONTH_NAMES[m.month].substring(0, 3) + " '" + String(m.year).slice(-2));
         } else {
-            const years = new Set(months.map(m => m.year));
-            const sorted = Array.from(years).sort((a, b) => a - b);
-            sorted.forEach(y => {
-                const span = document.createElement('span');
-                span.textContent = String(y);
-                labelsEl.appendChild(span);
-            });
+            labels = Array.from(new Set(months.map(m => m.year))).sort((a, b) => a - b).map(String);
         }
+
+        const available = labelsEl.clientWidth || labelsEl.parentElement?.clientWidth || 0;
+        const maxVisible = available > 0 ? Math.max(2, Math.floor(available / LABEL_MIN_WIDTH)) : labels.length;
+        const stride = Math.max(1, Math.ceil(labels.length / maxVisible));
+
+        // when thinning, keep at least one slot between shown labels
+        const thinning = stride > 1;
+        const last = labels.length - 1;
+        const visible = labels.map((label, i) => i % stride === 0 || i === last);
+        // the fixed last label needs its own slot, otherwise it overlaps its predecessor
+        if (thinning && last - 1 >= 0) visible[last - 1] = false;
+
+        labelsEl.innerHTML = '';
+        labels.forEach((label, i) => {
+            const span = document.createElement('span');
+            span.textContent = label;
+            if (!visible[i]) span.classList.add('label-hidden');
+            labelsEl.appendChild(span);
+        });
+    }
+
+    function initTreePanel() {
+        const panel = document.getElementById('coverage-tree-panel');
+        if (panel) {
+            panel.open = !window.matchMedia('(max-width: 800px)').matches;
+        }
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(renderSliderLabels, 150);
+        });
     }
 
     function setSliderToToday() {

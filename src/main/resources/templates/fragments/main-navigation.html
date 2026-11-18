@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml" th:lang="${#locale.toLanguageTag()}">
 <body>
-<div th:fragment="main-navigation(activeSection)" class="navigation-container" th:classappend="${activeSection == 'workbench'} ? 'overlay' : ''">
+<th:block th:fragment="main-navigation(activeSection)">
+<div class="navigation-container" th:classappend="${activeSection == 'workbench'} ? 'overlay' : ''">
     <div class="navbar">
         <span><img class="logo" th:src="@{/img/logo.svg}" alt="reitti logo" title="reitti" src="/img/logo.svg"></span>
         <a id="nav-timeline" sec:authorize="hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_MAGIC_LINK_FULL_ACCESS')" th:classappend="${activeSection == 'index'} ? 'active' : ''" th:href="@{/}" class="nav-link" th:title="#{nav.timeline}"><i class="lni lni-route-1"></i></a>
@@ -22,137 +23,138 @@
             </button>
         </form>
     </div>
-
-    <div id="notification-presentation"
-         th:attr="data-unread-count=${notificationIndicator != null ? notificationIndicator.unreadCount() : 0}"></div>
-
-    <script th:inline="javascript">
-        (function () {
-            const dot = document.getElementById('notification-dot');
-            const presentationHost = document.getElementById('notification-presentation');
-
-            const rawContextPath = /*[[@{/}]]*/ '/';
-            const contextPath = rawContextPath.replace(/\/$/, '');
-            let eventSource = null;
-            let reconnectTimer = null;
-            let pageUnloading = false;
-
-            function render(showBadge, unreadCount) {
-                if (!dot) {
-                    return;
-                }
-                const count = Number(unreadCount) || 0;
-                dot.classList.toggle('visible', Boolean(showBadge) && count > 0);
-            }
-
-            function refreshPresentation() {
-                if (!presentationHost || !window.htmx) {
-                    return;
-                }
-                if (presentationHost.querySelector('.reitti-dialog.open, .notification-toast')) {
-                    return;
-                }
-                window.htmx.ajax('GET', contextPath + '/notifications/pending', {
-                    target: '#notification-presentation',
-                    swap: 'innerHTML',
-                    indicator: '#notification-presentation'
-                });
-            }
-
-            function connect() {
-                if (pageUnloading || eventSource) {
-                    return;
-                }
-                eventSource = new EventSource(contextPath + '/events/notifications');
-                eventSource.onmessage = function (event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data && data.type === 'NOTIFICATION') {
-                            render(data.showBadge, data.unreadCount);
-                            if (data.typeKey && data.presentation && data.presentation !== 'INBOX') {
-                                refreshPresentation();
-                            }
-                        }
-                    } catch (ignored) {
-                        // ignore malformed events
-                    }
-                };
-                eventSource.onerror = function () {
-                    if (pageUnloading) {
-                        return;
-                    }
-                    if (eventSource && eventSource.readyState === EventSource.CLOSED) {
-                        eventSource = null;
-                        if (!reconnectTimer) {
-                            reconnectTimer = setTimeout(function () {
-                                reconnectTimer = null;
-                                connect();
-                            }, 3000);
-                        }
-                    }
-                };
-            }
-
-            function disconnect() {
-                pageUnloading = true;
-                if (reconnectTimer) {
-                    clearTimeout(reconnectTimer);
-                    reconnectTimer = null;
-                }
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
-            }
-
-            window.addEventListener('pagehide', disconnect);
-            window.addEventListener('beforeunload', disconnect);
-            window.addEventListener('pageshow', function (event) {
-                if (event.persisted) {
-                    pageUnloading = false;
-                    connect();
-                }
-            });
-
-            document.body.addEventListener('htmx:afterSwap', function (evt) {
-                if (evt.detail.target && evt.detail.target.id === 'notification-presentation') {
-                    const toast = evt.detail.target.querySelector('.notification-toast[data-autohide="true"]');
-                    if (toast) {
-                        const dismiss = toast.querySelector('.notification-dismiss');
-                        if (dismiss) {
-                            setTimeout(function () {
-                                if (dismiss.isConnected) {
-                                    dismiss.click();
-                                }
-                            }, 8000);
-                        }
-                    }
-                }
-            });
-
-            document.addEventListener('keydown', function (evt) {
-                if (evt.key === 'Escape') {
-                    const dialog = document.querySelector('#notification-presentation .reitti-dialog.open');
-                    if (dialog) {
-                        const dismiss = dialog.querySelector('.notification-dismiss');
-                        if (dismiss) {
-                            dismiss.click();
-                        }
-                    }
-                }
-            });
-
-            if (presentationHost && Number(presentationHost.dataset.unreadCount) > 0) {
-                refreshPresentation();
-            }
-
-            if (document.readyState === 'complete') {
-                connect();
-            } else {
-                window.addEventListener('load', connect);
-            }
-        })();
-    </script>
 </div>
+
+<div id="notification-presentation"
+     th:attr="data-unread-count=${notificationIndicator != null ? notificationIndicator.unreadCount() : 0}"></div>
+
+<script th:inline="javascript">
+    (function () {
+        const dot = document.getElementById('notification-dot');
+        const presentationHost = document.getElementById('notification-presentation');
+
+        const rawContextPath = /*[[@{/}]]*/ '/';
+        const contextPath = rawContextPath.replace(/\/$/, '');
+        let eventSource = null;
+        let reconnectTimer = null;
+        let pageUnloading = false;
+
+        function render(showBadge, unreadCount) {
+            if (!dot) {
+                return;
+            }
+            const count = Number(unreadCount) || 0;
+            dot.classList.toggle('visible', Boolean(showBadge) && count > 0);
+        }
+
+        function refreshPresentation() {
+            if (!presentationHost || !window.htmx) {
+                return;
+            }
+            if (presentationHost.querySelector('.reitti-dialog.open, .notification-toast')) {
+                return;
+            }
+            window.htmx.ajax('GET', contextPath + '/notifications/pending', {
+                target: '#notification-presentation',
+                swap: 'innerHTML',
+                indicator: '#notification-presentation'
+            });
+        }
+
+        function connect() {
+            if (pageUnloading || eventSource) {
+                return;
+            }
+            eventSource = new EventSource(contextPath + '/events/notifications');
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data && data.type === 'NOTIFICATION') {
+                        render(data.showBadge, data.unreadCount);
+                        if (data.typeKey && data.presentation && data.presentation !== 'INBOX') {
+                            refreshPresentation();
+                        }
+                    }
+                } catch (ignored) {
+                    // ignore malformed events
+                }
+            };
+            eventSource.onerror = function () {
+                if (pageUnloading) {
+                    return;
+                }
+                if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+                    eventSource = null;
+                    if (!reconnectTimer) {
+                        reconnectTimer = setTimeout(function () {
+                            reconnectTimer = null;
+                            connect();
+                        }, 3000);
+                    }
+                }
+            };
+        }
+
+        function disconnect() {
+            pageUnloading = true;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        window.addEventListener('pagehide', disconnect);
+        window.addEventListener('beforeunload', disconnect);
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                pageUnloading = false;
+                connect();
+            }
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail.target && evt.detail.target.id === 'notification-presentation') {
+                const toast = evt.detail.target.querySelector('.notification-toast[data-autohide="true"]');
+                if (toast) {
+                    const dismiss = toast.querySelector('.notification-dismiss');
+                    if (dismiss) {
+                        setTimeout(function () {
+                            if (dismiss.isConnected) {
+                                dismiss.click();
+                            }
+                        }, 8000);
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function (evt) {
+            if (evt.key === 'Escape') {
+                const dialog = document.querySelector('#notification-presentation .reitti-dialog.open');
+                if (dialog) {
+                    const dismiss = dialog.querySelector('.notification-dismiss');
+                    if (dismiss) {
+                        dismiss.click();
+                    }
+                }
+            }
+        });
+
+        if (presentationHost && Number(presentationHost.dataset.unreadCount) > 0) {
+            refreshPresentation();
+        }
+
+        if (document.readyState === 'complete') {
+            connect();
+        } else {
+            window.addEventListener('load', connect);
+        }
+    })();
+    </script>
+</th:block>
 </body>
 </html>
