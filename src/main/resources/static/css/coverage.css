@@ -16,12 +16,27 @@
     z-index: 2000;
     position: fixed;
     bottom: 8px;
+    /* single column: the user and their device headers stack vertically */
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 0;
 }
 
 .coverage-fab {
-    bottom: 102px !important;
+    position: fixed;
+    bottom: 102px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background: var(--color-background-dark-light);
+    color: var(--color-highlight);
+    border: 1px solid var(--color-highlight);
+    border-radius: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.3s ease;
 }
 
 .coverage-month-display {
@@ -92,10 +107,14 @@
 
 #time-slider-labels span {
     flex: 1;
+    min-width: 0;
     text-align: center;
-    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+#time-slider-labels span.label-hidden {
+    visibility: hidden;
 }
 
 .coverage-tree-panel {
@@ -116,6 +135,10 @@
     scrollbar-color: var(--color-highlight) rgba(14, 24, 42, 0.5);
 }
 
+.coverage-tree-panel:not([open]) {
+    width: auto;
+}
+
 .tree-header {
     position: sticky;
     top: 0;
@@ -132,6 +155,37 @@
     text-transform: uppercase;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 1;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.tree-header::-webkit-details-marker {
+    display: none;
+}
+
+.tree-header-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tree-header .tree-chevron {
+    font-size: 10px;
+    opacity: 0.6;
+    transition: transform 0.2s;
+}
+
+.coverage-tree-panel[open] .tree-header .tree-chevron {
+    transform: rotate(90deg);
+}
+
+.coverage-tree-panel:not([open]) .tree-header {
+    border-bottom: none;
+}
+
+.coverage-tree-panel:not([open]) .tree-show-all {
+    display: none;
 }
 
 .tree-header .tree-show-all {
@@ -284,7 +338,7 @@
     backdrop-filter: blur(4px);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 800px) {
     .coverage-sidebar .avatar {
         width: 32px;
         height: 32px;
@@ -293,19 +347,33 @@
         font-size: 9px;
         max-width: 56px;
     }
+
+    /* stack from the bottom: time slider, month nav, user switcher */
     #time-slider-container {
         width: 90%;
         bottom: 5px;
     }
     .coverage-fab {
-        bottom: 60px !important;
+        bottom: 80px;
+    }
+
+    .coverage-sidebar {
+        bottom: 104px;
     }
     .coverage-tree-panel {
         width: 240px;
         right: 4px;
-        top: 48px;
-        max-height: calc(100vh - 160px);
+        top: 60px;
+        max-height: calc(100vh - 200px);
         font-size: 11px;
+    }
+
+    .coverage-tree-panel:not([open]) {
+        width: auto;
+    }
+
+    .user-timeline-selection {
+        padding-left: 8px;
     }
 }
 

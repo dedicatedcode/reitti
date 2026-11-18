@@ -54,15 +54,18 @@
         <div class="loading-text" th:text="#{coverage.loading}">Loading coverage data...</div>
     </div>
 
-<div id="coverage-tree-panel" class="coverage-tree-panel">
-    <div class="tree-header">
-        <span th:text="#{coverage.tree.header}">Coverage</span>
-        <a id="coverage-show-all" class="tree-show-all" th:href="@{/coverage/all}" th:text="#{coverage.tree.show-all}">Show all</a>
-    </div>
+<details id="coverage-tree-panel" class="coverage-tree-panel" open>
+    <summary class="tree-header">
+        <span class="tree-header-title">
+            <span class="tree-chevron" aria-hidden="true">&#9654;</span>
+            <span th:text="#{coverage.tree.header}">Coverage</span>
+        </span>
+        <a id="coverage-show-all" class="tree-show-all" th:href="@{/coverage/all}" onclick="event.stopPropagation()" th:text="#{coverage.tree.show-all}">Show all</a>
+    </summary>
     <div id="tree-content">
         <div class="tree-empty" th:text="#{coverage.tree.usage}">Pan and zoom to see areas</div>
     </div>
-</div>
+</details>
 
 <div th:replace="~{fragments/main-navigation :: main-navigation('coverage')}"></div>
 
