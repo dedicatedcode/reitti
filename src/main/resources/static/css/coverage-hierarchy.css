@@ -617,7 +617,9 @@ body.coverage-page .navigation-container {
         position: static;
     }
 
+    /* keep the horizontal columns but keep them short, so an opened
+       column scrolls internally and never pushes the details panel far down */
     .hierarchy-column-items {
-        max-height: none;
+        max-height: 38vh;
     }
 }
