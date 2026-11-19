@@ -1,4 +1,4 @@
-FROM nginx:1.30.1-trixie
+FROM nginx:1.31.9-trixie
 
 LABEL maintainer="dedicatedcode"
 LABEL org.opencontainers.image.source="https://github.com/dedicatedcode/reitti"
