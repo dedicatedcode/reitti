@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre-alpine-3.22
+FROM eclipse-temurin:25-jre-alpine
 
 LABEL maintainer="dedicatedcode"
 LABEL org.opencontainers.image.source="https://github.com/dedicatedcode/reitti"
@@ -75,12 +75,12 @@ if [ "$(id -u)" = '0' ]; then
   fi
 
   # Execute as the reitti user
-  exec su-exec reitti java $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
+  exec su-exec reitti java -XX:-UseBASE64Intrinsics $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
 else
   echo "Warning: Container is running as UID $(id -u), not root."
   echo "Environment variables APP_UID/APP_GID/APP_EXTRA_GROUPS will be ignored."
   echo "Ensure your volumes have the correct permissions on the host."
-  exec java $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
+  exec java -XX:-UseBASE64Intrinsics $JAVA_OPTS -jar "$APP_HOME/app.jar" -Dspring.profiles.active=docker "$@"
 fi
 EOF
 
