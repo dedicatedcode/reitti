@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -100,6 +101,56 @@ class LocationPointStagingServiceTest {
         assertEquals(1, second.promotedCount());
         assertEquals(EVENING_FLUSH, second.promotedRange().start());
         assertFalse(stagingService.hasUnpromotedPoints(partitionKey));
+    }
+
+    @Test
+    void promoteWithManyRowsReturnsCorrectAggregateAndDeliversAllIds() {
+        User user = testingService.randomUser();
+        Device device = testingService.findDefaultDevice(user);
+        String partitionKey = "stream_" + user.getId() + "_" + device.id() + "_20260827";
+
+        stagingService.ensurePartitionExists(partitionKey);
+
+        // Insert a larger batch that exercises the streaming path
+        Instant start = Instant.parse("2026-08-27T00:00:00Z");
+        int pointCount = 500;
+        List<LocationPoint> batch = new ArrayList<>();
+        for (int i = 0; i < pointCount; i++) {
+            batch.add(point(start.plusSeconds(i * 60)));
+        }
+        stagingService.insertBatch(partitionKey, user, device, batch);
+
+        PromotionResult result = stagingService.promote(user, partitionKey);
+        assertEquals(pointCount, result.promotedCount());
+        assertNotNull(result.promotedRange());
+        assertEquals(start, result.promotedRange().start());
+        assertEquals(start.plusSeconds((pointCount - 1) * 60), result.promotedRange().end());
+        assertTrue(result.hasPromoted());
+
+        // Verify all rows actually landed in raw_source_points
+        Long rawCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM raw_source_points WHERE user_id = ? AND device_id = ?",
+                Long.class, user.getId(), device.id());
+        assertEquals(pointCount, rawCount);
+
+        // Promoting again yields empty
+        PromotionResult empty = stagingService.promote(user, partitionKey);
+        assertEquals(0, empty.promotedCount());
+        assertFalse(empty.hasPromoted());
+    }
+
+    @Test
+    void promoteEmptyPartitionReturnsEmptyResult() {
+        User user = testingService.randomUser();
+        Device device = testingService.findDefaultDevice(user);
+        String partitionKey = "stream_" + user.getId() + "_" + device.id() + "_20260827";
+
+        stagingService.ensurePartitionExists(partitionKey);
+
+        PromotionResult result = stagingService.promote(user, partitionKey);
+        assertEquals(0, result.promotedCount());
+        assertFalse(result.hasPromoted());
+        assertEquals(TimeRange.empty(), result.promotedRange());
     }
 
     private List<LocationPoint> points(Instant start, Instant end, Duration step) {

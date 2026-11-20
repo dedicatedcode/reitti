@@ -21,11 +21,11 @@ public class ProcessingWindowResolver {
 
     private final SourceLocationPointJdbcService sourceLocationPointJdbcService;
     private final VisitDetectionParametersService visitDetectionParametersService;
-    private final GeoPointAnomalyFilterConfig filterConfig;
+    private final GeoPointFilterConfig filterConfig;
 
     public ProcessingWindowResolver(SourceLocationPointJdbcService sourceLocationPointJdbcService,
                                     VisitDetectionParametersService visitDetectionParametersService,
-                                    GeoPointAnomalyFilterConfig filterConfig) {
+                                    GeoPointFilterConfig filterConfig) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.visitDetectionParametersService = visitDetectionParametersService;
         this.filterConfig = filterConfig;
