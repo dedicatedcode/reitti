@@ -28,6 +28,7 @@ import org.quartz.JobDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -48,17 +49,20 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
     private final JobDetail h3CellUpdateJob;
     private final PointReaderWriter pointReaderWriter;
     private final RocksDBH3Service rocksDBService;
+    private final int taskBatchSize;
 
     public H3SpatialCoverageService(JdbcTemplate jdbcTemplate,
                                     JobSchedulingService jobSchedulingService,
                                     @Qualifier("h3CellUpdateTask") JobDetail h3CellUpdateJob,
                                     PointReaderWriter pointReaderWriter,
-                                    RocksDBH3Service rocksDBService) throws IOException {
+                                    RocksDBH3Service rocksDBService,
+                                    @Value("${reitti.h3.task-batch-size:10000}") int taskBatchSize) throws IOException {
         this.jdbcTemplate = jdbcTemplate;
         this.jobSchedulingService = jobSchedulingService;
         this.h3CellUpdateJob = h3CellUpdateJob;
         this.pointReaderWriter = pointReaderWriter;
         this.rocksDBService = rocksDBService;
+        this.taskBatchSize = Math.max(1, taskBatchSize);
         this.h3 = H3Core.newInstance();
     }
 
@@ -69,25 +73,37 @@ public class H3SpatialCoverageService implements SpatialCoverageService {
 
     @Override
     public void postPromotion(List<Long> insertedIds) {
-        jobSchedulingService.enqueueTaskAfterCommit(
-                h3CellUpdateJob,
-                H3CellUpdateJob.TaskData.forPromotion(insertedIds),
-                JobSchedulingService.Metadata.builder()
-                        .jobType(JobType.H3_CELL_UPDATE)
-                        .friendlyName("Updating H3 Spatial Statistics")
-                        .build()
-        );
+        if (insertedIds == null || insertedIds.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < insertedIds.size(); i += taskBatchSize) {
+            List<Long> batch = List.copyOf(insertedIds.subList(i, Math.min(i + taskBatchSize, insertedIds.size())));
+            jobSchedulingService.enqueueTaskAfterCommit(
+                    h3CellUpdateJob,
+                    H3CellUpdateJob.TaskData.forPromotion(batch),
+                    JobSchedulingService.Metadata.builder()
+                            .jobType(JobType.H3_CELL_UPDATE)
+                            .friendlyName("Updating H3 Spatial Statistics")
+                            .build()
+            );
+        }
     }
 
     @Override
     public void postDeletion(List<Long> deletedPointIds) {
-        this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
-                                              H3CellUpdateJob.TaskData.forDeletion(deletedPointIds),
-                                              JobSchedulingService.Metadata.builder()
-                                                      .jobType(JobType.H3_CELL_UPDATE)
-                                                      .friendlyName("Updating H3 Spatial Statistics")
-                                                      .build()
-        );
+        if (deletedPointIds == null || deletedPointIds.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < deletedPointIds.size(); i += taskBatchSize) {
+            List<Long> batch = List.copyOf(deletedPointIds.subList(i, Math.min(i + taskBatchSize, deletedPointIds.size())));
+            this.jobSchedulingService.enqueueTaskAfterCommit(h3CellUpdateJob,
+                                                  H3CellUpdateJob.TaskData.forDeletion(batch),
+                                                  JobSchedulingService.Metadata.builder()
+                                                          .jobType(JobType.H3_CELL_UPDATE)
+                                                          .friendlyName("Updating H3 Spatial Statistics")
+                                                          .build()
+            );
+        }
     }
 
     @Override

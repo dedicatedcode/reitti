@@ -9,6 +9,7 @@ import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -17,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
+@TestPropertySource(properties = "reitti.processing.point-chunk-size=2")
 class ExcessDensityHandlerTest {
 
     @Autowired
@@ -56,6 +58,23 @@ class ExcessDensityHandlerTest {
                         base.plus(1, ChronoUnit.MINUTES), true, true);
         long ignored = after.stream().filter(sourceLocationPoint -> sourceLocationPoint.getStatus() != SourceLocationPoint.Status.VALID).count();
         assertEquals(1, ignored, "One point should be ignored (the middle one according to ordering)");
+    }
+
+    @Test
+    void shouldSkipPairsContainingAnAlreadyIgnoredPoint() {
+        Instant base = Instant.parse("2023-01-01T10:00:00Z");
+        for (int i = 0; i < 5; i++) {
+            createAndSaveRawPoint(base.plus(i * 5L, ChronoUnit.SECONDS), 50.0 + i * 0.0001, 8.0 + i * 0.0001);
+        }
+
+        excessDensityHandler.handleExcess(testUser, null, TimeRange.of(base, base.plus(30, ChronoUnit.SECONDS)));
+
+        List<SourceLocationPoint> after = rawLocationPointService
+                .findByUserAndTimestampBetweenOrderByTimestampAsc(testUser, null, base.minus(1, ChronoUnit.MINUTES),
+                        base.plus(1, ChronoUnit.MINUTES), true, true);
+        assertEquals(2, after.stream().filter(point -> point.getStatus() != SourceLocationPoint.Status.VALID).count());
+        assertEquals(SourceLocationPoint.Status.IGNORED_BY_SYSTEM, after.get(1).getStatus());
+        assertEquals(SourceLocationPoint.Status.IGNORED_BY_SYSTEM, after.get(3).getStatus());
     }
 
     private SourceLocationPoint createAndSaveRawPoint(Instant timestamp, double lat, double lon) {
