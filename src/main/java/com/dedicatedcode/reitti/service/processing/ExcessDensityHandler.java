@@ -7,10 +7,13 @@ import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class ExcessDensityHandler {
@@ -19,51 +22,69 @@ public class ExcessDensityHandler {
 
     private final LocationDensityConfig config;
     private final SourceLocationPointJdbcService rawLocationPointService;
+    private final int batchSize;
 
     public ExcessDensityHandler(LocationDensityConfig config,
-                                SourceLocationPointJdbcService rawLocationPointService) {
+                                SourceLocationPointJdbcService rawLocationPointService,
+                                @Value("${reitti.processing.point-chunk-size:10000}") int batchSize) {
         this.config = config;
         this.rawLocationPointService = rawLocationPointService;
+        this.batchSize = Math.max(1, batchSize);
     }
 
     public TimeRange handleExcess(User user, Device device, TimeRange inputRange) {
-        List<SourceLocationPoint> points = rawLocationPointService.findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, inputRange.start(), inputRange.end(), false, true);
-        if (points.size() < 2) {
-            return TimeRange.empty();
-        }
-
         int toleranceSeconds = config.getToleranceSeconds() - 1;
-        Set<Long> pointsToIgnore = new LinkedHashSet<>();
-        Set<Long> alreadyConsidered = new HashSet<>();
+        List<Long> pointsToIgnore = new ArrayList<>(batchSize);
+        SourceLocationPoint previous = null;
+        Long lastIgnoredId = null;
+        InstantCursor cursor = null;
+        long pointsSeen = 0;
+        int totalIgnored = 0;
 
-        for (int i = 0; i < points.size() - 1; i++) {
-            SourceLocationPoint current = points.get(i);
-            SourceLocationPoint next = points.get(i + 1);
+        while (true) {
+            List<SourceLocationPoint> points = rawLocationPointService.findValidPointsAfter(user, device,
+                    inputRange.start(), inputRange.end(), cursor == null ? null : cursor.timestamp(),
+                    cursor == null ? null : cursor.id(), batchSize);
+            if (points.isEmpty()) {
+                break;
+            }
 
-            // Safety filters
-            if (current.getId() == null || next.getId() == null) continue;
-            if (current.getStatus() != SourceLocationPoint.Status.VALID || next.getStatus() != SourceLocationPoint.Status.VALID) continue;
-            if (alreadyConsidered.contains(current.getId()) || alreadyConsidered.contains(next.getId())) continue;
-
-            long timeDiff = Duration.between(current.getTimestamp(), next.getTimestamp()).getSeconds();
-            if (timeDiff < toleranceSeconds) {
-                SourceLocationPoint toIgnore = selectPointToIgnore(current, next);
-                if (toIgnore.getId() != null) {
-                    pointsToIgnore.add(toIgnore.getId());
-                    alreadyConsidered.add(toIgnore.getId());
-                    logger.trace("Marking point {} as ignored due to excess density", toIgnore.getId());
+            for (SourceLocationPoint current : points) {
+                pointsSeen++;
+                if (previous != null && (lastIgnoredId == null
+                        || (!lastIgnoredId.equals(previous.getId()) && !lastIgnoredId.equals(current.getId())))) {
+                    long timeDiff = Duration.between(previous.getTimestamp(), current.getTimestamp()).getSeconds();
+                    if (timeDiff < toleranceSeconds) {
+                        SourceLocationPoint toIgnore = selectPointToIgnore(previous, current);
+                        pointsToIgnore.add(toIgnore.getId());
+                        lastIgnoredId = toIgnore.getId();
+                        logger.trace("Marking point {} as ignored due to excess density", toIgnore.getId());
+                    }
                 }
+                previous = current;
+            }
+
+            SourceLocationPoint last = points.getLast();
+            cursor = new InstantCursor(last.getTimestamp(), last.getId());
+            if (!pointsToIgnore.isEmpty()) {
+                rawLocationPointService.bulkUpdateIgnoredStatus(user, pointsToIgnore);
+                totalIgnored += pointsToIgnore.size();
+                pointsToIgnore.clear();
+            }
+            if (points.size() < batchSize) {
+                break;
             }
         }
 
-        if (!pointsToIgnore.isEmpty()) {
-            rawLocationPointService.bulkUpdateIgnoredStatus(user, new ArrayList<>(pointsToIgnore));
-            logger.debug("Marked {} points as ignored for user {}", pointsToIgnore.size(), user.getUsername());
+        if (pointsSeen < 2) {
+            return TimeRange.empty();
+        }
+        if (totalIgnored > 0) {
+            logger.debug("Marked {} points as ignored for user {}", totalIgnored, user.getUsername());
         }
         return inputRange;
     }
 
-    // The selection logic is unchanged from the original, kept here for completeness.
     private SourceLocationPoint selectPointToIgnore(SourceLocationPoint p1, SourceLocationPoint p2) {
         Double acc1 = p1.getAccuracyMeters();
         Double acc2 = p2.getAccuracyMeters();
@@ -83,5 +104,8 @@ public class ExcessDensityHandler {
 
         int lonCmp = Double.compare(p1.getGeom().longitude(), p2.getGeom().longitude());
         return lonCmp < 0 ? p2 : p1;
+    }
+
+    private record InstantCursor(Instant timestamp, Long id) {
     }
 }

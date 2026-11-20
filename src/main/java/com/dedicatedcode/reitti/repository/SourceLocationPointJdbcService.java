@@ -10,12 +10,15 @@ import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
 import com.dedicatedcode.reitti.service.processing.TimeRange;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,6 +71,57 @@ public class SourceLocationPointJdbcService {
         }
         return jdbcTemplate.query(sql.toString(), rawLocationPointRowMapper,
                                   user.getId(), device != null ? device.id() : null, Timestamp.from(startTime), Timestamp.from(endTime));
+    }
+
+    public void streamValidPoints(User user, Device device, Instant start, Instant end, int fetchSize,
+                                  Consumer<SourceLocationPoint> consumer) {
+        String sql = """
+                SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id,
+                       ST_AsText(rlp.geom) AS geom, rlp.invalid, rlp.status
+                FROM raw_source_points rlp
+                WHERE rlp.user_id = ? AND rlp.device_id IS NOT DISTINCT FROM ?
+                  AND rlp.status = 0 AND rlp.timestamp >= ? AND rlp.timestamp < ?
+                ORDER BY rlp.timestamp
+                """;
+        jdbcTemplate.execute((ConnectionCallback<Void>) conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+                ps.setFetchSize(fetchSize);
+                ps.setLong(1, user.getId());
+                ps.setObject(2, device != null ? device.id() : null);
+                ps.setTimestamp(3, Timestamp.from(start));
+                ps.setTimestamp(4, Timestamp.from(end));
+                try (ResultSet rs = ps.executeQuery()) {
+                    int rowNum = 0;
+                    while (rs.next()) {
+                        consumer.accept(rawLocationPointRowMapper.mapRow(rs, rowNum++));
+                    }
+                }
+            }
+            return null;
+        });
+    }
+
+    public List<SourceLocationPoint> findValidPointsAfter(User user, Device device, Instant start, Instant end,
+                                                          Instant cursorTimestamp, Long cursorId, int limit) {
+        String sql = """
+                SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id,
+                       ST_AsText(rlp.geom) AS geom, rlp.invalid, rlp.status
+                FROM raw_source_points rlp
+                WHERE rlp.user_id = ? AND rlp.device_id IS NOT DISTINCT FROM ?
+                  AND rlp.status = 0 AND rlp.timestamp >= ? AND rlp.timestamp < ?
+                """ + (cursorTimestamp == null ? "" : """
+                  AND (rlp.timestamp > ? OR (rlp.timestamp = ? AND rlp.id > ?))
+                """) + "ORDER BY rlp.timestamp, rlp.id LIMIT ?";
+        List<Object> args = new ArrayList<>(Arrays.asList(user.getId(), device != null ? device.id() : null,
+                Timestamp.from(start), Timestamp.from(end)));
+        if (cursorTimestamp != null) {
+            Timestamp cursor = Timestamp.from(cursorTimestamp);
+            args.add(cursor);
+            args.add(cursor);
+            args.add(cursorId);
+        }
+        args.add(limit);
+        return jdbcTemplate.query(sql, rawLocationPointRowMapper, args.toArray());
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -182,18 +237,16 @@ public class SourceLocationPointJdbcService {
         jdbcTemplate.update(sql, user.getId(), Timestamp.from(startTime), Timestamp.from(endTime));
     }
 
-    public void bulkUpdateInvalidStatus(List<SourceLocationPoint> points) {
-        if (points.isEmpty()) {
-            return;
+    public int bulkUpdateInvalidStatus(List<Long> pointIds) {
+        if (pointIds.isEmpty()) {
+            return 0;
         }
 
-        String sql = "UPDATE raw_source_points SET invalid = true WHERE id = ?";
-
-        List<Object[]> batchArgs = points.stream()
-                .map(point -> new Object[]{point.getId()})
+        String sql = "UPDATE raw_source_points SET invalid = true WHERE id = ? AND invalid = false";
+        List<Object[]> batchArgs = pointIds.stream()
+                .map(pointId -> new Object[]{pointId})
                 .collect(Collectors.toList());
-
-        jdbcTemplate.batchUpdate(sql, batchArgs);
+        return Arrays.stream(jdbcTemplate.batchUpdate(sql, batchArgs)).sum();
     }
 
     public void bulkUpdateIgnoredStatus(User user, List<Long> pointIds) {

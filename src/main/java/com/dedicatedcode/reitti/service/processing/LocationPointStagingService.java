@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.*;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -137,16 +138,67 @@ public class LocationPointStagingService {
             SELECT id, timestamp FROM inserted
             """;
 
-        List<PromotedPoint> inserted = this.jdbcTemplate.query(sql, (rs, rowNum) -> new PromotedPoint(rs.getLong("id"), rs.getTimestamp("timestamp").toInstant()), partitionKey);
-        if (user.getUserType() == UserType.NORMAL && !inserted.isEmpty()) {
-            spatialCoverageService.postPromotion(inserted.stream().map(PromotedPoint::id).toList());
-        }
-        if (inserted.isEmpty()) {
+        boolean notifySpatialCoverage = user.getUserType() == UserType.NORMAL;
+        PromotionAccumulator accumulator = this.jdbcTemplate.execute((ConnectionCallback<PromotionAccumulator>) conn -> {
+            // @Transactional already ensures autoCommit=false; PostgreSQL uses a server-side
+            // cursor when fetchSize is set on a forward-only, read-only ResultSet.
+            try (PreparedStatement ps = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+                ps.setFetchSize(batchSize);
+                ps.setString(1, partitionKey);
+                PromotionAccumulator state = new PromotionAccumulator(batchSize, notifySpatialCoverage);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        state.add(rs.getLong("id"), rs.getTimestamp("timestamp").toInstant());
+                    }
+                }
+                state.finish();
+                return state;
+            }
+        });
+
+        if (accumulator == null || accumulator.count == 0) {
             return new PromotionResult(0, TimeRange.empty());
         }
-        Instant min = inserted.stream().map(PromotedPoint::timestamp).min(Instant::compareTo).orElseThrow();
-        Instant max = inserted.stream().map(PromotedPoint::timestamp).max(Instant::compareTo).orElseThrow();
-        return new PromotionResult(inserted.size(), new TimeRange(min, max));
+        return new PromotionResult(Math.toIntExact(accumulator.count), new TimeRange(accumulator.min, accumulator.max));
+    }
+
+    private final class PromotionAccumulator {
+        private final int batchSize;
+        private final List<Long> pendingIds;
+        private final boolean notifySpatialCoverage;
+        private long count;
+        private Instant min;
+        private Instant max;
+
+        private PromotionAccumulator(int batchSize, boolean notifySpatialCoverage) {
+            this.batchSize = batchSize;
+            this.pendingIds = new ArrayList<>(batchSize);
+            this.notifySpatialCoverage = notifySpatialCoverage;
+        }
+
+        private void add(long id, Instant timestamp) {
+            pendingIds.add(id);
+            count++;
+            min = min == null || timestamp.isBefore(min) ? timestamp : min;
+            max = max == null || timestamp.isAfter(max) ? timestamp : max;
+            if (pendingIds.size() >= batchSize) {
+                flush();
+            }
+        }
+
+        private void finish() {
+            flush();
+        }
+
+        private void flush() {
+            if (pendingIds.isEmpty()) {
+                return;
+            }
+            if (notifySpatialCoverage) {
+                spatialCoverageService.postPromotion(List.copyOf(pendingIds));
+            }
+            pendingIds.clear();
+        }
     }
 
     public boolean hasUnpromotedPoints(String partitionKey) {
@@ -158,9 +210,6 @@ public class LocationPointStagingService {
         public boolean hasPromoted() {
             return promotedCount > 0 && promotedRange != null && !promotedRange.equals(TimeRange.empty());
         }
-    }
-
-    private record PromotedPoint(long id, Instant timestamp) {
     }
 
     @Scheduled(cron = "${reitti.import.staging.cleanup.cron}")
