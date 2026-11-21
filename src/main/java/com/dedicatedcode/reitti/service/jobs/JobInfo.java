@@ -16,6 +16,7 @@ public record JobInfo(
         LocalDateTime finishedAt,
         boolean canCancel,
         List<JobInfo> children,
+        long hiddenChildren,
         long completedChildren,
         long totalChildren,
         Long durationSeconds,

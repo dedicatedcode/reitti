@@ -32,6 +32,7 @@ public class JobStatusController {
     private static final List<JobState> ACTIVE_STATES = List.of(JobState.PREPARING, JobState.CREATED, JobState.AWAITING, JobState.RUNNING);
     private static final List<JobState> TERMINAL_STATES = List.of(JobState.COMPLETED, JobState.FAILED);
     private static final List<JobState> ALL_STATES = Stream.of(ACTIVE_STATES, TERMINAL_STATES).flatMap(List::stream).toList();
+    private static final int MAX_VISIBLE_FINISHED_CHILDREN = 3;
 
     private final boolean dataManagementEnabled;
     private final JobMetadataRepository jobMetadataRepository;
@@ -153,13 +154,15 @@ public class JobStatusController {
                                         Map<UUID, List<JobMetadataRepository.JobMetadata>> childrenByParent,
                                         Map<JobType, AverageRuntime> averageRuntimes) {
         List<JobMetadataRepository.JobMetadata> childrenMeta = childrenByParent.getOrDefault(parent.getId(), List.of());
-        List<JobInfo> children = childrenMeta.stream()
+        List<JobMetadataRepository.JobMetadata> visibleMeta = visibleChildren(childrenMeta);
+        List<JobInfo> children = visibleMeta.stream()
                 .map(j -> mapToJobInfo(timezone, j))
                 .toList();
-        long completedChildren = children.stream()
-                .filter(j -> isTerminal(j.state()))
+        long completedChildren = childrenMeta.stream()
+                .filter(j -> isTerminal(j.getState()))
                 .count();
-        long totalChildren = children.size();
+        long totalChildren = childrenMeta.size();
+        long hiddenChildren = totalChildren - children.size();
 
         // Basic info from the parent itself
         JobInfo base = mapToJobInfo(timezone, parent);
@@ -181,12 +184,34 @@ public class JobStatusController {
                 base.finishedAt(),
                 base.canCancel(),
                 children,
+                hiddenChildren,
                 completedChildren,
                 totalChildren,
                 estimatedDuration,
                 base.progressPercentValue(),
                 base.progressMessage()
         );
+    }
+
+    private List<JobMetadataRepository.JobMetadata> visibleChildren(List<JobMetadataRepository.JobMetadata> children) {
+        List<JobMetadataRepository.JobMetadata> unfinished = children.stream()
+                .filter(child -> !isTerminal(child.getState()))
+                .sorted(Comparator.comparing(JobMetadataRepository.JobMetadata::getEnqueuedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        List<JobMetadataRepository.JobMetadata> finished = children.stream()
+                .filter(child -> isTerminal(child.getState()))
+                .sorted(Comparator.comparing(JobStatusController::latestTimestamp,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+
+        List<JobMetadataRepository.JobMetadata> visible = new ArrayList<>(unfinished);
+        visible.addAll(finished.stream().limit(MAX_VISIBLE_FINISHED_CHILDREN).toList());
+        return visible;
+    }
+
+    private static Instant latestTimestamp(JobMetadataRepository.JobMetadata metadata) {
+        return metadata.getFinishedAt() != null ? metadata.getFinishedAt() : metadata.getEnqueuedAt();
     }
 
     private Map<JobType, AverageRuntime> calculateAverageRuntimes(List<JobMetadataRepository.JobMetadata> fullyCompleteParents) {
@@ -235,6 +260,7 @@ public class JobStatusController {
                 toLocalDateTime(metadata.getFinishedAt(), timezone),
                 canCancel,
                 List.of(),
+                0,
                 0,
                 0,
                 durationSeconds,
