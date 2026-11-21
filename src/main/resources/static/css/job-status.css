@@ -112,6 +112,13 @@
     color: var(--color-text-white);
 }
 
+.child-jobs-more {
+    padding: 8px;
+    font-size: 0.85em;
+    font-style: italic;
+    color: var(--color-text-gray);
+}
+
 .job-duration {
     font-weight: 500;
     color: var(--color-highlight);
