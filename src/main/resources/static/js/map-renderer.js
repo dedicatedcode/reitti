@@ -172,7 +172,6 @@ class MapRenderer {
         this._pitchBearingAllowed = true;
 
         const mapOptions = {
-            interleaved: true,
             container: element,
             style: MapRenderer.getMapStyleValue(this.currentMapStyle),
             center: [userSettings.homeLongitude, userSettings.homeLatitude],
@@ -206,10 +205,7 @@ class MapRenderer {
         this._transitionSignature = null;
 
         this.terrainLayer = null;
-        this.deckOverlay = new deck.MapLibreOverlay({
-            layers: []
-        });
-        this.map.addControl(this.deckOverlay);
+        this.deckOverlay = this._createDeckOverlay();
         this.currentTime = 0;
 
         const defaultDeckParams = {
@@ -267,7 +263,14 @@ class MapRenderer {
         this.highlightLayer = null;
         this._initialLoadPromise = this._initializeInitialStyle();
 
-        this._layerInstances = [];           // Current array of deck.gl layer instances
+        this._layerInstances = [];           // Current array of core deck.gl layer instances
+        this._extensionLayers = new Map();    // Extension-owned layers, composed at the deck overlay boundary
+        this._extensionPopupOwner = null;
+        this._extensionPopupOnClose = null;
+        this.extensionPopup = null;
+        this._destroyListeners = new Set();
+        this._styleChangeListeners = new Set();
+        this._terrainChangeListeners = new Set();
         this._layerContextKey = null;         // Structural fingerprint of current layers
         this._terrainExtension = null;        // Cached TerrainExtension instance
         this._cachedVisitPlaces = new Map();  // managerId -> places array (stable ref)
@@ -505,7 +508,7 @@ class MapRenderer {
                 }
             });
             this._layerInstances = allLayers;
-            this.deckOverlay.setProps({ layers: allLayers });
+            this.deckOverlay.setProps({ layers: this._composeWithExtensionLayers(allLayers) });
             this._clearTransitionMarkers();
             return;
         }
@@ -695,7 +698,7 @@ class MapRenderer {
         }
 
         this._layerInstances = allLayers;
-        this.deckOverlay.setProps({ layers: allLayers });
+        this.deckOverlay.setProps({ layers: this._composeWithExtensionLayers(allLayers) });
 
         if (this.map && typeof this.map.triggerRepaint === 'function') {
             this.map.resize();
@@ -762,7 +765,7 @@ class MapRenderer {
         });
 
         this._layerInstances = updated;
-        this.deckOverlay.setProps({ layers: updated });
+        this.deckOverlay.setProps({ layers: this._composeWithExtensionLayers(updated) });
     }
 
     _recreateVisitLayer(id, manager, extensions, terrainDrawMode, isOverview, currentTime, zoom) {
@@ -997,6 +1000,69 @@ class MapRenderer {
         // 4) Sync input constraints and refresh overlays
         this._syncPitchBearingState();
         this._rerenderOverlays();
+    }
+
+    _createDeckOverlay() {
+        for (const interleaved of [true, false]) {
+            try {
+                const overlay = new deck.MapLibreOverlay({
+                    interleaved,
+                    layers: []
+                });
+                this.map.addControl(overlay);
+                this._deckInterleaved = interleaved;
+                return overlay;
+            } catch (error) {
+                console.warn(
+                    interleaved
+                        ? 'Interleaved deck.gl overlay is unavailable; extension placement below buildings will be ignored.'
+                        : 'Unable to create the deck.gl overlay.',
+                    error
+                );
+            }
+        }
+        throw new Error('Unable to create the deck.gl overlay');
+    }
+
+    getExtensionTerrainExtension() {
+        return this.viewState.renderTerrain ? this._getTerrainExtensions()[0] : null;
+    }
+
+    _getBuildingLayerIds() {
+        const layers = this.map?.getStyle?.()?.layers || [];
+        return layers
+            .filter(layer => layer.type === 'fill-extrusion')
+            .filter(layer => {
+                const id = String(layer.id || '').toLowerCase();
+                const sourceLayer = String(layer['source-layer'] || '').toLowerCase();
+                return id.includes('building') || sourceLayer.includes('building');
+            })
+            .map(layer => layer.id)
+            .filter(layerId => this.map.getLayer(layerId));
+    }
+
+    getExtensionBeforeId(placement) {
+        if (!this._deckInterleaved || !this.map?.getStyle) return undefined;
+        if (placement === 'behind-buildings') {
+            const buildingIds = this._getBuildingLayerIds();
+            return buildingIds[0] || this._getFirstSymbolLayerId();
+        }
+        if (placement === 'above-buildings') {
+            const buildingIds = this._getBuildingLayerIds();
+            const styleLayers = this.map.getStyle()?.layers || [];
+            const lastBuildingId = buildingIds.at(-1);
+            if (lastBuildingId) {
+                const index = styleLayers.findIndex(layer => layer.id === lastBuildingId);
+                const nextLayer = styleLayers.slice(index + 1).find(layer => this.map.getLayer(layer.id));
+                return nextLayer?.id;
+            }
+            return this._getFirstSymbolLayerId();
+        }
+        return undefined;
+    }
+
+    _extensionPlacementRank(placement) {
+        return MapRenderer.EXTENSION_PLACEMENT_RANKS[placement] ?? MapRenderer.EXTENSION_PLACEMENT_RANKS.top;
     }
 
     _getStyleCapabilities() {
@@ -1460,7 +1526,7 @@ class MapRenderer {
         this.highlightLayer = null;
         this._layerInstances = [];
         this._layerContextKey = null;
-        this.deckOverlay.setProps({layers: []});
+        this.deckOverlay.setProps({layers: this._composeWithExtensionLayers([])});
         this._tripTransitionFilter = null;
         this._transitionSignature = null;
         this._clearTransitionMarkers();
@@ -1710,7 +1776,121 @@ class MapRenderer {
         this.removeAvatarMarkers();
     }
 
+    _composeWithExtensionLayers(coreLayers) {
+        const groups = Array.from(this._extensionLayers.entries())
+            .map(([key, entry]) => ({key, ...entry}))
+            .sort((first, second) =>
+                this._extensionPlacementRank(first.placement) - this._extensionPlacementRank(second.placement)
+                || (first.zIndex ?? 0) - (second.zIndex ?? 0)
+                || first.key.localeCompare(second.key));
+        const belowPaths = groups
+            .filter(group => group.placement === 'below-paths')
+            .flatMap(group => group.layers);
+        const remaining = groups
+            .filter(group => group.placement !== 'below-paths')
+            .flatMap(group => group.layers);
+        const hasTerrain = this.terrainLayer && coreLayers[0] === this.terrainLayer;
+        const terrain = hasTerrain ? [coreLayers[0]] : [];
+        const core = hasTerrain ? coreLayers.slice(1) : coreLayers;
+        return terrain.concat(belowPaths, core, remaining);
+    }
+
+    setExtensionLayers(key, layers, options = {}) {
+        if (layers == null || layers.length === 0) {
+            this._extensionLayers.delete(key);
+        } else {
+            this._extensionLayers.set(key, {
+                layers: Array.isArray(layers) ? layers : [layers],
+                placement: options.placement || 'top',
+                zIndex: Number.isFinite(options.zIndex) ? options.zIndex : 0
+            });
+        }
+        this.deckOverlay.setProps({
+            layers: this._composeWithExtensionLayers(this._layerInstances)
+        });
+    }
+
+    showExtensionPopup(ownerKey, position, content, onClose = null) {
+        this.closeExtensionPopup();
+        this._extensionPopupOwner = ownerKey;
+        this._extensionPopupOnClose = onClose;
+        const popup = new maplibregl.Popup({
+            closeButton: true,
+            closeOnClick: false,
+            maxWidth: '340px',
+            className: 'extension-entity-popup'
+        });
+        popup.on('close', () => {
+            if (this.extensionPopup !== popup) return;
+            this.extensionPopup = null;
+            this._extensionPopupOwner = null;
+            const callback = this._extensionPopupOnClose;
+            this._extensionPopupOnClose = null;
+            callback?.();
+        });
+        this.extensionPopup = popup;
+        popup.setLngLat(position.slice(0, 2)).setDOMContent(content).addTo(this.map);
+    }
+
+    updateExtensionPopup(ownerKey, position) {
+        if (this._extensionPopupOwner !== ownerKey || !this.extensionPopup) return;
+        this.extensionPopup.setLngLat(position.slice(0, 2));
+    }
+
+    closeExtensionPopup(ownerKey = null) {
+        if (ownerKey != null && this._extensionPopupOwner !== ownerKey) return;
+        const popup = this.extensionPopup;
+        const callback = this._extensionPopupOnClose;
+        this.extensionPopup = null;
+        this._extensionPopupOwner = null;
+        this._extensionPopupOnClose = null;
+        popup?.remove();
+        callback?.();
+    }
+
+    addDestroyListener(listener) {
+        this._destroyListeners.add(listener);
+        return () => this._destroyListeners.delete(listener);
+    }
+
+    addStyleChangeListener(listener) {
+        this._styleChangeListeners.add(listener);
+        return () => this._styleChangeListeners.delete(listener);
+    }
+
+    addTerrainChangeListener(listener) {
+        this._terrainChangeListeners.add(listener);
+        return () => this._terrainChangeListeners.delete(listener);
+    }
+
+    _notifyTerrainChange() {
+        this._terrainChangeListeners.forEach(listener => {
+            try {
+                listener();
+            } catch (error) {
+                console.warn('Map terrain change listener failed', error);
+            }
+        });
+    }
+
+    getViewport() {
+        const bounds = this.map.getBounds();
+        const canvas = this.map.getCanvas();
+        return {
+            bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+            zoom: this.map.getZoom(),
+            width: canvas.clientWidth,
+            height: canvas.clientHeight
+        };
+    }
+
     destroy() {
+        this._destroyListeners.forEach(listener => listener());
+        this._destroyListeners.clear();
+        this._styleChangeListeners.clear();
+        this._terrainChangeListeners.clear();
+        this._extensionLayers.clear();
+        this.closeExtensionPopup();
         this.map.remove();
         this.gpsDataManagers.forEach(manager => manager.destroy());
     }
@@ -1723,6 +1903,10 @@ class MapRenderer {
      */
     on(type, listener) {
         this.map.on(type, listener);
+    }
+
+    off(type, listener) {
+        this.map.off(type, listener);
     }
 
     /**
@@ -2273,6 +2457,13 @@ class MapRenderer {
         // -------------------------------------------------------------
         this.map.on('style.load', () => {
             console.log('Map style loaded, rebuilding layers for globe sync...');
+            this._styleChangeListeners.forEach(listener => {
+                try {
+                    listener();
+                } catch (error) {
+                    console.warn('Map style change listener failed', error);
+                }
+            });
             this._layerContextKey = null; // force full rebuild
             this._buildLayers();
         });
@@ -2647,6 +2838,7 @@ class MapRenderer {
         }
         this._terrainExtension = null;
         this._layerContextKey = null; // Force rebuild
+        this._notifyTerrainChange();
 
     }
 
@@ -2990,4 +3182,10 @@ class MapRenderer {
 }
 
 MapRenderer.rtlTextPluginConfigured = false;
+MapRenderer.EXTENSION_PLACEMENT_RANKS = Object.freeze({
+    'behind-buildings': 0,
+    'above-buildings': 1,
+    'below-paths': 2,
+    'top': 3
+});
 MapRenderer.ensureWorkerUrl();

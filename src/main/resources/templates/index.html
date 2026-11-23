@@ -41,8 +41,9 @@
     <script th:src="@{/js/timeline-control.js}"></script>
     <script th:src="@{/js/map-customization.js}"></script>
     <script th:src="@{/js/gps-data-manager.js}"></script>
-    <script th:src="@{/js/map-renderer.js}"></script>
+    <script th:src="@{/js/map-renderer.js(v=${appVersion})}"></script>
     <script th:src="@{/js/map-controls.js}"></script>
+    <script th:src="@{/js/extension-layer-manager.js(v=${appVersion})}"></script>
     <script th:src="@{/js/panoramax.js(v=${appVersion})}"></script>
     <script th:src="@{/js/PhotoClusterManager.js}"></script>
     <script th:src="@{/js/LiveModeController.js}"></script>
@@ -368,6 +369,13 @@
         mapRenderer.updateViewState(createViewState([]));
     });
     mapControls.on('compassClicked', () => mapRenderer.setBearing(0));
+
+    const extensionLayerManager = new ExtensionLayerManager(mapRenderer, mapControls);
+    extensionLayerManager.setDateRange(currentDateRange, getCurrentLocalDate());
+    extensionLayerManager.init();
+    document.body.addEventListener('dateChanged', () => {
+        extensionLayerManager.setDateRange(currentDateRange, getCurrentLocalDate());
+    });
 
     function openPanoramaxPanel(lat, lng) {
         const container = document.getElementById('panoramax-panel-container');
