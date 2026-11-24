@@ -1,13 +1,16 @@
 package com.dedicatedcode.reitti.service.workbench;
 
+import com.dedicatedcode.reitti.controller.error.ForbiddenException;
 import com.dedicatedcode.reitti.dto.workbench.*;
 import com.dedicatedcode.reitti.model.devices.Device;
 import com.dedicatedcode.reitti.model.security.User;
 import com.dedicatedcode.reitti.repository.DeviceJdbcService;
+import com.dedicatedcode.reitti.repository.JobMetadataRepository;
 import com.dedicatedcode.reitti.repository.SourceLocationPointJdbcService;
 import com.dedicatedcode.reitti.service.I18nService;
 import com.dedicatedcode.reitti.service.SpatialCoverageService;
 import com.dedicatedcode.reitti.service.jobs.JobSchedulingService;
+import com.dedicatedcode.reitti.service.jobs.JobState;
 import com.dedicatedcode.reitti.service.jobs.JobType;
 import com.dedicatedcode.reitti.service.processing.DeviceTimeRange;
 import com.dedicatedcode.reitti.service.processing.LocationDataCleanupTask;
@@ -22,6 +25,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,6 +38,7 @@ public class WorkbenchService {
     private final JobDetail locationDataCleanupTask;
     private final JobDetail patchDeviceOntoTimelineTask;
     private final SpatialCoverageService spatialCoverageService;
+    private final JobMetadataRepository jobMetadataRepository;
     private final I18nService i18n;
 
     public WorkbenchService(SourceLocationPointJdbcService sourceLocationPointJdbcService,
@@ -41,6 +47,7 @@ public class WorkbenchService {
                             @Qualifier("locationDataCleanupJob") JobDetail locationDataCleanupTask,
                             @Qualifier("patchDeviceOntoTimelineJob") JobDetail patchDeviceOntoTimelineTask,
                             SpatialCoverageService spatialCoverageService,
+                            JobMetadataRepository jobMetadataRepository,
                             I18nService i18n) {
         this.sourceLocationPointJdbcService = sourceLocationPointJdbcService;
         this.deviceJdbcService = deviceJdbcService;
@@ -48,10 +55,11 @@ public class WorkbenchService {
         this.locationDataCleanupTask = locationDataCleanupTask;
         this.patchDeviceOntoTimelineTask = patchDeviceOntoTimelineTask;
         this.spatialCoverageService = spatialCoverageService;
+        this.jobMetadataRepository = jobMetadataRepository;
         this.i18n = i18n;
     }
 
-    public void applyCommit(User user, WorkbenchCommitRequest request) {
+    public UUID applyCommit(User user, WorkbenchCommitRequest request) {
         log.debug("Applying commit {}", request);
         EditStoreDto editStore = request.getEditStore();
         UUID parentJob = this.jobSchedulingService.createParentJob(user, JobType.MANUAL_MODIFICATION, "Updating data for " + user.getUsername());
@@ -65,6 +73,37 @@ public class WorkbenchService {
         if (editStore.getPatches() != null) {
             handlePatches(user, editStore.getPatches(), parentJob);
         }
+        return parentJob;
+    }
+
+    public Optional<WorkbenchCommitStatus> getCommitStatus(User user, UUID jobId) {
+        Optional<JobMetadataRepository.JobMetadata> parent = this.jobMetadataRepository.findById(jobId);
+        if (parent.isEmpty()) {
+            return Optional.empty();
+        }
+        if (!Objects.equals(parent.get().getUserId(), user.getId())) {
+            throw new ForbiddenException("Users can only inspect their own workbench commits");
+        }
+
+        List<JobMetadataRepository.JobMetadata> children = this.jobMetadataRepository.findByParentJobId(jobId);
+        boolean parentTerminal = isTerminal(parent.get().getState());
+        boolean childrenTerminal = children.stream().allMatch(child -> isTerminal(child.getState()));
+        boolean noWorkScheduled = children.isEmpty()
+                && parent.get().getState() != JobState.RUNNING
+                && parent.get().getState() != JobState.PREPARING;
+        boolean done = parentTerminal || noWorkScheduled || (!children.isEmpty() && childrenTerminal);
+        boolean success = done
+                && parent.get().getState() != JobState.FAILED
+                && parent.get().getState() != JobState.CANCELLED
+                && children.stream().noneMatch(child -> child.getState() == JobState.FAILED
+                        || child.getState() == JobState.CANCELLED);
+        long active = children.stream().filter(child -> !isTerminal(child.getState())).count();
+        long failed = children.stream().filter(child -> child.getState() == JobState.FAILED).count();
+        return Optional.of(new WorkbenchCommitStatus(done, success, parent.get().getState().name(), active, failed));
+    }
+
+    private static boolean isTerminal(JobState state) {
+        return state == JobState.COMPLETED || state == JobState.FAILED || state == JobState.CANCELLED;
     }
 
     private void handlePatches(User user, List<PatchDto> patches, UUID parentJob) {
@@ -117,6 +156,7 @@ public class WorkbenchService {
                     .build();
             this.jobSchedulingService.enqueueTask(locationDataCleanupTask,
                                                   new LocationDataCleanupTask.TaskData(user.getId(), device.id(), deviceTimeRange.timeRange().start(), deviceTimeRange.timeRange().end().plus(1, ChronoUnit.MILLIS))
+                                                          .withRecalculateTimeline(true)
                                                           .withParentJobId(parentJob),
                                                   metadata);
         }

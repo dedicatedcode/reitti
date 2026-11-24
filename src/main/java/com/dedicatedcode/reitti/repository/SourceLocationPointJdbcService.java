@@ -145,6 +145,28 @@ public class SourceLocationPointJdbcService {
        return findByUserAndTimestampBetweenOrderByTimestampAsc(user, device, startTime, endTime, includeIgnored, includeInvalid, NO_PAGING, NO_PAGING);
     }
 
+    /**
+     * Points for the workbench's device preview. System-ignored and invalid points are included so
+     * they can be reviewed and removed, but points explicitly ignored by the user are omitted.
+     */
+    public List<SourceLocationPoint> findWorkbenchPoints(User user, Device device, Instant startTime, Instant endTime) {
+        return jdbcTemplate.query("""
+                        SELECT rlp.id, rlp.accuracy_meters, rlp.elevation_meters, rlp.timestamp, rlp.user_id,
+                               ST_AsText(rlp.geom) AS geom, rlp.invalid, rlp.status
+                        FROM raw_source_points rlp
+                        WHERE rlp.user_id = ? AND rlp.device_id IS NOT DISTINCT FROM ?
+                          AND rlp.status <> ?
+                          AND rlp.timestamp >= ? AND rlp.timestamp < ?
+                        ORDER BY rlp.timestamp
+                        """,
+                rawLocationPointRowMapper,
+                user.getId(),
+                device != null ? device.id() : null,
+                SourceLocationPoint.Status.IGNORED_BY_USER.getDbValue(),
+                Timestamp.from(startTime),
+                Timestamp.from(endTime));
+    }
+
     public Optional<Instant> findLatestTimestamp(User user, Device device) {
         Timestamp latest = jdbcTemplate.queryForObject(
                 "SELECT MAX(timestamp) FROM raw_source_points WHERE user_id = ? AND device_id IS NOT DISTINCT FROM ?",

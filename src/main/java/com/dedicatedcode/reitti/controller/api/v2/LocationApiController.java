@@ -163,7 +163,7 @@ public class LocationApiController {
             Device device = this.deviceJdbcService.find(user, deviceId).orElse(this.deviceJdbcService.getDefaultDevice(user));
             StreamingResponseBody stream = outputStream -> {
                 try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-                    geoJsonExportService.generateGeoJsonContentStreaming(
+                    geoJsonExportService.generateWorkbenchSourceGeoJsonContentStreaming(
                             user,
                             timeRange.start(),
                             timeRange.end().plus(1, ChronoUnit.SECONDS),

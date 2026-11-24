@@ -65,6 +65,28 @@ public class GeoJsonExportService {
                 end,
                 true, true);
 
+        writeSourcePoints(points, device, writer);
+    }
+
+    /**
+     * GeoJSON for the workbench device preview. In contrast to the regular export, points the user
+     * explicitly ignored are omitted so deleted points do not reappear after a save.
+     */
+    public void generateWorkbenchSourceGeoJsonContentStreaming(User user,
+                                                               Instant start,
+                                                               Instant end,
+                                                               Device device,
+                                                               Writer writer) throws IOException {
+        List<SourceLocationPoint> points = sourceLocationPointJdbcService.findWorkbenchPoints(
+                user,
+                device,
+                start,
+                end);
+
+        writeSourcePoints(points, device, writer);
+    }
+
+    private void writeSourcePoints(List<SourceLocationPoint> points, Device device, Writer writer) throws IOException {
         FeatureCollection collection = new FeatureCollection();
         for (SourceLocationPoint point : points) {
             Feature feature = new Feature();
