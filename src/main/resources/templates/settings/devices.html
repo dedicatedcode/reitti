@@ -31,6 +31,7 @@
                 </div>
 
                 <div class="settings-card" th:if="${!devices.isEmpty()}">
+                    <div class="table-scroll">
                     <table>
                         <thead>
                         <tr>
@@ -104,14 +105,11 @@
                         </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div class="settings-card" id="device-form-container">
-                    <button class="btn"
-                            th:hx-get="@{/settings/devices/create-form}"
-                            hx-target="this"
-                            hx-swap="outerHTML"
-                            th:text="#{devices.add.title}">Create New Device</button>
+                    <div th:replace="~{settings/fragments/devices :: device-form-placeholder}"></div>
                 </div>
 
             </div>

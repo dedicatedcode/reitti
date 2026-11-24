@@ -10,9 +10,7 @@
                  class="user-header"
                  th:data-user-id="${userData.userId}"
                  onclick="selectUser(this)">
-                <img th:src="@{${userData.userAvatarUrl}}"
-                     th:alt="${userData.avatarFallback}"
-                     class="avatar">
+                <div th:replace="~{fragments/avatars :: avatar(${userData.userAvatarUrl}, ${userData.avatarFallback}, '')}"></div>
                 <div th:text="${userData.displayName}" class="username">Username</div>
                 <span class="user-follow-badge"><i class="lni lni-location-arrow-right"></i></span>
                 <div class="device-toggle-container">
@@ -46,9 +44,7 @@
                  th:data-display-name="${device.name()}"
                  th:data-show-avatar="${device.showAvatarOnMap()}"
                  onclick="selectDevice(this)">
-                <img th:src="@{${device.avatarUrl()}}"
-                     th:alt="${device.avatarFallback()}"
-                     class="avatar">
+                <div th:replace="~{fragments/avatars :: avatar(${device.avatarUrl()}, ${device.avatarFallback()}, '')}"></div>
                 <div th:text="${device.name()}" class="username">Username</div>
             </div>
         </th:block>

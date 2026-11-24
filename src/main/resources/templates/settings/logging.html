@@ -79,6 +79,28 @@
             align-items: center;
             gap: 10px;
         }
+
+        @media (max-width: 800px) {
+            .log-output {
+                font-size: 11px;
+                height: 55vh;
+                padding: 10px;
+            }
+
+            .logger-level-form {
+                min-width: 185px;
+            }
+
+            .logger-name {
+                font-size: 10px;
+                font-weight: normal;
+            }
+
+            .logger-level-select {
+                min-width: 0;
+                flex: 1 1 120px;
+            }
+        }
     </style>
 </head>
 <body class="settings-page">
@@ -141,6 +163,7 @@
                         </div>
                     </form>
                     <h3 th:text="#{logging.configured.loggers}">Configured Loggers</h3>
+                    <div class="table-scroll">
                     <table>
                         <thead>
                         <tr>
@@ -188,6 +211,7 @@
                         </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
 
