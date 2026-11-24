@@ -108,9 +108,13 @@ function featureToPoint(feature, streamId) {
     };
 }
 
-function mergeSourceCacheFromGeoJSON(streamId, featureCollection) {
+function mergeSourceCacheFromGeoJSON(streamId, featureCollection, rangeStart, rangeEnd) {
     const existing = SourceData.get(streamId) || [];
-    const byKey = new Map(existing.map(p => [p.sourceId, p]));
+    const byKey = new Map();
+    for (const p of existing) {
+        if (rangeStart != null && p.t >= rangeStart && p.t < rangeEnd) continue;
+        byKey.set(p.sourceId, p);
+    }
     for (const f of featureCollection.features) {
         const pt = featureToPoint(f, streamId);
         if (pt.sourceId == null) continue;
@@ -121,8 +125,12 @@ function mergeSourceCacheFromGeoJSON(streamId, featureCollection) {
     SourceData.set(streamId, merged);
 }
 
-function mergeMainJourneyFromGeoJSON(featureCollection) {
-    const byKey = new Map(MainJourneyData.map(p => [p.sourceId ?? `gen_${p.t}`, p]));
+function mergeMainJourneyFromGeoJSON(featureCollection, rangeStart, rangeEnd) {
+    const byKey = new Map();
+    for (const p of MainJourneyData) {
+        if (rangeStart != null && p.t >= rangeStart && p.t < rangeEnd) continue;
+        byKey.set(p.sourceId ?? `gen_${p.t}`, p);
+    }
     for (const f of featureCollection.features) {
         const pt = featureToPoint(f, '__main__');
         const key = pt.sourceId ?? `gen_${pt.t}`;
@@ -214,6 +222,7 @@ const W = {
     tool: 'inspect',
     selectedDevice: Object.keys(DeviceSources)[0],
     selected: new Set(),
+    selectedSources: new Set(),   // Set<sourceId> for the selected device's raw source points
     selectionAnchorId: null,
     patch: {
         tStart: _initialCenter - PATCH_SPAN_MS / 2,
@@ -332,6 +341,12 @@ function evictFarData() {
 
     const liveIds = new Set(FinalTimeline.map(p => p.id));
     for (const id of W.selected) if (!liveIds.has(id)) W.selected.delete(id);
+
+    const liveSourceIds = new Set();
+    for (const sid of Object.keys(DeviceSources)) {
+        for (const p of SourceData.get(sid) || []) liveSourceIds.add(p.sourceId);
+    }
+    for (const sid of W.selectedSources) if (!liveSourceIds.has(sid)) W.selectedSources.delete(sid);
 }
 
 function trimRangesTo(ranges, keepStart, keepEnd) {
@@ -366,7 +381,7 @@ async function loadViewportData() {
                 const results = await Promise.all(
                     devices.map(d => fetchDevicePoints(d.key, range.tStart, range.tEnd, resolutionMs))
                 );
-                devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i]));
+                devices.forEach((d, i) => mergeSourceCacheFromGeoJSON(d.key, results[i], range.tStart, range.tEnd + 1000));
                 mergeIntoRanges(hydratedRanges, range.tStart, range.tEnd);
             }
         }
@@ -396,7 +411,7 @@ async function ensureMainJourneyLoaded() {
 
     for (const range of needed) {
         const fc = await fetchMainJourney(range.tStart, range.tEnd);
-        mergeMainJourneyFromGeoJSON(fc);
+        mergeMainJourneyFromGeoJSON(fc, range.tStart, range.tEnd + 1000);
         mergeIntoRanges(mainHydratedRanges, range.tStart, range.tEnd);
     }
 }
@@ -677,6 +692,18 @@ map.on('load', () => {
         }
     });
 
+    map.addSource('device-pts', {type: 'geojson', data: emptyFC()});
+    map.addLayer({
+        id: 'device-pts', type: 'circle', source: 'device-pts',
+        paint: {
+            'circle-radius': ['case', ['get', 'selected'], 8, 4.5],
+            'circle-color': ['case', ['get', 'selected'], '#f2c470', 'rgba(10,19,32,0.85)'],
+            'circle-stroke-width': ['case', ['get', 'selected'], 2.5, 2],
+            'circle-stroke-color': ['case', ['get', 'selected'], '#fff5d6', ['get', 'color']],
+            'circle-opacity': 1
+        }
+    });
+
     map.addSource('cand-line', {type: 'geojson', data: emptyFC()});
     map.addLayer({
         id: 'cand-line', type: 'line', source: 'cand-line',
@@ -854,7 +881,8 @@ function selectableRange() {
 function buildCandidateFC() {
     const arr = (SourceData.get(W.selectedDevice) || [])
         .filter(p => p.t >= viewportStartT - viewportDuration * 0.1
-            && p.t <= viewportStartT + viewportDuration * 1.1);
+            && p.t <= viewportStartT + viewportDuration * 1.1)
+        .filter(p => p.sourceId == null || !EditStore.deletedPoints.has(p.sourceId));
     const color = DeviceSources[W.selectedDevice == null ? 'default' : W.selectedDevice].color;
     if (arr.length < 2) return emptyFC();
 
@@ -882,7 +910,8 @@ function buildCandidateFC() {
 }
 
 function buildCandidateActiveFC() {
-    const arr = (SourceData.get(W.selectedDevice) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
+    const arr = (SourceData.get(W.selectedDevice) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd)
+        .filter(p => p.sourceId == null || !EditStore.deletedPoints.has(p.sourceId));
     const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return emptyFC();
     return {
@@ -915,6 +944,57 @@ function buildFinalPointsFC() {
     return {type: 'FeatureCollection', features};
 }
 
+function findDeviceSourcePoint(sourceId, deviceId = W.selectedDevice) {
+    return (SourceData.get(deviceId) || []).find(p => p.sourceId === sourceId) || null;
+}
+
+function representedDeviceSourceIds(deviceId = W.selectedDevice) {
+    const set = new Set();
+    for (const p of FinalTimeline) {
+        if (p.streamId === deviceId && p.sourceId != null) set.add(p.sourceId);
+    }
+    return set;
+}
+
+function visibleDeviceSourcePoints() {
+    if (W.selectedDevice == null) return [];
+    const {tStart, tEnd} = selectableRange();
+    const represented = representedDeviceSourceIds();
+    return (SourceData.get(W.selectedDevice) || []).filter(p =>
+        p.t >= tStart && p.t <= tEnd &&
+        p.sourceId != null &&
+        !EditStore.deletedPoints.has(p.sourceId) &&
+        !represented.has(p.sourceId)
+    );
+}
+
+function sourcePointAsTimelinePoint(sp) {
+    return {
+        id: `src_${sp.sourceId}`,
+        t: sp.t, lat: sp.lat, lng: sp.lng, alt: sp.alt,
+        streamId: W.selectedDevice,
+        sourceId: sp.sourceId,
+        sourceOnly: true
+    };
+}
+
+function buildDevicePointsFC() {
+    if (W.tool !== 'select' && W.tool !== 'boxselect') return emptyFC();
+    const color = colorOf(W.selectedDevice) ?? '#888';
+    const features = visibleDeviceSourcePoints().map(p => ({
+        type: 'Feature',
+        properties: {
+            id: `src_${p.sourceId}`,
+            sourceId: p.sourceId,
+            color,
+            selected: W.selectedSources.has(p.sourceId),
+            inWindow: true
+        },
+        geometry: {type: 'Point', coordinates: [p.lng, p.lat]}
+    }));
+    return {type: 'FeatureCollection', features};
+}
+
 function refreshMap() {
     if (!map.getSource || !map.getSource('final-line')) return;
     map.getSource('final-line').setData(buildFinalLineFC());
@@ -923,6 +1003,7 @@ function refreshMap() {
     map.getSource('cand-active').setData(buildCandidateActiveFC());
     map.getSource('edit-boundary').setData(buildEditBoundaryFC());
     map.getSource('final-pts').setData(buildFinalPointsFC());
+    map.getSource('device-pts')?.setData(buildDevicePointsFC());
 }
 
 function refreshAll() {
@@ -1125,7 +1206,7 @@ function drawDeviceLane() {
     const arr = (SourceData.get(W.selectedDevice) || []).filter(p =>
         p.t >= viewportStartT - viewportDuration * 0.2 &&
         p.t <= viewportStartT + viewportDuration * 1.2
-    );
+    ).filter(p => p.sourceId == null || !EditStore.deletedPoints.has(p.sourceId));
     const color = DeviceSources[W.selectedDevice].color;
     if (arr.length < 2) return;
 
@@ -1200,6 +1281,18 @@ function drawDeviceLane() {
                 dctx.textAlign = 'left';
             }
         }
+    }
+
+    for (const p of arr) {
+        if (!W.selectedSources.has(p.sourceId)) continue;
+        const x = tToXf(p.t, w), y = altToY(p.alt);
+        dctx.fillStyle = '#f2c470';
+        dctx.beginPath();
+        dctx.arc(x, y, 3.6, 0, Math.PI * 2);
+        dctx.fill();
+        dctx.strokeStyle = '#fff5d6';
+        dctx.lineWidth = 1.2;
+        dctx.stroke();
     }
 }
 
@@ -1506,7 +1599,9 @@ function interpolateAtT(arr, t) {
    ============================================================ */
 function copyToFinal() {
     const streamId = W.selectedDevice;
-    const src = (SourceData.get(streamId) || []).filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd);
+    const src = (SourceData.get(streamId) || [])
+        .filter(p => p.t >= W.patch.tStart && p.t <= W.patch.tEnd)
+        .filter(p => p.sourceId == null || !EditStore.deletedPoints.has(p.sourceId));
     if (!src.length) {
         toast(t('workbench.toast.patch.no_points'), true);
         return;
@@ -1543,19 +1638,26 @@ function copyToFinal() {
 }
 
 function deleteSelected() {
-    if (!W.selected.size) return;
+    if (!W.selected.size && !W.selectedSources.size) return;
 
     const sel = FinalTimeline.filter(p => W.selected.has(p.id) && p.sourceId != null);
-    if (!sel.length) {
+    const sourcePoints = [...W.selectedSources]
+        .map(sourceId => findDeviceSourcePoint(sourceId))
+        .filter(Boolean);
+    const dedupedIds = [...new Set([
+        ...sel.map(p => p.sourceId),
+        ...sourcePoints.map(p => p.sourceId)
+    ])];
+    if (!dedupedIds.length) {
         toast(t('workbench.toast.deleted_points.none'), true);
         return;
     }
 
-    const dedupedIds = [...new Set(sel.map(p => p.sourceId))];
     for (const sid of dedupedIds) EditStore.deletedPoints.add(sid);
 
-    const tMin = Math.min(...sel.map(p => p.t));
-    const tMax = Math.max(...sel.map(p => p.t));
+    const times = [...sel.map(p => p.t), ...sourcePoints.map(p => p.t)];
+    const tMin = Math.min(...times);
+    const tMax = Math.max(...times);
     rebuildFinalInRange(tMin - 1, tMax + 1);
     clearSelection();
 
@@ -1609,11 +1711,18 @@ function setupMapInteractions() {
     const mapEl = map.getCanvas();
     let mouseDown = false, boxStart = null;
     let draggingAnchor = null, dragGroup = null, anchorOrigin = null, draggedMoved = false;
+    let clickedSource = null;
 
     map.on('mousemove', 'final-pts', () => {
         if (W.tool === 'select' || W.tool === 'boxselect') mapEl.style.cursor = 'grab';
     });
     map.on('mouseleave', 'final-pts', () => {
+        mapEl.style.cursor = '';
+    });
+    map.on('mousemove', 'device-pts', () => {
+        if (W.tool === 'select') mapEl.style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'device-pts', () => {
         mapEl.style.cursor = '';
     });
 
@@ -1635,6 +1744,15 @@ function setupMapInteractions() {
                 draggingAnchor = pt;
                 anchorOrigin = {lat: pt.lat, lng: pt.lng};
                 dragGroup = snapshotDragGroup(idsToDrag);
+                map.dragPan.disable();
+                return;
+            }
+        }
+
+        if (W.tool === 'select') {
+            const sourcePoint = nearestSourcePoint(e.point, 14);
+            if (sourcePoint) {
+                clickedSource = sourcePoint;
                 map.dragPan.disable();
                 return;
             }
@@ -1689,6 +1807,21 @@ function setupMapInteractions() {
         if (!mouseDown) return;
         mouseDown = false;
         map.dragPan.enable();
+
+        if (clickedSource) {
+            const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+            if (!additive) clearSelection();
+            if (W.selectedSources.has(clickedSource.sourceId)) {
+                W.selectedSources.delete(clickedSource.sourceId);
+            } else {
+                W.selectedSources.add(clickedSource.sourceId);
+            }
+            W.selectionAnchorId = null;
+            clickedSource = null;
+            mapEl.style.cursor = '';
+            refreshAll();
+            return;
+        }
 
         if (draggingAnchor && dragGroup) {
             if (draggedMoved) {
@@ -1778,6 +1911,12 @@ function setupMapInteractions() {
                     if (p.t > latestT) { latestT = p.t; latestId = p.id; }
                 }
             }
+            for (const p of visibleDeviceSourcePoints()) {
+                if (p.lat >= minLat && p.lat <= maxLat && p.lng >= minLng && p.lng <= maxLng) {
+                    W.selectedSources.add(p.sourceId);
+                    added++;
+                }
+            }
             if (latestId) {
                 W.selectionAnchorId = latestId;
             }
@@ -1792,6 +1931,7 @@ function setupMapInteractions() {
 
 function clearSelection() {
     W.selected.clear();
+    W.selectedSources.clear();
     W.selectionAnchorId = null;
 }
 
@@ -1839,6 +1979,20 @@ function nearestFinalPoint(screenPt, thresholdPx) {
     return best;
 }
 
+function nearestSourcePoint(screenPt, thresholdPx) {
+    let best = null, bestD = thresholdPx * thresholdPx;
+    for (const p of visibleDeviceSourcePoints()) {
+        const proj = map.project([p.lng, p.lat]);
+        const dx = proj.x - screenPt.x, dy = proj.y - screenPt.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+            bestD = d;
+            best = p;
+        }
+    }
+    return best;
+}
+
 /* ============================================================
    UI
    ============================================================ */
@@ -1864,6 +2018,7 @@ document.querySelectorAll('.head-btn[data-tool]').forEach(b => {
 
 document.getElementById('deviceSelect').addEventListener('change', (e) => {
     W.selectedDevice = e.target.value;
+    W.selectedSources.clear();
     const name = nameOf(W.selectedDevice === 'default' ? null : W.selectedDevice);
     document.getElementById('deviceSubLabel').textContent = `(${name})`;
     refreshAll();
@@ -1880,8 +2035,47 @@ function streamIdToWire(streamId) {
 
 
 let commitPayloadCache = null;
+let commitInProgress = false;
+
+function invalidateDataCaches() {
+    MainJourneyData = [];
+    SourceData.clear();
+    mainHydratedRanges.length = 0;
+    hydratedRanges.length = 0;
+    FinalTimeline = [];
+    W.selectedSources.clear();
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForCommitJob(jobId) {
+    if (!jobId) return true;
+    const started = performance.now();
+    let delay = 500;
+    while (performance.now() - started < 120000) {
+        try {
+            const res = await fetch(window.contextPath + `/api/v2/workbench/jobs/${jobId}`, {
+                headers: {'Accept': 'application/json'}
+            });
+            if (res.status === 404) return true;
+            if (res.ok) {
+                const status = await res.json();
+                if (status.done) return status.success !== false;
+            }
+        } catch (err) {
+            console.warn('Could not read workbench commit status', err);
+        }
+        await sleep(delay);
+        delay = Math.min(2000, delay * 1.5);
+    }
+    console.warn('Timed out waiting for workbench commit job', jobId);
+    return false;
+}
 
 function openCommit() {
+    if (commitInProgress) return;
     const modal = document.getElementById('commitModal');
     const summaryEl = document.getElementById('commitSummaryDetail');
     const topSummary = document.getElementById('commitSummary');
@@ -1958,8 +2152,11 @@ document.getElementById('commitClose').addEventListener('click', closeCommit);
 document.getElementById('commitCancel').addEventListener('click', closeCommit);
 document.getElementById('commitConfirm').addEventListener('click', async () => {
     const commitBtn = document.getElementById('commitConfirm');
-    if (!commitPayloadCache || commitBtn.disabled) return;
+    const toolbarCommitBtn = document.getElementById('btnCommit');
+    if (!commitPayloadCache || commitBtn.disabled || commitInProgress) return;
+    commitInProgress = true;
     commitBtn.disabled = true;
+    toolbarCommitBtn.disabled = true;
     commitBtn.classList.add('btn-loading');
     try {
         const res = await fetch(window.contextPath + '/api/v2/workbench/commit', {
@@ -1972,21 +2169,36 @@ document.getElementById('commitConfirm').addEventListener('click', async () => {
         if (data.success) {
             closeCommit();
 
-            // Clear all local changes
-            EditStore.patches = [];
-            EditStore.deletedPoints.clear();
-            EditStore.movedPoints.clear();
+            // Keep the local edit overlay applied while the server-side
+            // processing runs. Clearing it immediately would let the
+            // workbench resurrect deleted points from its in-memory cache.
             History.length = 0;
             clearSelection();
             renderHistory();
 
-            triggerDebouncedDataLoad();
+            document.getElementById('loadingIndicator').style.display = 'inline-block';
+            const processed = await waitForCommitJob(data.jobId);
+
+            // The server data is authoritative now. Drop local edits and all
+            // cached timeline/source data, then reload the viewport.
+            EditStore.patches = [];
+            EditStore.deletedPoints.clear();
+            EditStore.movedPoints.clear();
+            invalidateDataCaches();
+            refreshAll();
+            await loadViewportData();
+
+            if (!processed) {
+                toast(t('workbench.commit.processing.failed'), true);
+            }
         }
     } catch (err) {
         console.error(err);
         toast(t('workbench.commit.failure.network'), true);
     } finally {
+        commitInProgress = false;
         commitBtn.disabled = false;
+        toolbarCommitBtn.disabled = false;
         commitBtn.classList.remove('btn-loading');
     }
 });
@@ -2020,7 +2232,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === '3') { activateTool('boxselect'); return; }
 
     // Delete / Backspace on a non-empty selection
-    if ((e.key === 'Delete' || e.key === 'Backspace') && W.selected.size) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && (W.selected.size || W.selectedSources.size)) {
         e.preventDefault();
         deleteSelected();
         return;
@@ -2055,7 +2267,7 @@ window.addEventListener('resize', () => {
 });
 
 function updateButtons() {
-    document.getElementById('btnDelete').disabled = W.selected.size === 0;
+    document.getElementById('btnDelete').disabled = W.selected.size === 0 && W.selectedSources.size === 0;
 }
 
 function updateWovenCount() {
@@ -2117,6 +2329,7 @@ function moveSelection(dir) {
 
     if (!target) return;
     W.selected.clear();
+    W.selectedSources.clear();
     W.selected.add(target.id);
     W.selectionAnchorId = target.id;
     ensurePointVisible(target);
@@ -2143,6 +2356,7 @@ function ensurePointVisible(p) {
 function extendSelection(dir) {
     const points = selectableTimelinePoints();
     if (!points.length) return;
+    W.selectedSources.clear();
 
     const anchor = getAnchorPoint();
     if (!anchor) { moveSelection(dir); return; }
@@ -2171,6 +2385,7 @@ function moveSelectionToEdge(toEnd) {
     if (!points.length) return;
     const target = toEnd ? points[points.length - 1] : points[0];
     W.selected.clear();
+    W.selectedSources.clear();
     W.selected.add(target.id);
     W.selectionAnchorId = target.id;
     ensurePointVisible(target);
@@ -2180,6 +2395,7 @@ function moveSelectionToEdge(toEnd) {
 function extendSelectionToEdge(toEnd) {
     const points = selectableTimelinePoints();
     if (!points.length) return;
+    W.selectedSources.clear();
 
     const anchor = getAnchorPoint();
     if (!anchor) { moveSelectionToEdge(toEnd); return; }
@@ -2198,9 +2414,11 @@ function extendSelectionToEdge(toEnd) {
 
 function selectAllInWindow() {
     const points = selectableTimelinePoints();
-    if (!points.length) return;
+    const sourcePoints = visibleDeviceSourcePoints();
+    if (!points.length && !sourcePoints.length) return;
     for (const p of points) W.selected.add(p.id);
-    W.selectionAnchorId = points[points.length - 1].id;
+    for (const p of sourcePoints) W.selectedSources.add(p.sourceId);
+    W.selectionAnchorId = points.length ? points[points.length - 1].id : null;
     refreshAll();
 }
 
@@ -2228,7 +2446,18 @@ selectionInfoEl.querySelector('.sel-info-close').addEventListener('click', () =>
 function renderSelectionInfo() {
     if (!selectionInfoEl) return;
 
-    if (W.selected.size === 0) {
+    for (const sid of [...W.selectedSources]) {
+        if (!findDeviceSourcePoint(sid)) W.selectedSources.delete(sid);
+    }
+
+    const finalPoints = FinalTimeline.filter(p => W.selected.has(p.id));
+    const sourcePoints = [...W.selectedSources]
+        .map(sourceId => findDeviceSourcePoint(sourceId))
+        .filter(Boolean)
+        .map(sourcePointAsTimelinePoint);
+    const total = finalPoints.length + sourcePoints.length;
+
+    if (total === 0) {
         selectionInfoEl.style.display = 'none';
         return;
     }
@@ -2238,20 +2467,14 @@ function renderSelectionInfo() {
     const titleEl = selectionInfoEl.querySelector('.sel-info-title');
     const bodyEl  = selectionInfoEl.querySelector('.sel-info-body');
 
-    if (W.selected.size === 1) {
-        const id = [...W.selected][0];
-        const p = FinalTimeline.find(x => x.id === id);
-        if (!p) {
-            // Stale selection — shouldn't normally happen, but be safe
-            selectionInfoEl.style.display = 'none';
-            return;
-        }
+    if (total === 1) {
+        const p = finalPoints[0] ?? sourcePoints[0];
         titleEl.textContent = t('workbench.selection_info.single.headline');
         bodyEl.innerHTML = renderSinglePointBody(p);
         bindSinglePointActions(p);
     } else {
-        titleEl.textContent = t('workbench.selection_info.multi.headline', [W.selected.size]);
-        bodyEl.innerHTML = renderMultiSelectionBody();
+        titleEl.textContent = t('workbench.selection_info.multi.headline', [total]);
+        bodyEl.innerHTML = renderMultiSelectionBody(finalPoints.concat(sourcePoints));
     }
 }
 
@@ -2291,8 +2514,7 @@ function renderSinglePointBody(p) {
         </div>`;
 }
 
-function renderMultiSelectionBody() {
-    const points = FinalTimeline.filter(p => W.selected.has(p.id));
+function renderMultiSelectionBody(points) {
     if (!points.length) return '<div style="color:rgba(165,169,159,0.7)">No matching points in current view</div>';
 
     const byStream = new Map();

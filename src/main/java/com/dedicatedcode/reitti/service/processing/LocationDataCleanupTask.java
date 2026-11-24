@@ -76,7 +76,7 @@ public class LocationDataCleanupTask implements Job {
         this.userSettingsJdbcService.updateNewestData(user, end);
         this.userJdbcService.setLastDataModificationAt(user, Instant.now());
         this.metadataRepository.updateProgress(jobId, 3,4, "Schedule processing events started ...");
-        if (device.defaultDevice()) {
+        if (device.defaultDevice() || data.isRecalculateTimeline()) {
             jobScheduler.enqueueTask(updateCuratedTimelineTask,
                                       new UpdateCuratedTimelineTask.TaskData(user.getId(), device.id(), processedTimeRange.extend(densityTimeRange)).withParentJobId(data.getParentJobId()),
                                       JobSchedulingService.Metadata.builder().jobType(VISIT_TRIP_DETECTION)
@@ -93,9 +93,14 @@ public class LocationDataCleanupTask implements Job {
         private final Long deviceId;
         private final Instant start;
         private final Instant end;
+        private final boolean recalculateTimeline;
 
         public TaskData(Long userId, Long deviceId, Instant start, Instant end) {
-            this(userId, deviceId, start, end, null, null);
+            this(userId, deviceId, start, end, false, null, null);
+        }
+
+        public TaskData(Long userId, Long deviceId, Instant start, Instant end, UUID jobId, UUID parentJobId) {
+            this(userId, deviceId, start, end, false, jobId, parentJobId);
         }
 
         @JsonCreator
@@ -103,6 +108,7 @@ public class LocationDataCleanupTask implements Job {
                         @JsonProperty("deviceId") Long deviceId,
                         @JsonProperty("start") Instant start,
                         @JsonProperty("end") Instant end,
+                        @JsonProperty("recalculateTimeline") boolean recalculateTimeline,
                         @JsonProperty("jobId") UUID jobId,
                         @JsonProperty("parentJobId") UUID parentJobId) {
             super(jobId, parentJobId);
@@ -110,6 +116,7 @@ public class LocationDataCleanupTask implements Job {
             this.deviceId = deviceId;
             this.start = start;
             this.end = end;
+            this.recalculateTimeline = recalculateTimeline;
         }
 
         public Instant getStart() {
@@ -120,18 +127,26 @@ public class LocationDataCleanupTask implements Job {
             return end;
         }
 
+        public boolean isRecalculateTimeline() {
+            return recalculateTimeline;
+        }
+
         public static TaskData fromJson(String json) {
             return JobContext.fromJson(json, TaskData.class);
         }
 
         @Override
         public TaskData withJobId(UUID jobId) {
-            return new TaskData(userId, deviceId, start, end, jobId, parentJobId);
+            return new TaskData(userId, deviceId, start, end, recalculateTimeline, jobId, parentJobId);
         }
 
         @Override
         public TaskData withParentJobId(UUID parentJobId) {
-            return new TaskData(userId, deviceId, start, end, jobId, parentJobId);
+            return new TaskData(userId, deviceId, start, end, recalculateTimeline, jobId, parentJobId);
+        }
+
+        public TaskData withRecalculateTimeline(boolean recalculateTimeline) {
+            return new TaskData(userId, deviceId, start, end, recalculateTimeline, jobId, parentJobId);
         }
 
         @Override
@@ -140,7 +155,8 @@ public class LocationDataCleanupTask implements Job {
                     "userId=" + userId + ", " +
                     "deviceId=" + deviceId + ", " +
                     "start=" + start + ", " +
-                    "end=" + end + "]";
+                    "end=" + end + ", " +
+                    "recalculateTimeline=" + recalculateTimeline + "]";
         }
     }
 }
