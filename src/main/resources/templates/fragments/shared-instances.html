@@ -20,6 +20,7 @@
         </div>
 
         <div class="settings-card" th:if="${!reittiIntegrations.isEmpty()}">
+            <div class="table-scroll">
             <table>
                 <thead>
                 <tr>
@@ -82,6 +83,7 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
             <!-- Info Display Area -->
             <div id="reitti-info-display" style="margin-top: 20px;">
                 <!-- Remote instance info will be displayed here -->

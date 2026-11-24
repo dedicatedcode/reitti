@@ -104,6 +104,11 @@ public class DeviceSettingsController {
         return "settings/fragments/devices :: device-edit-form";
     }
 
+    @GetMapping("/form-placeholder")
+    public String formPlaceholder() {
+        return "settings/fragments/devices :: device-form-placeholder";
+    }
+
     @PostMapping
     public String createDevice(@AuthenticationPrincipal User user,
                                @RequestParam String name,

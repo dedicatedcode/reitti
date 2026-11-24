@@ -1694,7 +1694,7 @@ class MapRenderer {
                     latestLocation.latitude,
                     latestLocation.longitude,
                     {
-                        avatarUrl: window.contextPath + userConfig.avatarUrl,
+                        avatarUrl: userConfig.avatarUrl ? window.contextPath + userConfig.avatarUrl : null,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
                         timestamp: latestLocation.timestamp,
@@ -2764,17 +2764,24 @@ class MapRenderer {
 
         const circle = document.createElement('div');
         circle.className = 'avatar-marker';
+        circle.style.opacity = opacity;
+        circle.style.transition = 'opacity 0.5s ease-in-out';
 
-        const img = document.createElement('img');
-        img.src = userData.avatarUrl;
-        img.alt = userData.avatarFallback;
-        img.className = 'avatar-marker-img';
+        const fallback = document.createElement('span');
+        fallback.className = 'avatar-marker-initials';
+        fallback.textContent = userData.avatarFallback || '';
+        circle.appendChild(fallback);
 
-        // Apply opacity to the image
-        img.style.opacity = opacity;
-        img.style.transition = 'opacity 0.5s ease-in-out';
+        let img = null;
+        if (userData.avatarUrl) {
+            img = document.createElement('img');
+            img.src = userData.avatarUrl;
+            img.alt = '';
+            img.className = 'avatar-marker-img';
+            img.addEventListener('error', () => img.remove(), { once: true });
+            circle.appendChild(img);
+        }
 
-        circle.appendChild(img);
         inner.appendChild(circle);
         container.appendChild(inner);
 
@@ -2790,7 +2797,8 @@ class MapRenderer {
             userId: userId,
             userData: userData,
             color: userData.color,
-            imgElement: img
+            imgElement: img,
+            element: circle
         };
 
         // Add popup with detailed user info
@@ -2837,7 +2845,7 @@ class MapRenderer {
 
                     // Update user data with new timestamp
                     existingMarker._avatarData.userData = {
-                        avatarUrl: window.contextPath + userConfig.avatarUrl,
+                        avatarUrl: userConfig.avatarUrl ? window.contextPath + userConfig.avatarUrl : null,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
                         timestamp: latestLocation.timestamp,
@@ -2846,13 +2854,14 @@ class MapRenderer {
 
                     // Update opacity based on new timestamp
                     const opacity = this._calculateAvatarOpacity(latestLocation.timestamp);
-                    if (existingMarker._avatarData.imgElement) {
-                        existingMarker._avatarData.imgElement.style.opacity = opacity;
+                    const markerElement = existingMarker._avatarData.element || existingMarker._avatarData.imgElement;
+                    if (markerElement) {
+                        markerElement.style.opacity = opacity;
                     }
 
                     // Update popup content with new timestamp
                     this.updateMarkerPopup(existingMarker, latestLocation.latitude, latestLocation.longitude, {
-                        avatarUrl: window.contextPath + userConfig.avatarUrl,
+                        avatarUrl: userConfig.avatarUrl ? window.contextPath + userConfig.avatarUrl : null,
                         avatarFallback: userConfig.avatarFallback,
                         displayName: userConfig.displayName,
                         timestamp: latestLocation.timestamp,
@@ -2864,7 +2873,7 @@ class MapRenderer {
                         latestLocation.latitude,
                         latestLocation.longitude,
                         {
-                            avatarUrl: window.contextPath + userConfig.avatarUrl,
+                            avatarUrl: userConfig.avatarUrl ? window.contextPath + userConfig.avatarUrl : null,
                             avatarFallback: userConfig.avatarFallback,
                             displayName: userConfig.displayName,
                             timestamp: latestLocation.timestamp,
