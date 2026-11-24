@@ -52,7 +52,8 @@
                     <div th:if="${geocodeServices.isEmpty()}">
                         <p th:text="#{geocoding.no.services}">No geocoding services configured.</p>
                     </div>
-                    <table th:if="${!geocodeServices.isEmpty()}">
+                    <div class="table-scroll" th:if="${!geocodeServices.isEmpty()}">
+                    <table>
                         <thead>
                         <tr>
                             <th th:text="#{geocoding.table.name}">Name</th>
@@ -122,6 +123,7 @@
                         </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <div class="settings-card" id="geocoding-form-container">
                     <form th:hx-post="@{/settings/geocode-services}" hx-target="#geocode-services" hx-swap="innerHTML"

@@ -112,6 +112,8 @@
     --serif-font: "Fraunces", 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
     --memories-header-height: 550px;
     --box-shadow: 0 8px 25px rgba(245, 222, 179, 0.2);
+    --nav-height: 52px;
+    --date-picker-height: 110px;
     --sans-serif-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 
     --bg: #0e1826;
@@ -247,9 +249,17 @@ header {
 .loading-overlay {
     opacity: 0;
     position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     z-index: 1000;
     pointer-events: none;
+}
+
+@media (max-width: 800px) {
+    .loading-overlay {
+        top: calc(var(--nav-height) + env(safe-area-inset-top, 0px));
+    }
 }
 
 .loading-overlay .progress-container {
@@ -282,10 +292,10 @@ header {
 
 .settings-menu {
     position: fixed;
-    bottom: 180px;
+    bottom: calc(var(--date-picker-height) + 70px);
     right: 20px;
     width: 300px;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100vh - var(--date-picker-height) - 90px);
     display: flex;
     flex-direction: column;
     background: var(--color-background-dark);
@@ -508,7 +518,7 @@ header {
         right: 10px;
         left: 10px;
         width: auto;
-        bottom: 160px;
+        bottom: calc(var(--date-picker-height) + 50px);
         max-height: 60vh;
     }
 
@@ -518,10 +528,6 @@ header {
 
     .settings-menu-content {
         padding: 12px;
-    }
-
-    .loading-overlay {
-        top: 46px;
     }
 
 }
@@ -820,6 +826,22 @@ tr:hover {
     background-color: transparent;
 }
 
+/*
+ * Generic horizontal scroll surface for tables. Wrap a table in
+ * <div class="table-scroll"> to make it scroll instead of overflowing.
+ */
+.table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll > table {
+    margin-bottom: 0;
+    min-width: 100%;
+}
+
 /* Tags */
 
 .tags-chips {
@@ -916,6 +938,49 @@ tr:hover {
     border-top: 1px solid #e0e0e0;
 }
 
+/* Generic wrapping row for toolbars and form fields on narrow screens. */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar--split {
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.form-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.form-row > .form-group {
+    flex: 1 1 160px;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.form-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-left: auto;
+}
+
+.settings-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
 .queue-status {
     display: flex;
     gap: 20px;
@@ -1009,7 +1074,7 @@ tr:hover {
     border: 1px solid var(--color-highlight);
     color: var(--color-text-white);
     flex: 1;
-    min-width: 200px;
+    min-width: min(200px, 100%);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     margin-bottom: 15px;
 }
@@ -1109,12 +1174,28 @@ tr:hover {
     user-select: none;
 }
 
+/*
+ * WebKit on iOS does not deliver native scroll gestures to a scroll container
+ * that has pointer-events:none, even when its children opt back in. Scope the
+ * override to iOS browsers (Safari, Chrome and Firefox there are all WebKit)
+ * so desktop keeps passing gestures through to the map.
+ */
+@supports (-webkit-touch-callout: none) {
+    .timeline {
+        pointer-events: auto;
+        touch-action: pan-y;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 .navigation-container {
     position: fixed;
     top: 0;
     width: 50%;
     z-index: 50;
     overflow-y: auto;
+    padding-top: env(safe-area-inset-top, 0px);
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
     -webkit-user-select: none; /* Safari */
@@ -1126,7 +1207,7 @@ tr:hover {
     line-height: 1.5;
     font-weight: 400;
     padding-top: 64px;
-    padding-bottom: 180px;
+    padding-bottom: calc(var(--date-picker-height) + 70px);
     transition: opacity 0.3s ease;
     -webkit-user-select: none; /* Safari */
     user-select: none;
@@ -1636,7 +1717,7 @@ body.timeline-hidden.datepicker-hidden .timeline-toggle-btn {
 
 .timeline-toggle-btn,
 .datepicker-toggle-btn {
-    bottom: 114px;
+    bottom: calc(var(--date-picker-height) + 4px);
 
 }
 
@@ -1838,9 +1919,21 @@ body.auto-update-mode .today-fab {
 
 .settings-content-area {
     flex: 1;
+    min-width: 0;
     padding-bottom: 24px;
     padding-right: 24px;
     line-height: 1.4;
+}
+
+/* Allow long URLs, tokens and code samples to break instead of widening the page. */
+.settings-content-area a,
+.settings-content-area code,
+.settings-content-area pre {
+    overflow-wrap: anywhere;
+}
+
+.settings-content-area pre {
+    white-space: pre-wrap;
 }
 
 .settings-page .settings-section {
@@ -1868,6 +1961,26 @@ body.auto-update-mode .today-fab {
 }
 
 @media (max-width: 800px) {
+    :root {
+        --nav-height: 50px;
+        --date-picker-height: 82px;
+    }
+
+    .settings-page table {
+        font-size: 0.85rem;
+    }
+
+    .settings-page th,
+    .settings-page td {
+        padding: 8px 10px;
+    }
+
+    .form-row > .form-group,
+    .form-row-actions {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
+
     .timeline-entry {
         padding: 1rem 2rem 0 1rem;
     }
@@ -2466,53 +2579,42 @@ button:disabled {
     height: 64px;
     border-radius: 50%;
     border: 2px solid white;
-    object-fit: cover;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    display: inline-block;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     position: relative;
     overflow: hidden;
+    box-sizing: border-box;
+    object-fit: cover;
+    background-color: var(--color-background-dark-light);
+    font-family: var(--serif-font);
+    font-size: 1.6rem;
+    font-weight: 400;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
 .avatar.small {
     width: 32px;
     height: 32px;
+    font-size: 0.9rem;
 }
 
-.avatar::before {
-    display: none;
-}
-.avatar::after {
-    content: attr(alt);
-    color: white;
-    font-size: 2.1rem;
-    top: 0;
+.avatar > img {
     position: absolute;
-    background: var(--color-background-dark);
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    padding-top: 7px;
-    font-weight: initial;
-    font-family: var(--serif-font);
+    object-fit: cover;
+    border-radius: inherit;
 }
 
-.avatar.small::after {
-    font-size: 1.1rem;
-    padding: 4px;
-}
-
-.avatar:not(:has(img))::after {
-    display: block;
-}
-
-.avatar img:not([src]) ~ .avatar::after {
-    content: attr(alt);
-    display: block;
-}
-
-.avatar img:not([src]),
-.avatar img:empty {
-    display: none;
+.avatar-initials {
+    position: relative;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .current-avatar .avatar {
@@ -2780,7 +2882,7 @@ button:disabled {
     z-index: 50;
     box-shadow: unset;
     color: white;
-    height: 110px;
+    height: var(--date-picker-height);
 }
 
 .timeband-item:hover {
@@ -2844,6 +2946,41 @@ button:disabled {
 
 .timeband-item.selected:hover::before {
     opacity: 1;
+}
+
+@media (max-width: 800px) {
+    .timeband-item {
+        min-width: 52px;
+    }
+
+    .timeband-month .timeband-item {
+        min-width: 64px;
+    }
+
+    .timeband-year .timeband-item {
+        min-width: 72px;
+    }
+
+    .timeband-item .primary-text,
+    .timeband-year .primary-text {
+        font-size: 1.1rem;
+    }
+
+    .timeband-day .secondary-text,
+    .timeband-month .secondary-text,
+    .timeband-year .secondary-text {
+        font-size: 0.7rem;
+    }
+
+    .timeband-day .tertiary-text,
+    .timeband-month .tertiary-text,
+    .timeband-year .tertiary-text {
+        font-size: 0.6rem;
+    }
+
+    .timeband-item.selected {
+        transform: scale(1.1);
+    }
 }
 
 /* Autocomplete dropdown */

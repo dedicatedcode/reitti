@@ -78,9 +78,7 @@
                  th:data-user-id="${userData.userId}"
                  th:data-base-color="${userData.baseColor}"
                  onclick="selectCoverageUser(this.dataset.userId, this)">
-                <img th:src="@{${userData.userAvatarUrl}}"
-                     th:alt="${userData.avatarFallback}"
-                     class="avatar">
+                <div th:replace="~{fragments/avatars :: avatar(${userData.userAvatarUrl}, ${userData.avatarFallback}, '')}"></div>
                 <div th:text="${userData.displayName}" class="username">Username</div>
             </div>
             <th:block th:each="device : ${userData.devices}">
@@ -90,9 +88,7 @@
                      th:data-device-id="${device.id()}"
                      th:data-device-color="${device.color()}"
                      onclick="selectCoverageDevice(this.dataset.userId, this.dataset.deviceId, this)">
-                    <img th:if="${device.avatarUrl()}" th:src="@{${device.avatarUrl()}}"
-                         th:alt="${device.avatarFallback()}"
-                         class="avatar">
+                    <div th:replace="~{fragments/avatars :: avatar(${device.avatarUrl()}, ${device.avatarFallback()}, '')}"></div>
                     <div th:text="${device.name()}" class="username">Username</div>
                 </div>
             </th:block>

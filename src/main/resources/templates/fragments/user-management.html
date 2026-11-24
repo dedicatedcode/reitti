@@ -17,7 +17,7 @@
     <h2 th:text="#{users.title}">Significant Places</h2>
 
     <div class="settings-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="settings-card-header">
             <h3 th:text="#{users.existing}">Existing Users</h3>
             <button th:if="${isAdmin && addUserAvailable}" class="btn"
                     th:hx-get="@{/settings/user-form}"
@@ -30,6 +30,7 @@
             <p th:text="#{users.no.users}">No users found.</p>
         </div>
 
+        <div class="table-scroll">
         <table th:if="${!users.isEmpty()}">
             <thead>
             <tr>
@@ -62,6 +63,7 @@
             </tr>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

@@ -10,9 +10,6 @@ class TimelineScrollIndicator {
         this.scrollThumb = null;
         this.scrollListener = null;
         this.resizeListener = null;
-        this.scrollEndTimer = null;
-        this.snapPositions = [];
-        this.isSnapping = false;
     }
 
     init() {
@@ -24,26 +21,18 @@ class TimelineScrollIndicator {
         this.createScrollIndicator();
 
         // Set up scroll listener
-        this.scrollListener = () => this.handleScroll();
+        this.scrollListener = () => this.updateScrollPosition();
         this.timeline.addEventListener('scroll', this.scrollListener);
-        
+
         // Set up resize listener
         this.resizeListener = () => this.updateScrollPosition();
         window.addEventListener('resize', this.resizeListener);
-        
-        // Calculate snap positions based on timeline entries
-        this.calculateSnapPositions();
-        
+
         // Initial update
         this.updateScrollPosition();
     }
 
     cleanup() {
-        // Clear any pending timers
-        if (this.scrollEndTimer) {
-            clearTimeout(this.scrollEndTimer);
-        }
-
         // Remove scroll indicator
         if (this.scrollIndicator && this.scrollIndicator.parentNode) {
             this.scrollIndicator.parentNode.removeChild(this.scrollIndicator);
@@ -62,108 +51,27 @@ class TimelineScrollIndicator {
         this.scrollThumb = null;
         this.scrollListener = null;
         this.resizeListener = null;
-        this.scrollEndTimer = null;
-        this.snapPositions = [];
-        this.isSnapping = false;
     }
 
     createScrollIndicator() {
         // Create the main indicator container
         this.scrollIndicator = document.createElement('div');
         this.scrollIndicator.className = 'timeline-scroll-indicator';
-        
+
         // Create the scroll track (the line)
         const scrollTrack = document.createElement('div');
         scrollTrack.className = 'scroll-track';
-        
+
         // Create the scroll thumb (the position marker)
         this.scrollThumb = document.createElement('div');
         this.scrollThumb.className = 'scroll-thumb';
-        
+
         // Assemble the indicator
         scrollTrack.appendChild(this.scrollThumb);
         this.scrollIndicator.appendChild(scrollTrack);
-        
+
         // Add to timeline
         this.timeline.appendChild(this.scrollIndicator);
-    }
-
-    calculateSnapPositions() {
-        const timelineEntries = this.timelineContainer.querySelectorAll('.timeline-entry');
-        const maxScroll = this.timeline.scrollHeight - this.timeline.clientHeight;
-        const hasAggregatedEntries = this.timelineContainer.querySelector('.aggregated-entry') !== null;
-
-        // No snapping in aggregate mode: the tall stat cards need free scrolling
-        if (timelineEntries.length === 0 || maxScroll <= 0 || hasAggregatedEntries) {
-            this.snapPositions = [];
-            return;
-        }
-
-        // Snap to the real entry tops (document-relative), not an even distribution,
-        // so entries of different heights still snap to their actual boundaries.
-        const scrollerRect = this.timeline.getBoundingClientRect();
-        this.snapPositions = Array.from(timelineEntries).map(entry => {
-            const absoluteTop = entry.getBoundingClientRect().top - scrollerRect.top + this.timeline.scrollTop;
-            return Math.max(0, Math.min(1, absoluteTop / maxScroll));
-        });
-        if (this.snapPositions[this.snapPositions.length - 1] !== 1) {
-            this.snapPositions.push(1);
-        }
-    }
-
-    handleScroll() {
-        // Update position immediately for smooth scrolling
-        this.updateScrollPosition();
-
-        if (this.isSnapping) return;
-
-        // Clear existing timer
-        if (this.scrollEndTimer) {
-            clearTimeout(this.scrollEndTimer);
-        }
-
-        // Set timer to detect scroll end
-        this.scrollEndTimer = setTimeout(() => {
-            this.snapToNearestPosition();
-        }, 150); // Wait 150ms after scroll stops
-    }
-
-    snapToNearestPosition() {
-        if (!this.timeline || !this.scrollThumb || this.snapPositions.length === 0) return;
-
-        const scrollTop = this.timeline.scrollTop;
-        const scrollHeight = this.timeline.scrollHeight;
-        const clientHeight = this.timeline.clientHeight;
-        const maxScroll = scrollHeight - clientHeight;
-
-        if (maxScroll <= 0) return;
-
-        const currentScrollPercentage = scrollTop / maxScroll;
-
-        // Find the nearest snap position
-        let nearestPosition = this.snapPositions[0];
-        let minDistance = Math.abs(currentScrollPercentage - nearestPosition);
-
-        for (let i = 1; i < this.snapPositions.length; i++) {
-            const distance = Math.abs(currentScrollPercentage - this.snapPositions[i]);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestPosition = this.snapPositions[i];
-            }
-        }
-
-        // Calculate target scroll position
-        const targetScrollTop = nearestPosition * maxScroll;
-        if (Math.abs(targetScrollTop - scrollTop) < 2) return;
-
-        this.isSnapping = true;
-        this.timeline.scrollTo({
-            top: targetScrollTop,
-            behavior: 'smooth'
-        });
-        setTimeout(() => {
-            this.isSnapping = false;
-        }, 400);
     }
 
     updateScrollPosition() {
@@ -172,19 +80,19 @@ class TimelineScrollIndicator {
         const scrollTop = this.timeline.scrollTop;
         const scrollHeight = this.timeline.scrollHeight;
         const clientHeight = this.timeline.clientHeight;
-        
+
         // Calculate scroll percentage
         const maxScroll = scrollHeight - clientHeight;
         const scrollPercentage = maxScroll > 0 ? (scrollTop / maxScroll) : 0;
-        
+
         // Update thumb position
         const trackHeight = this.scrollIndicator.querySelector('.scroll-track').clientHeight;
         const thumbHeight = this.scrollThumb.clientHeight;
         const maxThumbPosition = trackHeight - thumbHeight;
         const thumbPosition = scrollPercentage * maxThumbPosition;
-        
+
         this.scrollThumb.style.transform = `translateY(${thumbPosition}px)`;
-        
+
         // Update opacity based on scroll activity
         this.scrollIndicator.style.opacity = maxScroll > 0 ? '1' : '0.3';
     }

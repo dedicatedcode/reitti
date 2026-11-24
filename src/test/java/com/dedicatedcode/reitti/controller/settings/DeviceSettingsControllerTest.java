@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -202,6 +203,14 @@ class DeviceSettingsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("settings/fragments/devices :: device-edit-form"))
                 .andExpect(model().attributeExists("device", "selectedColor", "defaultColors"));
+    }
+
+    @Test
+    void formPlaceholder_ShouldReturnCreateButton() throws Exception {
+        mockMvc.perform(get("/settings/devices/form-placeholder").with(user(admin)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings/fragments/devices :: device-form-placeholder"))
+                .andExpect(content().string(containsString("/settings/devices/create-form")));
     }
 
     private Device createDevice(String name, String color) {

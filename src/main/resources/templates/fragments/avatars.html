@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<body>
+
+<!--
+  Avatar with initials fallback. Images are rendered as an overlay so the
+  initials stay visible whenever the image is missing or fails to load.
+-->
+<span th:fragment="avatar(url, initials, className)"
+      class="avatar"
+      th:classappend="${className}"
+      role="img"
+      th:attr="aria-label=${initials}">
+    <span class="avatar-initials" aria-hidden="true" th:text="${initials}"></span>
+    <img th:if="${url != null and url != ''}"
+         th:src="@{${url}}"
+         alt=""
+         onerror="this.remove()">
+</span>
+
+</body>
+</html>

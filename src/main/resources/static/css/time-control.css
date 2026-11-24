@@ -5,7 +5,7 @@
 
 .bottom-bar {
     position: fixed;
-    bottom: 96px;
+    bottom: calc(var(--date-picker-height) - 14px);
     left: 0;
     right: 0;
     display: flex;

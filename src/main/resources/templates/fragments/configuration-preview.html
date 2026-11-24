@@ -926,5 +926,37 @@
         .preview-popup-body {
             color: #555;
         }
+
+        @media (max-width: 800px) {
+            .preview-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .date-selection {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+
+            .map-with-timeline {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .timeline-sidebar {
+                width: 100%;
+                max-height: 180px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .map {
+                min-height: 320px;
+            }
+
+            .config-details {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </div>
