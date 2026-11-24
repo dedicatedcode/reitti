@@ -18,6 +18,7 @@ import java.util.List;
 
 import static com.dedicatedcode.reitti.TestConstants.Points.*;
 import static com.dedicatedcode.reitti.TestUtils.assertVisit;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @IntegrationTest
@@ -161,5 +162,45 @@ class WorkbenchServiceTest {
         assertVisit(processedVisits.get(2), "2025-06-17T05:58:10Z", "2025-06-17T13:08:53Z", MOLTKESTR);
         assertVisit(processedVisits.get(3), "2025-06-17T13:12:31Z", "2025-06-17T13:18:20Z", ST_THOMAS);
         assertVisit(processedVisits.get(4), "2025-06-17T13:21:28Z", "2025-06-17T21:59:44Z", MOLTKESTR);
+    }
+
+    @Test
+    void shouldRemoveDeletedPointsFromNonDefaultDeviceAfterStitching() {
+        Device device = this.testingService.createRandomDevice(user);
+        this.testingService.importAndProcess(user, device, "/data/gpx/20250617.gpx");
+
+        Instant rangeStart = Instant.parse("2025-06-16T00:00:00Z");
+        Instant rangeEnd = Instant.parse("2025-06-18T00:00:00Z");
+
+        // weave the device into the main timeline
+        WorkbenchCommitRequest stitchRequest = new WorkbenchCommitRequest();
+        EditStoreDto stitchStore = new EditStoreDto();
+        PatchDto patch = new PatchDto();
+        patch.setDeviceId(String.valueOf(device.id()));
+        patch.setSeq(1);
+        patch.settStart(rangeStart.toEpochMilli());
+        patch.settEnd(rangeEnd.toEpochMilli());
+        stitchStore.setPatches(Collections.singletonList(patch));
+        stitchRequest.setEditStore(stitchStore);
+        candidate.applyCommit(user, stitchRequest);
+        this.testingService.awaitDataImport(100);
+
+        List<Long> stitchedPoints = this.testJdbcService.findSourcePointIdsForDevice(user, device, rangeStart, rangeEnd);
+        assertThat(stitchedPoints).isNotEmpty();
+
+        List<Long> pointsToDelete = stitchedPoints.stream().limit(10).toList();
+        WorkbenchCommitRequest deleteRequest = new WorkbenchCommitRequest();
+        EditStoreDto deleteStore = new EditStoreDto();
+        deleteStore.setDeletedPoints(pointsToDelete.stream().map(id -> {
+            DeletedPointDto deletedPointDto = new DeletedPointDto();
+            deletedPointDto.setSourceId(id);
+            return deletedPointDto;
+        }).toList());
+        deleteRequest.setEditStore(deleteStore);
+        candidate.applyCommit(user, deleteRequest);
+        this.testingService.awaitDataImport(100);
+
+        List<Long> remainingPoints = this.testJdbcService.findSourcePointIdsForDevice(user, device, rangeStart, rangeEnd);
+        assertThat(remainingPoints).doesNotContainAnyElementsOf(pointsToDelete);
     }
 }
