@@ -154,7 +154,7 @@ public class TimelineController {
         String mapStreamDataUrl = loadPaths ? String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", user.getId(), rangeStart, rangeEndExclusive, timezone.getId()) : null;
         String mapTripsUrl = loadPaths ? String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", user.getId(), rangeStart, rangeEndInclusive, timezone.getId()) : null;
         String h3CellUrl = loadPaths && h3Enabled ? String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", user.getId(), startDate, endDate, timezone.getId()) : null;
-        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(String.format("/api/avatars/%d", user.getId()));
+        String currentUserAvatarUrl = this.avatarService.getInfo(user.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", user.getId(), avatarInfo.updatedAt())).orElse(null);
         String currentUserInitials = this.avatarService.generateInitials(user.getDisplayName());
 
         List<DeviceTimelineData> enabledDevices = Collections.emptyList();
@@ -332,7 +332,7 @@ public class TimelineController {
                         String mapStreamDataUrl = latestLocationOnly ? null : String.format("/api/v3/locations/stream/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndExclusive, userTimezone.getId());
                         String mapTripsUrl = latestLocationOnly ? null : String.format("/api/v2/trips/%d?startDate=%s&endDate=%s&timezone=%s", sharedWithUser.getId(), rangeStart, rangeEndInclusive, userTimezone.getId());
                         String h3CellUrl = latestLocationOnly || !h3Enabled ? null : String.format("/api/v2/coverage/cells/%d?start=%s&end=%s&timezone=%s", sharedWithUser.getId(), startDate, endDate, userTimezone.getId());
-                        String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(String.format("/api/avatars/%d", sharedWithUser.getId()));
+                        String currentUserAvatarUrl = this.avatarService.getInfo(sharedWithUser.getId()).map(avatarInfo -> String.format("/api/avatars/%d?ts=%s", sharedWithUser.getId(), avatarInfo.updatedAt())).orElse(null);
                         String currentUserInitials = this.avatarService.generateInitials(sharedWithUser.getDisplayName());
 
                         return new UserTimelineData(sharedWithUser.getId() + "",

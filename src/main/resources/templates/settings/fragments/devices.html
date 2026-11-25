@@ -137,10 +137,16 @@
     <button th:if="${device == null}" type="submit" class="btn" th:text="#{form.create}">Create New Device</button>
     <button th:if="${device != null}" type="submit" class="btn" th:text="#{form.update}">Update Device</button>
     <button type="button" class="btn btn-secondary"
-            th:hx-get="@{/settings/devices}"
-            hx-target="#devices"
+            th:hx-get="@{/settings/devices/form-placeholder}"
+            hx-target="#device-form-container"
             hx-swap="innerHTML"
             th:text="#{form.cancel}">Cancel</button>
 </form>
+
+<button th:fragment="device-form-placeholder" class="btn"
+        th:hx-get="@{/settings/devices/create-form}"
+        hx-target="this"
+        hx-swap="outerHTML"
+        th:text="#{devices.add.title}">Create New Device</button>
 </body>
 </html>

@@ -35,8 +35,8 @@
                 <div class="settings-card">
                     <h3 th:text="#{export.date.range}">Date Range</h3>
 
-                    <div style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
-                        <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-row">
+                        <div class="form-group">
                             <label for="deviceId" th:text="#{export.device.label}">Device</label>
                             <select class="device-select" id="deviceId" name="deviceId" th:hx-get="@{/settings/export-data/data-content}"
                                     hx-target="#data-content"
@@ -83,14 +83,14 @@
                                    required>
                         </div>
 
-                        <div style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
+                        <div class="form-row-actions">
                             <button type="button" 
                                     class="btn"
                                     data-gpx-download
                                     onclick="handleGpxDownload(this)"
                                     style="display: flex; align-items: center; gap: 8px;">
                                 <span th:text="#{export.gpx.button}">Export as GPX</span>
-                                <div id="gpx-loading" style="display: none; height: 0; margin-left: 8px; width: 20px;">
+                                <div id="gpx-loading" style="display: none; margin-left: 8px; width: 20px;">
                                     <div style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: var(--color-accent); animation: spin 1s ease-in-out infinite;"></div>
                                 </div>
                             </button>
@@ -113,16 +113,16 @@
                         </div>
 
                         <div th:if="${totalElements > 0}">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div class="toolbar toolbar--split">
                                 <div>
                                     <p th:text="#{export.raw.data.showing(${currentPage * pageSize + 1}, ${currentPage * pageSize + rawLocationPoints.size()}, ${totalElements})}">
                                         Showing 1 - 100 of 1000
                                     </p>
                                 </div>
                                 
-                                <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="toolbar">
                                     <!-- Page size selector -->
-                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="toolbar">
                                         <label for="pageSizeSelect" th:text="#{export.raw.data.show}">Show:</label>
                                         <select id="pageSizeSelect"
                                                 name="size"
@@ -139,7 +139,7 @@
                                     </div>
                                     
                                     <!-- Page navigation -->
-                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="toolbar">
                                         <button type="button" 
                                                 class="btn btn-small"
                                                 th:disabled="${!hasPrevious}"
@@ -173,7 +173,7 @@
                                 </div>
                             </div>
 
-                            <div class="export-data-table-container">
+                            <div class="export-data-table-container table-scroll">
                                 <table>
                                     <thead>
                                     <tr>

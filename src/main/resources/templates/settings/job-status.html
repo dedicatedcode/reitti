@@ -100,6 +100,8 @@
                                             <div class="job-progress-text" th:if="${child.progressText() != null}" th:text="${child.progressText()}"></div>
                                         </div>
                                     </div>
+                                    <div th:if="${job.hiddenChildren() > 0}" class="child-jobs-more"
+                                         th:text="#{jobs.progress.hiddenChildren(${job.hiddenChildren()})}">+ 0 more finished child jobs</div>
                                 </div>
                             </div>
                         </div>

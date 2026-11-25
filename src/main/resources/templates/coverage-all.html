@@ -43,7 +43,7 @@
                        class="coverage-chip"
                        th:classappend="${userData.userId() == selectedUserId} ? 'active'"
                        th:title="${userData.displayName()}">
-                        <img class="avatar small" th:src="@{${userData.userAvatarUrl()}}" th:alt="${userData.avatarFallback()}">
+                        <div th:replace="~{fragments/avatars :: avatar(${userData.userAvatarUrl()}, ${userData.avatarFallback()}, 'small')}"></div>
                         <span th:text="${userData.displayName()}">User</span>
                     </a>
                 </div>
@@ -68,7 +68,7 @@
                        class="coverage-chip"
                        th:classappend="${selectedDeviceId != null and device.id().equals(selectedDeviceId)} ? 'active'"
                        th:title="${device.name()}">
-                        <img th:if="${device.avatarUrl()}" class="avatar small" th:src="@{${device.avatarUrl()}}" th:alt="${device.avatarFallback()}">
+                        <div th:replace="~{fragments/avatars :: avatar(${device.avatarUrl()}, ${device.avatarFallback()}, 'small')}"></div>
                         <span th:text="${device.name()}">Device</span>
                     </a>
                 </div>

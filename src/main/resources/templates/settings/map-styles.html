@@ -32,7 +32,8 @@
                 </p>
 
                 <div class="settings-card" id="map-style-list-container" >
-                    <table th:fragment="styles-table">
+                    <div th:fragment="styles-table" class="table-scroll">
+                    <table>
                         <thead>
                         <tr>
                             <th th:text="#{map.settings.dialog.map-styles.table.name}">Name</th>
@@ -80,6 +81,7 @@
                         </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div class="settings-card" id="map-style-form-container">

@@ -183,6 +183,30 @@ class JobStatusControllerTest {
     }
 
     @Test
+    void shouldCapFinishedChildJobsButKeepTheCounters() throws Exception {
+        UUID parentId = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-many-children-parent");
+        try {
+            Instant base = Instant.now();
+            for (int i = 0; i < 5; i++) {
+                UUID childId = scheduleChild(parentId, "controller-test-many-child-" + i);
+                jobMetadataRepository.updateState(childId, JobState.COMPLETED, base.plusSeconds(i));
+            }
+
+            mockMvc.perform(get("/settings/queue-stats-content").with(user(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("5 / 5 child jobs")))
+                    .andExpect(content().string(containsString("+ 2 more finished child jobs")))
+                    .andExpect(content().string(containsString("controller-test-many-child-2")))
+                    .andExpect(content().string(containsString("controller-test-many-child-3")))
+                    .andExpect(content().string(containsString("controller-test-many-child-4")))
+                    .andExpect(content().string(not(containsString("controller-test-many-child-0"))))
+                    .andExpect(content().string(not(containsString("controller-test-many-child-1"))));
+        } finally {
+            jobSchedulingService.cancel(parentId);
+        }
+    }
+
+    @Test
     void shouldShowTheUsernameInsteadOfTheRawUserId() throws Exception {
         UUID jobId = jobSchedulingService.createParentJob(admin, JobType.GPX_IMPORT, "controller-test-username-marker");
         try {
@@ -245,6 +269,10 @@ class JobStatusControllerTest {
     }
 
     private UUID scheduleChild(UUID parentId) {
+        return scheduleChild(parentId, "controller-test-cancel-child");
+    }
+
+    private UUID scheduleChild(UUID parentId, String friendlyName) {
         List<UUID> before = jobMetadataRepository.findByStates(List.of(JobState.AWAITING)).stream()
                 .map(JobMetadataRepository.JobMetadata::getId)
                 .toList();
@@ -254,7 +282,7 @@ class JobStatusControllerTest {
                 JobSchedulingService.Metadata.builder()
                         .user(admin)
                         .jobType(JobType.GPS_IMPORT)
-                        .friendlyName("controller-test-cancel-child")
+                        .friendlyName(friendlyName)
                         .build());
 
         List<UUID> after = jobMetadataRepository.findByStates(List.of(JobState.AWAITING)).stream()

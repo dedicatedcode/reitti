@@ -36,6 +36,7 @@
                 </div>
 
                 <div class="settings-card">
+                    <div class="table-scroll">
                     <table th:if="${!tokens.isEmpty()}">
                         <thead>
                         <tr>
@@ -95,6 +96,7 @@
                         </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div class="settings-card" id="token-form-container">
@@ -106,6 +108,7 @@
                     <div th:fragment="api-token-usages" class="settings-card">
                         <h3 th:text="#{tokens.recent.usages.title}">Recent Token Usages</h3>
                         <p th:text="#{tokens.recent.usages.description(${maxUsagesToShow})}">Showing the last 10 token usages</p>
+                        <div class="table-scroll">
                         <table>
                             <thead>
                             <tr>
@@ -126,6 +129,7 @@
                             </tr>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
 

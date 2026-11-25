@@ -52,7 +52,7 @@ public class CoverageContextService {
     public UserTimelineData buildUserTimelineData(User user, boolean active) {
         String avatarUrl = avatarService.getInfo(user.getId())
                 .map(info -> String.format("/api/avatars/%d?ts=%s", user.getId(), info.updatedAt()))
-                .orElse(String.format("/api/avatars/%d", user.getId()));
+                .orElse(null);
         String initials = avatarService.generateInitials(user.getDisplayName());
         String color = userSettingsJdbcService.getOrCreateDefaultSettings(user.getId()).getColor();
 
