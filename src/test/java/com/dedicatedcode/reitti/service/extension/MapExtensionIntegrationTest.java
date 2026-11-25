@@ -73,6 +73,10 @@ class MapExtensionIntegrationTest {
         upstream = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         upstream.createContext("/manifest.json", exchange -> respond(exchange, 200, "application/json",
                 manifest.get().getBytes(StandardCharsets.UTF_8)));
+        upstream.createContext("/reitti-extension.json", exchange -> respond(exchange, 200, "application/json",
+                manifest("host-extension", "1.0.0").getBytes(StandardCharsets.UTF_8)));
+        upstream.createContext("/prefix/reitti-extension.json", exchange -> respond(exchange, 200, "application/json",
+                manifest("prefix-extension", "1.0.0").getBytes(StandardCharsets.UTF_8)));
         upstream.createContext("/data", exchange -> {
             dataCalls.incrementAndGet();
             dataAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
@@ -184,6 +188,25 @@ class MapExtensionIntegrationTest {
                 .isEqualTo("ScenegraphLayer");
         assertThatThrownBy(() -> manifestService.parse(scenegraph.replace("\"modelUrl\":\"/bus.glb\"", "\"iconUrl\":\"/bus.svg\"").getBytes(StandardCharsets.UTF_8),
                 java.net.URI.create(baseUrl + "/manifest.json"))).isInstanceOf(ExtensionException.class);
+    }
+
+    @Test
+    void baseUrlsUseTheConventionalManifestName() {
+        ExtensionRegistration fromHost = catalogService.create(baseUrl, null);
+        assertThat(fromHost.manifestUrl()).isEqualTo(baseUrl + "/reitti-extension.json");
+        assertThat(fromHost.manifestId()).isEqualTo("host-extension");
+
+        ExtensionRegistration fromDirectory = catalogService.create(baseUrl + "/prefix", null);
+        assertThat(fromDirectory.manifestUrl()).isEqualTo(baseUrl + "/prefix/reitti-extension.json");
+        assertThat(fromDirectory.manifestId()).isEqualTo("prefix-extension");
+
+        ExtensionRegistration fromFullUrl = catalogService.create(baseUrl + "/manifest.json", null);
+        assertThat(fromFullUrl.manifestUrl()).isEqualTo(baseUrl + "/manifest.json");
+        assertThat(fromFullUrl.manifestId()).isEqualTo("test-extension");
+
+        assertThatThrownBy(() -> catalogService.create(baseUrl + "/", null))
+                .isInstanceOf(ExtensionException.class)
+                .hasMessageContaining("already registered");
     }
 
     @Test
@@ -417,10 +440,14 @@ class MapExtensionIntegrationTest {
     }
 
     private String manifest(String version) {
+        return manifest("test-extension", version);
+    }
+
+    private String manifest(String id, String version) {
         return """
                 {
                   "$schema":"https://schemas.example.com/extension.json",
-                  "id":"test-extension","name":"Test Extension","version":"%s","description":"Demo",
+                  "id":"%s","name":"Test Extension","version":"%s","description":"Demo",
                   "icon":"/asset.png",
                   "layers":[
                     {"id":"vehicles","type":"polling","protocol":"http","endpoint":"/data?fixed=yes",
@@ -432,7 +459,7 @@ class MapExtensionIntegrationTest {
                      "renderer":"PathLayer"}
                   ]
                 }
-                """.formatted(version);
+                """.formatted(id, version);
     }
 
     private void respond(HttpExchange exchange, int status, String contentType, byte[] body) throws IOException {

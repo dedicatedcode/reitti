@@ -424,6 +424,8 @@ class ExtensionLayerController {
         if (['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
             layers = this.buildEntityLayers(Array.isArray(data) ? data : readPath(data, this.layer.dataPath) || []);
         } else if (this.layer.renderer === 'PathLayer') {
+            const defaultColor = this.layer.assets?.lineColor || [38, 139, 210, 220];
+            const defaultWidth = this.layer.assets?.lineWidth || 3;
             layers = [new deck.PathLayer({
                 id: `extension-${this.key}-path`,
                 beforeId,
@@ -431,8 +433,8 @@ class ExtensionLayerController {
                 ...this.terrainLayerProps(),
                 data: this.layer.format === 'gpx' ? data : geoJsonPaths(data),
                 getPath: item => item.path,
-                getColor: this.layer.assets?.lineColor || [38, 139, 210, 220],
-                getWidth: this.layer.assets?.lineWidth || 3,
+                getColor: item => entityColor(item.properties?.lineColor, defaultColor),
+                getWidth: item => featureLineWidth(item.properties?.lineWidth, defaultWidth),
                 widthUnits: 'pixels',
                 widthMinPixels: 1,
                 pickable: true,
@@ -441,6 +443,9 @@ class ExtensionLayerController {
                 capRounded: true
             })];
         } else if (this.layer.renderer === 'PolygonLayer') {
+            const defaultFillColor = this.layer.assets?.fillColor || [38, 139, 210, 70];
+            const defaultLineColor = this.layer.assets?.lineColor || [38, 139, 210, 220];
+            const defaultLineWidth = this.layer.assets?.lineWidth || 2;
             layers = [new deck.PolygonLayer({
                 id: `extension-${this.key}-polygon`,
                 beforeId,
@@ -448,9 +453,9 @@ class ExtensionLayerController {
                 ...this.terrainLayerProps(),
                 data: geoJsonPolygons(data),
                 getPolygon: item => item.polygon,
-                getFillColor: this.layer.assets?.fillColor || [38, 139, 210, 70],
-                getLineColor: this.layer.assets?.lineColor || [38, 139, 210, 220],
-                getLineWidth: this.layer.assets?.lineWidth || 2,
+                getFillColor: item => entityColor(item.properties?.fillColor, defaultFillColor),
+                getLineColor: item => entityColor(item.properties?.lineColor, defaultLineColor),
+                getLineWidth: item => featureLineWidth(item.properties?.lineWidth, defaultLineWidth),
                 lineWidthUnits: 'pixels',
                 pickable: true,
                 visible
@@ -926,6 +931,12 @@ function entityColor(value, fallback = [255, 255, 255, 255]) {
         }
     }
     return fallback;
+}
+
+function featureLineWidth(value, fallback) {
+    if (value == null || value === '') return fallback;
+    const width = Number(value);
+    return Number.isFinite(width) && width >= 0 && width <= 64 ? width : fallback;
 }
 
 function writePath(value, path, replacement) {

@@ -83,8 +83,10 @@
                     <form th:hx-post="@{/settings/extensions}" hx-target="#extensions" hx-swap="innerHTML" autocomplete="off">
                         <h3 th:text="#{extensions.add.title}">Add extension</h3>
                         <div class="form-group">
-                            <label for="manifestUrl" th:text="#{extensions.manifest.url}">Manifest URL</label>
-                            <input type="url" id="manifestUrl" name="url" required maxlength="2048" placeholder="https://example.com/reitti-extension.json">
+                            <label for="manifestUrl" th:text="#{extensions.manifest.url}">Base URL or manifest URL</label>
+                            <input type="text" inputmode="url" spellcheck="false" id="manifestUrl" name="url" required maxlength="2048"
+                                   th:placeholder="#{extensions.manifest.url.placeholder}">
+                            <small th:text="#{extensions.manifest.url.hint}">Enter a host and port or a directory. Reitti appends /reitti-extension.json unless the URL ends in .json.</small>
                         </div>
                         <div class="form-group">
                             <label for="bearerToken" th:text="#{extensions.bearer.token}">Bearer token (optional)</label>

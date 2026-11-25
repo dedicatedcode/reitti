@@ -8,11 +8,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -49,7 +51,7 @@ public class ExtensionCatalogService {
 
     public ExtensionRegistration create(String url, String bearerToken) {
         String token = normalizeToken(bearerToken);
-        FetchedManifest fetched = fetch(url, token);
+        FetchedManifest fetched = fetch(normalizeManifestUrl(url), token);
         String encrypted = credentialService.encrypt(token);
         ExtensionRegistration registration = new ExtensionRegistration(null, fetched.manifest().id(), fetched.manifest().name(),
                 fetched.manifest().version(), fetched.url(), fetched.json(), true, encrypted, 1, Instant.now(), true, null);
@@ -62,12 +64,13 @@ public class ExtensionCatalogService {
 
     public ExtensionRegistration update(long id, String url, String bearerToken, boolean clearCredentials) {
         ExtensionRegistration existing = required(id);
-        URI updatedManifestUri = httpClient.validateUrl(url);
+        String manifestUrl = normalizeManifestUrl(url);
+        URI updatedManifestUri = httpClient.validateUrl(manifestUrl);
         boolean sameOrigin = sameOrigin(URI.create(existing.manifestUrl()), updatedManifestUri);
         String suppliedToken = normalizeToken(bearerToken);
         String fetchToken = suppliedToken != null ? suppliedToken
                 : clearCredentials || !sameOrigin ? null : credentialService.decrypt(existing.encryptedCredentials());
-        FetchedManifest fetched = fetch(updatedManifestUri.toString(), fetchToken);
+        FetchedManifest fetched = fetch(manifestUrl, fetchToken);
         String encrypted = suppliedToken != null ? credentialService.encrypt(suppliedToken)
                 : clearCredentials || !sameOrigin ? null : existing.encryptedCredentials();
         ExtensionRegistration updated = existing.withCredentials(encrypted)
@@ -78,6 +81,48 @@ public class ExtensionCatalogService {
             return saved;
         } catch (DataIntegrityViolationException e) {
             throw new ExtensionException("This extension or manifest URL is already registered");
+        }
+    }
+
+    /**
+     * Accepts a base URL or a full manifest URL. A missing scheme is treated as HTTP, and
+     * {@code reitti-extension.json} is appended unless the path already ends with {@code .json}.
+     * Registrations that already store a full manifest URL are unaffected.
+     */
+    static String normalizeManifestUrl(String value) {
+        if (value == null || value.isBlank()) {
+            throw new ExtensionException("The extension URL is invalid");
+        }
+        if (value.length() > 2048 || value.chars().anyMatch(Character::isISOControl)) {
+            throw new ExtensionException("The extension URL is invalid");
+        }
+        String trimmed = value.trim();
+        if (!trimmed.regionMatches(true, 0, "http://", 0, 7)
+                && !trimmed.regionMatches(true, 0, "https://", 0, 8)) {
+            if (trimmed.matches("(?i)^[a-z][a-z0-9+.-]*://.*")) {
+                throw new ExtensionException("Extension URLs must use HTTP or HTTPS");
+            }
+            trimmed = "http://" + trimmed;
+        }
+        final URI uri;
+        try {
+            uri = URI.create(trimmed);
+        } catch (IllegalArgumentException e) {
+            throw new ExtensionException("The extension URL is invalid", e);
+        }
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) {
+            path = "/reitti-extension.json";
+        } else if (path.endsWith("/")) {
+            path = path + "reitti-extension.json";
+        } else if (!path.toLowerCase(Locale.ROOT).endsWith(".json")) {
+            path = path + "/reitti-extension.json";
+        }
+        try {
+            return new URI(uri.getScheme().toLowerCase(Locale.ROOT), uri.getAuthority(), path,
+                    uri.getQuery(), uri.getFragment()).toString();
+        } catch (URISyntaxException | NullPointerException e) {
+            throw new ExtensionException("The extension URL is invalid", e);
         }
     }
 
