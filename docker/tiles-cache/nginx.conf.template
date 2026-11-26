@@ -76,7 +76,7 @@ http {
     access_log /var/log/nginx/access.log main;
 
     server_tokens off;
-    resolver ${RESOLVER_IP} valid=300s;
+    resolver ${RESOLVER_IP} valid=300s ipv6=off;
 
     server {
         listen 80;
