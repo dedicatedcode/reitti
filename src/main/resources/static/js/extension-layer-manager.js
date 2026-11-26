@@ -19,6 +19,7 @@ class ExtensionLayerController {
         this.selectedEntityId = null;
         this.objectUrl = null;
         this.lastSuccessfulFetch = null;
+        this.snapNextPayload = false;
 
         this.onViewportChange = () => {
             this.closeSelectedIfOutside();
@@ -101,6 +102,14 @@ class ExtensionLayerController {
     resume() {
         if (!this.active || document.hidden) return;
         this.generation++;
+        this.snapNextPayload = true;
+        if (this.animationFrame != null) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+        if (this.currentData != null && ['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
+            this.render(this.currentData);
+        }
         this.fetchData();
     }
 
@@ -309,6 +318,8 @@ class ExtensionLayerController {
     }
 
     acceptPayload(payload) {
+        const snap = this.snapNextPayload;
+        this.snapNextPayload = false;
         if (this.layer.format === 'image') {
             const previousUrl = this.objectUrl;
             const nextUrl = URL.createObjectURL(payload);
@@ -337,7 +348,16 @@ class ExtensionLayerController {
 
         if (['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
             const nextEntities = this.filterStaleEntities(readPath(parsed, this.layer.dataPath) || []);
-            this.transitionEntities(nextEntities);
+            if (snap) {
+                if (this.animationFrame != null) {
+                    cancelAnimationFrame(this.animationFrame);
+                    this.animationFrame = null;
+                }
+                this.currentEntities = nextEntities;
+                this.render(nextEntities);
+            } else {
+                this.transitionEntities(nextEntities);
+            }
         } else {
             this.render(parsed);
         }
