@@ -111,6 +111,7 @@ public class SecurityConfig {
                                                     "MAGIC_LINK_ONLY_LAST_LOCATION", "MAGIC_LINK_ONLY_LIVE_WITH_PHOTOS")
                         .requestMatchers("/settings/logging", "/settings/logging/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/settings/geocode-services", "/settings/geocode-services/**").hasRole(Role.ADMIN.name())
+                        .requestMatchers("/settings/extensions", "/settings/extensions/**").hasRole(Role.ADMIN.name())
                         .requestMatchers("/settings/**").hasAnyRole(Role.ADMIN.name(), Role.USER.name())
                         .requestMatchers("/api/v1/photos/**").hasAnyRole(Role.ADMIN.name(),
                                 Role.USER.name(),

@@ -45,7 +45,7 @@ class MapControls {
                     <i class="lni lni-location-arrow-right"></i>
                     <span>${t('map.display-control.north-up.text')}</span>
                 </button>
-                
+                <div id="extension-map-controls" class="extension-map-controls"></div>
             </div>
         </div>
 `
@@ -69,6 +69,9 @@ class MapControls {
         triggerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.rootElement.classList.toggle('open');
+            if (this.rootElement.classList.contains('open')) {
+                this.emit('opened');
+            }
         });
         document.addEventListener('click', (e) => {
             if (this.rootElement.classList.contains('open') && !this.rootElement.contains(e.target)) {
@@ -233,6 +236,10 @@ class MapControls {
         if (newContainer && this.rootElement) {
             newContainer.appendChild(this.rootElement);
         }
+    }
+
+    getExtensionContainer() {
+        return this.element.querySelector('#extension-map-controls');
     }
 
     getState() {

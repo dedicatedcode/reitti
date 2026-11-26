@@ -111,6 +111,13 @@
            th:title="#{settings.geocoding.description}"
            th:text="#{settings.geocoding}">Geocoding</a>
 
+        <a th:href="@{/settings/extensions}"
+           th:if="${isAdmin}"
+           class="settings-nav-item"
+           th:classappend="${activeSection == 'extensions'} ? 'active' : ''"
+           th:title="#{settings.extensions.description}"
+           th:text="#{settings.extensions}">Map Extensions</a>
+
         <a th:href="@{/settings/logging}"
            th:if="${isAdmin}"
            class="settings-nav-item"

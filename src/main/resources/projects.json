@@ -40,5 +40,12 @@
             "url": "https://www.chartjs.org/",
             "license": "MIT",
             "category": "Frontend"
+        },
+        {
+            "name": "Grab3D Vehicle Models",
+            "description": "CC0 city bus, tram, subway, and train models used by the GTFS-RT map extension",
+            "url": "https://grab3d.com/packs/city-builder-pack/",
+            "license": "CC0 1.0",
+            "category": "3D Assets"
         }
     ]}

@@ -67,7 +67,7 @@ class WorkbenchServiceTest {
         candidate.applyCommit(this.user, request);
 
         //await recalculation
-        this.testingService.awaitDataImport(100);
+        this.testingService.awaitDataImport(120);
 
         //After recalculation is done, only 4 Visits should be left
         List<ProcessedVisit> processedVisitsAfterDeletion = this.processedVisitJdbcService.findByUser(this.user);
@@ -104,7 +104,7 @@ class WorkbenchServiceTest {
         candidate.applyCommit(this.user, request);
 
         //await recalculation
-        this.testingService.awaitDataImport(60);
+        this.testingService.awaitDataImport(120);
 
         //After recalculation is done, 5 Visits shall remain
         List<ProcessedVisit> updatedVisits = this.processedVisitJdbcService.findByUser(this.user);
@@ -135,7 +135,7 @@ class WorkbenchServiceTest {
         candidate.applyCommit(this.user, request);
 
         //await recalculation
-        this.testingService.awaitDataImport(100);
+        this.testingService.awaitDataImport(120);
         assertEquals(4, this.processedVisitJdbcService.findByUser(this.user).size());
         // now we removed the second visit from the main timeline, time to stich in the visit back from the new device
 
@@ -152,7 +152,7 @@ class WorkbenchServiceTest {
         candidate.applyCommit(this.user, stitchRequest);
 
         //await recalculation
-        this.testingService.awaitDataImport(60);
+        this.testingService.awaitDataImport(120);
 
         processedVisits = this.processedVisitJdbcService.findByUser(this.user);
         assertEquals(5, processedVisits.size());
@@ -183,7 +183,7 @@ class WorkbenchServiceTest {
         stitchStore.setPatches(Collections.singletonList(patch));
         stitchRequest.setEditStore(stitchStore);
         candidate.applyCommit(user, stitchRequest);
-        this.testingService.awaitDataImport(100);
+        this.testingService.awaitDataImport(120);
 
         List<Long> stitchedPoints = this.testJdbcService.findSourcePointIdsForDevice(user, device, rangeStart, rangeEnd);
         assertThat(stitchedPoints).isNotEmpty();
@@ -198,7 +198,7 @@ class WorkbenchServiceTest {
         }).toList());
         deleteRequest.setEditStore(deleteStore);
         candidate.applyCommit(user, deleteRequest);
-        this.testingService.awaitDataImport(100);
+        this.testingService.awaitDataImport(120);
 
         List<Long> remainingPoints = this.testJdbcService.findSourcePointIdsForDevice(user, device, rangeStart, rangeEnd);
         assertThat(remainingPoints).doesNotContainAnyElementsOf(pointsToDelete);

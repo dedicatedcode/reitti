@@ -91,6 +91,103 @@
     background: var(--color-background-dark-light);
 }
 
+.extension-map-controls:empty {
+    display: none;
+}
+
+.extension-map-controls {
+    border-top: 1px solid var(--color-highlight);
+    margin-top: 4px;
+    padding-top: 4px;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.extension-map-controls-title,
+.extension-map-control-heading {
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 8px 2px;
+}
+
+.extension-map-control-heading {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.extension-map-control-heading img {
+    height: 20px;
+    width: 20px;
+}
+
+.extension-layer-toggle {
+    justify-content: space-between;
+    min-width: 220px;
+    width: 100%;
+}
+
+.extension-layer-status {
+    color: var(--color-secondary);
+    font-size: 0.75rem;
+    margin-left: 12px;
+}
+
+.extension-layer-toggle[data-status="error"] .extension-layer-status,
+.extension-layer-toggle[data-status="stale"] .extension-layer-status {
+    color: var(--color-danger, #dc3545);
+}
+
+.extension-layer-toggle[data-status="loading"] .extension-layer-status {
+    animation: extension-loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes extension-loading-pulse {
+    50% { opacity: 0.4; }
+}
+
+.extension-entity-popup .maplibregl-popup-content {
+    min-width: 280px;
+    max-width: 340px;
+}
+
+.extension-entity-popup .extension-entity-details {
+    padding: 12px 14px;
+}
+
+.extension-entity-details .sel-info-head {
+    margin-right: 18px;
+}
+
+.extension-entity-details .sel-info-title {
+    overflow-wrap: anywhere;
+}
+
+.extension-entity-source {
+    border-radius: 10px;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 2px 7px;
+}
+
+.extension-entity-source[data-source="estimated"] {
+    background: rgba(255, 214, 90, 0.16);
+    color: #ffd65a;
+}
+
+.extension-entity-source[data-source="live"] {
+    background: rgba(184, 230, 195, 0.14);
+    color: #b8e6c3;
+}
+
+.extension-entity-details .sel-info-row .v {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
 .auto-update-overlay .fab-btn:first-child {
     border-top-left-radius: 50%;
     border-bottom-left-radius: 50%;
