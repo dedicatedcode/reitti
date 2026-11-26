@@ -8,6 +8,8 @@ import com.dedicatedcode.reitti.model.map.UserMapStyle;
 import com.dedicatedcode.reitti.model.security.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +25,8 @@ class UserMapStyleJdbcServiceTest {
 
     @Autowired
     private TestingService testingService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void shouldCreateAndFindStyleByUser() {
@@ -147,6 +151,23 @@ class UserMapStyleJdbcServiceTest {
 
         assertThat(service.getActiveStyleId(user))
                 .isEqualTo(newActiveId);
+    }
+
+    @Test
+    void defaultStylesLimitTileSourcesToAvailableZoomLevels() {
+        User user = testingService.randomUser();
+        List<UserMapStyle> defaultStyles = service.findAll(user).stream()
+                .filter(UserMapStyle::defaultStyle)
+                .toList();
+
+        assertThat(defaultStyles).extracting(UserMapStyle::name)
+                .contains("Reitti", "Reitti (Colored)");
+
+        for (UserMapStyle style : defaultStyles) {
+            JsonNode sources = objectMapper.readTree(style.styleJson()).path("sources");
+            assertThat(sources.path("dedicatedcode").path("maxzoom").asInt()).isEqualTo(14);
+            assertThat(sources.path("terrain-source").path("maxzoom").asInt()).isEqualTo(12);
+        }
     }
 
     @Test
