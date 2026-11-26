@@ -134,6 +134,23 @@ class ExtensionLayerController {
             : {};
     }
 
+    /**
+     * Point features get their elevation from MapLibre's terrain instead of deck's
+     * height map. The height map is a separate, coarse render that can lag behind
+     * tile loading, which makes models and labels sink or pop.
+     */
+    terrainPointPosition(position, zoom) {
+        if (!this.mapRenderer.getExtensionTerrainExtension?.()) return null;
+        const elevationAt = this.mapRenderer.getExtensionElevation;
+        if (typeof elevationAt !== 'function') return null;
+        return entity => {
+            const point = position(entity);
+            const elevation = elevationAt.call(this.mapRenderer, point[0], point[1]);
+            if (!Number.isFinite(elevation)) return point;
+            return [point[0], point[1], elevation + terrainLift(point[1], zoom)];
+        };
+    }
+
     setExtensionLayers(layers) {
         this.mapRenderer.setExtensionLayers(this.key, layers, {
             placement: this.layer.placement || 'top',
@@ -494,6 +511,7 @@ class ExtensionLayerController {
         const minZoom = this.layer.minZoom ?? -Infinity;
         const visible = zoom >= minZoom;
         const position = entity => entityPosition(entity, mapping);
+        const pointPosition = this.terrainPointPosition(position, zoom) || position;
         const onClick = info => {
             if (info.object) this.manager.showEntityDetails(info.object, position(info.object), this.key);
         };
@@ -520,10 +538,9 @@ class ExtensionLayerController {
                     id: `extension-${this.key}-model-${groupIndex++}`,
                     beforeId,
                     parameters,
-                    ...this.terrainLayerProps(),
                     data: group.entities,
                     scenegraph: extensionUrl(model.modelUrl),
-                    getPosition: position,
+                    getPosition: pointPosition,
                     // Models point along glTF -Z; this yaw maps them to clockwise bearing from north.
                     getOrientation: entity => [0, -(Number(readPath(entity, mapping.headingField)) || 0), 90],
                     getScale: model.modelScale || assets.modelScale || [1, 1, 1],
@@ -548,9 +565,8 @@ class ExtensionLayerController {
                 id: `extension-${this.key}-icons`,
                 beforeId,
                 parameters,
-                ...this.terrainLayerProps(),
                 data: entities,
-                getPosition: position,
+                getPosition: pointPosition,
                 getIcon: () => icon,
                 getSize: assets.iconSize || 32,
                 sizeUnits: 'pixels',
@@ -579,9 +595,8 @@ class ExtensionLayerController {
                 id: `extension-${this.key}-labels`,
                 beforeId,
                 parameters,
-                ...this.terrainLayerProps(),
                 data: labelledEntities,
-                getPosition: position,
+                getPosition: pointPosition,
                 getText: entity => String(readPath(entity, mapping.labelField) ?? ''),
                 getSize: assets.labelSize || 12,
                 sizeUnits: 'pixels',
@@ -937,6 +952,13 @@ function featureLineWidth(value, fallback) {
     if (value == null || value === '') return fallback;
     const width = Number(value);
     return Number.isFinite(width) && width >= 0 && width <= 64 ? width : fallback;
+}
+
+// Lift point features by a fraction of a pixel. That is invisible on screen but
+// enough to keep them out of the depth range where they fight the terrain mesh.
+function terrainLift(latitude, zoom) {
+    const metersPerPixel = 156543.03392 * Math.cos(latitude * Math.PI / 180) / Math.pow(2, zoom);
+    return Math.max(0.1, metersPerPixel * 0.75);
 }
 
 function writePath(value, path, replacement) {

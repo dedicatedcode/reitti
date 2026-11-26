@@ -59,15 +59,24 @@ services:
     volumes:
       - apprise-config:/config
       - apprise-attach:/attach
-#  photon:
-#    image: rtuszik/photon-docker:1.3.0
-#    environment:
-#      - UPDATE_STRATEGY=PARALLEL
-#      - REGION=de
-#    ports:
-#      - "2322:2322"
-#    volumes:
-#      - photon-data:/photon/data
+  overlay-extension:
+    image: dedicatedcode/reitti-overlay-extension:develop
+    restart: unless-stopped
+    ports:
+      - "8091:8090"
+    volumes:
+      - overlay-data:/app/data
+    environment:
+      DEFAULT_TIMEZONE: Europe/Berlin
+  gtfs-rt-extension:
+    image: dedicatedcode/reitti-gtfs-rt-extension:develop
+    restart: unless-stopped
+    environment:
+      PUBLIC_BASE_URL: http://localhost:8092
+    ports:
+      - "8092:8090"
+    volumes:
+      - gtfs-rt-cache:/app/data/gtfs-static
   ot-recorder:
     image: owntracks/recorder:latest
     depends_on:
@@ -97,3 +106,5 @@ volumes:
   tile-cache-data:
   apprise-config:
   apprise-attach:
+  overlay-data:
+  gtfs-rt-cache:

@@ -205,7 +205,8 @@ class MapRenderer {
         this._transitionSignature = null;
 
         this.terrainLayer = null;
-        this.deckOverlay = this._createDeckOverlay();
+        this.deckOverlay = this._createDeckOverlay(false);
+        this.extensionDeckOverlay = null;   // Created on demand; renders extension point layers below buildings
         this.currentTime = 0;
 
         const defaultDeckParams = {
@@ -264,7 +265,8 @@ class MapRenderer {
         this._initialLoadPromise = this._initializeInitialStyle();
 
         this._layerInstances = [];           // Current array of core deck.gl layer instances
-        this._extensionLayers = new Map();    // Extension-owned layers, composed at the deck overlay boundary
+        this._extensionLayers = new Map();    // Extension geometry layers (paths/polygons) composed into the core deck
+        this._extensionPointLayers = new Map(); // Extension point layers rendered in the interleaved deck
         this._extensionPopupOwner = null;
         this._extensionPopupOnClose = null;
         this.extensionPopup = null;
@@ -1002,19 +1004,28 @@ class MapRenderer {
         this._rerenderOverlays();
     }
 
-    _createDeckOverlay() {
-        for (const interleaved of [true, false]) {
+    _createDeckOverlay(interleaved = false) {
+        // Core layers render overlaid, above the map canvas, so the terrain mesh
+        // cannot clip the trip paths. Extension layers render interleaved so they
+        // can be inserted below buildings; fall back to overlaid when the running
+        // map/WebGL setup does not support interleaving.
+        const modes = interleaved ? [true, false] : [false];
+        for (const mode of modes) {
             try {
                 const overlay = new deck.MapLibreOverlay({
-                    interleaved,
+                    interleaved: mode,
                     layers: []
                 });
                 this.map.addControl(overlay);
-                this._deckInterleaved = interleaved;
+                if (interleaved) {
+                    this._extensionDeckInterleaved = mode;
+                } else {
+                    this._deckInterleaved = mode;
+                }
                 return overlay;
             } catch (error) {
                 console.warn(
-                    interleaved
+                    interleaved && mode
                         ? 'Interleaved deck.gl overlay is unavailable; extension placement below buildings will be ignored.'
                         : 'Unable to create the deck.gl overlay.',
                     error
@@ -1026,6 +1037,15 @@ class MapRenderer {
 
     getExtensionTerrainExtension() {
         return this.viewState.renderTerrain ? this._getTerrainExtensions()[0] : null;
+    }
+
+    getExtensionElevation(longitude, latitude) {
+        if (!this.viewState.renderTerrain || typeof this.map?.queryTerrainElevation !== 'function') return null;
+        try {
+            return this.map.queryTerrainElevation([longitude, latitude]);
+        } catch (error) {
+            return null;
+        }
     }
 
     _getBuildingLayerIds() {
@@ -1041,8 +1061,17 @@ class MapRenderer {
             .filter(layerId => this.map.getLayer(layerId));
     }
 
+    _ensureExtensionDeckOverlay() {
+        if (!this.extensionDeckOverlay) {
+            this.extensionDeckOverlay = this._createDeckOverlay(true);
+        }
+        return this.extensionDeckOverlay;
+    }
+
     getExtensionBeforeId(placement) {
-        if (!this._deckInterleaved || !this.map?.getStyle) return undefined;
+        if (!this.map?.getStyle) return undefined;
+        this._ensureExtensionDeckOverlay();
+        if (!this._extensionDeckInterleaved) return undefined;
         if (placement === 'behind-buildings') {
             const buildingIds = this._getBuildingLayerIds();
             return buildingIds[0] || this._getFirstSymbolLayerId();
@@ -1776,13 +1805,22 @@ class MapRenderer {
         this.removeAvatarMarkers();
     }
 
-    _composeWithExtensionLayers(coreLayers) {
-        const groups = Array.from(this._extensionLayers.entries())
-            .map(([key, entry]) => ({key, ...entry}))
-            .sort((first, second) =>
+    _sortedExtensionGroups(groups) {
+        return Array.from(groups.entries())
+            .sort(([firstKey, first], [secondKey, second]) =>
                 this._extensionPlacementRank(first.placement) - this._extensionPlacementRank(second.placement)
                 || (first.zIndex ?? 0) - (second.zIndex ?? 0)
-                || first.key.localeCompare(second.key));
+                || firstKey.localeCompare(secondKey));
+    }
+
+    _extensionDeckLayers() {
+        return this._sortedExtensionGroups(this._extensionPointLayers)
+            .flatMap(([, entry]) => entry.layers);
+    }
+
+    _composeWithExtensionLayers(coreLayers) {
+        const groups = this._sortedExtensionGroups(this._extensionLayers)
+            .map(([key, entry]) => ({key, ...entry}));
         const belowPaths = groups
             .filter(group => group.placement === 'below-paths')
             .flatMap(group => group.layers);
@@ -1795,19 +1833,37 @@ class MapRenderer {
         return terrain.concat(belowPaths, core, remaining);
     }
 
-    setExtensionLayers(key, layers, options = {}) {
-        if (layers == null || layers.length === 0) {
-            this._extensionLayers.delete(key);
-        } else {
-            this._extensionLayers.set(key, {
-                layers: Array.isArray(layers) ? layers : [layers],
-                placement: options.placement || 'top',
-                zIndex: Number.isFinite(options.zIndex) ? options.zIndex : 0
-            });
-        }
+    _refreshExtensionLayers() {
         this.deckOverlay.setProps({
             layers: this._composeWithExtensionLayers(this._layerInstances)
         });
+        if (this.extensionDeckOverlay) {
+            this.extensionDeckOverlay.setProps({layers: this._extensionDeckLayers()});
+        }
+    }
+
+    setExtensionLayers(key, layers, options = {}) {
+        const list = layers == null ? [] : (Array.isArray(layers) ? layers : [layers]);
+        const pointLayers = list.filter(layer => typeof layer?.props?.getPosition === 'function');
+        const geometryLayers = list.filter(layer => typeof layer?.props?.getPosition !== 'function');
+        const entry = {
+            placement: options.placement || 'top',
+            zIndex: Number.isFinite(options.zIndex) ? options.zIndex : 0
+        };
+        if (pointLayers.length === 0) {
+            this._extensionPointLayers.delete(key);
+        } else {
+            this._extensionPointLayers.set(key, {...entry, layers: pointLayers});
+        }
+        if (geometryLayers.length === 0) {
+            this._extensionLayers.delete(key);
+        } else {
+            this._extensionLayers.set(key, {...entry, layers: geometryLayers});
+        }
+        if (pointLayers.length > 0) {
+            this._ensureExtensionDeckOverlay();
+        }
+        this._refreshExtensionLayers();
     }
 
     showExtensionPopup(ownerKey, position, content, onClose = null) {
@@ -1890,6 +1946,7 @@ class MapRenderer {
         this._styleChangeListeners.clear();
         this._terrainChangeListeners.clear();
         this._extensionLayers.clear();
+        this._extensionPointLayers.clear();
         this.closeExtensionPopup();
         this.map.remove();
         this.gpsDataManagers.forEach(manager => manager.destroy());
@@ -2838,6 +2895,7 @@ class MapRenderer {
         }
         this._terrainExtension = null;
         this._layerContextKey = null; // Force rebuild
+        this._refreshExtensionLayers();
         this._notifyTerrainChange();
 
     }
