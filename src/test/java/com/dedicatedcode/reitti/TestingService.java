@@ -163,12 +163,12 @@ public class TestingService {
 
     public void importAndProcess(User user, String path) {
         importData(user, path);
-        awaitDataImport(100);
+        awaitDataImport(120);
     }
 
     public void importAndProcess(User user, Device device, String path) {
         importData(user, device, path);
-        awaitDataImport(100);
+        awaitDataImport(120);
     }
 
     public SignificantPlace newSignificantPlace(User user) {

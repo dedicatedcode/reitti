@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<body>
+<div th:fragment="edit-form">
+    <form th:hx-post="@{/settings/extensions}" hx-target="#extensions" hx-swap="innerHTML" autocomplete="off">
+        <input type="hidden" name="id" th:value="${registration.id}">
+        <h3 th:text="#{extensions.edit.title}">Edit extension</h3>
+        <div class="form-group">
+            <label for="editManifestUrl" th:text="#{extensions.manifest.url}">Base URL or manifest URL</label>
+            <input type="text" inputmode="url" spellcheck="false" id="editManifestUrl" name="url" required maxlength="2048"
+                   th:value="${registration.manifestUrl}" th:placeholder="#{extensions.manifest.url.placeholder}">
+            <small th:text="#{extensions.manifest.url.hint}">Enter a host and port or a directory. Reitti appends /reitti-extension.json unless the URL ends in .json.</small>
+        </div>
+        <div class="form-group">
+            <label for="editBearerToken" th:text="#{extensions.bearer.token}">Bearer token (optional)</label>
+            <input type="password" id="editBearerToken" name="bearerToken" maxlength="4096" autocomplete="new-password"
+                   th:placeholder="#{extensions.bearer.retain}">
+            <small th:text="#{extensions.bearer.write.only}">Blank retains the current token. Tokens are never displayed.</small>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="clearCredentials" value="true">
+                <span th:text="#{extensions.bearer.clear}">Clear stored bearer token</span>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn" th:text="#{form.update}">Update</button>
+            <button type="button" class="btn btn-secondary" th:hx-get="@{/settings/extensions/content}"
+                    hx-target="#extensions" hx-swap="innerHTML" th:text="#{form.cancel}">Cancel</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

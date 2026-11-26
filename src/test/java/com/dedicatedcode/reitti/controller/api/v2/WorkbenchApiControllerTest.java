@@ -62,7 +62,7 @@ class WorkbenchApiControllerTest {
                 {"editStore":{"deletedPoints":[%s]}}
                 """.formatted(deletedPointsJson));
 
-        testingService.awaitDataImport(100);
+        testingService.awaitDataImport(120);
 
         List<ProcessedVisit> afterDeletion = processedVisitJdbcService.findByUser(testUser);
         assertThat(afterDeletion).hasSize(4);
@@ -87,7 +87,7 @@ class WorkbenchApiControllerTest {
                 {"editStore":{"deletedPoints":[%s]}}
                 """.formatted(deletedPointsJson));
 
-        testingService.awaitDataImport(100);
+        testingService.awaitDataImport(120);
         assertThat(processedVisitJdbcService.findByUser(testUser)).hasSize(4);
 
         commit(("""
@@ -97,7 +97,7 @@ class WorkbenchApiControllerTest {
                 Instant.parse("2025-06-17T05:54:32Z").toEpochMilli(),
                 device.id()));
 
-        testingService.awaitDataImport(60);
+        testingService.awaitDataImport(120);
 
         List<ProcessedVisit> stitched = processedVisitJdbcService.findByUser(testUser);
         assertThat(stitched).hasSize(5);

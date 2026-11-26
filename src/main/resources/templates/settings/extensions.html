@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{settings.title}">Settings - Reitti</title>
+    <link rel="icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="apple-touch-icon" th:href="@{/img/logo.svg}">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/img/logo-64x64.png}">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/lineicons.css}">
+    <script th:src="@{/js/messages.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script th:src="@{/js/csrf.js(v=${appVersion})}"></script>
+    <script th:src="@{/js/util.js}"></script>
+</head>
+<body class="settings-page">
+<div class="navigation-container" th:replace="~{fragments/main-navigation :: main-navigation('settings')}"></div>
+<div class="settings-container">
+    <div th:replace="~{fragments/settings-navigation :: settings-nav(${activeSection}, ${dataManagementEnabled}, ${isAdmin})}"></div>
+    <div class="settings-content-area">
+        <div id="extensions" class="settings-section active">
+            <div th:fragment="extensions-content">
+                <h2 th:text="#{extensions.title}">Map Extensions</h2>
+                <div th:if="${successMessage}" class="alert alert-success" style="display: block;">
+                    <span th:text="${successMessage}">Extension saved</span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger" style="display: block;">
+                    <span th:text="${errorMessage}">Extension error</span>
+                </div>
+                <div class="settings-card">
+                    <h4 th:text="#{extensions.about.title}">Declarative map extensions</h4>
+                    <p th:text="#{extensions.about.description}">Register a remote JSON manifest to add server-wide static and HTTP polling layers. Streaming layers are not currently loaded.</p>
+                </div>
+                <div class="settings-card">
+                    <h3 th:text="#{extensions.registered.title}">Registered extensions</h3>
+                    <p th:if="${registrations.isEmpty()}" th:text="#{extensions.none}">No extensions registered.</p>
+                    <table th:if="${!registrations.isEmpty()}">
+                        <thead>
+                        <tr>
+                            <th th:text="#{extensions.table.name}">Name</th>
+                            <th th:text="#{extensions.table.id}">Manifest ID</th>
+                            <th th:text="#{extensions.table.version}">Version</th>
+                            <th th:text="#{extensions.table.url}">Manifest URL</th>
+                            <th th:text="#{extensions.table.enabled}">Enabled</th>
+                            <th th:text="#{extensions.table.health}">Health</th>
+                            <th th:text="#{extensions.table.last.refresh}">Last refresh</th>
+                            <th th:text="#{extensions.table.unsupported}">Unsupported layers</th>
+                            <th th:text="#{geocoding.table.actions}">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="view : ${registrations}">
+                            <td th:text="${view.registration.name}"></td>
+                            <td th:text="${view.registration.manifestId}"></td>
+                            <td th:text="${view.registration.version}"></td>
+                            <td style="max-width: 300px; word-break: break-all;" th:text="${view.registration.manifestUrl}"></td>
+                            <td th:text="${view.registration.enabled ? #messages.msg('extensions.enabled') : #messages.msg('extensions.disabled')}"></td>
+                            <td>
+                                <span th:if="${view.registration.lastRefreshSuccess == true}" th:text="#{extensions.health.ok}">Healthy</span>
+                                <span th:if="${view.registration.lastRefreshSuccess == false}" th:text="#{extensions.health.failed}">Refresh failed; last known manifest retained</span>
+                                <span th:if="${view.registration.lastRefreshSuccess == null}" th:text="#{extensions.health.unknown}">Unknown</span>
+                                <small th:if="${view.registration.lastError != null}" th:text="${view.registration.lastError}" style="display: block;"></small>
+                            </td>
+                            <td th:text="${view.registration.lastRefreshedAt != null ? #temporals.format(view.registration.lastRefreshedAt, 'yyyy-MM-dd HH:mm') : #messages.msg('extensions.never')}"></td>
+                            <td th:text="${view.unsupportedLayers.isEmpty() ? '-' : #strings.listJoin(view.unsupportedLayers, ', ')}"></td>
+                            <td>
+                                <button class="btn" th:attr="hx-get=@{/settings/extensions/{id}/edit(id=${view.registration.id})}"
+                                        hx-target="#extension-form-container" hx-swap="innerHTML" th:text="#{form.edit}">Edit</button>
+                                <button class="btn" th:attr="hx-post=@{/settings/extensions/{id}/refresh(id=${view.registration.id})}"
+                                        hx-target="#extensions" hx-swap="innerHTML" th:text="#{extensions.refresh}">Refresh</button>
+                                <button class="btn" th:attr="hx-post=@{/settings/extensions/{id}/toggle(id=${view.registration.id})}"
+                                        hx-target="#extensions" hx-swap="innerHTML"
+                                        th:text="${view.registration.enabled ? #messages.msg('extensions.disable') : #messages.msg('extensions.enable')}">Toggle</button>
+                                <button class="btn btn-danger" th:attr="hx-post=@{/settings/extensions/{id}/delete(id=${view.registration.id})},hx-confirm=#{extensions.delete.confirm}"
+                                        hx-target="#extensions" hx-swap="innerHTML" th:text="#{form.delete}">Delete</button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="settings-card" id="extension-form-container">
+                    <form th:hx-post="@{/settings/extensions}" hx-target="#extensions" hx-swap="innerHTML" autocomplete="off">
+                        <h3 th:text="#{extensions.add.title}">Add extension</h3>
+                        <div class="form-group">
+                            <label for="manifestUrl" th:text="#{extensions.manifest.url}">Base URL or manifest URL</label>
+                            <input type="text" inputmode="url" spellcheck="false" id="manifestUrl" name="url" required maxlength="2048"
+                                   th:placeholder="#{extensions.manifest.url.placeholder}">
+                            <small th:text="#{extensions.manifest.url.hint}">Enter a host and port or a directory. Reitti appends /reitti-extension.json unless the URL ends in .json.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="bearerToken" th:text="#{extensions.bearer.token}">Bearer token (optional)</label>
+                            <input type="password" id="bearerToken" name="bearerToken" maxlength="4096" autocomplete="new-password">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn" th:text="#{form.create}">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">window.userSettings = /*[[${userSettings}]]*/ {}</script>
+</body>
+</html>
