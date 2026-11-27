@@ -1566,7 +1566,7 @@
                 return;
             }
             document.querySelectorAll('.timeline-container .timeline-entry').forEach(e => e.classList.remove('active'));
-            if (!wasActive) {
+            if (!wasActive && !entry.classList.contains('aggregated-entry')) {
                 entry.classList.add('active');
             }
             if (entry.classList.contains('visit')) {

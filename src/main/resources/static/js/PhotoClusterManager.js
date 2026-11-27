@@ -274,6 +274,10 @@ class PhotoClusterManager {
         const modal = document.createElement('div');
         modal.className = 'photo-grid-modal';
 
+        // Create wrapper so the close button stays outside the scrolling grid
+        const gridWrapper = document.createElement('div');
+        gridWrapper.className = 'photo-grid-wrapper';
+
         // Create grid container
         const gridContainer = document.createElement('div');
         gridContainer.className = 'photo-grid-container';
@@ -291,9 +295,7 @@ class PhotoClusterManager {
         const photoGrid = document.createElement('div');
         photoGrid.className = 'photo-grid';
         const columns = Math.min(4, Math.ceil(Math.sqrt(photos.length)));
-        const thumbnailSize = getComputedStyle(document.documentElement)
-            .getPropertyValue('--photo-grid-thumbnail-size').trim();
-        photoGrid.style.gridTemplateColumns = `repeat(${columns}, ${thumbnailSize})`;
+        photoGrid.style.setProperty('--photo-grid-columns', columns);
 
         photos.forEach((photo, index) => {
             const photoElement = document.createElement('div');
@@ -412,7 +414,8 @@ class PhotoClusterManager {
         document.addEventListener('keydown', handleEscape);
 
         // Assemble modal
-        gridContainer.appendChild(closeButton);
+        gridWrapper.appendChild(closeButton);
+        gridWrapper.appendChild(gridContainer);
         if (hasTimeMatched) {
             const toolbar = document.createElement('div');
             toolbar.className = 'write-location-toolbar';
@@ -483,7 +486,7 @@ class PhotoClusterManager {
             gridContainer.appendChild(toolbar);
         }
         gridContainer.appendChild(photoGrid);
-        modal.appendChild(gridContainer);
+        modal.appendChild(gridWrapper);
         document.body.appendChild(modal);
 
         // Prevent click propagation on grid container
