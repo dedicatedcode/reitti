@@ -19,7 +19,8 @@ class ExtensionLayerController {
         this.selectedEntityId = null;
         this.objectUrl = null;
         this.lastSuccessfulFetch = null;
-        this.snapNextPayload = false;
+        this.resumeMode = null;
+        this.suspendedAt = null;
 
         this.onViewportChange = () => {
             this.closeSelectedIfOutside();
@@ -74,6 +75,8 @@ class ExtensionLayerController {
         if (!this.active) return;
         this.active = false;
         this.suspend();
+        this.resumeMode = null;
+        this.suspendedAt = null;
         this.mapRenderer.off('moveend', this.onViewportChange);
         this.mapRenderer.off('resize', this.onViewportChange);
         this.mapRenderer.off('zoomend', this.onZoomEnd);
@@ -87,6 +90,7 @@ class ExtensionLayerController {
     }
 
     suspend() {
+        if (this.suspendedAt == null) this.suspendedAt = Date.now();
         this.generation++;
         clearTimeout(this.pollTimer);
         clearTimeout(this.viewportTimer);
@@ -102,13 +106,21 @@ class ExtensionLayerController {
     resume() {
         if (!this.active || document.hidden) return;
         this.generation++;
-        this.snapNextPayload = true;
+        const pollDuration = this.layer.pollIntervalMs || 10000;
+        this.resumeMode = this.suspendedAt != null && Date.now() - this.suspendedAt <= pollDuration * 2
+            ? 'continue'
+            : 'previous';
+        this.suspendedAt = null;
         if (this.animationFrame != null) {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
         }
-        if (this.currentData != null && ['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
-            this.render(this.currentData);
+        if (['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
+            if (this.currentEntities.length > 0) {
+                this.render(this.currentEntities);
+            } else if (this.currentData != null) {
+                this.render(this.currentData);
+            }
         }
         this.fetchData();
     }
@@ -318,8 +330,8 @@ class ExtensionLayerController {
     }
 
     acceptPayload(payload) {
-        const snap = this.snapNextPayload;
-        this.snapNextPayload = false;
+        const resumeMode = this.resumeMode;
+        this.resumeMode = null;
         if (this.layer.format === 'image') {
             const previousUrl = this.objectUrl;
             const nextUrl = URL.createObjectURL(payload);
@@ -348,13 +360,14 @@ class ExtensionLayerController {
 
         if (['IconLayer', 'ScenegraphLayer'].includes(this.layer.renderer)) {
             const nextEntities = this.filterStaleEntities(readPath(parsed, this.layer.dataPath) || []);
-            if (snap) {
-                if (this.animationFrame != null) {
-                    cancelAnimationFrame(this.animationFrame);
-                    this.animationFrame = null;
+            if (resumeMode === 'previous') {
+                const seeded = this.seedFromPreviousPositions(nextEntities);
+                if (seeded) {
+                    this.currentEntities = seeded;
+                    this.transitionEntities(nextEntities);
+                } else {
+                    this.snapEntities(nextEntities);
                 }
-                this.currentEntities = nextEntities;
-                this.render(nextEntities);
             } else {
                 this.transitionEntities(nextEntities);
             }
@@ -390,6 +403,42 @@ class ExtensionLayerController {
             const timestamp = Date.parse(entity.updatedAt);
             return !Number.isFinite(timestamp) || timestamp >= oldest;
         });
+    }
+
+    snapEntities(entities) {
+        if (this.animationFrame != null) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+        this.currentEntities = entities;
+        this.render(entities);
+    }
+
+    seedFromPreviousPositions(entities) {
+        const mapping = this.layer.mapping || {};
+        const coordinateFields = mapping.coordinateField || ['lon', 'lat'];
+        const previousCoordinateFields = Array.isArray(mapping.previousCoordinateField)
+            && mapping.previousCoordinateField.length >= 2
+            ? mapping.previousCoordinateField
+            : null;
+        if (!previousCoordinateFields) return null;
+        let seeded = false;
+        const seeds = entities.map(entity => {
+            const clone = structuredClone(entity);
+            const lon = Number(readPath(entity, previousCoordinateFields[0]));
+            const lat = Number(readPath(entity, previousCoordinateFields[1]));
+            if (Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) {
+                writePath(clone, coordinateFields[0], lon);
+                writePath(clone, coordinateFields[1], lat);
+                seeded = true;
+                if (mapping.previousHeadingField && mapping.headingField) {
+                    const previousHeading = Number(readPath(entity, mapping.previousHeadingField));
+                    if (Number.isFinite(previousHeading)) writePath(clone, mapping.headingField, previousHeading);
+                }
+            }
+            return clone;
+        });
+        return seeded ? seeds : null;
     }
 
     transitionEntities(nextEntities) {
