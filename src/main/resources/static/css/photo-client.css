@@ -19,9 +19,22 @@
     cursor: pointer;
 }
 
-.photo-grid-container {
+.photo-grid-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
     max-width: 90%;
     max-height: 90%;
+    box-sizing: border-box;
+    padding-top: 40px;
+    cursor: default;
+}
+
+.photo-grid-container {
+    max-width: 100%;
+    max-height: 100%;
+    min-height: 0;
     cursor: default;
     position: relative;
     overflow: auto;
@@ -29,17 +42,23 @@
 
 .photo-grid {
     display: grid;
+    grid-template-columns: repeat(var(--photo-grid-columns, 1), minmax(0, var(--photo-grid-thumbnail-size)));
     gap: 8px;
     background: #333;
     padding: 16px;
     border-radius: 12px;
     border: 2px solid #555;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .photo-grid-item {
-    width: var(--photo-grid-thumbnail-size);
-    height: var(--photo-grid-thumbnail-size);
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    min-width: 0;
     cursor: pointer;
     overflow: hidden;
     position: relative;
@@ -58,6 +77,17 @@
 
 .photo-grid-item:hover img {
     transform: scale(1.05);
+}
+
+@media (max-width: 800px) {
+    .photo-grid-wrapper {
+        width: 90%;
+    }
+
+    .photo-grid {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+    }
 }
 
 .photo-modal {
@@ -196,6 +226,11 @@
     justify-content: center;
 }
 
+.photo-grid-wrapper .photo-grid-close-button {
+    top: 0;
+    right: 0;
+}
+
 .photo-marker-icon {
     border-radius: 50%;
     border: 3px solid #fff;
@@ -281,6 +316,8 @@
 
 .write-location-toolbar {
     display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
     justify-content: space-between;
     background: rgba(44, 62, 80, 0.9);
@@ -292,6 +329,8 @@
 .write-location-toolbar-label {
     color: #ecf0f1;
     font-size: 13px;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .write-all-btn.success {

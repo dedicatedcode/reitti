@@ -38,3 +38,5 @@ docker-compose.override.yml
 
 /secrets/
 /.junie/
+/reitti.iml
+/backup_*
